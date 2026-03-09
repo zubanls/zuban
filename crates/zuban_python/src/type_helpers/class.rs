@@ -2545,7 +2545,7 @@ fn init_as_callable(
             let self_ = if c.kind.had_first_self_or_class_annotation()
                 && let Some(first) = original.first_positional_type()
             {
-                first
+                first.clone()
             } else {
                 cls.as_type(i_s.db)
             };

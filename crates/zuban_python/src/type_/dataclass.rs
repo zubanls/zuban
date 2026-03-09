@@ -723,12 +723,12 @@ fn field_options_from_args(
                 "converter" => {
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     let mut converter = match result.as_cow_type(i_s).maybe_callable(i_s) {
-                        Some(CallableLike::Callable(c)) => c.first_positional_type(),
+                        Some(CallableLike::Callable(c)) => c.first_positional_type().cloned(),
                         Some(CallableLike::Overload(overload)) => {
                             Some(Type::simplified_union_from_iterators(
                                 i_s,
                                 overload.iter_functions().map(|func| {
-                                    func.first_positional_type().unwrap_or(Type::ERROR)
+                                    func.first_positional_type().cloned().unwrap_or(Type::ERROR)
                                 }),
                             ))
                         }

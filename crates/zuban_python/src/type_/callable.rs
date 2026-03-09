@@ -4,9 +4,9 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType,
-    ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos,
-    TypeVarLike, TypeVarLikes, TypeVarUsage, TypedDict,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes,
+    StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike,
+    TypeVarLikes, TypeVarUsage, TypedDict,
 };
 use crate::{
     database::{Database, PointLink},
@@ -573,24 +573,24 @@ impl CallableContent {
         Some(c)
     }
 
-    pub fn first_positional_type(&self) -> Option<Type> {
+    pub fn first_positional_type(&self) -> Option<&Type> {
         match &self.params {
             CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
+                | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t),
                 ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
                     let TupleArgs::WithUnpack(w) = &tup.args else {
                         return None;
                     };
                     if let Some(first) = w.before.first() {
-                        return Some(first.clone());
+                        return Some(first);
                     }
-                    Some(Type::Never(NeverCause::Other))
+                    Some(&Type::NEVER)
                 }
                 _ => None,
             }),
-            CallableParams::Any(cause) => Some(Type::Any(*cause)),
+            CallableParams::Any(_) => Some(&Type::ERROR),
         }
     }
 
