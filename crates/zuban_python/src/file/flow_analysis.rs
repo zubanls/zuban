@@ -3241,10 +3241,11 @@ impl<'file> Inference<'_, 'file, '_> {
             PatternKind::MappingPattern(mapping_pattern) => {
                 run_pattern_for_each_type_with_pattern_result(i_s, inf, |t| {
                     match t {
-                        Type::TypedDict(td) => {
-                            self.find_guards_in_typed_dict_for_mapping_pattern(td, mapping_pattern)
-                        }
-                        Type::Any(_) => (t.clone(), t),
+                        Type::TypedDict(td) => self.find_guards_in_typed_dict_for_mapping_pattern(
+                            td.clone(),
+                            mapping_pattern,
+                        ),
+                        Type::Any(_) => (t.clone(), t.clone()),
                         _ => {
                             let key = self.infer_mapping_key(mapping_pattern);
                             let not_found = Cell::new(false);
@@ -3380,7 +3381,7 @@ impl<'file> Inference<'_, 'file, '_> {
             debug!("Intersection for class target not possible: {issue:?}");
             false
         });
-        let (mut truthy, falsey_new) = run_pattern_for_each_type(self.i_s, truthy, |t| {
+        let (mut truthy, falsey_new) = run_pattern_for_each_type(self.i_s, &truthy, |t| {
             self.find_guards_in_class_pattern_part2(t, subject_key, params.clone(), target_t)
         });
         if inf_type.is_never() {
@@ -3395,7 +3396,7 @@ impl<'file> Inference<'_, 'file, '_> {
 
     fn find_guards_in_class_pattern_part2<'x>(
         &self,
-        truthy: Type,
+        truthy: &Type,
         subject_key: Option<&SubjectKey>,
         params: impl Iterator<Item = ParamPattern<'x>> + Clone,
         target_t: &Type,
@@ -3422,7 +3423,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
         let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
-            let lookup = lookup(&truthy, name);
+            let lookup = lookup(truthy, name);
             let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
                 node_ref.add_issue(
                     i_s,
@@ -3443,7 +3444,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 ParamPattern::Positional(pat) => {
                     let node_ref = NodeRef::new(self.file, pat.index());
                     if let Some(match_args) = match_args.get_or_init(|| {
-                        let lookup = lookup(&truthy, "__match_args__");
+                        let lookup = lookup(truthy, "__match_args__");
                         let name = lookup.maybe_name();
                         lookup.into_maybe_inferred().map(|inf| {
                             let truthy = inf.as_type(i_s);
@@ -3481,15 +3482,15 @@ impl<'file> Inference<'_, 'file, '_> {
                                 );
                                 // If there are too many positional patterns don't mark the
                                 // rest as potentially unreachable, since an error occured.
-                                return (Type::Never(NeverCause::Other), truthy);
+                                return (Type::Never(NeverCause::Other), truthy.clone());
                             }
                         } else {
                             // If match args are incorrect, we simply assume it's matching, because
                             // an error should have been added at the point of defining the
                             // __match_args__
-                            return (truthy.clone(), truthy);
+                            return (truthy.clone(), truthy.clone());
                         }
-                    } else if params.clone().count() == 1 && is_self_match_type(i_s.db, &truthy) {
+                    } else if params.clone().count() == 1 && is_self_match_type(i_s.db, truthy) {
                         self.find_guards_in_pattern(
                             Inferred::from_type(truthy.clone()),
                             subject_key,
@@ -3536,9 +3537,9 @@ impl<'file> Inference<'_, 'file, '_> {
             }
         }
         if inner_mismatch {
-            (Type::NEVER, truthy)
+            (Type::NEVER, truthy.clone())
         } else {
-            (truthy, Type::NEVER)
+            (truthy.clone(), Type::NEVER)
         }
     }
 
@@ -3557,10 +3558,12 @@ impl<'file> Inference<'_, 'file, '_> {
                         || c.link == i_s.db.python_state.bytes_link()
                         || c.link == i_s.db.python_state.bytearray_link() =>
                 {
-                    (Type::NEVER, t)
+                    (Type::NEVER, t.clone())
                 }
-                Type::None | Type::Literal(_) | Type::LiteralString { .. } => (Type::NEVER, t),
-                Type::Any(_) => (t.clone(), t),
+                Type::None | Type::Literal(_) | Type::LiteralString { .. } => {
+                    (Type::NEVER, t.clone())
+                }
+                Type::Any(_) => (t.clone(), t.clone()),
                 Type::Tuple(tup) => assign_from_tuple(tup.clone()),
                 Type::NamedTuple(nt) => assign_from_tuple(nt.as_tuple()),
                 _ => {
@@ -3580,14 +3583,14 @@ impl<'file> Inference<'_, 'file, '_> {
                         let inferred_container =
                             self.assign_sequence_patterns(&container_t, sequence_patterns.clone());
                         if cls.node_ref.as_link() == sequence_link {
-                            (new_class!(sequence_link, inferred_container), t)
+                            (new_class!(sequence_link, inferred_container), t.clone())
                         } else {
-                            (t.clone(), t)
+                            (t.clone(), t.clone())
                         }
                     } else {
                         let obj = i_s.db.python_state.object_type();
                         let inner = self.assign_sequence_patterns(&obj, sequence_patterns.clone());
-                        (new_class!(sequence_link, inner), t)
+                        (new_class!(sequence_link, inner), t.clone())
                     }
                 }
             }
@@ -3672,7 +3675,7 @@ impl<'file> Inference<'_, 'file, '_> {
 
     fn assign_key_value_to_mapping_pattern(
         &self,
-        mapping_type: Type,
+        mapping_type: &Type,
         value: Inferred,
         mapping_pattern: MappingPattern,
     ) -> (Type, Type) {
@@ -3704,7 +3707,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 }
             }
         }
-        (mapping_type.clone(), mapping_type)
+        (mapping_type.clone(), mapping_type.clone())
     }
 
     fn infer_mapping_key(&self, mapping_pattern: MappingPattern) -> Inferred {
@@ -5061,15 +5064,15 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 }
 
-fn run_pattern_for_each_type(
+fn run_pattern_for_each_type<'x>(
     i_s: &InferenceState,
-    t: Type,
-    callback: impl Fn(Type) -> (Type, Type),
+    t: &Type,
+    callback: impl Fn(&Type) -> (Type, Type),
 ) -> (Type, Type) {
-    fn run(
+    fn run<'x>(
         i_s: &InferenceState,
-        mut iterator: std::iter::Peekable<impl Iterator<Item = Type>>,
-        callback: impl Fn(Type) -> (Type, Type),
+        mut iterator: std::iter::Peekable<impl Iterator<Item = &'x Type>>,
+        callback: impl Fn(&'x Type) -> (Type, Type),
     ) -> (Frame, Type, Type) {
         let Some(t) = iterator.next() else {
             return (
@@ -5093,10 +5096,7 @@ fn run_pattern_for_each_type(
         })
     }
 
-    let iterator = t
-        .into_iter_with_unpacked_unions(i_s.db, true)
-        .map(|e| e.type_)
-        .peekable();
+    let iterator = t.iter_with_unpacked_unions(i_s.db).peekable();
     let (frame, truthy1, falsey1) = run(i_s, iterator, callback);
     FLOW_ANALYSIS.with(|fa| fa.merge_conditional(i_s, frame, Frame::new_conditional()));
     (truthy1, falsey1)
@@ -5105,9 +5105,9 @@ fn run_pattern_for_each_type(
 fn run_pattern_for_each_type_with_pattern_result(
     i_s: &InferenceState,
     inf: Inferred,
-    callback: impl Fn(Type) -> (Type, Type),
+    callback: impl Fn(&Type) -> (Type, Type),
 ) -> PatternResult {
-    let (truthy, falsey) = run_pattern_for_each_type(i_s, inf.into_type(i_s), callback);
+    let (truthy, falsey) = run_pattern_for_each_type(i_s, &inf.as_cow_type(i_s), callback);
     PatternResult {
         truthy_t: Inferred::from_type(truthy),
         falsey_t: Inferred::from_type(falsey),
@@ -5170,7 +5170,7 @@ impl TruthyInferred {
     fn as_cow_type<'slf>(&'slf self, i_s: &InferenceState<'slf, '_>) -> Cow<'slf, Type> {
         match self {
             Self::Simple { inf, .. } => inf.as_cow_type(i_s),
-            Self::Union(infs) => Cow::Owned(Type::simplified_union_from_iterators(
+            Self::Union(infs) => Cow::Owned(Type::owned_simplified_union_from_iterators(
                 i_s,
                 infs.iter().map(|inf| inf.as_cow_type(i_s)),
             )),
@@ -5912,7 +5912,7 @@ fn replace_promoted(
             if !u.iter().any(|t| matches!(t, Type::Class(c) if c.link == db.python_state.float_link() || c.link == db.python_state.complex_link())) {
                 return None
             }
-            return Some(Type::simplified_union_from_iterators(
+            return Some(Type::owned_simplified_union_from_iterators(
                 i_s,
                 u.iter()
                     .map(|t| replace_promoted(i_s, t, replacement).unwrap_or_else(|| t.clone())),

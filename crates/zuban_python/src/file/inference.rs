@@ -4872,7 +4872,7 @@ fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Ty
             }
         }
         Type::Any(cause) => Type::Any(*cause),
-        Type::Union(union) => Type::simplified_union_from_iterators(
+        Type::Union(union) => Type::owned_simplified_union_from_iterators(
             i_s,
             union
                 .iter()

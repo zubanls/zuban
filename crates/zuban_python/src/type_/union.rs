@@ -20,7 +20,7 @@ impl Type {
             .max(other.highest_union_format_index());
         simplified_union_from_iterators_with_format_index(
             i_s,
-            [(0, self.clone()), (1, other.clone())].into_iter(),
+            [(0, self), (1, other)].into_iter(),
             highest_union_format_index,
         )
     }
@@ -30,35 +30,43 @@ impl Type {
             std::mem::replace(self, Self::Never(NeverCause::Other)).simplified_union(i_s, other);
     }
 
-    pub fn simplified_union_from_iterators<T: Borrow<Self>>(
+    pub fn owned_simplified_union_from_iterators<T: Borrow<Self>>(
         i_s: &InferenceState,
-        types: impl Iterator<Item = T> + Clone,
+        types: impl IntoIterator<Item = T>,
+    ) -> Self {
+        let types: Vec<_> = types.into_iter().collect();
+        Self::simplified_union_from_iterators(i_s, types.iter().map(|t| t.borrow()))
+    }
+
+    pub fn simplified_union_from_iterators<'x>(
+        i_s: &InferenceState,
+        types: impl Iterator<Item = &'x Type> + Clone,
     ) -> Self {
         let highest_union_format_index = types
             .clone()
-            .map(|t| t.borrow().highest_union_format_index())
+            .map(|t| t.highest_union_format_index())
             .max()
             .unwrap_or(0);
         simplified_union_from_iterators_with_format_index(
             i_s,
-            types.map(|t| t.borrow().clone()).enumerate(),
+            types.enumerate(),
             highest_union_format_index,
         )
     }
 }
 
-pub fn simplified_union_from_iterators_with_format_index(
+pub fn simplified_union_from_iterators_with_format_index<'x>(
     i_s: &InferenceState,
-    types: impl Iterator<Item = (usize, Type)>,
+    types: impl Iterator<Item = (usize, &'x Type)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.
     highest_union_format_index: usize,
 ) -> Type {
     let multiply = highest_union_format_index + 1;
     merge_simplified_union_type(
         i_s,
-        types.into_iter().flat_map(|(format_index, t)| {
-            t.into_iter_with_unpacked_unions(i_s.db, false)
-                .map(move |entry| UnionEntry {
+        types.flat_map(|(format_index, t)| {
+            t.iter_with_unpacked_union_entries(i_s.db, false)
+                .map(move |entry| IntoUnionEntry {
                     // Ensure that this does not overflow, since it's purely visual it shouldn't
                     // matter that much. However it would probably be better to not get into this
                     // position in the first place.
@@ -72,9 +80,9 @@ pub fn simplified_union_from_iterators_with_format_index(
     )
 }
 
-fn merge_simplified_union_type(
+fn merge_simplified_union_type<'x>(
     i_s: &InferenceState,
-    types: impl Iterator<Item = UnionEntry>,
+    types: impl Iterator<Item = IntoUnionEntry<'x>>,
 ) -> Type {
     let mut new_types: Vec<UnionEntry> = vec![];
     let mut had_enum_member = false;
@@ -82,7 +90,7 @@ fn merge_simplified_union_type(
     let mut had_false = false;
     'outer: for additional in types {
         if additional.type_.is_object(i_s.db) {
-            return additional.type_;
+            return additional.type_.clone();
         }
         if additional.type_.has_any(i_s) {
             // Generics with unknown type params can probably simply be merged with other objects
@@ -103,13 +111,13 @@ fn merge_simplified_union_type(
                     .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional.type_)
             }) && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
             {
-                new_types.push(additional)
+                new_types.push(additional.into())
             }
             continue;
         }
         if new_types
             .iter()
-            .any(|entry| entry.type_ == additional.type_)
+            .any(|entry| entry.type_ == *additional.type_)
         {
             // Just do a quick check if the types are exactly the same. This might happen quite
             // often in simple cases and will probably be a minor speed boost and catch some
@@ -124,22 +132,22 @@ fn merge_simplified_union_type(
         if is_recursive_with_generics(&additional.type_) {
             // Since we don't remove duplicate entries in the proper way we at least do a quick
             // equals and remove simple duplicates.
-            if new_types.iter().any(|e| e.type_ == additional.type_) {
+            if new_types.iter().any(|e| e.type_ == *additional.type_) {
                 continue;
             }
         } else {
-            let additional_t = &additional.type_;
+            let additional_t = additional.type_;
             for (i, current) in new_types.iter_mut().enumerate() {
                 if current.type_.has_any(i_s) {
                     if let Type::Class(c1) = &mut current.type_
                         && c1.generics.all_any_with_unknown_type_params()
                         && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
                     {
-                        current.type_ = additional.type_;
+                        current.type_ = additional_t.clone();
                         continue 'outer;
                     }
                     continue;
-                } else if additional.type_.is_calculating(i_s.db) {
+                } else if additional_t.is_calculating(i_s.db) {
                     break;
                 }
                 let t = &mut current.type_;
@@ -174,7 +182,7 @@ fn merge_simplified_union_type(
                                 .bool()
                         })
                         .for_each(drop);
-                    new_types[i].type_ = additional.type_;
+                    new_types[i].type_ = additional_t.clone();
                     continue 'outer;
                 }
                 if t.is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), additional_t)
@@ -193,7 +201,7 @@ fn merge_simplified_union_type(
                 _ => (),
             }
         }
-        new_types.push(additional);
+        new_types.push(additional.into());
     }
     if had_enum_member {
         // If all enum members are found in a union, just use an enum instance instead.
@@ -257,6 +265,21 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
 pub(crate) struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IntoUnionEntry<'x> {
+    pub type_: &'x Type,
+    pub format_index: usize,
+}
+
+impl From<IntoUnionEntry<'_>> for UnionEntry {
+    fn from(value: IntoUnionEntry<'_>) -> Self {
+        Self {
+            type_: value.type_.clone(),
+            format_index: value.format_index,
+        }
+    }
 }
 
 impl PartialEq for UnionEntry {

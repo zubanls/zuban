@@ -82,6 +82,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     recoverable_error,
+    type_::union::IntoUnionEntry,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{arc_slice_into_vec, bytes_repr, join_with_commas, str_repr},
 };
@@ -407,14 +408,14 @@ impl GenericClass {
     }
 }
 
-enum TypeIterator<Iter> {
-    Single(Type),
+enum TypeIterator<'x, Iter> {
+    Single(&'x Type),
     Union(Iter),
     Finished,
 }
 
-impl<Iter: Iterator<Item = UnionEntry>> Iterator for TypeIterator<Iter> {
-    type Item = UnionEntry;
+impl<'x, Iter: Iterator<Item = IntoUnionEntry<'x>>> Iterator for TypeIterator<'x, Iter> {
+    type Item = IntoUnionEntry<'x>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -422,7 +423,7 @@ impl<Iter: Iterator<Item = UnionEntry>> Iterator for TypeIterator<Iter> {
                 let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
                     unreachable!();
                 };
-                Some(UnionEntry {
+                Some(IntoUnionEntry {
                     format_index: 0,
                     type_,
                 })
@@ -713,9 +714,9 @@ impl Type {
                 _ => true,
             };
             Some(Type::from_union_entries(
-                self.clone()
-                    .into_iter_with_unpacked_unions(db, true)
-                    .filter(|union_entry| !matches!(&union_entry.type_, Type::None))
+                self.iter_with_unpacked_union_entries(db, true)
+                    .filter(|e| !matches!(e.type_, Type::None))
+                    .map(|e| e.into())
                     .collect(),
                 might_have_defined_type_vars,
             ))
@@ -730,18 +731,22 @@ impl Type {
             .unwrap_or(Cow::Borrowed(self))
     }
 
-    pub fn into_iter_with_unpacked_unions(
-        self,
-        db: &Database,
+    pub fn iter_with_unpacked_union_entries<'x>(
+        &'x self,
+        db: &'x Database,
         unpack_recursive_type: bool,
-    ) -> impl Iterator<Item = UnionEntry> {
+    ) -> impl Iterator<Item = IntoUnionEntry<'x>> {
         match self {
-            Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
+            Type::Union(items) => {
+                TypeIterator::Union(items.entries.iter().map(|e| IntoUnionEntry {
+                    type_: &e.type_,
+                    format_index: e.format_index,
+                }))
+            }
             Type::Never(_) => TypeIterator::Finished,
             Type::RecursiveType(rec) if unpack_recursive_type => rec
                 .calculated_type(db)
-                .clone()
-                .into_iter_with_unpacked_unions(db, unpack_recursive_type),
+                .iter_with_unpacked_union_entries(db, unpack_recursive_type),
             t => TypeIterator::Single(t),
         }
     }
