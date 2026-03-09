@@ -2103,7 +2103,7 @@ pub(crate) enum DbBytes {
     Arc(Arc<[u8]>),
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub(crate) enum LiteralValue<'db> {
     String(&'db str),
     Int(&'db num_bigint::BigInt),

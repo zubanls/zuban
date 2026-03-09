@@ -5,6 +5,8 @@ use std::{
     sync::Arc,
 };
 
+use utils::FastHashMap;
+
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
     database::Database, format_data::FormatData, inference_state::InferenceState,
@@ -85,17 +87,28 @@ fn merge_simplified_union_type<'x>(
     types: impl Iterator<Item = IntoUnionEntry<'x>>,
 ) -> Type {
     let mut new_types: Vec<UnionEntry> = vec![];
+    let mut literal_values = FastHashMap::default();
     let mut had_enum_member = false;
     let mut had_true = false;
     let mut had_false = false;
     'outer: for additional in types {
-        if additional.type_.is_object(i_s.db) {
-            return additional.type_.clone();
+        let additional_t = additional.type_;
+        if let Type::Literal(literal) = additional_t
+            && !matches!(&literal.kind, LiteralKind::Bool(_))
+        {
+            // Handle literals separately, because otherwise
+            literal_values
+                .entry(literal.value(i_s.db))
+                .or_insert(additional);
+            continue;
         }
-        if additional.type_.has_any(i_s) {
+        if additional_t.is_object(i_s.db) {
+            return additional_t.clone();
+        }
+        if additional_t.has_any(i_s) {
             // Generics with unknown type params can probably simply be merged with other objects
             // of the same type.
-            if let Type::Class(c1) = &additional.type_
+            if let Type::Class(c1) = &additional_t
                 && c1.generics.all_any_with_unknown_type_params()
                 && new_types
                     .iter()
@@ -108,17 +121,14 @@ fn merge_simplified_union_type<'x>(
                 // simplified unions again, due to unpacking of recursive types.
                 entry
                     .type_
-                    .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional.type_)
-            }) && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
+                    .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional_t)
+            }) && !matches!(additional_t, Type::Any(AnyCause::UnknownTypeParam))
             {
                 new_types.push(additional.into())
             }
             continue;
         }
-        if new_types
-            .iter()
-            .any(|entry| entry.type_ == *additional.type_)
-        {
+        if new_types.iter().any(|entry| entry.type_ == *additional_t) {
             // Just do a quick check if the types are exactly the same. This might happen quite
             // often in simple cases and will probably be a minor speed boost and catch some
             // recursive types that we don't handle otherwise.
@@ -129,14 +139,13 @@ fn merge_simplified_union_type<'x>(
         // Recursive aliases need special handling, because the normal subtype
         // checking will call this function again if generics are available to
         // cache the type.
-        if is_recursive_with_generics(&additional.type_) {
+        if is_recursive_with_generics(&additional_t) {
             // Since we don't remove duplicate entries in the proper way we at least do a quick
             // equals and remove simple duplicates.
-            if new_types.iter().any(|e| e.type_ == *additional.type_) {
+            if new_types.iter().any(|e| e.type_ == *additional_t) {
                 continue;
             }
         } else {
-            let additional_t = additional.type_;
             for (i, current) in new_types.iter_mut().enumerate() {
                 if current.type_.has_any(i_s) {
                     if let Type::Class(c1) = &mut current.type_
@@ -210,6 +219,19 @@ fn merge_simplified_union_type<'x>(
     if had_false && had_true {
         contract_bool_literals(i_s.db, &mut new_types)
     }
+    if !literal_values.is_empty() {
+        if !new_types.is_empty() {
+            literal_values.retain(|_, v| {
+                let Type::Literal(l) = v.type_ else {
+                    unreachable!()
+                };
+                !new_types.iter().any(|e| e.type_ == l.fallback_type(i_s.db))
+            });
+        }
+        let mut all: Vec<_> = literal_values.into_values().collect();
+        all.sort_by_key(|e| e.format_index);
+        new_types.splice(..0, all.into_iter().map(|v| v.into()));
+    }
     Type::from_union_entries(
         new_types, true, // TODO shouldn't this be calculated?
     )
@@ -267,7 +289,7 @@ pub(crate) struct UnionEntry {
     pub format_index: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct IntoUnionEntry<'x> {
     pub type_: &'x Type,
     pub format_index: usize,
