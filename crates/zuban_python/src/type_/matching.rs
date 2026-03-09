@@ -281,15 +281,32 @@ impl Type {
         let mut mro = value_type.mro(i_s.db);
         // Protocols contain no object in its MRO, therefore we add that here.
         mro.returned_object = false;
+
+        // This is an optimization. Literal / None matching happens quite often and we therefore
+        // don't have to create types from some classes.
+        if self.is_non_union_singleton() {
+            let result = self
+                .matches_internal(i_s, matcher, &value_type, Variance::Covariant)
+                .or(|| {
+                    self.check_protocol_and_other_side(
+                        i_s,
+                        matcher,
+                        value_type,
+                        Variance::Covariant,
+                    )
+                });
+            debug_message_for_result(&result);
+            return result;
+        }
+
         for (i, t2) in mro {
             m = match t2 {
                 TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
                     Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
                     None => {
-                        // TODO performance: This might be slow, because it always
-                        // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
-                        // This is a bit unfortunate, especially because it loops over the
-                        // mro and allocates every time.
+                        // Performance might be slow here, since it allocates. However we have
+                        // already excluded literal/None matching above and this therefore doesn't
+                        // happen that often.
                         let t2 = c2.as_type(i_s.db);
                         self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }

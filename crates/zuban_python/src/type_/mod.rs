@@ -1901,9 +1901,11 @@ impl Type {
     }
 
     pub fn is_singleton(&self, db: &Database) -> bool {
-        self.for_all_in_union(db, &|t| {
-            matches!(t, Type::Literal(_) | Type::None | Type::EnumMember(_))
-        })
+        self.for_all_in_union(db, &|t| t.is_non_union_singleton())
+    }
+
+    pub fn is_non_union_singleton(&self) -> bool {
+        matches!(self, Type::Literal(_) | Type::None | Type::EnumMember(_))
     }
 }
 
