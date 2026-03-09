@@ -44,6 +44,17 @@ if bool():
 if bool():
     y = x
 
+[case ternary_simplified_unions]
+from typing import Literal
+
+def foo(n: int, x: Literal[1], y: Literal[2]):
+    a = x if bool() else y
+    b = a if bool() else n
+    c = n if bool() else a
+    reveal_type(a)  # N: Revealed type is "Literal[1] | Literal[2]"
+    reveal_type(b)  # N: Revealed type is "int"
+    reveal_type(c)  # N: Revealed type is "int"
+
 [case large_literal_union_self_matching]
 # Regression test for GH #267: O(n^2) matching of identical large literal unions
 # Without the fast path optimization, this test times out (>30s)

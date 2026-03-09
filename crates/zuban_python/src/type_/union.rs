@@ -123,7 +123,7 @@ fn merge_simplified_union_type(
                 // cache the type.
             }
             additional_t => {
-                for current in new_types.iter_mut() {
+                for (i, current) in new_types.iter_mut().enumerate() {
                     if current.type_.has_any(i_s) {
                         if let Type::Class(c1) = &mut current.type_
                             && c1.generics.all_any_with_unknown_type_params()
@@ -150,7 +150,24 @@ fn merge_simplified_union_type(
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
                             {
-                                *t = additional.type_;
+                                // After replacing the old entry we have to check all the following
+                                // ones if they also need to be removed.
+                                new_types
+                                    .extract_if(i + 1.., |e| {
+                                        let t = &e.type_;
+                                        if t.has_any(i_s) || t.is_calculating(i_s.db) {
+                                            return false;
+                                        }
+                                        additional_t
+                                            .is_super_type_of(
+                                                i_s,
+                                                &mut Matcher::with_ignored_promotions(),
+                                                t,
+                                            )
+                                            .bool()
+                                    })
+                                    .for_each(drop);
+                                new_types[i].type_ = additional.type_;
                                 continue 'outer;
                             }
                             if t.is_super_type_of(
