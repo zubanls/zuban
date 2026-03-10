@@ -418,7 +418,22 @@ fn sub_module_import(
                 None
             }
         }),
-        Parent::Workspace(_) => None,
+        Parent::Workspace(workspace) => {
+            if is_package_name(file_entry) && !db.project.settings.explicit_package_bases {
+                // In the case where we want submodules of an __init__ module we probably have an
+                // invalid sys path and we therefore allow the workspace essentially as a package.
+                let workspace = workspace.upgrade().unwrap();
+                return python_import_with_needs_exact_case(
+                    db,
+                    in_file,
+                    std::iter::once((&workspace.entries, false)),
+                    name,
+                    true,
+                    true,
+                );
+            }
+            None
+        }
     }
 }
 

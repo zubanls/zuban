@@ -879,4 +879,31 @@ mod tests {
         );
         assert_eq!(ds.len(), 4);
     }
+
+    #[test]
+    fn test_src_folder_as_package() {
+        // Regression from GH #325
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file src/base.py]
+            class Base: ...
+            [file src/elems.py]
+            from src.base import Base
+            from .base import Base
+            from src.base import where
+            from src import which
+            [file src/__init__.py]
+            ",
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                r#"src/elems.py:3: error: Module "base" has no attribute "where"  [attr-defined]"#,
+                r#"src/elems.py:4: error: Module "__init__" has no attribute "which"  [attr-defined]"#
+            ]
+        );
+    }
 }

@@ -1,4 +1,7 @@
-use std::{ops::Deref, sync::Arc};
+use std::{
+    ops::Deref,
+    sync::{Arc, Weak},
+};
 
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
@@ -452,6 +455,14 @@ fn load_init_file(
     from_file: FileIndex,
 ) -> Option<FileIndex> {
     let entries = Directory::entries(&db.vfs, content);
+    load_init_file_from_entries(db, entries, from_file)
+}
+
+fn load_init_file_from_entries(
+    db: &Database,
+    entries: &Entries,
+    from_file: FileIndex,
+) -> Option<FileIndex> {
     let mut found_py = None;
     for child in &entries.iter() {
         if let DirectoryEntry::File(entry) = child {
@@ -484,18 +495,31 @@ pub enum ImportAncestor {
 
 pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> ImportAncestor {
     debug_assert!(level > 0);
-    let invalid = |current_level| match level - current_level {
-        0 => ImportAncestor::Workspace,
+    let invalid = |workspace: &Weak<Workspace>, current_level| match level - current_level {
+        0 => {
+            if !db.project.settings.explicit_package_bases {
+                // While technically the sys path says that this is a workspace, we probably just
+                // have the wrong sys path and since this is annoying for most users, just allow
+                // the user to access the workspace as a relative directory.
+                let workspace = workspace.upgrade().unwrap();
+                if let Some(index) =
+                    load_init_file_from_entries(db, &workspace.entries, file.file_index)
+                {
+                    return ImportAncestor::Found(ImportResult::File(index));
+                }
+            }
+            ImportAncestor::Workspace
+        }
         _ => ImportAncestor::NoParentModule,
     };
     let mut parent = match file.file_entry(db).parent.maybe_dir() {
         Ok(dir) => dir,
-        Err(_) => return invalid(1),
+        Err(workspace) => return invalid(workspace, 1),
     };
     for i in 1..level {
         parent = match parent.parent.maybe_dir() {
             Ok(dir) => dir,
-            Err(_) => return invalid(i + 1),
+            Err(workspace) => return invalid(workspace, i + 1),
         };
     }
     ImportAncestor::Found(match load_init_file(db, &parent, file.file_index) {
