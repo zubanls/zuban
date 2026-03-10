@@ -17,9 +17,10 @@ impl Settings {
     ) {
         let mut add_to_mypy_path = |lookup: EnvResult| {
             if let Ok(found_path) = lookup {
-                self.mypy_path.extend(found_path.split(PATH_SEPARATOR).map(|p| {
-                    vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, p))
-                }))
+                self.mypy_path
+                    .extend(found_path.split(PATH_SEPARATOR).map(|p| {
+                        vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, p))
+                    }))
             }
         };
         add_to_mypy_path(lookup_env_var("PYTHONPATH"));
