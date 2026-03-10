@@ -50,6 +50,10 @@ some of these projects with:
     RUSTFLAGS="-C force-frame-pointers=yes" flamegraph -- cargo test jedilike --release
     firefox flamegraph.svg
 
+    perf report --stdio --call-graph none | less
+    # Sort by the Self column, because I haven't found out how to do this with perf report
+    perf report --stdio  --call-graph none | sort -nr -k2 | less
+
 ## Progress History
 
 ### Mypy-Like Tests
