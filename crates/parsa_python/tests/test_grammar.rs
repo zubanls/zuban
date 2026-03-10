@@ -28,11 +28,27 @@ fn tree_to_string(tree: PyTree) -> String {
     code
 }
 
+fn assert_valid_tree(tree: &PyTree) {
+    // Ensure that a tree has fully reachable nonterminals/leaves.
+    fn check(node: PyNode, expected_index: &mut NodeIndex) {
+        assert_eq!(node.index, *expected_index);
+        for child in node.iter_children() {
+            *expected_index += 1;
+            check(child, expected_index)
+        }
+    }
+    let root = tree.root_node();
+    let mut counter = 0;
+    check(root, &mut counter);
+    assert_eq!(tree.length(), counter as usize + 1);
+}
+
 macro_rules! parametrize_snapshots {
     ($($name:ident : $input:expr;)*) => {$(
         #[test]
         fn $name() {
             let tree = parse($input.into());
+            assert_valid_tree(&tree);
             insta::assert_snapshot!(stringify!($name), tree_to_string(tree));
         }
     )*}
