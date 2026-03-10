@@ -86,6 +86,9 @@ parametrize_snapshots!(
         foo(1,).bar[1] = 1
         foo(a for a in b).bar[1] = 1
         ");
+    primary_target_none_annotation: dedent("
+        None.A:b
+        ");
     for_stmt: dedent("
         for x in [1,2]:
             ...

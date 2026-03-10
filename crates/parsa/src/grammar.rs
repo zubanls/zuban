@@ -421,6 +421,10 @@ impl<'a, T: Token> Grammar<T> {
                                 enabled_token_recording: true,
                             });
                         }
+                        debug_assert!(!reusable.pushes.is_empty());
+                        // We have to make sure that the most recent push has more than one child
+                        // to avoid omitting nodes.
+                        stack.tos_mut().children_count += 1;
                         return;
                     } else {
                         let t = reset(backtracking, stack, backtracking_tokenizer);
@@ -558,7 +562,6 @@ impl<'a, T: Token> Grammar<T> {
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let tos = stack.tos_mut();
-            let children_count = tos.children_count;
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
             match &push.stack_mode {
@@ -578,6 +581,7 @@ impl<'a, T: Token> Grammar<T> {
                     replay,
                     reusable_first_nonterminal,
                 } => {
+                    let children_count = tos.children_count - 1;
                     enabled_token_recording = true;
                     stack.stack_nodes.push(StackNode {
                         node_id: push.node_type,

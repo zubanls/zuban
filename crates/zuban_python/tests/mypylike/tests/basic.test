@@ -1812,3 +1812,8 @@ assert_type(f(1), int)  # E: Expression is of type "Literal[1]", not "int"
 
 assert_type(f(""), Literal[''])
 assert_type(f(""), str)  # E: Expression is of type "Literal['']", not "str"
+
+[case no_parser_crash_for_annotation]
+# From GH #324
+from typing import Any
+None.__hash__: Any  # E: Type cannot be declared in assignment to non-self attribute

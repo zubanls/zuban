@@ -1,0 +1,24 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
+expression: tree_to_string(tree)
+---
+file: 0-10
+ stmt: 1-10
+  simple_stmts: 1-10
+   simple_stmt: 1-9
+    assignment: 1-9
+     single_target: 1-7
+      t_primary: 1-7
+       atom: 1-5
+        Keyword: 1-5 "None"
+       Keyword: 5-6 "."
+       name_def: 6-7
+        Name: 6-7 "A"
+     annotation: 7-9
+      Keyword: 7-8 ":"
+      expression: 8-9
+       atom: 8-9
+        Name: 8-9 "b"
+   Newline: 9-10 "\n"
+ Endmarker: 10-10 ""
