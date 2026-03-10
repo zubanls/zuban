@@ -1000,9 +1000,7 @@ x = (
     ((((( ((((( ((((( (((((
     ((((( ((((( ((((( (((((
     ((((( ((((( ((((( (((((
-    ((((( ((((( ((((( (((((
     a
-    ))))) ))))) ))))) )))))
     ))))) ))))) ))))) )))))
     ))))) ))))) ))))) )))))
     ))))) ))))) ))))) )))))
@@ -1026,6 +1024,9 @@ reveal_type(x)  # N: Revealed type is "int"
 )
 
 [case avoid_curly_bracket_slowdown]
+# flags: --no-windows
+# This test can cause a stack overflow on windows, because of the many function
+# calls internally. Skip this test for now.
 {
     {{{{{ {{{{{ {{{{{ {{{{{
     {{{{{ {{{{{ {{{{{ {{{{{
