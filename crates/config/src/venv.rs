@@ -6,6 +6,8 @@ use crate::{PythonVersion, Settings, parse_python_ini};
 
 type EnvResult = Result<String, std::env::VarError>;
 
+const PATH_SEPARATOR: char = if cfg!(windows) { ';' } else { ':' };
+
 impl Settings {
     pub fn try_to_apply_environment_variables(
         &mut self,
@@ -15,7 +17,7 @@ impl Settings {
     ) {
         let mut add_to_mypy_path = |lookup: EnvResult| {
             if let Ok(found_path) = lookup {
-                self.mypy_path.extend(found_path.split(':').map(|p| {
+                self.mypy_path.extend(found_path.split(PATH_SEPARATOR).map(|p| {
                     vfs_handler.normalize_rc_path(vfs_handler.absolute_path(base_directory, p))
                 }))
             }
