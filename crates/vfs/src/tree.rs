@@ -4,7 +4,7 @@ use std::{
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use utils::{FastHashMap, MappedReadGuard, MappedWriteGuard, VecRwLockWrapper};
+use utils::{FastHashMap, FastHashSet, MappedReadGuard, MappedWriteGuard};
 
 use crate::{NormalizedPath, PathWithScheme, Vfs, VfsHandler, Workspace, Workspaces};
 
@@ -521,8 +521,10 @@ pub enum DirOrFile {
     File(Arc<FileEntry>),
 }
 
+type InvalidationsInner = InvalidationDetail<FastHashSet<FileIndex>>;
+
 #[derive(Debug, Default)]
-pub(crate) struct Invalidations(RwLock<InvalidationDetail<Vec<FileIndex>>>);
+pub(crate) struct Invalidations(RwLock<InvalidationsInner>);
 
 #[derive(Debug, Clone)]
 pub(crate) enum InvalidationDetail<T> {
@@ -558,10 +560,8 @@ impl Invalidations {
     }
 
     pub(crate) fn add(&self, element: FileIndex) {
-        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap()
-            && !invs.contains(&element)
-        {
-            invs.push(element);
+        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap() {
+            invs.insert(element);
         }
     }
 
@@ -579,20 +579,8 @@ impl Invalidations {
         Self(RwLock::new(std::mem::take(&mut self.0.write().unwrap())))
     }
 
-    pub(crate) fn iter(
-        &self,
-    ) -> InvalidationDetail<VecRwLockWrapper<'_, InvalidationDetail<Vec<FileIndex>>, FileIndex>>
-    {
-        let r = self.0.read().unwrap();
-        if let InvalidationDetail::InvalidatesDb = &*r {
-            return InvalidationDetail::InvalidatesDb;
-        }
-        InvalidationDetail::Some(VecRwLockWrapper::new(MappedReadGuard::map(r, |r| {
-            let InvalidationDetail::Some(vec) = r else {
-                unreachable!()
-            };
-            vec
-        })))
+    pub(crate) fn borrow(&self) -> RwLockReadGuard<'_, InvalidationsInner> {
+        self.0.read().unwrap()
     }
 
     pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {

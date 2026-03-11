@@ -267,8 +267,8 @@ impl<F: VfsFile> Vfs<F> {
         let new_invalidations = file.file_entry.invalidations.take();
         file.invalidate_references_to(original_file_index);
 
-        if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
-            for invalidation in &invs {
+        if let InvalidationDetail::Some(invs) = &*new_invalidations.borrow() {
+            for invalidation in invs {
                 let p = &self.file_state(*invalidation).path.path;
                 tracing::debug!(
                     "Invalidate {p} because we have invalidated {}",
@@ -468,9 +468,9 @@ impl<F: VfsFile> Vfs<F> {
             file_index
         };
         if tracing::enabled!(Level::INFO)
-            && let InvalidationDetail::Some(invs) = ensured.invalidations.iter()
+            && let InvalidationDetail::Some(invs) = &*ensured.invalidations.borrow()
         {
-            for invalidation in &invs {
+            for invalidation in invs {
                 let p = &self.file_state(*invalidation).path.path;
                 let path = &self.file_state(file_index).path.path;
                 tracing::info!("Invalidate {p} because we're loading {path}");
@@ -653,11 +653,12 @@ impl<F: VfsFile> Vfs<F> {
                                 all_unloads.insert(file_index);
                             }
                         }
-                        DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter()
-                        {
-                            InvalidationDetail::InvalidatesDb => invalidates_db = true,
-                            InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
-                        },
+                        DirectoryEntry::MissingEntry(missing) => {
+                            match &*missing.invalidations.borrow() {
+                                InvalidationDetail::InvalidatesDb => invalidates_db = true,
+                                InvalidationDetail::Some(invs) => all_invalidations.extend(invs),
+                            }
+                        }
                         // TODO gitignore invalidation
                         DirectoryEntry::Directory(_) | DirectoryEntry::Gitignore(_) => (),
                     };

@@ -261,23 +261,6 @@ pub fn dedent_cow(s: Cow<str>) -> Cow<str> {
     Cow::Owned(new_lines.join("\n"))
 }
 
-pub struct VecRwLockWrapper<'a, U, T: 'a>(pub(crate) MappedReadGuard<'a, U, Vec<T>>);
-
-impl<'a, U, T: 'a> VecRwLockWrapper<'a, U, T> {
-    pub fn new(mapped: MappedReadGuard<'a, U, Vec<T>>) -> Self {
-        Self(mapped)
-    }
-}
-
-impl<'a, 'b: 'a, U, T: 'a> IntoIterator for &'b VecRwLockWrapper<'a, U, T> {
-    type IntoIter = std::slice::Iter<'a, T>;
-    type Item = &'a T;
-
-    fn into_iter(self) -> std::slice::Iter<'a, T> {
-        self.0.iter()
-    }
-}
-
 // TODO we want mapped_lock_guards from https://github.com/rust-lang/rust/issues/117108
 // this is just an ugly workaround and I'm not even sure it is safe.
 /// A "mapped" read guard, holding the original guard
