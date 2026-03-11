@@ -705,3 +705,15 @@ class Size:
 
     def __sub__(self, other: Self) -> 'Size':
         return self
+
+[case execute_self]
+# From GH #318
+class Call:
+    def __call__(self) -> None:
+        return None
+
+    def _execute(self) -> None:
+        self()
+
+call = Call()
+call()
