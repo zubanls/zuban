@@ -280,6 +280,13 @@ impl<'a, T: Token> Grammar<T> {
         transition: Option<InternalSquashedType>,
         token: Option<&T>,
     ) {
+        // There are three potential steps for error recovery
+        //
+        // 1. Add an error token to a new error recovery node
+        // 2. Use alternatives and potentially replay a better previous alternative
+        // 3. Use the underlying error recovery node to add the node as a failed node to the stack
+        //
+        // This is (1)
         if let Some(nonterminal_id) = stack.tos().dfa_state.transition_towards_error_recovery_node
             && let Some(transition) = transition
         {
@@ -302,7 +309,6 @@ impl<'a, T: Token> Grammar<T> {
             return;
         }
 
-        // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             let reset =
                 |backtracking: BacktrackingPoint,
@@ -315,6 +321,7 @@ impl<'a, T: Token> Grammar<T> {
                     backtracking_tokenizer.reset(backtracking.token_index);
                     backtracking_tokenizer.next().unwrap()
                 };
+            // (2)
             match node.mode {
                 ModeData::Alternative {
                     backtracking,
@@ -466,8 +473,7 @@ impl<'a, T: Token> Grammar<T> {
             }
 
             if self.automatons[&node.node_id].does_error_recovery {
-                // First step of error recovery is to mark tree nodes as failed and pop the
-                // stack nodes that failed.
+                // (3) Mark tree nodes as failed and pop the stack nodes that failed.
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
                     update_tree_node_position(&mut stack.tree_nodes, &stack_node);
