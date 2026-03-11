@@ -736,6 +736,7 @@ impl Type {
                         // not complain with the lint that a None return does not make sense,
                         // because it can be some other type.
                         Type::Callable(c) => c.return_type != Type::None,
+                        Type::Any(_) => true,
                         _ => false,
                     }) {
                     &mut ResultContext::Unknown
