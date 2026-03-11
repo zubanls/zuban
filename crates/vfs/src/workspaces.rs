@@ -252,7 +252,7 @@ impl Workspaces {
         ) -> Arc<Directory> {
             // TODO not all entries need to be recalculated if it's not yet calculated
             let dir = Arc::new(dir);
-            for entry in Directory::entries_with_workspaces(vfs, workspaces, &dir)
+            for (_, entry) in Directory::entries_with_workspaces(vfs, workspaces, &dir)
                 .borrow_mut()
                 .iter_mut()
             {
@@ -276,7 +276,7 @@ impl Workspaces {
         let mut new = self.inner_items_mut().clone();
         for workspace in &mut new {
             let new_workspace = Arc::new(workspace.as_ref().clone());
-            for entry in new_workspace.entries.borrow_mut().iter_mut() {
+            for (_, entry) in new_workspace.entries.borrow_mut().iter_mut() {
                 match entry {
                     DirectoryEntry::Directory(dir) => {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
@@ -485,7 +485,7 @@ fn ensure_dirs_and_file(
                 _ => unimplemented!("Dir overwrite of file; When does this happen?"),
             }
         };
-        let dir2 = Directory::new(parent, Box::from(name));
+        let dir2 = Directory::new(parent, Arc::from(name));
         let mut result = ensure_dirs_and_file(
             Parent::Directory(Arc::downgrade(&dir2)),
             Directory::entries_with_workspaces(vfs, workspaces, &dir2),
@@ -494,7 +494,9 @@ fn ensure_dirs_and_file(
             rest,
             code,
         );
-        entries.borrow_mut().push(DirectoryEntry::Directory(dir2));
+        entries
+            .borrow_mut()
+            .insert(dir2.name.clone(), DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {

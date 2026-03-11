@@ -467,7 +467,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     }
 
     fn directory_entries_completions(&mut self, entries: &Entries) {
-        for entry in &entries.iter() {
+        for (_, entry) in entries.borrow().iter() {
             let name: &str = match entry {
                 DirectoryEntry::File(f) => {
                     if let Some(stripped_name) = f

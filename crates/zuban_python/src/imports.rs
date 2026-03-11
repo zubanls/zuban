@@ -331,7 +331,7 @@ pub fn python_import_with_needs_exact_case<'x>(
 
     for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
-        for entry in &dir.iter() {
+        for (_, entry) in dir.borrow().iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {
                     if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
@@ -464,7 +464,7 @@ fn load_init_file_from_entries(
     from_file: FileIndex,
 ) -> Option<FileIndex> {
     let mut found_py = None;
-    for child in &entries.iter() {
+    for (_, child) in entries.borrow().iter() {
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PYI, false) {
                 let found_file_index = db.vfs.ensure_file_index(entry);

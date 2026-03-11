@@ -27,6 +27,7 @@ TMP=~/<path-with-link> cargo test -p zubanls
 
 Releasing is typically done by GitHub actions, which invokes `deploy/pypi/zuban/build.sh`.
 For a patch release, simply run `./release.sh`, for a minor release `./release.sh minor` (`minor` here comes from `cargo release`).
+
 ## Running primer
 
 Mypy uses mypy-primer to test for changes. We can simply check if we panic on

@@ -292,6 +292,14 @@ impl<'a, T: ?Sized, U: ?Sized> MappedReadGuard<'a, T, U> {
         let value = f(&*_guard) as *const U;
         Self { _guard, value }
     }
+
+    pub fn map_optional(
+        _guard: RwLockReadGuard<'a, T>,
+        f: impl FnOnce(&T) -> Option<&U>,
+    ) -> Option<Self> {
+        let value = f(&*_guard)? as *const U;
+        Some(Self { _guard, value })
+    }
 }
 
 impl<'a, T: ?Sized, U: ?Sized> Deref for MappedReadGuard<'a, T, U> {
@@ -321,6 +329,14 @@ impl<'a, T: ?Sized, U: ?Sized> MappedWriteGuard<'a, T, U> {
     pub fn map(mut _guard: RwLockWriteGuard<'a, T>, f: impl FnOnce(&mut T) -> &mut U) -> Self {
         let value = f(&mut *_guard) as *mut U;
         Self { _guard, value }
+    }
+
+    pub fn map_optional(
+        mut _guard: RwLockWriteGuard<'a, T>,
+        f: impl FnOnce(&mut T) -> Option<&mut U>,
+    ) -> Option<Self> {
+        let value = f(&mut *_guard)? as *mut U;
+        Some(Self { _guard, value })
     }
 }
 

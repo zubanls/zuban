@@ -261,7 +261,7 @@ impl<'db> FileSelector<'db> {
     fn handle_entries(&mut self, entries: &Entries) {
         let mut need_to_drop_gitignore = false;
         if self.db.project.settings.exclude_gitignore
-            && let Some(gitignore) = entries.iter().into_iter().find_map(|e| match e {
+            && let Some(gitignore) = entries.borrow().iter().find_map(|(_, e)| match e {
                 DirectoryEntry::Gitignore(gitignore) => Some(gitignore.clone()),
                 _ => None,
             })
@@ -270,7 +270,7 @@ impl<'db> FileSelector<'db> {
             need_to_drop_gitignore = true
         }
 
-        for entry in &entries.iter() {
+        for (_, entry) in entries.borrow().iter() {
             self.handle_entry(entries, entry)
         }
 

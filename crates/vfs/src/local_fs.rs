@@ -5,7 +5,7 @@ use std::{
 
 use crossbeam_channel::{Receiver, unbounded};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
-use utils::FastHashSet;
+use utils::{FastHashMap, FastHashSet};
 
 use crate::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
@@ -65,7 +65,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                 return Entries::default();
             }
         };
-        let mut entries = vec![];
+        let mut entries = FastHashMap::default();
         for dir_entry in iterator {
             match dir_entry {
                 Ok(dir_entry) => {
@@ -94,23 +94,26 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                 debug_assert!(file_type.is_file());
                                 ResolvedFileType::File
                             };
-                            if name == ".gitignore" && matches!(new, ResolvedFileType::File) {
+                            let n: Arc<str> = name.into();
+                            if &*n == ".gitignore" && matches!(new, ResolvedFileType::File) {
                                 if let Some(code) = self.read_and_watch_file(
-                                    &FileEntry::new(parent.clone(), name.into())
-                                        .absolute_path(self),
+                                    &FileEntry::new(parent.clone(), n.clone()).absolute_path(self),
                                 ) {
-                                    entries.push(DirectoryEntry::Gitignore(GitignoreFile::new(
-                                        parent.clone(),
-                                        &dir_entry.path(),
-                                        &code,
-                                    )));
+                                    entries.insert(
+                                        n,
+                                        DirectoryEntry::Gitignore(GitignoreFile::new(
+                                            parent.clone(),
+                                            &dir_entry.path(),
+                                            &code,
+                                        )),
+                                    );
                                 }
                                 continue;
                             }
                             if let Some(entry) =
-                                new.into_dir_entry(workspaces, self, parent.clone(), name)
+                                new.into_dir_entry(workspaces, self, parent.clone(), n.clone())
                             {
-                                entries.push(entry)
+                                entries.insert(n, entry);
                             }
                         }
                         Err(err) => {
@@ -124,7 +127,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                 Err(e) => trace_err("Read dir entry", e),
             }
         }
-        Entries::from_vec(entries)
+        Entries::new(entries)
     }
 
     fn read_and_watch_entry(
@@ -157,7 +160,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
             self.watch(path);
             ResolvedFileType::File
         };
-        resolved.into_dir_entry(workspaces, self, parent, replace_name)
+        resolved.into_dir_entry(workspaces, self, parent, replace_name.into())
     }
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
@@ -372,12 +375,12 @@ enum ResolvedFileType {
 }
 
 impl ResolvedFileType {
-    fn into_dir_entry<N: Into<Box<str>> + AsRef<str>>(
+    fn into_dir_entry(
         self,
         workspaces: &[Arc<Workspace>],
         vfs: &dyn VfsHandler,
         parent: Parent,
-        name: N,
+        name: Arc<str>,
     ) -> Option<DirectoryEntry> {
         // This logic is derived from how Mypy does it. It ignores only very specific
         // folders: https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-exclude
@@ -387,9 +390,9 @@ impl ResolvedFileType {
         }
 
         Some(match self {
-            ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name.into())),
+            ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name)),
             ResolvedFileType::Directory => {
-                let dir = Directory::new(parent, name.into());
+                let dir = Directory::new(parent, name);
                 if let Some(workspace) = workspaces.iter().find(|workspace| {
                     // Checking ends_with first is a performance optimization to avoid creating a
                     // lot of paths.

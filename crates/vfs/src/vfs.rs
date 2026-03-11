@@ -697,7 +697,9 @@ impl<F: VfsFile> Vfs<F> {
                             }
                         } else {
                             tracing::debug!("Decided to add {replace_name} to VFS");
-                            in_dir.borrow_mut().push(new_entry);
+                            // TODO why do we create another Arc name here? It's already in
+                            // new_entry.
+                            in_dir.borrow_mut().insert(replace_name.into(), new_entry);
                         }
                     }
                     None => {

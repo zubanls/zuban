@@ -1584,7 +1584,7 @@ fn add_workspace_and_check_for_pth_files(
         // standard library.
         let last = vfs.workspaces.iter().next_back().unwrap();
         let mut pth_files = vec![];
-        for dir_entry in &last.entries.iter() {
+        for (_, dir_entry) in last.entries.borrow().iter() {
             if let DirectoryEntry::File(file_entry) = dir_entry
                 && file_entry.name.ends_with(".pth")
                 && !file_entry.name.starts_with('.')
