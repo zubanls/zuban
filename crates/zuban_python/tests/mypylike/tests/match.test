@@ -422,3 +422,9 @@ match True:  # E: Invalid syntax
     True
 [out]
 __main__:8: error: Invalid syntax
+
+[case match_syntax_error_no_crash2]
+# From GH #322
+match 1:
+    case b:
+        <  # E: Invalid syntax

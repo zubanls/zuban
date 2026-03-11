@@ -101,6 +101,7 @@ pub(crate) struct DFAState {
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
     pub transition_to_plan: FastLookupTransitions,
+    pub transition_towards_error_recovery_node: Option<InternalNonterminalType>,
 
     pub from_rule: &'static str,
 }
@@ -246,7 +247,7 @@ pub struct RuleAutomaton {
     pub type_: InternalNonterminalType,
     nfa_states: Vec<NFAState>,
     pub dfa_states: Vec<Pin<Box<DFAState>>>,
-    name: &'static str,
+    pub(crate) name: &'static str,
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
     no_transition_dfa_id: Option<DFAStateId>,
@@ -426,6 +427,7 @@ impl RuleAutomaton {
             from_rule: self.name,
             transition_to_plan: FastLookupTransitions::new_empty(),
             transitions: Default::default(),
+            transition_towards_error_recovery_node: None,
         })));
         self.dfa_states.last_mut().unwrap() as &mut DFAState
     }
@@ -513,6 +515,7 @@ impl RuleAutomaton {
                 from_rule: self.name,
                 transition_to_plan: FastLookupTransitions::new_empty(),
                 transitions: Default::default(),
+                transition_towards_error_recovery_node: None,
             }));
             self.no_transition_dfa_id = Some(list_index);
         }
@@ -659,16 +662,6 @@ impl DFAState {
             .any(|t| t.type_ == TransitionType::LookaheadEnd)
     }
 
-    pub fn nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
-        let mut transition_ids = vec![];
-        for transition in &self.transitions {
-            if let TransitionType::Nonterminal(id) = transition.type_ {
-                transition_ids.push(id);
-            }
-        }
-        transition_ids
-    }
-
     pub fn is_negative_lookahead(&self) -> bool {
         self.transitions.is_empty() && !self.is_final
     }
@@ -750,6 +743,18 @@ pub fn generate_automatons(
             *rule_label,
         );
 
+        let transition_towards_error_recovery_node = automatons[rule_label].dfa_states[0]
+            .transitions
+            .iter()
+            .find_map(|transition| {
+                if let TransitionType::Nonterminal(id) = transition.type_ {
+                    let automaton = &automatons[&id];
+                    if automaton.does_error_recovery {
+                        return Some(id);
+                    }
+                }
+                None
+            });
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
         let automaton = automatons.get_mut(rule_label).unwrap();
@@ -759,6 +764,8 @@ pub fn generate_automatons(
                 automaton.name
             );
         }
+        automaton.dfa_states[0].transition_towards_error_recovery_node =
+            transition_towards_error_recovery_node;
         automaton.dfa_states[0].transition_to_plan = match &first_plans[rule_label] {
             FirstPlan::Calculated(plans, _) => {
                 FastLookupTransitions::from_plans(terminal_count, plans.clone())
@@ -779,8 +786,21 @@ pub fn generate_automatons(
                 DFAStateId(i),
                 false,
             );
-            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan =
-                FastLookupTransitions::from_plans(terminal_count, plans);
+            let transition_towards_error_recovery_node = automatons[rule_label].dfa_states[i]
+                .transitions
+                .iter()
+                .find_map(|transition| {
+                    if let TransitionType::Nonterminal(id) = transition.type_ {
+                        let automaton = &automatons[&id];
+                        if automaton.does_error_recovery {
+                            return Some(id);
+                        }
+                    }
+                    None
+                });
+            let dfa_mut = &mut automatons.get_mut(rule_label).unwrap().dfa_states[i];
+            dfa_mut.transition_towards_error_recovery_node = transition_towards_error_recovery_node;
+            dfa_mut.transition_to_plan = FastLookupTransitions::from_plans(terminal_count, plans);
         }
 
         // Left recursion can be calculated here, because first nodes are not relevant, because

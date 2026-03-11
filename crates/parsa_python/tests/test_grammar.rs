@@ -1,7 +1,7 @@
 use parsa_python::*;
 use utils::dedent;
 
-fn tree_to_string(tree: PyTree) -> String {
+fn tree_to_string(tree: &PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {
         *code += &" ".repeat(depth);
         *code += &format!(
@@ -48,8 +48,8 @@ macro_rules! parametrize_snapshots {
         #[test]
         fn $name() {
             let tree = parse($input.into());
+            insta::assert_snapshot!(stringify!($name), tree_to_string(&tree));
             assert_valid_tree(&tree);
-            insta::assert_snapshot!(stringify!($name), tree_to_string(tree));
         }
     )*}
 }
@@ -238,6 +238,11 @@ parametrize_snapshots!(
             case {**x}:
                 if True:
         "#);
+    match_error_recovery2: dedent("
+        match a:
+            case b:
+                <
+        ");
     dict_literal1: dedent("
         {1: 2}
         {**foo}
