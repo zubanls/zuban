@@ -331,6 +331,7 @@ pub fn python_import_with_needs_exact_case<'x>(
 
     for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
+        // Unfortunately the non-exact case requires us to iter through all entries.
         for (_, entry) in dir.borrow().iter() {
             match entry {
                 DirectoryEntry::Directory(dir2) => {
