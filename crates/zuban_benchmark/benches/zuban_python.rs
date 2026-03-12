@@ -2,7 +2,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 
 use config::ProjectOptions;
 use vfs::PathWithScheme;
-use zuban_python::{Mode, Project};
+use zuban_python::{Project, RunCause};
 
 fn check_independent_files(file_count: usize) {
     let some_code = utils::dedent(
@@ -13,7 +13,7 @@ fn check_independent_files(file_count: usize) {
     );
     let mut po = ProjectOptions::default();
     po.settings.typeshed_path = Some(test_utils::typeshed_path());
-    let mut project = Project::without_watcher(po, Mode::TypeCheckingOnly);
+    let mut project = Project::without_watcher(po, RunCause::TypeChecking);
     for i in 0..file_count {
         let vfs = project.vfs_handler();
         let path = PathWithScheme::with_file_scheme(
