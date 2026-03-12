@@ -295,7 +295,7 @@ impl Entries {
         self.0.read().unwrap()
     }
 
-    pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<'_, EntriesMap> {
+    pub fn borrow_mut(&self) -> RwLockWriteGuard<'_, EntriesMap> {
         self.0.write().unwrap()
     }
 
@@ -422,37 +422,39 @@ impl Entries {
         }
     }
 
-    pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
+    pub fn add_missing_entry_callback(&self, invalidates: FileIndex) -> impl FnMut(&str) {
         let mut entries = self.borrow_mut();
-        if let Some(item) = entries.get(name) {
-            match &item {
-                DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
-                // Files might be named `pytest` and therefore not be a valid Python files, but
-                // still exist in the tree.
-                DirectoryEntry::File(file) => file.invalidations.add(invalidates),
-                DirectoryEntry::Directory(_) => {
-                    // TODO this probably happens with a directory called `foo.py`.
-                    tracing::error!("Did not add invalidation for directory {}", name);
-                }
-                DirectoryEntry::Gitignore(_) => {
-                    tracing::error!(
-                        "Did not add invalidation for .gitignore, which \
+        move |name| {
+            if let Some(item) = entries.get(name) {
+                match &item {
+                    DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
+                    // Files might be named `pytest` and therefore not be a valid Python files, but
+                    // still exist in the tree.
+                    DirectoryEntry::File(file) => file.invalidations.add(invalidates),
+                    DirectoryEntry::Directory(_) => {
+                        // TODO this probably happens with a directory called `foo.py`.
+                        tracing::error!("Did not add invalidation for directory {}", name);
+                    }
+                    DirectoryEntry::Gitignore(_) => {
+                        tracing::error!(
+                            "Did not add invalidation for .gitignore, which \
                         should probably not be necessary"
-                    );
+                        );
+                    }
                 }
+            } else {
+                let invalidations = Invalidations::default();
+                invalidations.add(invalidates);
+                let name: Arc<str> = name.into();
+                let result = entries.insert(
+                    name.clone(),
+                    DirectoryEntry::MissingEntry(MissingEntry {
+                        invalidations,
+                        name,
+                    }),
+                );
+                debug_assert!(result.is_none());
             }
-        } else {
-            let invalidations = Invalidations::default();
-            invalidations.add(invalidates);
-            let name: Arc<str> = name.into();
-            let result = entries.insert(
-                name.clone(),
-                DirectoryEntry::MissingEntry(MissingEntry {
-                    invalidations,
-                    name,
-                }),
-            );
-            debug_assert!(result.is_none());
         }
     }
 

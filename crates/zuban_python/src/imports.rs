@@ -393,13 +393,14 @@ pub fn python_import_with_needs_exact_case<'x>(
             file_entry.add_invalidation(from_file.file_index);
             return Some(ImportResult::File(file_index));
         }
-        dir.add_missing_entry(&name_py, from_file.file_index);
+        let mut add_missing = dir.add_missing_entry_callback(from_file.file_index);
+        add_missing(&name_py);
         if check_stubs {
-            dir.add_missing_entry(&name_pyi, from_file.file_index);
+            add_missing(&name_pyi);
         }
         // The folder should not exist for folder/__init__.py or a namespace.
         if !had_namespace_dir {
-            dir.add_missing_entry(name, from_file.file_index);
+            add_missing(name);
         }
     }
     if !namespace_directories.is_empty() {
@@ -490,13 +491,15 @@ fn load_init_file_from_entries(
             }
         }
     }
-    entries.add_missing_entry(INIT_PYI, from_file);
+    let mut add_missing = entries.add_missing_entry_callback(from_file);
+    add_missing(INIT_PYI);
     if let Some(found_py) = found_py {
+        drop(add_missing); // Ensure that we avoid the borrow
         let found_file_index = db.vfs.ensure_file_index(&found_py);
         found_py.add_invalidation(from_file);
         Some(found_file_index)
     } else {
-        entries.add_missing_entry(INIT_PY, from_file);
+        add_missing(INIT_PY);
         None
     }
 }
