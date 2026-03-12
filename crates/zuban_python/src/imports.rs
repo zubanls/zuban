@@ -362,8 +362,7 @@ pub fn python_import_with_needs_exact_case<'x>(
             }
             None
         };
-        // TODO
-        if true || needs_exact_case {
+        if needs_exact_case {
             for (_, entry) in dir.borrow().iter() {
                 match entry {
                     DirectoryEntry::Directory(dir2) => {
@@ -387,6 +386,35 @@ pub fn python_import_with_needs_exact_case<'x>(
                 }
             }
         } else {
+            let borrow = dir.borrow();
+            // Highest priority are folders
+            if let Some(DirectoryEntry::Directory(dir2)) = borrow.get(name)
+                && let result @ Some(_) = directory_imports(dir2)
+            {
+                return result;
+            }
+            // After that .pyi and then .py files
+            let mut found_file = None;
+            let lookup_file = |name: &str| {
+                if let DirectoryEntry::File(f) = borrow.get(name)? {
+                    Some(f)
+                } else {
+                    None
+                }
+            };
+            if check_stubs {
+                found_file = lookup_file(&*name_pyi);
+            }
+            let mut is_py_file = false;
+            found_file = found_file.or_else(|| {
+                is_py_file = true;
+                lookup_file(&*name_py)
+            });
+            if let Some(f) = found_file
+                && let result @ Some(_) = file_imports(f, is_py_file)
+            {
+                return result;
+            }
         }
         if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())
         {
