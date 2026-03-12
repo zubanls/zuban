@@ -326,54 +326,67 @@ pub fn python_import_with_needs_exact_case<'x>(
     let mut stub_file_index = None;
     let mut namespace_directories = vec![];
 
+    // TODO these format!() always allocate a lot and don't seem to be necessary
     let name_py = format!("{name}.py");
     let name_pyi = format!("{name}.pyi");
 
     for (dir, needs_py_typed) in dirs {
         let mut had_namespace_dir = false;
         // Unfortunately the non-exact case requires us to iter through all entries.
-        for (_, entry) in dir.borrow().iter() {
-            match entry {
-                DirectoryEntry::Directory(dir2) => {
-                    if match_c(db, dir2.name.as_ref(), name, needs_exact_case) {
-                        let result = load_init_file(db, dir2, from_file.file_index);
-                        if let Some(file_index) = result {
-                            if needs_py_typed
-                                && !from_file.flags(db).follow_untyped_imports
-                                && Directory::entries(&db.vfs, dir2)
-                                    .search("py.typed")
-                                    .is_none()
-                            {
-                                return Some(ImportResult::PyTypedMissing);
-                            }
-                            return Some(ImportResult::File(file_index));
-                        }
-                        had_namespace_dir = true;
-                        namespace_directories.push(dir2.clone());
-                    }
+        let mut directory_imports = |dir| {
+            let result = load_init_file(db, dir, from_file.file_index);
+            if let Some(file_index) = result {
+                if needs_py_typed
+                    && !from_file.flags(db).follow_untyped_imports
+                    && Directory::entries(&db.vfs, dir)
+                        .search("py.typed")
+                        .is_none()
+                {
+                    return Some(ImportResult::PyTypedMissing);
                 }
-                DirectoryEntry::File(file) => {
-                    // TODO these format!() always allocate a lot and don't seem to be necessary
-                    let is_py_file = match_c(db, &file.name, &name_py, needs_exact_case);
-                    if check_stubs {
-                        if is_py_file || match_c(db, &file.name, &name_pyi, needs_exact_case) {
-                            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
-                                return Some(ImportResult::PyTypedMissing);
-                            }
-                            let file_index = db.vfs.ensure_file_index(file);
-                            if is_py_file {
-                                python_file_index = Some((file.clone(), file_index));
-                            } else {
-                                stub_file_index = Some((file.clone(), file_index));
-                            }
-                        }
-                    } else if is_py_file {
-                        let file_index = db.vfs.ensure_file_index(file);
-                        python_file_index = Some((file.clone(), file_index));
-                    }
-                }
-                DirectoryEntry::MissingEntry { .. } | DirectoryEntry::Gitignore(_) => (),
+                return Some(ImportResult::File(file_index));
             }
+            had_namespace_dir = true;
+            namespace_directories.push(dir.clone());
+            None
+        };
+        let mut file_imports = |file, is_py_file: bool| {
+            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
+                return Some(ImportResult::PyTypedMissing);
+            }
+            let file_index = db.vfs.ensure_file_index(file);
+            if is_py_file {
+                python_file_index = Some((file.clone(), file_index));
+            } else {
+                stub_file_index = Some((file.clone(), file_index));
+            }
+            None
+        };
+        // TODO
+        if true || needs_exact_case {
+            for (_, entry) in dir.borrow().iter() {
+                match entry {
+                    DirectoryEntry::Directory(dir2) => {
+                        if match_c(db, dir2.name.as_ref(), name, needs_exact_case)
+                            && let result @ Some(_) = directory_imports(dir2)
+                        {
+                            return result;
+                        }
+                    }
+                    DirectoryEntry::File(file) => {
+                        let is_py_file = match_c(db, &file.name, &name_py, needs_exact_case);
+                        if is_py_file
+                            || check_stubs && match_c(db, &file.name, &name_pyi, needs_exact_case)
+                        {
+                            if let result @ Some(_) = file_imports(file, is_py_file) {
+                                return result;
+                            }
+                        }
+                    }
+                    DirectoryEntry::MissingEntry { .. } | DirectoryEntry::Gitignore(_) => (),
+                }
+            }
+        } else {
         }
         if let Some((file_entry, file_index)) = stub_file_index.take().or(python_file_index.take())
         {
