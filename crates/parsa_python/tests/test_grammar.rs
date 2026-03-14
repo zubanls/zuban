@@ -16,7 +16,6 @@ fn tree_to_string(tree: &PyTree) -> String {
             }
         );
         for c in node.iter_children() {
-            assert_eq!(node.index, c.parent().unwrap().index);
             recurse(code, &c, depth + 1);
         }
     }
@@ -33,6 +32,7 @@ fn assert_valid_tree(tree: &PyTree) {
     fn check(node: PyNode, expected_index: &mut NodeIndex) {
         assert_eq!(node.index, *expected_index);
         for child in node.iter_children() {
+            assert_eq!(node.index, child.parent().unwrap().index);
             *expected_index += 1;
             check(child, expected_index)
         }

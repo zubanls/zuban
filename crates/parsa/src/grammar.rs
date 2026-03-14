@@ -365,7 +365,7 @@ impl<'a, T: Token> Grammar<T> {
                         // Make sure the tree nodes have the right size to overwrite them later.
                         // It doesn't matter where we insert/remove, everything should be
                         // overwritten.
-                        let other_push_len = reusable.tree_nodes_needed_for_pushes - 1;
+                        let other_push_len = reusable.tree_nodes_needed_for_pushes;
                         stack.tree_nodes.splice(
                             c..c + nth.checked_sub(other_push_len).unwrap_or(0),
                             std::iter::repeat_n(
@@ -387,13 +387,15 @@ impl<'a, T: Token> Grammar<T> {
                                 tree_node_index,
                                 latest_child_node_index: match &push.stack_mode {
                                     StackMode::LL => {
-                                        stack.tree_nodes[tree_node_index] = InternalNode {
-                                            next_node_offset: 0,
-                                            type_: push.node_type.to_squashed(),
-                                            start_index,
-                                            length: 0,
-                                        };
-                                        tree_node_index += 1;
+                                        if !push.next_dfa().node_may_be_omitted {
+                                            stack.tree_nodes[tree_node_index] = InternalNode {
+                                                next_node_offset: 0,
+                                                type_: push.node_type.to_squashed(),
+                                                start_index,
+                                                length: 0,
+                                            };
+                                            tree_node_index += 1;
+                                        }
                                         tree_node_index
                                     }
                                     StackMode::Alternative { .. } => tree_node_index,
@@ -421,9 +423,6 @@ impl<'a, T: Token> Grammar<T> {
                             });
                         }
                         debug_assert!(!reusable.pushes.is_empty());
-                        // We have to make sure that the most recent push has more than one child
-                        // to avoid omitting nodes.
-                        stack.tos_mut().children_count += 1;
                         return;
                     } else {
                         let t = reset(backtracking, stack, backtracking_tokenizer);
@@ -457,6 +456,7 @@ impl<'a, T: Token> Grammar<T> {
                         let t = reset(backtracking, stack, backtracking_tokenizer);
                         // Pop the LastAlternative that is still on the stack.
                         stack.stack_nodes.pop();
+                        stack.tos_mut().children_count = 0;
                         self.apply_plan(
                             stack,
                             backtracking.replay_plan,
@@ -519,11 +519,31 @@ impl<'a, T: Token> Grammar<T> {
             return;
         }
 
+        let start_index = token.start_index();
+        if tos_mut.dfa_state.node_may_be_omitted
+            && plan.mode != PlanMode::LeftRecursive
+            && tos_mut.children_count == 1
+        {
+            tos_mut.children_count = 1;
+            tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+
+            let start_index = stack.tree_nodes[tos_mut.tree_node_index].start_index;
+            stack.tree_nodes.insert(
+                tos_mut.tree_node_index,
+                InternalNode {
+                    next_node_offset: 0,
+                    type_: tos_mut.node_id.to_squashed(),
+                    start_index,
+                    length: 0,
+                },
+            );
+        }
+
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
         // There's one exception: If the node can be omitted we don't even have to do it.
-        if plan.mode == PlanMode::LeftRecursive && !tos_mut.can_omit_children() {
+        if plan.mode == PlanMode::LeftRecursive {
             tos_mut.children_count = 1;
             tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
             // Backtracking should not be enabled for left recursion. It can be enabled again for
@@ -532,13 +552,13 @@ impl<'a, T: Token> Grammar<T> {
 
             update_tree_node_position(&mut stack.tree_nodes, tos_mut);
 
-            let old_node = stack.tree_nodes[tos_mut.tree_node_index];
+            let start_index = stack.tree_nodes[tos_mut.tree_node_index].start_index;
             stack.tree_nodes.insert(
                 tos_mut.tree_node_index,
                 InternalNode {
                     next_node_offset: 0,
-                    type_: old_node.type_,
-                    start_index: old_node.start_index,
+                    type_: tos_mut.node_id.to_squashed(),
+                    start_index,
                     length: 0,
                 },
             );
@@ -546,7 +566,6 @@ impl<'a, T: Token> Grammar<T> {
 
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
 
-        let start_index = token.start_index();
         stack.calculate_previous_next_node();
 
         for push in &plan.pushes {
@@ -638,14 +657,10 @@ impl<'a> Stack<'a> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        if stack_node.can_omit_children() {
-            self.tree_nodes.remove(stack_node.tree_node_index);
-        } else {
-            // We can simply get the last token and check its end position to
-            // calculate how long a node is.
-            debug_assert!(stack_node.children_count >= 1);
-            update_tree_node_position(&mut self.tree_nodes, &stack_node);
-        }
+        // We can simply get the last token and check its end position to
+        // calculate how long a node is.
+        debug_assert!(stack_node.children_count >= 1);
+        update_tree_node_position(&mut self.tree_nodes, &stack_node);
     }
 
     #[inline]
@@ -672,12 +687,14 @@ impl<'a> Stack<'a> {
         // ModeData::Alternative(_) cannot be called here, because the tree node is already
         // part of the parent stack node.
         debug_assert!(matches!(mode, ModeData::LL));
-        self.tree_nodes.push(InternalNode {
-            next_node_offset: 0,
-            type_: node_id.to_squashed(),
-            start_index: start,
-            length: 0,
-        });
+        if !dfa_state.node_may_be_omitted {
+            self.tree_nodes.push(InternalNode {
+                next_node_offset: 0,
+                type_: node_id.to_squashed(),
+                start_index: start,
+                length: 0,
+            });
+        }
     }
 
     #[inline]
@@ -816,13 +833,6 @@ fn find_matching_node(
         }
     }
     None
-}
-
-impl StackNode<'_> {
-    #[inline]
-    fn can_omit_children(&self) -> bool {
-        self.dfa_state.node_may_be_omitted && self.children_count == 1
-    }
 }
 
 #[inline]

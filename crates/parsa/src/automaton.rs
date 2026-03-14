@@ -1161,9 +1161,13 @@ fn maybe_reusable_first_nonterminal(
                     .dfa_end_without_transitions();
                 let tree_nodes_needed_for_pushes = pushes
                     .iter()
-                    .filter(|p| !matches!(p.stack_mode, StackMode::Alternative { .. }))
+                    .rev()
+                    .skip(1)
+                    .filter(|p| {
+                        !matches!(p.stack_mode, StackMode::Alternative { .. })
+                            && !p.next_dfa().node_may_be_omitted
+                    })
                     .count();
-                debug_assert!(tree_nodes_needed_for_pushes != 0);
                 return Some(ReusableFirstNonterminal {
                     tree_nodes_needed_for_pushes,
                     pushes: pushes.into_boxed_slice(),
