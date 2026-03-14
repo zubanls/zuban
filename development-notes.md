@@ -49,6 +49,10 @@ some of these projects with:
 
     # We need to force-frame-pointers otherwise there are a lot of Unknown frames
     RUSTFLAGS="-C force-frame-pointers=yes" flamegraph -- cargo test jedilike --release
+    # Sometimes the flamegraph lacks some base frames, because only part of the
+    # stack is copied, use the command below.
+    # See also https://github.com/flamegraph-rs/flamegraph/issues/193#issuecomment-2119274041
+    RAYON_NUM_THREADS=1 flamegraph -c 'record -F 100 --call-graph dwarf,50000 -g' -- /some-binary --release
     firefox flamegraph.svg
 
     perf report --stdio --call-graph none | less
