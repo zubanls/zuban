@@ -367,7 +367,7 @@ impl<'a, T: Token> Grammar<T> {
                         // overwritten.
                         let other_push_len = reusable.tree_nodes_needed_for_pushes;
                         stack.tree_nodes.splice(
-                            c..c + nth.checked_sub(other_push_len).unwrap_or(0),
+                            c..c + nth.saturating_sub(other_push_len),
                             std::iter::repeat_n(
                                 InternalNode {
                                     // These values should all not matter, since they are
@@ -377,7 +377,7 @@ impl<'a, T: Token> Grammar<T> {
                                     start_index,
                                     length: 0,
                                 },
-                                other_push_len.checked_sub(nth).unwrap_or(0),
+                                other_push_len.saturating_sub(nth),
                             ),
                         );
                         let mut tree_node_index = c;
