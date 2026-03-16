@@ -1,7 +1,4 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
@@ -92,6 +89,7 @@ impl ImportResult {
                 original_file,
                 db.vfs
                     .workspaces
+                    .load()
                     .iter()
                     .filter(|w| !matches!(w.kind, WorkspaceKind::Typeshed))
                     .map(|w| (&w.entries, false)),
@@ -176,6 +174,7 @@ pub fn global_import<'a>(
                 from_file,
                 db.vfs
                     .workspaces
+                    .load()
                     .iter()
                     .map(|w| (&w.entries, w.part_of_site_packages())),
                 name,
@@ -223,7 +222,7 @@ fn global_import_without_stubs_first<'a>(
     python_import(
         db,
         from_file,
-        db.vfs.workspaces.iter().map(|d| &d.entries),
+        db.vfs.workspaces.load().iter().map(|d| &d.entries),
         name,
     )
 }
@@ -277,7 +276,7 @@ pub fn namespace_import_with_unloaded_file(
                     parent = dir.parent.clone();
                 }
                 Err(parent_workspace) => {
-                    for workspace in db.vfs.workspaces.iter() {
+                    for workspace in db.vfs.workspaces.load().iter() {
                         if workspace.root_path() == parent_workspace.upgrade().unwrap().root_path()
                         {
                             if workspace.part_of_site_packages() {
@@ -460,11 +459,9 @@ fn match_c(db: &Database, x: &str, y: &str, needs_exact_case: bool) -> bool {
     }
 }
 
-fn ensure_django_stubs_workspace_and_return_newly_created(
-    db: &Database,
-) -> Option<impl Deref<Target = &Workspace>> {
+fn ensure_django_stubs_workspace_and_return_newly_created(db: &Database) -> Option<Arc<Workspace>> {
     let mut django_path = None;
-    for workspace in db.vfs.workspaces.iter() {
+    for workspace in db.vfs.workspaces.load().iter() {
         if django_path.is_none() && workspace.kind == WorkspaceKind::Typeshed {
             django_path = Some(
                 db.vfs.handler.normalize_unchecked_abs_path(

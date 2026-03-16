@@ -452,7 +452,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     }
 
     fn add_global_import_completions(&mut self) {
-        for workspace in self.infos.db.vfs.workspaces.iter() {
+        for workspace in self.infos.db.vfs.workspaces.load().iter() {
             self.directory_entries_completions(&workspace.entries)
         }
     }

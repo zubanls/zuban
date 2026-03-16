@@ -1,9 +1,7 @@
-use std::{
-    ops::Deref,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, Mutex};
 
-use utils::{OwnedMappedReadGuard, match_case};
+use arc_swap::{ArcSwap, Guard};
+use utils::match_case;
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
@@ -49,7 +47,7 @@ impl<'x> WorkspacesBuilder<'x> {
     }
 
     fn maybe_add(
-        items: &mut WorkspacesVec,
+        items: &[Arc<Workspace>],
         vfs: &dyn VfsHandler,
         scheme: Scheme,
         root: Arc<NormalizedPath>,
@@ -84,16 +82,21 @@ impl<'x> WorkspacesBuilder<'x> {
 impl From<WorkspacesBuilder<'_>> for Workspaces {
     fn from(value: WorkspacesBuilder) -> Self {
         Self {
-            items: RwLock::new(value.items),
+            items: ArcSwap::new(Arc::new(value.items.into_boxed_slice())),
+            items_write_lock: Default::default(),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Workspaces {
-    pub(crate) items: RwLock<WorkspacesVec>,
+    pub(crate) items: ArcSwap<Box<[Arc<Workspace>]>>,
+    pub(crate) items_write_lock: Mutex<()>,
 }
 
+// Note that some methods on workspace need mutable access even though it is not needed for the
+// local function. This is intentional, because the tree should not be modified while everyone can
+// borrow it (even though it can be modified technically).
 impl Workspaces {
     pub(crate) fn push_without_full_access(
         &self,
@@ -102,18 +105,18 @@ impl Workspaces {
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> bool {
-        // TODO work on this
-        let mut items = self.items.write().unwrap();
-        if let Some(add) = WorkspacesBuilder::maybe_add(&mut *items, vfs, scheme, root, kind) {
-            items.push(add);
+        // We need to lock, otherwise we cannot make sure that all pushes are added if they happen
+        // concurrently. However additions to workspaces should be quite rare, so blocking here
+        // should not matter at all.
+        let _lock = self.items_write_lock.lock().unwrap();
+        let items = self.items.load();
+        if let Some(add) = WorkspacesBuilder::maybe_add(&**items, vfs, scheme, root, kind) {
+            let new_items = items.iter().cloned().chain(std::iter::once(add));
+            self.items.store(Arc::new(new_items.collect()));
             true
         } else {
             false
         }
-    }
-
-    fn inner_items_mut(&mut self) -> &mut WorkspacesVec {
-        self.items.get_mut().unwrap()
     }
 
     fn strip_short_path_in_workspace<'path>(
@@ -123,7 +126,7 @@ impl Workspaces {
         path: &'path PathWithScheme,
     ) -> Option<(Arc<Workspace>, &'path str)> {
         let mut shortest: Option<(Arc<Workspace>, &'path str)> = None;
-        for workspace in self.items.read().unwrap().iter() {
+        for workspace in self.items.load().iter() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 if shortest
                     .as_ref()
@@ -136,20 +139,8 @@ impl Workspaces {
         shortest
     }
 
-    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Workspace> {
-        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
-            workspaces.iter().map(|w| w.as_ref())
-        })
-    }
-
-    pub fn iter_not_type_checked(&self) -> impl Iterator<Item = &Workspace> {
-        self.iter().filter(|x| !x.is_type_checked())
-    }
-
-    pub fn entries_to_type_check(&self) -> impl Iterator<Item = &Entries> {
-        self.iter()
-            .filter(|x| x.is_type_checked())
-            .map(|x| &x.entries)
+    pub fn load(&self) -> LoadedWorkspaces {
+        LoadedWorkspaces(self.items.load())
     }
 
     pub(crate) fn search_path(
@@ -161,7 +152,7 @@ impl Workspaces {
         self.strip_short_path_in_workspace(vfs, case_sensitive, path)
             .and_then(|(workspace, rest)| workspace.entries.search_path(vfs, self, rest))
             .or_else(|| {
-                self.iter().find_map(|workspace| {
+                self.load().iter().find_map(|workspace| {
                     if workspace.kind == WorkspaceKind::Fallback
                         && let Some(entry) = workspace.entries.search(&path.path)
                     {
@@ -181,7 +172,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &'path AbsPath,
     ) -> Option<(Arc<Workspace>, Parent, &'path str)> {
-        self.items.read().unwrap().iter().find_map(|workspace| {
+        self.items.load().iter().find_map(|workspace| {
             if **workspace.scheme != *"file" {
                 // TODO for now only file schemes are allowed
                 return None;
@@ -252,7 +243,7 @@ impl Workspaces {
                 code,
             );
         }
-        for workspace in self.inner_items_mut() {
+        for workspace in self.items.load().iter() {
             if workspace.kind == WorkspaceKind::Fallback {
                 return workspace.entries.ensure_file(
                     vfs,
@@ -272,7 +263,7 @@ impl Workspaces {
         path: &PathWithScheme,
     ) {
         // TODO for now we always unload, fix that.
-        for workspace in self.inner_items_mut() {
+        for workspace in self.load().iter() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 workspace.entries.unload_file(vfs, p);
             }
@@ -285,7 +276,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> Result<(), String> {
-        for workspace in self.inner_items_mut() {
+        for workspace in self.load().iter() {
             if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
                 return workspace.entries.delete_directory(vfs, p);
             }
@@ -327,43 +318,64 @@ impl Workspaces {
             }
             dir
         }
-        let mut new = self.inner_items_mut().clone();
-        for workspace in &mut new {
-            let new_workspace = Arc::new(workspace.as_ref().clone());
-            for (_, entry) in new_workspace.entries.borrow_mut().iter_mut() {
-                match entry {
-                    DirectoryEntry::Directory(dir) => {
-                        debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
-                        let mut new_dir = dir.as_ref().clone();
-                        new_dir.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
-                        let workspaces = WorkspacesBuilder::new(vfs).into();
-                        *dir = clone_inner_rcs(vfs, &workspaces, new_dir)
+        let new = self
+            .items
+            .load()
+            .iter()
+            .map(|workspace| {
+                let new_workspace = Arc::new(workspace.as_ref().clone());
+                for (_, entry) in new_workspace.entries.borrow_mut().iter_mut() {
+                    match entry {
+                        DirectoryEntry::Directory(dir) => {
+                            debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
+                            let mut new_dir = dir.as_ref().clone();
+                            new_dir.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
+                            let workspaces = WorkspacesBuilder::new(vfs).into();
+                            *dir = clone_inner_rcs(vfs, &workspaces, new_dir)
+                        }
+                        DirectoryEntry::File(file) => {
+                            debug_assert!(matches!(file.parent, Parent::Workspace(_)));
+                            let mut new_file = file.as_ref().clone();
+                            new_file.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
+                            *file = Arc::new(new_file);
+                        }
+                        DirectoryEntry::MissingEntry { .. } => (), // has no RCs
+                        DirectoryEntry::Gitignore { .. } => (),    // has no interior mutability
                     }
-                    DirectoryEntry::File(file) => {
-                        debug_assert!(matches!(file.parent, Parent::Workspace(_)));
-                        let mut new_file = file.as_ref().clone();
-                        new_file.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
-                        *file = Arc::new(new_file);
-                    }
-                    DirectoryEntry::MissingEntry { .. } => (), // has no RCs
-                    DirectoryEntry::Gitignore { .. } => (),    // has no interior mutability
                 }
-            }
-            *workspace = new_workspace
-        }
+                new_workspace
+            })
+            .collect();
         WorkspacesBuilder {
             handler: vfs,
             items: new,
         }
     }
 
-    pub fn expect_last(&self) -> impl Deref<Target = &Workspace> {
-        OwnedMappedReadGuard::map_owned(self.items.read().unwrap(), |workspaces| {
-            workspaces
-                .last()
-                .expect("There should always be a workspace")
-                .as_ref()
-        })
+    pub fn expect_last(&self) -> Arc<Workspace> {
+        self.items
+            .load()
+            .last()
+            .expect("There should always be a workspace")
+            .clone()
+    }
+}
+
+pub struct LoadedWorkspaces(Guard<Arc<Box<[Arc<Workspace>]>>>);
+
+impl LoadedWorkspaces {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &'_ Workspace> {
+        self.0.iter().map(|w| w.as_ref())
+    }
+
+    pub fn iter_not_type_checked(&self) -> impl Iterator<Item = &'_ Arc<Workspace>> {
+        self.0.iter().filter(|x| !x.is_type_checked())
+    }
+
+    pub fn entries_to_type_check(&self) -> impl Iterator<Item = &'_ Entries> {
+        self.iter()
+            .filter(|x| x.is_type_checked())
+            .map(|x| &x.entries)
     }
 }
 

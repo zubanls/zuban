@@ -1123,6 +1123,7 @@ impl Database {
             "Workspace base paths: {:?}",
             this.vfs
                 .workspaces
+                .load()
                 .iter()
                 .map(|w| (w.kind, w.root_path()))
                 .collect::<Vec<_>>()
@@ -1174,6 +1175,7 @@ impl Database {
             new_db
                 .vfs
                 .workspaces
+                .load()
                 .iter()
                 .map(|w| (w.kind, w.root_path()))
                 .collect::<Vec<_>>()
@@ -1474,7 +1476,8 @@ impl Database {
     }
 
     fn generate_python_state(&mut self) {
-        let mut dirs = self.vfs.workspaces.iter_not_type_checked();
+        let loaded = self.vfs.workspaces.load();
+        let mut dirs = loaded.iter_not_type_checked();
         // TODO this is wrong, because it's just a random dir...
         let stdlib_workspace = dirs.next().expect("Expected there to be a typeshed dir");
         let mypy_extensions_dir = dirs

@@ -350,7 +350,7 @@ impl Database {
             }
         }
 
-        let folder = self.vfs.workspaces.iter().find_map(|workspace| {
+        let folder = self.vfs.workspaces.load().iter().find_map(|workspace| {
             let dir_entry = workspace.entries.search("_pytest")?;
             match &*dir_entry {
                 DirectoryEntry::Directory(dir) => Some(dir.clone()),

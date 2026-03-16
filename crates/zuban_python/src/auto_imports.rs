@@ -60,7 +60,7 @@ impl<'db> ImportFinder<'db> {
             name,
             found: Default::default(),
         };
-        for workspace in db.vfs.workspaces.iter() {
+        for workspace in db.vfs.workspaces.load().iter() {
             match &workspace.kind {
                 WorkspaceKind::TypeChecking => {
                     slf.find_importable_name_in_entries(&workspace.entries, false, true)
@@ -451,7 +451,7 @@ impl TypeshedSymbols {
                         .typeshed_path
                         .clone()
                         .unwrap_or_else(|| {
-                            for workspace in db.vfs.workspaces.iter() {
+                            for workspace in db.vfs.workspaces.load().iter() {
                                 if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
                                     return workspace.root_path.clone();
                                 }
@@ -485,7 +485,7 @@ impl TypeshedSymbols {
 
     fn generate_typeshed_symbols(db: &Database) -> Self {
         let found: Mutex<Self> = Default::default();
-        for workspace in db.vfs.workspaces.iter() {
+        for workspace in db.vfs.workspaces.load().iter() {
             if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
                 all_recursive_public_typeshed_file_entries(db, &workspace.entries)
                     .par_iter()

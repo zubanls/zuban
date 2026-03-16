@@ -768,12 +768,12 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 self.find_references_in_file(self.infos.file, search_name)
             }
             ReferencesGoal::OnlyTypeCheckedWorkspaces => self.find_references_in_workspace_entries(
-                db.vfs.workspaces.entries_to_type_check(),
+                db.vfs.workspaces.load().entries_to_type_check(),
                 search_name,
             ),
             ReferencesGoal::AllFilesIncludingDependencies => self
                 .find_references_in_workspace_entries(
-                    db.vfs.workspaces.iter().map(|x| &x.entries),
+                    db.vfs.workspaces.load().iter().map(|x| &x.entries),
                     search_name,
                 ),
         }

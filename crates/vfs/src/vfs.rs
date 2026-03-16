@@ -87,7 +87,7 @@ impl<F: VfsFile> Vfs<F> {
                         tmp = dir.upgrade().unwrap();
                         Directory::entries_with_workspace_likes(
                             vfs_handler,
-                            || &workspaces.items,
+                            || workspaces.items.as_slice(),
                             &tmp,
                         )
                     }
@@ -680,7 +680,7 @@ impl<F: VfsFile> Vfs<F> {
                     return;
                 }
                 let new_entry = self.handler.read_and_watch_entry(
-                    &*self.workspaces.items.read().unwrap(),
+                    &*self.workspaces.items.load(),
                     path,
                     parent.clone(),
                     replace_name,

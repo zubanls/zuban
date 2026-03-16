@@ -271,13 +271,22 @@ impl Directory {
         workspaces: &Workspaces,
         dir: &'x Arc<Directory>,
     ) -> &'x Entries {
-        Self::entries_with_workspace_likes(vfs, || workspaces.items.read().unwrap(), dir)
+        let mut access = None;
+        Self::entries_with_workspace_likes(
+            vfs,
+            || {
+                access = Some(workspaces.items.load());
+                &****access.as_ref().unwrap()
+            },
+            dir,
+        )
     }
 
     pub(crate) fn entries_with_workspace_likes<
         'x,
+        'workspaces,
         C: FnOnce() -> T,
-        T: Deref<Target = Vec<Arc<Workspace>>>,
+        T: Deref<Target = [Arc<Workspace>]>,
     >(
         vfs: &dyn VfsHandler,
         get_workspaces: C,
