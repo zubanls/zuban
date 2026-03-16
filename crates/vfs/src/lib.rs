@@ -24,7 +24,7 @@ pub use tree::{
     DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GitignoreFile, Parent,
 };
 pub use vfs::{InvalidationResult, PathWithScheme, Vfs, VfsFile, VfsPanicRecovery};
-pub use workspaces::{Workspace, WorkspaceKind, Workspaces};
+pub use workspaces::{Workspace, WorkspaceKind, Workspaces, WorkspacesBuilder};
 
 pub type NotifyEvent = notify::Result<notify::Event>;
 

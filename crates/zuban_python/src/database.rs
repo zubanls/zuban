@@ -12,7 +12,7 @@ use rayon::prelude::*;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
     InvalidationResult, LocalFS, NormalizedPath, PathWithScheme, Vfs, VfsFile as _, VfsHandler,
-    Workspace, WorkspaceKind,
+    Workspace, WorkspaceKind, WorkspacesBuilder,
 };
 
 use crate::{
@@ -1042,17 +1042,22 @@ impl Database {
             overrides: options.overrides,
         };
 
-        let mut vfs = Vfs::new(vfs_handler);
+        let mut workspace_builder = WorkspacesBuilder::new(&*vfs_handler);
 
         for p in project.settings.mypy_path.iter() {
-            if vfs.add_workspace(p.clone(), WorkspaceKind::TypeChecking)
+            if workspace_builder.add(p.clone(), WorkspaceKind::TypeChecking)
                 && !project.settings.explicit_package_bases
             {
                 // Add the src/ directory as well since this is very typical for people to use.
                 // This also helps most uv users.
-                if vfs.workspaces.expect_last().entries.search("src").is_some() {
-                    vfs.add_workspace(
-                        vfs.handler.normalize_rc_path(vfs.handler.join(p, "src")),
+                if workspace_builder
+                    .expect_last()
+                    .entries
+                    .search("src")
+                    .is_some()
+                {
+                    workspace_builder.add(
+                        vfs_handler.normalize_rc_path(vfs_handler.join(p, "src")),
                         WorkspaceKind::TypeChecking,
                     );
                 }
@@ -1067,29 +1072,35 @@ impl Database {
             .typeshed_path
             .clone()
             .unwrap_or_else(sys_path::typeshed_path_from_executable);
-        let sep = vfs.handler.separator();
+        let sep = vfs_handler.separator();
         for p in [
             format!("{typeshed_path}{sep}stdlib"),
             format!("{typeshed_path}{sep}stubs{sep}mypy-extensions"),
         ] {
-            vfs.add_workspace(
-                vfs.handler
-                    .unchecked_normalized_path(vfs.handler.unchecked_abs_path(&p)),
+            workspace_builder.add(
+                vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path(&p)),
                 WorkspaceKind::Typeshed,
             );
         }
 
         for (kind, p) in &project.sys_path {
-            add_workspace_and_check_for_pth_files(&mut vfs, p.clone(), recovery.is_some(), *kind);
+            add_workspace_and_check_for_pth_files(
+                &*vfs_handler,
+                &mut workspace_builder,
+                p.clone(),
+                recovery.is_some(),
+                *kind,
+            );
         }
+
         // This AbsPath is not really an absolute path, it's just a fallback so anything can be
         // part of it.
-        vfs.add_workspace(
-            vfs.handler
-                .unchecked_normalized_path(vfs.handler.unchecked_abs_path("")),
+        workspace_builder.add(
+            vfs_handler.unchecked_normalized_path(vfs_handler.unchecked_abs_path("")),
             WorkspaceKind::Fallback,
         );
-
+        let workspaces = workspace_builder.into();
+        let mut vfs = Vfs::new(vfs_handler, workspaces);
         if let Some(recovery) = recovery {
             vfs.load_panic_recovery(
                 project.flags.case_sensitive,
@@ -1154,7 +1165,9 @@ impl Database {
         };
 
         for (kind, p1) in &new_db.project.sys_path {
-            new_db.vfs.add_workspace(p1.clone(), *kind);
+            new_db
+                .vfs
+                .add_workspace_without_full_access(p1.clone(), *kind);
         }
         tracing::debug!(
             "Workspace base paths (for reused project): {:?}",
@@ -1570,19 +1583,20 @@ impl Database {
 }
 
 fn add_workspace_and_check_for_pth_files(
-    vfs: &mut Vfs<PythonFile>,
+    handler: &dyn VfsHandler,
+    workspaces_builder: &mut WorkspacesBuilder,
     path: Arc<NormalizedPath>,
     is_recovery: bool,
     kind: WorkspaceKind,
 ) {
-    if !vfs.add_workspace(path, kind) {
+    if !workspaces_builder.add(path, kind) {
         // The workspace was already added
         return;
     };
     if !is_recovery {
         // Imitate the logic for .pth files. Copied some of the logic from site.py from the Python
         // standard library.
-        let last = vfs.workspaces.iter().next_back().unwrap();
+        let last = workspaces_builder.expect_last();
         let mut pth_files = vec![];
         for (_, dir_entry) in last.entries.borrow().iter() {
             if let DirectoryEntry::File(file_entry) = dir_entry
@@ -1595,9 +1609,9 @@ fn add_workspace_and_check_for_pth_files(
         if !pth_files.is_empty() {
             let workspace_path = last.root_path.clone();
             for pth_file in pth_files {
-                let pth_path = pth_file.absolute_path(&*vfs.handler);
+                let pth_path = pth_file.absolute_path(handler);
                 tracing::info!("Found .pth file: {}", pth_path.as_uri());
-                if let Some(content) = vfs.handler.read_and_watch_file(&pth_path) {
+                if let Some(content) = handler.read_and_watch_file(&pth_path) {
                     for line in split_lines(&content) {
                         let line = line.trim_end();
                         if line.is_empty()
@@ -1607,12 +1621,12 @@ fn add_workspace_and_check_for_pth_files(
                         {
                             continue;
                         }
-                        let path = vfs
-                            .handler
-                            .normalize_rc_path(vfs.handler.absolute_path(&workspace_path, line));
+                        let path =
+                            handler.normalize_rc_path(handler.absolute_path(&workspace_path, line));
                         tracing::info!("Add entry {path} in .pth file: {}", pth_path.as_uri());
                         add_workspace_and_check_for_pth_files(
-                            vfs,
+                            handler,
+                            workspaces_builder,
                             path,
                             is_recovery,
                             WorkspaceKind::SitePackages,

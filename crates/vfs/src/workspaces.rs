@@ -9,7 +9,7 @@ use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, NormalizedPath, Parent, PathWithScheme,
     VfsHandler,
     tree::{AddedFile, DirEntries, Entries},
-    vfs::Scheme,
+    vfs::{Scheme, file_scheme},
 };
 
 type WorkspacesVec = Vec<Arc<Workspace>>;
@@ -25,23 +25,76 @@ pub enum WorkspaceKind {
     PythonStdLib,
 }
 
-#[derive(Debug, Default)]
+pub struct WorkspacesBuilder<'x> {
+    pub(crate) items: WorkspacesVec,
+    handler: &'x dyn VfsHandler,
+}
+
+impl<'x> WorkspacesBuilder<'x> {
+    pub fn new(handler: &'x dyn VfsHandler) -> Self {
+        Self {
+            items: Default::default(),
+            handler,
+        }
+    }
+
+    pub fn add(&mut self, root: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
+        let scheme = file_scheme();
+        if let Some(add) = Self::maybe_add(&mut self.items, self.handler, scheme, root, kind) {
+            self.items.push(add);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn maybe_add(
+        items: &mut WorkspacesVec,
+        vfs: &dyn VfsHandler,
+        scheme: Scheme,
+        root: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) -> Option<Arc<Workspace>> {
+        if items.iter().any(|item| item.root_path == root) {
+            // The path is already in there
+            return None;
+        }
+        let workspace = Workspace::new(vfs, &*items, scheme, root, kind);
+        Some(workspace)
+    }
+
+    pub(crate) fn add_at_start(
+        &mut self,
+        scheme: Scheme,
+        root: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) {
+        if let Some(add) = Self::maybe_add(&mut self.items, self.handler, scheme, root, kind) {
+            self.items.insert(0, add);
+        }
+    }
+
+    pub fn expect_last(&self) -> &Workspace {
+        self.items
+            .last()
+            .expect("There should always be a workspace")
+    }
+}
+
+impl From<WorkspacesBuilder<'_>> for Workspaces {
+    fn from(value: WorkspacesBuilder) -> Self {
+        Self {
+            items: RwLock::new(value.items),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Workspaces {
     pub(crate) items: RwLock<WorkspacesVec>,
 }
 
 impl Workspaces {
-    pub(crate) fn push(
-        &mut self,
-        vfs: &dyn VfsHandler,
-        scheme: Scheme,
-        root: Arc<NormalizedPath>,
-        kind: WorkspaceKind,
-    ) -> bool {
-        let items = self.inner_items_mut();
-        Self::push_to_vec(items, vfs, scheme, root, kind)
-    }
-
     pub(crate) fn push_without_full_access(
         &self,
         vfs: &dyn VfsHandler,
@@ -51,38 +104,12 @@ impl Workspaces {
     ) -> bool {
         // TODO work on this
         let mut items = self.items.write().unwrap();
-        Self::push_to_vec(&mut items, vfs, scheme, root, kind)
-    }
-
-    fn push_to_vec(
-        items: &mut WorkspacesVec,
-        vfs: &dyn VfsHandler,
-        scheme: Scheme,
-        root: Arc<NormalizedPath>,
-        kind: WorkspaceKind,
-    ) -> bool {
-        if items.iter().any(|item| item.root_path == root) {
-            // The path is already in there
-            return false;
+        if let Some(add) = WorkspacesBuilder::maybe_add(&mut *items, vfs, scheme, root, kind) {
+            items.push(add);
+            true
+        } else {
+            false
         }
-        let workspace = Workspace::new(vfs, &*items, scheme, root, kind);
-        items.push(workspace);
-        true
-    }
-
-    pub(crate) fn add_at_start(
-        &mut self,
-        vfs: &dyn VfsHandler,
-        scheme: Scheme,
-        root: Arc<NormalizedPath>,
-        kind: WorkspaceKind,
-    ) {
-        let items = self.inner_items_mut();
-        if items.iter().any(|item| item.root_path == root) {
-            // The path is already in there
-            return;
-        }
-        items.insert(0, Workspace::new(vfs, items, scheme, root, kind))
     }
 
     fn inner_items_mut(&mut self) -> &mut WorkspacesVec {
@@ -268,7 +295,10 @@ impl Workspaces {
 
     // We intentionally use a &mut self here, because we want to avoid that the datastructures
     // inside are modified while we're cloning.
-    pub(crate) fn clone_with_new_rcs(&mut self, vfs: &dyn VfsHandler) -> Self {
+    pub(crate) fn clone_with_new_rcs<'handler>(
+        &mut self,
+        vfs: &'handler dyn VfsHandler,
+    ) -> WorkspacesBuilder<'handler> {
         fn clone_inner_rcs(
             vfs: &dyn VfsHandler,
             workspaces: &Workspaces,
@@ -306,7 +336,8 @@ impl Workspaces {
                         debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
                         let mut new_dir = dir.as_ref().clone();
                         new_dir.parent = Parent::Workspace(Arc::downgrade(&new_workspace));
-                        *dir = clone_inner_rcs(vfs, &Workspaces::default(), new_dir)
+                        let workspaces = WorkspacesBuilder::new(vfs).into();
+                        *dir = clone_inner_rcs(vfs, &workspaces, new_dir)
                     }
                     DirectoryEntry::File(file) => {
                         debug_assert!(matches!(file.parent, Parent::Workspace(_)));
@@ -320,8 +351,9 @@ impl Workspaces {
             }
             *workspace = new_workspace
         }
-        Self {
-            items: RwLock::new(new),
+        WorkspacesBuilder {
+            handler: vfs,
+            items: new,
         }
     }
 

@@ -10,7 +10,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, GitignoreFile,
-    NormalizedPath, Parent, VfsHandler, WorkspaceKind,
+    NormalizedPath, Parent, VfsHandler, WorkspaceKind, WorkspacesBuilder,
     tree::{AddedKind, InvalidationDetail, Invalidations},
     workspaces::Workspaces,
 };
@@ -21,7 +21,7 @@ thread_local! {
 
 pub(crate) type Scheme = Arc<Box<str>>;
 
-fn file_scheme() -> Scheme {
+pub(crate) fn file_scheme() -> Scheme {
     FILE_SCHEME.with(|f| f.clone())
 }
 
@@ -55,10 +55,10 @@ enum InMemoryKind {
 }
 
 impl<F: VfsFile> Vfs<F> {
-    pub fn new(handler: Box<dyn VfsHandler>) -> Self {
+    pub fn new(handler: Box<dyn VfsHandler>, workspaces: Workspaces) -> Self {
         Self {
             handler,
-            workspaces: Default::default(),
+            workspaces,
             files: Default::default(),
             in_memory_files: Default::default(),
         }
@@ -77,7 +77,7 @@ impl<F: VfsFile> Vfs<F> {
         for file_state in self.files.iter_mut() {
             fn search_parent(
                 vfs_handler: &dyn VfsHandler,
-                workspaces: &Workspaces,
+                workspaces: &WorkspacesBuilder,
                 parent: Parent,
                 name: &str,
             ) -> DirectoryEntry {
@@ -85,12 +85,17 @@ impl<F: VfsFile> Vfs<F> {
                 let parent_entries = match parent {
                     Parent::Directory(dir) => {
                         tmp = dir.upgrade().unwrap();
-                        Directory::entries_with_workspaces(vfs_handler, workspaces, &tmp)
+                        Directory::entries_with_workspace_likes(
+                            vfs_handler,
+                            || &workspaces.items,
+                            &tmp,
+                        )
                     }
                     Parent::Workspace(w) => {
                         let w = w.upgrade().unwrap();
                         let n = w.root_path();
                         &workspaces
+                            .items
                             .iter()
                             .find(|workspace| *workspace.root_path() == *n)
                             .unwrap()
@@ -102,7 +107,7 @@ impl<F: VfsFile> Vfs<F> {
             }
             fn replace_from_new_workspace(
                 vfs_handler: &dyn VfsHandler,
-                workspaces: &Workspaces,
+                workspaces: &WorkspacesBuilder,
                 parent: &Parent,
             ) -> Parent {
                 match parent {
@@ -132,17 +137,12 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         for p in type_checked_dirs.rev() {
-            workspaces.add_at_start(
-                &*self.handler,
-                file_scheme(),
-                p.to_owned(),
-                WorkspaceKind::TypeChecking,
-            )
+            workspaces.add_at_start(file_scheme(), p.to_owned(), WorkspaceKind::TypeChecking)
         }
 
         Self {
+            workspaces: workspaces.into(),
             handler,
-            workspaces,
             files: files.into(),
             in_memory_files: Default::default(),
         }
@@ -219,11 +219,6 @@ impl<F: VfsFile> Vfs<F> {
                 }
             }
         }
-    }
-
-    pub fn add_workspace(&mut self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
-        self.workspaces
-            .push(&*self.handler, file_scheme(), root_path, kind)
     }
 
     pub fn add_workspace_without_full_access(

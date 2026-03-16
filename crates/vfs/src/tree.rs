@@ -1,4 +1,5 @@
 use std::{
+    ops::Deref,
     path::Path,
     sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
 };
@@ -270,10 +271,22 @@ impl Directory {
         workspaces: &Workspaces,
         dir: &'x Arc<Directory>,
     ) -> &'x Entries {
+        Self::entries_with_workspace_likes(vfs, || workspaces.items.read().unwrap(), dir)
+    }
+
+    pub(crate) fn entries_with_workspace_likes<
+        'x,
+        C: FnOnce() -> T,
+        T: Deref<Target = Vec<Arc<Workspace>>>,
+    >(
+        vfs: &dyn VfsHandler,
+        get_workspaces: C,
+        dir: &'x Arc<Directory>,
+    ) -> &'x Entries {
         dir.entries
             .get_or_init(|| {
                 DirEntries::Entries(vfs.read_and_watch_dir(
-                    &*workspaces.items.read().unwrap(),
+                    get_workspaces().as_ref(),
                     &dir.absolute_path(vfs).path,
                     Parent::Directory(Arc::downgrade(dir)),
                 ))
