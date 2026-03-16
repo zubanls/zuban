@@ -12,6 +12,8 @@ use crate::{
     vfs::Scheme,
 };
 
+type WorkspacesVec = Vec<Arc<Workspace>>;
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum WorkspaceKind {
     TypeChecking,
@@ -25,18 +27,40 @@ pub enum WorkspaceKind {
 
 #[derive(Debug, Default)]
 pub struct Workspaces {
-    pub(crate) items: RwLock<Vec<Arc<Workspace>>>,
+    pub(crate) items: RwLock<WorkspacesVec>,
 }
 
 impl Workspaces {
-    pub(crate) fn add(
+    pub(crate) fn push(
+        &mut self,
+        vfs: &dyn VfsHandler,
+        scheme: Scheme,
+        root: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) -> bool {
+        let items = self.inner_items_mut();
+        Self::push_to_vec(items, vfs, scheme, root, kind)
+    }
+
+    pub(crate) fn push_without_full_access(
         &self,
         vfs: &dyn VfsHandler,
         scheme: Scheme,
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> bool {
+        // TODO work on this
         let mut items = self.items.write().unwrap();
+        Self::push_to_vec(&mut items, vfs, scheme, root, kind)
+    }
+
+    fn push_to_vec(
+        items: &mut WorkspacesVec,
+        vfs: &dyn VfsHandler,
+        scheme: Scheme,
+        root: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) -> bool {
         if items.iter().any(|item| item.root_path == root) {
             // The path is already in there
             return false;
@@ -61,7 +85,7 @@ impl Workspaces {
         items.insert(0, Workspace::new(vfs, items, scheme, root, kind))
     }
 
-    fn inner_items_mut(&mut self) -> &mut Vec<Arc<Workspace>> {
+    fn inner_items_mut(&mut self) -> &mut WorkspacesVec {
         self.items.get_mut().unwrap()
     }
 

@@ -488,7 +488,7 @@ fn ensure_django_stubs_workspace_and_return_newly_created(
     }
     debug_assert!(django_path.is_some());
     db.vfs
-        .add_workspace(django_path?, WorkspaceKind::SitePackages);
+        .add_workspace_without_full_access(django_path?, WorkspaceKind::SitePackages);
     Some(db.vfs.workspaces.expect_last())
 }
 

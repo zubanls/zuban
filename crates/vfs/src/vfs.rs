@@ -221,9 +221,18 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
+    pub fn add_workspace(&mut self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
         self.workspaces
-            .add(&*self.handler, file_scheme(), root_path, kind)
+            .push(&*self.handler, file_scheme(), root_path, kind)
+    }
+
+    pub fn add_workspace_without_full_access(
+        &self,
+        root_path: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) -> bool {
+        self.workspaces
+            .push_without_full_access(&*self.handler, file_scheme(), root_path, kind)
     }
 
     pub fn search_path(&self, case_sensitive: bool, path: &PathWithScheme) -> Option<DirOrFile> {
