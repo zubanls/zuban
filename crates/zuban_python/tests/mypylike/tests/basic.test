@@ -1843,3 +1843,20 @@ def f(x: Foo, y: Bar):
         x.g = y.f  # E: Cannot assign to a method  [method-assign]
     if bool():
         x.g = y.g  # E: Cannot assign to a method  [method-assign]
+
+[case type_ignore_multiple_ignores]
+# From GH #331
+str.x + undefined  # type: ignore[attr-defined]  # zuban: ignore[name-defined]
+str.x + undefined  # zuban: ignore[name-defined]  # type: ignore[attr-defined]
+
+str.x + undefined  # type: ignore  # zuban: ignore[whatever]
+str.x + undefined  # type: ignore[whatever]  # zuban: ignore
+str.x + undefined  # type: ignore  # zuban: ignore[whatever]
+str.x + undefined  # type: ignore[whatever]  # zuban: ignore
+
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore[attr-defined]
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore[attr-defined, name-defined]
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore
+[out]
+__main__:10: error: Name "undefined" is not defined
+__main__:10: note: Error code "name-defined" not covered by "type: ignore" comment

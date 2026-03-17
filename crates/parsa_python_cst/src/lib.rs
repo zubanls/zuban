@@ -118,6 +118,7 @@ impl Tree {
         mut start_at: CodeIndex,
         region: &str,
     ) -> Option<TypeIgnoreComment<'_>> {
+        let mut result = None;
         for line in region.split(['\n', '\r']) {
             let mut iterator = line.split('#');
             start_at += iterator.next().unwrap().len() as CodeIndex + 1;
@@ -129,22 +130,35 @@ impl Tree {
                     rest.strip_prefix("zuban:")
                 }) {
                     let ignore = ignore.trim_start_matches(' ');
-                    let r = maybe_type_ignore(
+                    let new = maybe_type_ignore(
                         kind,
                         start_at + (comment.len() - ignore.len()) as CodeIndex,
                         ignore,
                     );
-                    if r.is_some() {
-                        return r;
+                    if let Some(new) = new {
+                        if let Some(old) = &mut result {
+                            match (old, new) {
+                                (
+                                    TypeIgnoreComment::WithCodes {
+                                        codes_of_later_type_ignores,
+                                        ..
+                                    },
+                                    TypeIgnoreComment::WithCodes {
+                                        codes: new_codes, ..
+                                    },
+                                ) => codes_of_later_type_ignores.push(new_codes),
+                                (old, _) => *old = TypeIgnoreComment::WithoutCode,
+                            }
+                        } else {
+                            result = Some(new);
+                        }
                     }
-                } else {
-                    break;
                 }
                 start_at += comment.len() as CodeIndex + 1;
             }
             start_at += 1;
         }
-        None
+        result
     }
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
@@ -451,6 +465,7 @@ pub enum TypeIgnoreComment<'db> {
         codes: &'db str,
         kind: &'static str,
         codes_start_at_index: CodeIndex,
+        codes_of_later_type_ignores: Vec<&'db str>,
     },
     WithoutCode,
 }
@@ -477,6 +492,7 @@ pub fn maybe_type_ignore<'db>(
                 kind,
                 codes: trimmed,
                 codes_start_at_index: start_at + 1,
+                codes_of_later_type_ignores: vec![],
             });
         }
 

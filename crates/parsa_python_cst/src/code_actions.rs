@@ -33,6 +33,7 @@ impl Tree {
                 codes,
                 codes_start_at_index,
                 kind,
+                ..
             }) => Some(TypeIgnoreInsertion {
                 insertion_index: codes_start_at_index + codes.trim_ascii_end().len() as CodeIndex,
                 preexisting_type_ignore_kind: Some(kind),

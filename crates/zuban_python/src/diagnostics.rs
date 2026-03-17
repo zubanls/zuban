@@ -2362,14 +2362,24 @@ impl Diagnostics {
     ) -> Result<&Issue, Issue> {
         let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
-            if let TypeIgnoreComment::WithCodes { codes, .. } = specific {
+            if let TypeIgnoreComment::WithCodes {
+                codes,
+                codes_of_later_type_ignores,
+                ..
+            } = specific
+            {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.kind.mypy_error_code();
                 let super_ = issue.kind.mypy_error_supercode();
-                if codes.split(',').any(|code| {
-                    let code = code.trim_matches(' ');
-                    e == Some(code) || super_ == Some(code) || e.is_none()
-                }) {
+                if std::iter::once(codes)
+                    .chain(codes_of_later_type_ignores)
+                    .map(|codes| codes.split(','))
+                    .flatten()
+                    .any(|code| {
+                        let code = code.trim_matches(' ');
+                        e == Some(code) || super_ == Some(code) || e.is_none()
+                    })
+                {
                     return Err(issue);
                 } else if e.is_some() {
                     add_not_covered_note = e;
