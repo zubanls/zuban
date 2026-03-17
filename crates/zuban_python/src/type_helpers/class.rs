@@ -1532,7 +1532,7 @@ impl<'db: 'a, 'a> Class<'a> {
             && let c = c.class(db)
             && c.has_django_stubs_base_class(db)
             && c.mro_maybe_without_object(db, true).any(|(_, c)| match c {
-                TypeOrClass::Class(c) => dbg!(c).is_django_foreign_key_like_name(),
+                TypeOrClass::Class(c) => c.is_django_foreign_key_like_name(),
                 TypeOrClass::Type(_) => false,
             })
         {

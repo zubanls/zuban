@@ -530,6 +530,11 @@ mod tests {
         assert_eq!(ds, [m2]);
         let ds = diagnostics(Cli::parse_from(["", "../folder2/m2.py"]), dir);
         assert_eq!(ds, [m2]);
+
+        test_dir.write_file("pyproject.toml", "");
+        // List only m2 diagnostics but with an empty pyproject.toml, see also #330
+        let ds = diagnostics(Cli::parse_from(["", "../folder2"]), dir);
+        assert_eq!(ds, [m2]);
     }
 
     #[test]

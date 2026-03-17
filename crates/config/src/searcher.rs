@@ -163,11 +163,7 @@ fn find_mypy_config_file_in_dir(
             };
         }
     }
-    if let Some(pyproject_toml) = pyproject_toml
-        && let Some(config) = pyproject_toml
-            .get("tool")
-            .and_then(|item| item.get("zuban"))
-    {
+    if let Some(pyproject_toml) = pyproject_toml {
         if end_result.is_none() {
             end_result = Some(default_config(
                 mode,
@@ -175,15 +171,20 @@ fn find_mypy_config_file_in_dir(
                 dir.clone(),
             ));
         }
-        let found = end_result.as_mut().unwrap();
-        found.project_options.apply_pyproject_table(
-            vfs,
-            &dir,
-            found.config_path.as_ref().unwrap(),
-            &mut found.diagnostic_config,
-            config,
-            true,
-        )?
+        if let Some(config) = pyproject_toml
+            .get("tool")
+            .and_then(|item| item.get("zuban"))
+        {
+            let found = end_result.as_mut().unwrap();
+            found.project_options.apply_pyproject_table(
+                vfs,
+                &dir,
+                found.config_path.as_ref().unwrap(),
+                &mut found.diagnostic_config,
+                config,
+                true,
+            )?
+        }
     }
     Ok(end_result)
 }
