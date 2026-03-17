@@ -622,12 +622,23 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         let file = c.node_ref.to_db_lifetime(self.infos.db).file;
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         let class_node = c.node();
+        let is_django_base = c.has_django_stubs_base_class(self.infos.db);
         for (symbol, node_index) in storage.class_symbol_table.iter() {
             if is_private(symbol) || should_ignore(symbol) {
                 continue;
             }
             let name_def = NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true)
+            self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true);
+            if is_django_base && c.is_django_foreign_key(self.infos.db, symbol) {
+                let s = format!("{symbol}_id");
+                if !self.maybe_add_cow(Cow::Owned(s.clone())) {
+                    continue;
+                }
+                if let Some(result) = (self.on_result)(self.replace_range, &FixedStringField(s)) {
+                    self.items
+                        .push((CompletionSortPriority::new_symbol(symbol), result))
+                }
+            }
         }
         if is_instance {
             for (symbol, &node_index) in storage.self_symbol_table.iter() {
@@ -1026,6 +1037,22 @@ impl Completion for NamedTupleMemberCompletion<'_> {
 
     fn file_path(&self) -> Option<&str> {
         Some(self.db.file_path(self.file))
+    }
+}
+
+struct FixedStringField(String);
+
+impl Completion for FixedStringField {
+    fn label(&self) -> &str {
+        &self.0
+    }
+
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::FIELD
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        None
     }
 }
 

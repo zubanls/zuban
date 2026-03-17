@@ -1396,6 +1396,13 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    fn is_django_foreign_key_like_name(&self) -> bool {
+        matches!(
+            self.name(),
+            "ForeignKey" | "OneToOneField" | "ManyToManyField"
+        )
+    }
+
     fn fill_django_default_generics(
         &self,
         i_s: &InferenceState,
@@ -1407,10 +1414,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         };
         let mut known_type = None;
-        if matches!(
-            self.name(),
-            "ForeignKey" | "OneToOneField" | "ManyToManyField"
-        ) {
+        if self.is_django_foreign_key_like_name() {
             known_type = args
                 .iter(i_s.mode)
                 .enumerate()
@@ -1510,6 +1514,32 @@ impl<'db: 'a, 'a> Class<'a> {
             lst.format(&FormatData::new_short(i_s.db)),
         );
         *generics = ClassGenerics::List(lst)
+    }
+
+    pub(crate) fn is_django_foreign_key(&self, db: &Database, name: &str) -> bool {
+        debug_assert!(self.has_django_stubs_base_class(db));
+        let i_s = &InferenceState::new_in_unknown_file(db);
+        if let Some(inf) = self
+            .lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&|_| false)
+                    .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess),
+            )
+            .lookup
+            .maybe_inferred()
+            && let Type::Class(c) = inf.as_cow_type(i_s).remove_none(i_s.db).as_ref()
+            && let c = c.class(db)
+            && c.has_django_stubs_base_class(db)
+            && c.mro_maybe_without_object(db, true).any(|(_, c)| match c {
+                TypeOrClass::Class(c) => dbg!(c).is_django_foreign_key_like_name(),
+                TypeOrClass::Type(_) => false,
+            })
+        {
+            true
+        } else {
+            false
+        }
     }
 
     fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<Type> {

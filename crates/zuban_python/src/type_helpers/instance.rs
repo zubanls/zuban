@@ -513,13 +513,7 @@ impl<'a> Instance<'a> {
         // Add access for Django's *_id attributes for ForeignKeys
         if self.class.has_django_stubs_base_class(i_s.db) {
             if let Some(foreign_key_name) = name.strip_suffix("_id")
-                && let Some(inf) = self
-                    .lookup(i_s, foreign_key_name, options)
-                    .lookup
-                    .maybe_inferred()
-                && let Type::Class(c) = inf.as_cow_type(i_s).remove_none(i_s.db).as_ref()
-                && let c = c.class(i_s.db)
-                && c.has_django_stubs_base_class(i_s.db)
+                && self.class.is_django_foreign_key(i_s.db, foreign_key_name)
             {
                 // TODO lookup pk
                 return LookupDetails {

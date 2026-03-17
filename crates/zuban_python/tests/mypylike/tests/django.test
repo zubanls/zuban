@@ -42,3 +42,17 @@ def f(album: Album):
     reveal_type(album.composer.pk)  # N: Revealed type is "Any"
     reveal_type(album.artist.id) if album.artist else None  # N: Revealed type is "Any"
     reveal_type(album.composer.id)  # N: Revealed type is "Any"
+
+    album.name_id  # E: "Album" has no attribute "name_id"
+
+    #? complete
+    album.artist
+    #? complete
+    album.composer
+    #? complete
+    album.name
+
+[out]
+__main__.py:25:complete -> [artist, artist_id]
+__main__.py:27:complete -> [composer, composer_id]
+__main__.py:29:complete -> [name]
