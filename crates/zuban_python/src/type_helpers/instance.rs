@@ -81,22 +81,22 @@ impl<'a> Instance<'a> {
             !had_errors
         };
 
-        let lookup_details = self
-            .class
-            .lookup(
+        let mut lookup_details = self.class.lookup(
+            i_s,
+            name_str,
+            ClassLookupOptions::new(&add_issue)
+                .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess)
+                .with_avoid_metaclass(),
+        );
+        if !lookup_details.lookup.is_some()
+            || matches!(lookup_details.attr_kind, AttributeKind::DefMethod { .. })
+        {
+            lookup_details = self.lookup(
                 i_s,
                 name_str,
-                ClassLookupOptions::new(&add_issue)
-                    .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess)
-                    .with_avoid_metaclass(),
-            )
-            .or_else(|| {
-                self.lookup(
-                    i_s,
-                    name_str,
-                    InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
-                )
-            });
+                InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
+            );
+        }
         let Some(mut inf) = lookup_details.lookup.maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let had_setattr_issue = Cell::new(false);
@@ -1013,7 +1013,7 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
     t.clone()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,

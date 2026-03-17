@@ -1817,3 +1817,29 @@ assert_type(f(""), str)  # E: Expression is of type "Literal['']", not "str"
 # From GH #324
 from typing import Any
 None.__hash__: Any  # E: Type cannot be declared in assignment to non-self attribute
+
+[case type_ignore_method_assign]
+# flags: --show-error-codes
+# From GH #331
+
+def dec[T](x: T) -> T:
+    return x
+
+class Foo:
+    def f(self) -> None: ...
+    @dec
+    def g(self) -> None: ...
+class Bar:
+    def f(self) -> None: ...
+    @dec
+    def g(self) -> None: ...
+
+def f(x: Foo, y: Bar):
+    if bool():
+        x.f = y.f  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.f = y.g  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.g = y.f  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.g = y.g  # E: Cannot assign to a method  [method-assign]
