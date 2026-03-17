@@ -510,6 +510,34 @@ impl<'a> Instance<'a> {
                 }
             }
         }
+        // Add access for Django's *_id attributes for ForeignKeys
+        if self.class.has_django_stubs_base_class(i_s.db) {
+            if let Some(foreign_key_name) = name.strip_suffix("_id")
+                && let Some(inf) = self
+                    .lookup(i_s, foreign_key_name, options)
+                    .lookup
+                    .maybe_inferred()
+                && let Type::Class(c) = inf.as_cow_type(i_s).remove_none(i_s.db).as_ref()
+                && let c = c.class(i_s.db)
+                && c.has_django_stubs_base_class(i_s.db)
+            {
+                // TODO lookup pk
+                return LookupDetails {
+                    class: TypeOrClass::Class(self.class),
+                    lookup: LookupResult::any(AnyCause::Todo),
+                    attr_kind: AttributeKind::Attribute,
+                    mro_index: None,
+                };
+            }
+            if name == "id" {
+                return LookupDetails {
+                    class: TypeOrClass::Class(self.class),
+                    lookup: LookupResult::any(AnyCause::Todo),
+                    attr_kind: AttributeKind::Attribute,
+                    mro_index: None,
+                };
+            }
+        }
         if self.class.incomplete_mro(i_s.db) {
             LookupDetails {
                 class: TypeOrClass::Class(self.class),
