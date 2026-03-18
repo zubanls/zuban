@@ -1056,3 +1056,10 @@ x = [1]
 f(x)  # type: ignore[arg-type]
 
 y: Iterator[int] = x  # type: ignore[assignment]
+
+[case set_strict_equality]
+# flags: --strict-equality
+# From GH #339
+f = frozenset((1, 2, 3))
+s = {1, 2, 3}
+print(f == s)

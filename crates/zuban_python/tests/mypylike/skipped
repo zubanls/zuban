@@ -144,11 +144,9 @@ testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
-testStrictEqualityAllowlist
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testStrictEqualitywithParamSpec
-testCustomEqCheckStrictEqualityTuple
 testDisableBytearrayPromotion
 testStrictEqualityForNone
 testInlineErrorCodesArentRuinedByOthersSe

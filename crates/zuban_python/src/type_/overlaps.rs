@@ -9,6 +9,23 @@ use crate::{
 
 use super::{CallableContent, CallableLike, ClassGenerics, Type, TypeVarKind, TypedDict};
 
+enum OverlappingAllowListKind {
+    Builtins,
+    Typing,
+    CollectionsAbc,
+}
+// This comes from Mypy with the same name
+const OVERLAPPING_TYPES_ALLOWLIST: [(OverlappingAllowListKind, &str); 8] = [
+    (OverlappingAllowListKind::Builtins, "set"),
+    (OverlappingAllowListKind::Builtins, "frozenset"),
+    (OverlappingAllowListKind::Typing, "KeysView"),
+    (OverlappingAllowListKind::Typing, "ItemsView"),
+    (OverlappingAllowListKind::Builtins, "_dict_keys"),
+    (OverlappingAllowListKind::Builtins, "_dict_items"),
+    (OverlappingAllowListKind::CollectionsAbc, "dict_keys"),
+    (OverlappingAllowListKind::CollectionsAbc, "dict_items"),
+];
+
 impl Type {
     pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
         self.overlaps(i_s, &mut Matcher::default(), other)
@@ -270,6 +287,23 @@ fn overlaps_class(
         {
             return result;
         }
+    }
+    let in_allowlist = |c: Class| {
+        OVERLAPPING_TYPES_ALLOWLIST.iter().any(|(module, name)| {
+            c.name() == *name
+                && c.file.file_index
+                    == match module {
+                        OverlappingAllowListKind::Builtins => i_s.db.python_state.builtins(),
+                        OverlappingAllowListKind::Typing => i_s.db.python_state.typing(),
+                        OverlappingAllowListKind::CollectionsAbc => {
+                            i_s.db.python_state._collections_abc()
+                        }
+                    }
+                    .file_index
+        })
+    };
+    if in_allowlist(class1) && in_allowlist(class2) {
+        return Some(true);
     }
     None
 }
