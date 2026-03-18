@@ -1368,6 +1368,11 @@ fn split_off_singleton(
                 }
                 add(sub_t.clone());
             }
+            Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
+                // TODO shouldn't this have the same way of narrowing as Type::Any()?
+                truthy.union_in_place(singleton.clone());
+                add(sub_t.clone());
+            }
             Type::Literal(literal1) => match singleton {
                 Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
                     let true_literal = || {
