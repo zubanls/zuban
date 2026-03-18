@@ -3526,6 +3526,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             PointResolution::Inferred(inferred) => {
+                if let Some(cause) = inferred.maybe_any(i_s.db) {
+                    return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(cause)));
+                }
                 if let Some(i_node_ref) = inferred.maybe_saved_node_ref(i_s.db) {
                     if let Some(specific) = i_node_ref.point().maybe_specific() {
                         if let Some(tc) = check_special_case(specific) {
@@ -3553,9 +3556,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             return r;
                         }
                     }
-                    if let Some(cause) = inferred.maybe_any(i_s.db) {
-                        return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(cause)));
-                    } else if i_node_ref.maybe_function().is_some() {
+                    if i_node_ref.maybe_function().is_some() {
                         return Self::func_is_invalid_type(i_s.db, i_node_ref);
                     }
                 }
