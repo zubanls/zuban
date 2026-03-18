@@ -3416,7 +3416,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 i_s,
                 self.file,
                 name,
-                LookupKind::OnlyType,
+                LookupKind::Normal,
                 &mut ResultContext::Unknown,
                 &|_| false,
                 &|_| (),
