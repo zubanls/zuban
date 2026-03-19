@@ -1969,3 +1969,12 @@ X[SimpleGeneric[int]](SimpleGeneric)
 # From GH #310
 x: str = "x" * max(1, 10)
 y: list[int] = [1] * max(1, 10)
+
+[case no_context_for_argument_in_possible_context]
+# flags: --no-use-joins
+# From GH #340
+from itertools import chain, repeat
+
+def f(*args: int, more: str) -> None:
+    for item in chain(args, repeat(more)):
+        reveal_type(item)  # N: Revealed type is "int | str"

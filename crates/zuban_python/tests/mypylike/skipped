@@ -12,6 +12,9 @@ docs_alias
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
+# Regression from context calculation, see #340
+testSpecialSignatureForSubclassOfDict
+
 # Regression from calculating nested functions in a different way
 testLocalPartialTypesWithNestedFunction
 testLocalPartialTypesWithNestedFunction2

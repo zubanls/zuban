@@ -888,7 +888,7 @@ impl<'a> Matcher<'a> {
             let defined_at = callable.defined_at;
             callable = callable.replace_type_var_likes_and_self_inplace(
                 i_s.db,
-                &mut self.as_usage_closure(i_s.db, |usage| {
+                &mut self.as_usage_closure(i_s.db, false, |usage| {
                     if usage.in_definition() == defined_at {
                         let index = usage.index().as_usize();
                         let c = &tv_matcher.calculating_type_args[index];
@@ -928,7 +928,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, |usage| {
+        self.replace_type_var_likes(db, t, true, |usage| {
             Some(
                 if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
                     // Self names for TypeVars are a bit special, the context is probably wanted
@@ -951,7 +951,7 @@ impl<'a> Matcher<'a> {
     ) -> TupleArgs {
         ts.replace_type_var_likes(
             db,
-            &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
+            &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
         )
         .unwrap_or(ts)
     }
@@ -964,7 +964,7 @@ impl<'a> Matcher<'a> {
         p.params
             .replace_type_var_likes_and_self(
                 db,
-                &mut self.as_usage_closure(db, |usage| Some(usage.as_any_generic_item())),
+                &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
                 &|| None,
             )
             .map(|p| ParamSpecArg::new(p, None))
@@ -976,7 +976,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, |usage| {
+        self.replace_type_var_likes(db, t, false, |usage| {
             Some(usage.as_type_var_like().as_never_generic_item(db))
         })
     }
@@ -985,11 +985,22 @@ impl<'a> Matcher<'a> {
         &self,
         db: &Database,
         t: &'x Type,
+        for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Cow<'x, Type> {
-        t.replace_type_var_likes(db, &mut self.as_usage_closure(db, on_uncalculated))
-            .map(Cow::Owned)
-            .unwrap_or_else(|| Cow::Borrowed(t))
+        t.replace_type_var_likes(
+            db,
+            &mut self.as_usage_closure(
+                db,
+                // TODO It is a bad heuristic to do this for Callable only at the moment, however
+                // we would need to do this in a more sophisticated way to keep track of the
+                // expected variance.
+                for_context && !t.find_in_type(db, &mut |t| matches!(t, Type::Callable(_))),
+                on_uncalculated,
+            ),
+        )
+        .map(Cow::Owned)
+        .unwrap_or_else(|| Cow::Borrowed(t))
     }
 
     pub fn replace_usage_if_calculated(
@@ -997,12 +1008,13 @@ impl<'a> Matcher<'a> {
         db: &Database,
         usage: TypeVarLikeUsage,
     ) -> Option<GenericItem> {
-        self.as_usage_closure(db, |_| None)(usage)
+        self.as_usage_closure(db, false, |_| None)(usage)
     }
 
-    pub fn as_usage_closure<'b>(
+    fn as_usage_closure<'b>(
         &'b self,
         db: &'b Database,
+        for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b,
     ) -> impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b {
         move |usage| {
@@ -1012,6 +1024,9 @@ impl<'a> Matcher<'a> {
             ) {
                 let current =
                     &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
+                if for_context && matches!(current.type_, Bound::Lower(_)) {
+                    return on_uncalculated(usage);
+                }
                 return current
                     .type_
                     .clone()
