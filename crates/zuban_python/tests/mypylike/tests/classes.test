@@ -620,11 +620,7 @@ class D(C):
     bar = g  # E: Argument 1 of "bar" is incompatible with supertype "C"; supertype defines the argument type as "int" \
              # N: This violates the Liskov substitution principle \
              # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-    baz = h  # E: Signature of "baz" incompatible with supertype "C" \
-             # N:      Superclass: \
-             # N:          def (int, /) -> None \
-             # N:      Subclass: \
-             # N:          Callable[[], None]
+    baz = h  # E: Incompatible types in assignment (expression has type "Callable[[], None]", base class "C" defined the type as "Callable[[int], None]")
 
 D.baz
 D().baz  # TODO should this be an error
@@ -1103,11 +1099,7 @@ class F:
 [case weird_invalid__new__]
 import typing
 class C1:
-    __new__ = typing  # E: Signature of "__new__" incompatible with supertype "object" \
-                      # N:      Superclass: \
-                      # N:          def [Self: object] __new__(cls) -> Self \
-                      # N:      Subclass: \
-                      # N:          ModuleType
+    __new__ = typing  # E: Incompatible types in assignment (expression has type "ModuleType", base class "object" defined the type as "Callable[[], C1]")
 
 C1()
 
@@ -2675,3 +2667,11 @@ reveal_type(C.y)  # N: Revealed type is "def (int, int) -> int"
 
 C().z  # E: Invalid self argument "C" to attribute function "__xor__" with type "Callable[[int, int], int]"
 reveal_type(C.z)  # N: Revealed type is "def (int, int) -> int"
+
+[case function_override_with_var]
+# flags: --show-error-codes
+class C:
+    def f(self) -> None: ...
+
+class D(C):
+    f = None  # E: Incompatible types in assignment (expression has type "None", base class "C" defined the type as "Callable[[], None]")  [assignment]

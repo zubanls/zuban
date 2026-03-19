@@ -2837,6 +2837,16 @@ pub(super) fn check_override(
         }
     } else {
         let db = i_s.db;
+        let incompatible_subclass_assignment = || {
+            from.add_issue(
+                i_s,
+                IssueKind::IncompatibleAssignmentInSubclass {
+                    got: override_t.format_short(i_s.db),
+                    expected: original_t.format_short(i_s.db),
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        };
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
@@ -2936,7 +2946,6 @@ pub(super) fn check_override(
                     emitted = true
                 }
             }
-            Some(OverrideFuncInfos::Mixed) => (),
             Some(OverrideFuncInfos::BothOverloads(got, expected)) => {
                 let mut previous_match_right_index = 0;
                 'outer: for c1 in expected.iter_functions() {
@@ -2964,15 +2973,13 @@ pub(super) fn check_override(
             }
             None => {
                 emitted = true;
-                from.add_issue(
-                    i_s,
-                    IssueKind::IncompatibleAssignmentInSubclass {
-                        got: override_t.format_short(i_s.db),
-                        expected: original_t.format_short(i_s.db),
-                        base_class: original_class_name(&original_class),
-                    },
-                );
+                incompatible_subclass_assignment()
             }
+            Some(OverrideFuncInfos::Mixed) if override_lookup_details.attr_kind.is_attribute() => {
+                emitted = true;
+                incompatible_subclass_assignment()
+            }
+            Some(OverrideFuncInfos::Mixed) => (),
         }
         if !emitted {
             let mut notes = vec![];

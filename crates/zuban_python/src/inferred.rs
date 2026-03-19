@@ -3282,6 +3282,13 @@ impl AttributeKind {
         }
     }
 
+    pub fn is_attribute(&self) -> bool {
+        matches!(
+            self,
+            Self::AnnotatedAttribute | Self::Attribute | Self::ClassVar | Self::Final
+        )
+    }
+
     pub fn is_cached_property(&self) -> bool {
         if let Self::Property { setter_type, .. } = self {
             matches!(
