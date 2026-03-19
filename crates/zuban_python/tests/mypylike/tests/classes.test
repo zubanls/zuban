@@ -620,12 +620,14 @@ class D(C):
     bar = g  # E: Argument 1 of "bar" is incompatible with supertype "C"; supertype defines the argument type as "int" \
              # N: This violates the Liskov substitution principle \
              # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
-    baz = h  # E: Invalid self argument "D" to attribute function "h" with type "Callable[[int], None]" \
-             # E: Signature of "baz" incompatible with supertype "C" \
+    baz = h  # E: Signature of "baz" incompatible with supertype "C" \
              # N:      Superclass: \
              # N:          def (int, /) -> None \
              # N:      Subclass: \
              # N:          Callable[[], None]
+
+D.baz
+D().baz  # TODO should this be an error
 
 [case assign_in_subclass_to_callable_no_mypy_compatible]
 # flags: --mode default
@@ -648,7 +650,10 @@ class C:
 class D(C):
     foo = f
     bar = g
-    baz = h  # E: Invalid self argument "D" to attribute function "h" with type "Callable[[int], None]"
+    baz = h
+
+D.baz
+D().baz  # E: Invalid self argument "D" to attribute function "h" with type "Callable[[int], None]"
 
 [case total_ordering_missing_method]
 from functools import total_ordering
@@ -2638,3 +2643,35 @@ mock.a = 5  # ok
 _some_func(mock)
 
 _some_func(5)  # E: Argument 1 to "_some_func" has incompatible type "int"; expected "AClass"
+
+[case classvar_callable_lookup]
+# From GH #338
+from collections.abc import Callable
+from typing import ClassVar
+
+class B:
+    int_operator1: ClassVar[Callable[[int, int], int]]
+    int_operator2: ClassVar[Callable[[int, int], int]]
+
+class C(B):
+    int_operator1 = int.__and__
+    int_operator2: ClassVar[Callable[[int, int], int]] = int.__or__
+    int_operator3: ClassVar[Callable[[int, int], int]] = int.__xor__
+
+[case classvar_callables]
+# flags: --mode default
+from typing import ClassVar, Callable
+
+class C:
+    x: ClassVar[Callable[[int, int], int]] = int.__xor__
+    y: Callable[[int, int], int] = int.__xor__
+    z = int.__xor__
+
+C().x  # E: Invalid self argument "C" to attribute function "x" with type "Callable[[int, int], int]"
+reveal_type(C.x)  # N: Revealed type is "def (int, int) -> int"
+
+C().y  # E: Invalid self argument "C" to attribute function "y" with type "Callable[[int, int], int]"
+reveal_type(C.y)  # N: Revealed type is "def (int, int) -> int"
+
+C().z  # E: Invalid self argument "C" to attribute function "__xor__" with type "Callable[[int, int], int]"
+reveal_type(C.z)  # N: Revealed type is "def (int, int) -> int"

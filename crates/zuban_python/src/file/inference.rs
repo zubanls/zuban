@@ -1029,7 +1029,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     name_str,
                     override_class.as_type(i_s.db),
                     *override_class,
-                    |issue| from.add_issue(i_s, issue),
+                    // Not sure if we should add an issue here. Issues should ideally be added to
+                    // the caller.
+                    |_| false,
                     MroIndex(0),
                     false,
                     false,
