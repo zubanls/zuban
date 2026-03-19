@@ -446,14 +446,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     SpecialAssignmentKind::Enum(class, ArgsContent::new(primary.index(), details))
                 })
             }
-            Some(Lookup::T(TypeContent::Class { node_ref, .. }))
-                if node_ref.as_link() == self.i_s.db.python_state.type_alias_type_link =>
-            {
-                Err(CalculatingAliasType::TypeAliasType(ArgsContent::new(
-                    primary.index(),
-                    details,
-                )))
-            }
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypeAliasType))) => Err(
+                CalculatingAliasType::TypeAliasType(ArgsContent::new(primary.index(), details)),
+            ),
             Some(Lookup::T(TypeContent::Class { node_ref, .. }))
                 if node_ref.as_link() == self.i_s.db.python_state.defaultdict_link() =>
             {

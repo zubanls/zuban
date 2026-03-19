@@ -1144,3 +1144,22 @@ list[str].__args__
 list.index
 list.__origin__  # E: "type[list]" has no attribute "__origin__"
 list.__args__  # E: "type[list]" has no attribute "__args__"
+
+[case type_alias_type_imported]
+# From GH #316
+import m
+
+def f(x: m.X, y: m.X[int]):
+    reveal_type(x)  # N: Revealed type is "list[Any]"
+    reveal_type(y)  # N: Revealed type is "list[int]"
+
+[file m.py]
+from typing import TypeAliasType, TypeVar
+
+T = TypeVar("T")
+
+X = TypeAliasType(
+    "X",
+    list[T],
+    type_params=(T,),
+)
