@@ -719,6 +719,7 @@ call = Call()
 call()
 
 [case self_type_overloads_correct_subtyping]
+# This failed in scipy-stubs
 from typing import TypeVar, Generic, Self, overload, Any
 
 T = TypeVar("T", covariant=True, default=Any)
@@ -739,3 +740,16 @@ class C(Generic[T]):
 
 reveal_type(C[tuple[int, int]]().f())  # N: Revealed type is "int"
 reveal_type(C[tuple[int]]().f())  # N: Revealed type is "str"
+
+[case self_type_overloads_erasable_subtypes_with_defaults]
+# This failed in scipy-stubs
+from typing import TypeVar, Generic, Self, overload, Any
+
+T = TypeVar("T", covariant=True, bound=tuple[int, int] | tuple[int], default=tuple[int])
+
+class C(Generic[T]):
+    @overload
+    def f(self: C[tuple[int, int]]) -> int: ...
+    @overload
+    def f(self: C[tuple[int]]) -> int: ...
+    def f(self): ...

@@ -1728,8 +1728,13 @@ impl Inference<'_, '_, '_> {
                 });
             if let Some(first_param) = first_param {
                 if let Some(annotation) = first_param.annotation() {
-                    let undefined_generics_class = Class::with_undefined_generics(class.node_ref);
-                    let mut class_t = undefined_generics_class.as_type(i_s.db);
+                    let t = class.as_type(i_s.db);
+                    let mut class_t = t
+                        .replace_type_var_likes(i_s.db, &mut |usage| {
+                            (class.node_ref.as_link() == usage.in_definition())
+                                .then(|| usage.as_any_generic_item())
+                        })
+                        .unwrap_or(t);
                     let original_self_t = self.use_cached_param_annotation_type(annotation);
                     let mut new = None;
                     let mut self_t = original_self_t.clone();
