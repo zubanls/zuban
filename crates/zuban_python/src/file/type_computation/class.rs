@@ -284,6 +284,14 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
 
+    pub fn as_type_with_erased_type_vars(&self, db: &Database) -> Type {
+        let t = Class::with_self_generics(db, *self).as_type(db);
+        t.replace_type_var_likes(db, &mut |usage| {
+            (self.as_link() == usage.in_definition()).then(|| usage.as_any_generic_item())
+        })
+        .unwrap_or(t)
+    }
+
     pub fn add_issue_if_deprecated(
         self,
         db: &Database,

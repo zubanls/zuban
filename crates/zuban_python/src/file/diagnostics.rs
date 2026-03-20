@@ -1728,13 +1728,7 @@ impl Inference<'_, '_, '_> {
                 });
             if let Some(first_param) = first_param {
                 if let Some(annotation) = first_param.annotation() {
-                    let t = class.as_type(i_s.db);
-                    let mut class_t = t
-                        .replace_type_var_likes(i_s.db, &mut |usage| {
-                            (class.node_ref.as_link() == usage.in_definition())
-                                .then(|| usage.as_any_generic_item())
-                        })
-                        .unwrap_or(t);
+                    let mut class_t = class.as_type_with_erased_type_vars(i_s.db);
                     let original_self_t = self.use_cached_param_annotation_type(annotation);
                     let mut new = None;
                     let mut self_t = original_self_t.clone();
