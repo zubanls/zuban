@@ -150,6 +150,13 @@ impl Match {
     pub fn non_any_match(&self) -> bool {
         matches!(self, Match::True { with_any: false })
     }
+
+    pub fn from_bool_into_any_match(b: bool) -> Self {
+        match b {
+            true => Self::True { with_any: true },
+            false => Self::new_false(),
+        }
+    }
 }
 
 impl BitAnd for Match {

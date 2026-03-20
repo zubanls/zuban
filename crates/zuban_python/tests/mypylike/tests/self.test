@@ -717,3 +717,25 @@ class Call:
 
 call = Call()
 call()
+
+[case self_type_overloads_correct_subtyping]
+from typing import TypeVar, Generic, Self, overload, Any
+
+T = TypeVar("T", covariant=True, default=Any)
+U = TypeVar("U", covariant=True, default=Any)
+
+class C(Generic[T]):
+    @overload
+    def f(self: C[tuple[int, int]]) -> int: ...
+    @overload
+    def f(self: C[tuple[Any, ...]]) -> str: ...
+    def f(self): ...
+
+    @overload
+    def g(self: C) -> str: ...
+    @overload
+    def g(self: C[Any]) -> int: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+    def g(self): ...
+
+reveal_type(C[tuple[int, int]]().f())  # N: Revealed type is "int"
+reveal_type(C[tuple[int]]().f())  # N: Revealed type is "str"
