@@ -162,7 +162,7 @@ pub fn run_server_with_custom_connection(
                         params: serde_json::to_value(lsp_types::ShowMessageParams {
                             typ: lsp_types::MessageType::ERROR,
                             message: format!(
-                                "Zuban paniced, please open an issue on GitHub with the details:\n\
+                                "Zuban panicked, please open an issue on GitHub with the details:\n\
                                 Version:{}\n\
                                 {panic_info}\n\n\
                                 {backtrace}",
@@ -467,7 +467,7 @@ impl<'sender> GlobalState<'sender> {
                     request_id,
                     lsp_server::ErrorCode::InternalError as i32,
                     format!(
-                        "Server paniced, will now restart (version {})",
+                        "Server panicked, will now restart (version {})",
                         env!("CARGO_PKG_VERSION")
                     ),
                 ));

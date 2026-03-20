@@ -101,7 +101,7 @@ some of these projects with:
 
 ## Unsound?
 
-- Chosing `__new__` or `__init__` via heuristic
+- Choosing `__new__` or `__init__` via heuristic
 - Initializing casting `Type[Class]` to `Type[object]` and then `Type[object]()` is ok?
 - Ignoring positional arg names when assigning functions in:
   - Override checks (including multiple inheritance checks)
@@ -115,7 +115,7 @@ some of these projects with:
   - foo: str
   - dataclasses `__init__` is overwritten and therefore members are not necessarily initialized.
 - hasattr narrowing uses `Any` instead of `object`
-- `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any paramaters
+- `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any parameters
 - Enum value when a = 1 and b = '' will be Any for no reason
 - total_ordering fills functions with an Any return type if the other functions return not None
 

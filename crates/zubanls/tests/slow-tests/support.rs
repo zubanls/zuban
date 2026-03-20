@@ -283,7 +283,7 @@ impl Server {
 
         // Check the hook
         assert!(
-            message.starts_with("Zuban paniced, please open an issue on GitHub with the details:"),
+            message.starts_with("Zuban panicked, please open an issue on GitHub with the details:"),
             "{message}"
         );
         // Check the message
