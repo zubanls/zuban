@@ -625,13 +625,21 @@ impl Type {
                 Match::new_true()
             }
             _ => {
-                if let Type::TypeVar(type_var2) = value_type
-                    && matcher.is_matching_reverse()
-                {
-                    if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
-                        i_s, type_var2, self, variance,
-                    ) {
-                        return matched;
+                if let Type::TypeVar(type_var2) = value_type {
+                    if matcher.is_matching_reverse() {
+                        if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
+                            i_s, type_var2, self, variance,
+                        ) {
+                            return matched;
+                        }
+                    }
+                    // It is possible for bounds to be unions and we therefore need to be able to
+                    // match int | str against a TypeVar with the same bound.
+                    if let TypeVarKind::Bound(bound) = type_var2.type_var.kind(i_s.db)
+                        && let m = self.matches_union(i_s, matcher, u1, bound, variance)
+                        && m.bool()
+                    {
+                        return m;
                     }
                 }
                 match variance {
