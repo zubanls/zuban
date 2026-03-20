@@ -2675,3 +2675,18 @@ class C:
 
 class D(C):
     f = None  # E: Incompatible types in assignment (expression has type "None", base class "C" defined the type as "Callable[[], None]")  [assignment]
+
+[case override_of_mul_in_subclass_error_codes]
+# flags: --show-error-codes
+# From scipy-stubs, error codes should be the same as Mypy
+from typing import Self
+
+class C:
+    def __mul__(self, other: 'D', /) -> Self: ...
+
+class D(C):
+    def __imul__(self, other: int, /) -> Self: ...  # E: Signatures of "__imul__" and "__mul__" are incompatible  [override]
+
+class E:
+    def __mul__(self, other: Self, /) -> Self: ...
+    def __imul__(self, other: int, /) -> Self: ...  # E: Signatures of "__imul__" and "__mul__" are incompatible  [misc]

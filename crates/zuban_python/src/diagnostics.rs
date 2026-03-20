@@ -308,7 +308,7 @@ pub(crate) enum IssueKind {
     InvalidSignature { signature: Box<str> },
     OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
     ForwardOperatorIsNotCallable { forward_name: &'static str },
-    SignaturesAreIncompatible { name1: Box<str>, name2: &'static str },
+    SignaturesAreIncompatible { name1: Box<str>, name2: &'static str, code: &'static str },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     MustReturnNone { function_name: Box<str> },
@@ -547,7 +547,7 @@ impl IssueKind {
             | IncompatibleImplicitReturn { .. }
             | ReturnValueExpected
             | NoReturnValueExpected => "return-value",
-            MissingReturnStatement { code, .. } => code,
+            MissingReturnStatement { code, .. } | SignaturesAreIncompatible { code, .. } => code,
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
@@ -1769,7 +1769,7 @@ impl<'db> Diagnostic<'db> {
             ForwardOperatorIsNotCallable { forward_name } => format!(
                 r#"Forward operator "{forward_name}" is not callable"#
             ),
-            SignaturesAreIncompatible { name1, name2 } => format!(
+            SignaturesAreIncompatible { name1, name2, .. } => format!(
                 r#"Signatures of "{name1}" and "{name2}" are incompatible"#
             ),
             NewMustReturnAnInstance { got } => format!(

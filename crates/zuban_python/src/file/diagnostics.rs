@@ -2411,19 +2411,27 @@ impl Inference<'_, '_, '_> {
         };
         let instance = func.class.unwrap().instance();
         let options = InstanceLookupOptions::new(&|_| false).with_avoid_inferring_return_types();
-        let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
-        if let Some(normal_inf) = normal_method.into_maybe_inferred() {
+        let normal_method = instance.lookup(i_s, normal_magic_name, options);
+        if let Some(normal_inf) = normal_method.lookup.into_maybe_inferred() {
             let inplace_method = instance.lookup(i_s, func.name(), options).lookup;
             if !normal_inf
                 .as_cow_type(i_s)
                 .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
                 .bool()
             {
+                // Make sure these signature mismatches have the same error codes as Mypy
                 func.add_issue_for_declaration(
                     self.i_s,
                     IssueKind::SignaturesAreIncompatible {
                         name1: func.name().into(),
                         name2: normal_magic_name,
+                        code: if let Some(mro_index) = normal_method.mro_index
+                            && mro_index.0 == 0
+                        {
+                            "misc"
+                        } else {
+                            "override"
+                        },
                     },
                 );
             }
