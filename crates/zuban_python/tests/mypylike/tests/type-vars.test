@@ -408,3 +408,12 @@ class Outer[T]:
 # From GH #256
 def a[T=T]() -> T:  # E: Missing return statement  # E: Type parameter "T" has a default type that refers to one or more type variables that are out of scope
     x: T = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "T = Any")
+
+[case type_var_default_does_not_influence_new_subtyping]
+# This was a problem in scipy-stubs
+from typing import Generic, TypeVar, Self
+
+T = TypeVar('T', default=int)
+
+class C(Generic[T]):
+    def __new__(cls) -> Self: ...

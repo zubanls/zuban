@@ -1959,7 +1959,11 @@ impl Inference<'_, '_, '_> {
                 match &callable.return_type {
                     Type::Class(_) => {
                         let t = &callable.return_type;
-                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                        if !class
+                            .as_type_with_erased_type_vars(i_s.db)
+                            .is_simple_super_type_of(i_s, t)
+                            .bool()
+                        {
                             self.add_issue(
                                 return_annotation.index(),
                                 IssueKind::NewIncompatibleReturnType {
