@@ -417,3 +417,12 @@ T = TypeVar('T', default=int)
 
 class C(Generic[T]):
     def __new__(cls) -> Self: ...
+
+[case namedtuple_type_var_with_bound_and_default_should_be_fine]
+# This was a problem in scipy-stubs
+from typing import Generic, TypeVar, NamedTuple
+
+T = TypeVar("T", bound=tuple[int, ...], covariant=True, default=tuple[int])
+
+class BinnedStatistic2dResult(NamedTuple, Generic[T]):
+    binnumber: T

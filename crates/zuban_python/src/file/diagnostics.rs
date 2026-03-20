@@ -1070,6 +1070,11 @@ impl Inference<'_, '_, '_> {
         let add_issue_to_arguments =
             |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue);
         for base in class_infos.base_types() {
+            if matches!(base, Type::NamedTuple(_)) {
+                // NamedTuple class definitions are special and don't need to be checked, because
+                // they essentially inherit the TypeVars.
+                continue;
+            }
             check_type_var_variance_for_base(
                 self.i_s,
                 c.node_ref.as_link(),
