@@ -1822,6 +1822,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         add_issue_at: node_ref.as_link(),
                         actual: as_type(self),
                         of_name,
+                        current_class: self.i_s.current_class().map(|c| c.as_link()),
                     },
                 )))
         }

@@ -383,6 +383,7 @@ pub(crate) struct DelayedConstraintVerification {
     pub add_issue_at: PointLink,
     pub actual: Type,
     pub of_name: StringSlice,
+    pub current_class: Option<PointLink>,
 }
 
 #[derive(Debug, Clone)]
@@ -6028,7 +6029,14 @@ pub fn process_unfinished_partials(db: &Database, partials: impl IntoIterator<It
 
 fn verify_constraint(db: &Database, verify: Box<DelayedConstraintVerification>) {
     let add_issue_at = NodeRef::from_link(db, verify.add_issue_at);
-    let i_s = &InferenceState::new(db, add_issue_at.file);
+    let cls;
+    let i_s = &match verify.current_class {
+        Some(class_link) => {
+            cls = Class::from_undefined_generics(db, class_link);
+            InferenceState::from_class(db, &cls)
+        }
+        None => InferenceState::new(db, add_issue_at.file),
+    };
     match verify.type_var.kind(db) {
         TypeVarKind::Unrestricted => unreachable!(),
         TypeVarKind::Bound(bound) => {

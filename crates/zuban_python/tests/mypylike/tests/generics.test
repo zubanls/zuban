@@ -1987,3 +1987,11 @@ T_co = TypeVar("T_co", bound=int | str, covariant=True)
 
 class C(Generic[T_co]):
     def f(self, y: T) -> C[T | T_co]: ...
+
+[case type_var_bound_with_self_is_valid]
+from typing import TypeVar, Generic, Self
+
+T = TypeVar("T", bound="C")
+
+class C(list[T], Generic[T]):
+    def f(self, y: T) -> C[Self]: ...
