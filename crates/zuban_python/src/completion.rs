@@ -932,7 +932,7 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
             DirectoryEntry::File(_) => CompletionItemKind::MODULE,
             DirectoryEntry::Directory(_) => CompletionItemKind::FOLDER,
             _ => {
-                recoverable_error!("Exptected no completion entry for {:?}", &self.entry);
+                recoverable_error!("Expected no completion entry for {:?}", &self.entry);
                 CompletionItemKind::MODULE
             }
         }

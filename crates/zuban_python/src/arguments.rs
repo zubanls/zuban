@@ -37,7 +37,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     }
     fn starting_line(&self, db: &Database) -> String {
         let Some(node_ref) = self.as_node_ref_internal() else {
-            return "<unkown line>".into();
+            return "<unknown line>".into();
         };
         node_ref.line_one_based(db).to_string()
     }

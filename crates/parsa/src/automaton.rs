@@ -1200,7 +1200,7 @@ fn create_left_recursion_plans(
                             for (t, p) in transition.next_dfa().transition_to_plan.iter() {
                                 if plans.contains_key(&t) {
                                     panic!(
-                                        "ambigous: {} contains left recursion with alternatives!",
+                                        "ambiguous: {} contains left recursion with alternatives!",
                                         dfa_state.from_rule
                                     );
                                 }

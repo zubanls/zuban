@@ -140,7 +140,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         let metadata = match std::fs::symlink_metadata(path) {
             Ok(metadata) => metadata,
             Err(err) => {
-                tracing::info!("Reading metatdata failed for path={path:?}: {err}");
+                tracing::info!("Reading metadata failed for path={path:?}: {err}");
                 return None;
             }
         };
