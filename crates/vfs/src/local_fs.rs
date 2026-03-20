@@ -340,7 +340,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             // side, because lots of well-known projects are using it.
             let target_handle =
                 same_file::Handle::from_path(&target_path).map_err(|e| format!("{e}"))?;
-            for p in origin_path.ancestors() {
+            for p in origin_path.ancestors().skip(1) {
                 if let Ok(ancestor_handle) = same_file::Handle::from_path(p)
                     && target_handle == ancestor_handle
                 {

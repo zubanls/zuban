@@ -719,11 +719,13 @@ fn symlinks_with_dir_loop() {
         import simple_symlink
         import simple_symlink_dir
         import simple_symlink_dir2
+        import simple_symlink_dir3
 
         assert_type(foo.x, Any)
         assert_type(simple_symlink.x, str)
         assert_type(simple_symlink_dir.x, bytes)
         assert_type(simple_symlink_dir2.x, float)
+        assert_type(simple_symlink_dir3.x, float)
 
         x = 3
 
@@ -741,6 +743,9 @@ fn symlinks_with_dir_loop() {
         "simple_symlink_dir/file.py",
         "simple_symlink_dir/__init__.py",
     );
+    server
+        .tmp_dir
+        .create_symlink_dir("simple_symlink_dir2", "simple_symlink_dir3");
     // It is important to test that links can also be relative paths and not just absolute paths.
     server
         .tmp_dir
