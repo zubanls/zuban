@@ -426,3 +426,49 @@ T = TypeVar("T", bound=tuple[int, ...], covariant=True, default=tuple[int])
 
 class BinnedStatistic2dResult(NamedTuple, Generic[T]):
     binnumber: T
+
+[case staticmethod_override_with_typevars1]
+# From scipy-stubs
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class C(Generic[T]):
+    @staticmethod
+    def f() -> T: ...
+
+class D(C[T]):
+    @staticmethod
+    def f() -> T: ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] () -> T"
+reveal_type(D().f)  # N: Revealed type is "def () -> Any"
+
+reveal_type(D.f())  # N: Revealed type is "Any"
+reveal_type(D().f())  # N: Revealed type is "Any"
+
+reveal_type(D[int].f())  # N: Revealed type is "int"
+reveal_type(D[int]().f())  # N: Revealed type is "int"
+
+[case staticmethod_override_with_typevars2]
+# From scipy-stubs
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class C(Generic[T]):
+    @staticmethod
+    def f(x: T) -> T: ...
+
+class D(C[T]):
+    @staticmethod
+    def f(x: T) -> T: ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] (x: T) -> T"
+reveal_type(D().f)  # N: Revealed type is "def (x: Any) -> Any"
+
+reveal_type(D.f(1))  # N: Revealed type is "Literal[1]?"
+reveal_type(D().f(1))  # N: Revealed type is "Any"
+
+reveal_type(D[int].f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
+reveal_type(D[int]().f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"

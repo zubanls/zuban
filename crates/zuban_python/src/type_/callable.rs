@@ -842,16 +842,31 @@ impl CallableContent {
         attribute_class: Class,
         func_class_type: &TypeOrClass,
     ) -> Self {
-        let mut attribute_class = attribute_class; // A lifetime issue
-        let needs_self_type_variable = self.has_self_type_after_first_param(db);
+        self.merge_class_type_vars_detailed(
+            db,
+            class,
+            attribute_class,
+            self.has_self_type_after_first_param(db),
+            || func_class_type.as_type(db),
+        )
+    }
 
+    pub fn merge_class_type_vars_detailed(
+        &self,
+        db: &Database,
+        class: Class,
+        attribute_class: Class,
+        needs_self_type_variable: bool,
+        as_self_type: impl Fn() -> Type,
+    ) -> Self {
+        let mut attribute_class = attribute_class; // A lifetime issue
         let mut type_vars = self.type_vars.as_vec();
         let mut self_type_var_usage = None;
         let needs_additional_remap =
             matches!(attribute_class.generics, Generics::NotDefinedYet { .. })
                 && !class.use_cached_type_vars(db).is_empty();
         if needs_self_type_variable {
-            let bound = func_class_type.as_type(db);
+            let bound = as_self_type();
             /*
             let bound = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
             let bound = class_t.replace_type_var_likes(db, &mut |usage| {
@@ -912,7 +927,7 @@ impl CallableContent {
                 Some(match &self_type_var_usage {
                     Some(u) => Type::TypeVar(u.clone()),
                     None => {
-                        let t = func_class_type.as_type(db);
+                        let t = as_self_type();
                         if !needs_additional_remap {
                             return Some(t);
                         }

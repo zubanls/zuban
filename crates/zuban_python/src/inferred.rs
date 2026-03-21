@@ -1390,6 +1390,18 @@ impl<'db: 'slf, 'slf> Inferred {
                             new_c.return_type = Type::Any(AnyCause::Unannotated);
                             t = Type::Callable(Arc::new(new_c));
                         }
+                        if t.has_type_vars() && !t.has_untyped_type_params(i_s.db) {
+                            t = Type::Callable(Arc::new(c.merge_class_type_vars_detailed(
+                                i_s.db,
+                                attribute_class,
+                                attribute_class,
+                                false,
+                                || {
+                                    recoverable_error!("staticmethod should never have Self");
+                                    Type::ERROR
+                                },
+                            )));
+                        }
                         return Some(Some((
                             Inferred::from_type(t),
                             AttributeKind::Staticmethod {
@@ -1707,7 +1719,24 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     return Some(result.map(callable_into_inferred));
                 }
-                FunctionKind::Staticmethod => (),
+                FunctionKind::Staticmethod => {
+                    if t.has_type_vars() {
+                        return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
+                            c.merge_class_type_vars_detailed(
+                                i_s.db,
+                                attribute_class,
+                                attribute_class,
+                                false,
+                                || {
+                                    recoverable_error!(
+                                        "staticmethod should never have a Self annotation"
+                                    );
+                                    Type::ERROR
+                                },
+                            ),
+                        )))));
+                    }
+                }
             }
         }
         let mut new = None;
