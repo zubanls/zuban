@@ -35,7 +35,6 @@ pub(crate) use self::{
         CallableContent, CallableParam, CallableParams, ParamType, ParamTypeDetails, StarParamType,
         StarStarParamType, TypeGuardInfo, WrongPositionalCount, add_any_params_to_params,
         add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
-        merge_class_type_vars,
     },
     custom_behavior::CustomBehavior,
     dataclass::{

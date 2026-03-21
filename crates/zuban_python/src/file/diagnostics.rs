@@ -37,7 +37,7 @@ use crate::{
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
         NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
         TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
-        ensure_calculated_dataclass, format_callable_params, merge_class_type_vars,
+        ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -1526,9 +1526,8 @@ impl Inference<'_, '_, '_> {
                         cls.generics = Generics::NotDefinedYet {
                             class_ref: class.node_ref,
                         };
-                        *c = Cow::Owned(merge_class_type_vars(
+                        *c = Cow::Owned(c.merge_class_type_vars(
                             i_s.db,
-                            c,
                             cls,
                             cls,
                             &TypeOrClass::Class(cls),

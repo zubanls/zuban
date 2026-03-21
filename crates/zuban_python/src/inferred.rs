@@ -32,7 +32,7 @@ use crate::{
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
         IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
         PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, execute_tuple_class, execute_type_of_type, merge_class_type_vars,
+        TypeVarLikes, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
@@ -1461,9 +1461,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let c = func.as_callable(i_s, FirstParamProperties::None);
-                            let c = Arc::new(merge_class_type_vars(
+                            let c = Arc::new(c.merge_class_type_vars(
                                 i_s.db,
-                                &c,
                                 *class,
                                 attribute_class,
                                 func_class_type,
@@ -1517,9 +1516,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionOverload::new(
                                             o.iter_functions()
                                                 .map(|c| {
-                                                    Arc::new(merge_class_type_vars(
+                                                    Arc::new(c.merge_class_type_vars(
                                                         i_s.db,
-                                                        c,
                                                         *class,
                                                         attribute_class,
                                                         func_class_type,
@@ -1686,7 +1684,7 @@ impl<'db: 'slf, 'slf> Inferred {
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
-                        merge_class_type_vars(i_s.db, c, *class, attribute_class, func_class_type),
+                        c.merge_class_type_vars(i_s.db, *class, attribute_class, func_class_type),
                     )))));
                 }
                 FunctionKind::Property { .. } => {
