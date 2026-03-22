@@ -132,33 +132,32 @@ impl Type {
                 _ => Match::new_false(),
             },
             original_t1 @ Type::RecursiveType(rec1) => {
-                if let Some(g) = rec1.calculated_type_if_ready(i_s.db) {
+                if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
                     match value_type {
-                        t2 @ Type::Class(_) => {
-                            // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
-                            matcher.avoid_recursion(original_t1, t2, |matcher| {
-                                g.matches_internal(i_s, matcher, value_type, variance)
-                            })
-                        }
-                        t2 @ Type::RecursiveType(rec2) => {
-                            matcher.avoid_recursion(original_t1, t2, |matcher| {
-                                if let Some(t2) = rec2.calculated_type_if_ready(i_s.db) {
-                                    g.matches_internal(i_s, matcher, t2, variance)
+                        Type::Class(_) | Type::RecursiveType(_) => {
+                            // Classes like aliases can also be recursive in mypy, like
+                            // `class B(List[B])`.
+                            matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                                if let Type::RecursiveType(rec2) = value_type
+                                    && rec1.link == rec2.link
+                                    && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
+                                {
+                                    // Here we try to align the types. If they have the same link
+                                    // we should probably unpack them at the same time, because
+                                    // otherwise some TypeVars might match in weird ways and create
+                                    // weird unnecessary unions.
+                                    t1.matches_internal(i_s, matcher, t2, variance)
                                 } else {
-                                    Match::new_false()
+                                    t1.matches_internal(i_s, matcher, value_type, variance)
                                 }
                             })
                         }
-                        _ => g.matches_internal(i_s, matcher, value_type, variance),
+                        _ => t1.matches_internal(i_s, matcher, value_type, variance),
                     }
                 } else {
                     // Happens for example when creating the MRO of a class with a
                     // tuple base class.
-                    if let Type::RecursiveType(rec2) = value_type {
-                        (rec1.link == rec2.link).into()
-                    } else {
-                        Match::new_false()
-                    }
+                    Match::new_false()
                 }
             }
             Type::Self_ => matcher.match_self(i_s, value_type, variance),
