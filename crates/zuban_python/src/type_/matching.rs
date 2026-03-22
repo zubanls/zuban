@@ -277,27 +277,29 @@ impl Type {
                 debug!("Match covariant {got} :> {expected} -> {result:?}",)
             }
         };
+
+        if !matches!(
+            self,
+            Type::Class(_)
+                | Type::Tuple(_)
+                | Type::Dataclass(_)
+                | Type::TypedDict(_)
+                | Type::NamedTuple(_)
+                | Type::RecursiveType(_)
+                | Type::TypeVar(_)
+        ) {
+            let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
+            let result = m.or(|| {
+                self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
+            });
+            debug_message_for_result(&result);
+            return result;
+        }
+
         let mut m = Match::new_false();
         let mut mro = value_type.mro(i_s.db);
         // Protocols contain no object in its MRO, therefore we add that here.
         mro.returned_object = false;
-
-        // This is an optimization. Literal / None matching happens quite often and we therefore
-        // don't have to create types from some classes.
-        if self.is_non_union_singleton() {
-            let result = self
-                .matches_internal(i_s, matcher, &value_type, Variance::Covariant)
-                .or(|| {
-                    self.check_protocol_and_other_side(
-                        i_s,
-                        matcher,
-                        value_type,
-                        Variance::Covariant,
-                    )
-                });
-            debug_message_for_result(&result);
-            return result;
-        }
 
         for (i, t2) in mro {
             m = match t2 {

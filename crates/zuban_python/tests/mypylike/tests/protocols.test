@@ -651,3 +651,18 @@ z: P = B()  # E: Incompatible types in assignment (expression has type "B", vari
             # N: Following member(s) of "B" have conflicts: \
             # N:     __class__: expected setter type "type[A]", got "type[B]" \
             # N:     Setter types should behave contravariantly
+
+[case overload_with_protocol_should_be_different]
+[file stub.pyi]
+from typing import Protocol, overload
+
+class P(Protocol):
+    @property
+    def __class__(self, /) -> type[object]: ...
+    @__class__.setter
+    def __class__(self, t: type[object], /) -> None: ...
+
+@overload
+def diags(dtype: P | None = ...) -> str: ...
+@overload
+def diags(*, dtype: int) -> int: ...
