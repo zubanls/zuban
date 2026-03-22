@@ -973,7 +973,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             && let Some(ImportResult::File(imp)) = node_ref
                                 .file
                                 .import_from_first_part_without_loading_file(db, import_from)
-                            && imp == db.python_state.typing().file_index
+                            && (imp == db.python_state.typing().file_index
+                                || imp == db.python_state.typing_extensions().file_index)
                             && as_name.unpack().0.as_code() == "Literal"
                         {
                             return PreClassCalculationLookup::Literal;

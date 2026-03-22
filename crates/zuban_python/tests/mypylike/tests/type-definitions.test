@@ -1172,3 +1172,12 @@ def f(x: m.X, y: m.Y): ...
 from typing import Literal as L, Literal
 X = L["a", 'b']
 Y = Literal["z", 'x']
+
+[case literal_type_alias_with_literal_aliased_in_typing_extensions]
+import m
+def f(x: m.X, y: m.Y): ...
+
+[file m.py]
+from typing_extensions import Literal as L, Literal
+X = L["a", 'b']
+Y = Literal["z", 'x']
