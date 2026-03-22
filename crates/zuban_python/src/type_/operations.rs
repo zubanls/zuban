@@ -163,8 +163,15 @@ impl Type {
             }
             Type::Literal(literal) => {
                 let instance = literal.as_instance(i_s.db);
-                let l =
-                    instance.lookup(i_s, name, options().with_as_self_instance(&|| self.clone()));
+                let l = if name == "__class__" {
+                    // __class__ is defined as type[Self], which means that binding the self
+                    // instance causes problems. We should probably generalize this so that this
+                    // does not happen in any generic T -> type[T].
+                    instance.lookup(i_s, name, options())
+                } else {
+                    instance.lookup(i_s, name, options().with_as_self_instance(&|| self.clone()))
+                };
+
                 callable(self, l)
             }
             t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {

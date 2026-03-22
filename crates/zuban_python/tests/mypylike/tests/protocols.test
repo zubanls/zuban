@@ -629,7 +629,7 @@ fooer.__hash__
 
 doc_proto: DocProto = fooer
 
-[case overload_override_of_dunder_class_is_fine]
+[case override_of_dunder_class_is_fine]
 [file stub.pyi]
 from typing import Protocol, overload
 
@@ -651,6 +651,25 @@ z: P = B()  # E: Incompatible types in assignment (expression has type "B", vari
             # N: Following member(s) of "B" have conflicts: \
             # N:     __class__: expected setter type "type[A]", got "type[B]" \
             # N:     Setter types should behave contravariantly
+
+[case override_of_dunder_class_is_fine2]
+[file stub.pyi]
+from typing import Protocol, overload
+
+class P(Protocol):
+    @property
+    def __class__(self, /) -> type[int]: ...
+    @__class__.setter
+    def __class__(self, t: type[int], /) -> None: ...
+
+x: P = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "P") \
+           # N: Following member(s) of "str" have conflicts: \
+           # N:     __class__: expected "type[int]", got "type[str]" \
+           # N:     __class__: expected setter type "type[int]", got "type[str]"
+y: P = 1
+z: P = int()
+
+reveal_type((1).__class__)  # N: Revealed type is "type[int]"
 
 [case overload_with_protocol_should_be_different]
 [file stub.pyi]
