@@ -470,16 +470,15 @@ impl Type {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let mut m = Match::new_false();
         // Check if the value_type is special like Any or a Typevar and needs to be checked again.
         match value_type {
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(self, *cause);
-                return Match::True {
+                Match::True {
                     with_any: !matcher.is_matching_reverse(),
-                };
+                }
             }
-            Type::None if !i_s.flags().strict_optional => return Match::new_true(),
+            Type::None if !i_s.flags().strict_optional => Match::new_true(),
             Type::TypeVar(t2) => {
                 if let Some(match_) =
                     matcher.match_or_add_type_var_reverse_if_responsible(i_s, t2, self, variance)
@@ -488,21 +487,18 @@ impl Type {
                 }
                 if variance == Variance::Covariant {
                     match t2.type_var.kind(i_s.db) {
-                        TypeVarKind::Unrestricted => (),
+                        TypeVarKind::Unrestricted => Match::new_false(),
                         TypeVarKind::Bound(bound) => {
-                            let m = self.matches(i_s, matcher, bound, variance);
-                            if m.bool() {
-                                return m;
-                            }
+                            self.matches(i_s, matcher, bound, variance)
                         }
                         TypeVarKind::Constraints(mut constraints) => {
                             let m = constraints
                                 .all(|r| self.simple_matches(i_s, r, variance).bool());
-                            if m {
-                                return Match::new_true();
-                            }
+                            m.into()
                         }
                     }
+                } else {
+                    Match::new_false()
                 }
             }
             // Necessary to e.g. match int to Literal[1, 2]
@@ -510,24 +506,24 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                return Match::all(u2.iter(), |t| {
+                Match::all(u2.iter(), |t| {
                     if matches!(t, Type::None)  && i_s.should_ignore_none_in_untyped_context() {
                         Match::new_true()
                     } else {
                         self.matches(i_s, matcher, t, variance)
                     }
-                });
+                })
             }
             Type::Intersection(intersection2) => {
-                return Match::any(intersection2.iter_entries(), |t| {
+                Match::any(intersection2.iter_entries(), |t| {
                     self.matches(i_s, matcher, t, variance)
                 })
             }
             Type::NewType(n2) if variance == Variance::Covariant => {
-                return self.matches(i_s, matcher, &n2.type_, variance);
+                self.matches(i_s, matcher, &n2.type_, variance)
             }
             // Never is assignable to anything
-            Type::Never(_) if variance == Variance::Covariant => return Match::new_true(),
+            Type::Never(_) if variance == Variance::Covariant => Match::new_true(),
             Type::Self_ if variance == Variance::Covariant => {
                 if matches!(self, Type::Self_) {
                     // This matching did already happen.
@@ -538,38 +534,41 @@ impl Type {
                 {
                     let replaced = replace_self();
                     // We already matched Self
-                    if replaced != Type::Self_ {
-                        return self.matches(
+                    if replaced == Type::Self_ {
+                        Match::new_false()
+                    } else {
+                        self.matches(
                             i_s,
                             matcher,
                             &replaced,
                             variance,
-                        );
+                        )
                     }
                 } else if let Some(t) = i_s.current_type() {
-                    return self.matches(i_s, matcher, &t, variance);
+                    self.matches(i_s, matcher, &t, variance)
+                } else {
+                    Match::new_false()
                 }
             }
             Type::RecursiveType(rec2) => {
                 if let Some(t2) = rec2.calculated_type_if_ready(i_s.db) {
-                    return matcher.avoid_recursion(self, value_type, |matcher| {
+                    matcher.avoid_recursion(self, value_type, |matcher| {
                         self.matches(i_s, matcher, t2, variance)
-                    });
+                    })
+                } else {
+                    Match::new_false()
                 }
             }
             Type::Module(_) => {
-                m = m.or(|| {
-                    self.matches_internal(
-                        i_s,
-                        matcher,
-                        &i_s.db.python_state.module_type(),
-                        variance,
-                    )
-                })
+                self.matches_internal(
+                    i_s,
+                    matcher,
+                    &i_s.db.python_state.module_type(),
+                    variance,
+                )
             }
-            _ => (),
+            _ => Match::new_false()
         }
-        m
     }
 
     fn matches_union(
