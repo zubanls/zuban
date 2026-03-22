@@ -146,13 +146,13 @@ impl Type {
                                     // we should probably unpack them at the same time, because
                                     // otherwise some TypeVars might match in weird ways and create
                                     // weird unnecessary unions.
-                                    t1.matches_internal(i_s, matcher, t2, variance)
+                                    t1.matches(i_s, matcher, t2, variance)
                                 } else {
-                                    t1.matches_internal(i_s, matcher, value_type, variance)
+                                    t1.matches(i_s, matcher, value_type, variance)
                                 }
                             })
                         }
-                        _ => t1.matches_internal(i_s, matcher, value_type, variance),
+                        _ => t1.matches(i_s, matcher, value_type, variance),
                     }
                 } else {
                     // Happens for example when creating the MRO of a class with a
@@ -277,7 +277,6 @@ impl Type {
                 | Type::Dataclass(_)
                 | Type::TypedDict(_)
                 | Type::NamedTuple(_)
-                | Type::RecursiveType(_)
         ) {
             let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
             if !matches!(
