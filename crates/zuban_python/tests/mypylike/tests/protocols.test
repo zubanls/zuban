@@ -628,3 +628,26 @@ fooer.__str__
 fooer.__hash__
 
 doc_proto: DocProto = fooer
+
+[case overload_override_of_dunder_class_is_fine]
+[file stub.pyi]
+from typing import Protocol, overload
+
+class A: ...
+class B(A): ...
+
+class P(Protocol):
+    @property
+    def __class__(self, /) -> type[A]: ...
+    @__class__.setter
+    def __class__(self, t: type[A], /) -> None: ...
+
+
+x: P = object()  # E: Incompatible types in assignment (expression has type "object", variable has type "P") \
+                 # N: Following member(s) of "object" have conflicts: \
+                 # N:     __class__: expected "type[A]", got "type[object]"
+y: P = A()
+z: P = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P") \
+            # N: Following member(s) of "B" have conflicts: \
+            # N:     __class__: expected setter type "type[A]", got "type[B]" \
+            # N:     Setter types should behave contravariantly

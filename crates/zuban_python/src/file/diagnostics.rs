@@ -2647,13 +2647,17 @@ fn find_and_check_override(
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
         false
     };
+    let mut lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
+        .with_skip_first_of_mro(i_s.db, &override_class)
+        .with_avoid_inferring_return_types();
+    if instance.class.is_protocol(i_s.db) {
+        lookup_options = lookup_options.without_object();
+    }
     let mut original_details = instance.lookup(
         i_s,
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-        InstanceLookupOptions::new(&add_lookup_issue)
-            .with_skip_first_of_mro(i_s.db, &override_class)
-            .with_avoid_inferring_return_types(),
+        lookup_options,
     );
     add_error_if_final(i_s, from, name, &original_details);
 
