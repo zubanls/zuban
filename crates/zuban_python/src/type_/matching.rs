@@ -286,9 +286,18 @@ impl Type {
                 | Type::TypedDict(_)
                 | Type::NamedTuple(_)
                 | Type::RecursiveType(_)
-                | Type::TypeVar(_)
         ) {
             let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
+            if !matches!(
+                m,
+                Match::False {
+                    reason: MismatchReason::None,
+                    similar: false
+                }
+            ) {
+                debug_message_for_result(&m);
+                return m;
+            }
             let result =
                 m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant));
             debug_message_for_result(&result);
@@ -344,14 +353,13 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
-                    dbg!(value_type);
-                    dbg!(avoid_protocol_mismatch(
+                    avoid_protocol_mismatch(
                         i_s.db,
                         self,
                         value_type,
                         matcher.has_type_var_matcher(),
                         || class1.check_protocol_match(i_s, matcher, value_type),
-                    ))
+                    )
                 } else {
                     Match::new_false()
                 }
