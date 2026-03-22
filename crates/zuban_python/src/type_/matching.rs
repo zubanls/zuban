@@ -289,9 +289,8 @@ impl Type {
                 | Type::TypeVar(_)
         ) {
             let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
-            let result = m.or(|| {
-                self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
-            });
+            let result =
+                m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant));
             debug_message_for_result(&result);
             return result;
         }
@@ -341,8 +340,23 @@ impl Type {
         }
         let result = m
             .or(|| {
-                self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
+                // Check if it is a class with a protocol
+                if let Some(class1) = self.maybe_class(i_s.db)
+                    && class1.is_protocol(i_s.db)
+                {
+                    dbg!(value_type);
+                    dbg!(avoid_protocol_mismatch(
+                        i_s.db,
+                        self,
+                        value_type,
+                        matcher.has_type_var_matcher(),
+                        || class1.check_protocol_match(i_s, matcher, value_type),
+                    ))
+                } else {
+                    Match::new_false()
+                }
             })
+            .or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant))
             .or(|| self.check_promotion(i_s, matcher, value_type));
         debug_message_for_result(&result);
         result
@@ -418,9 +432,7 @@ impl Type {
         value_type: &Self,
     ) -> Match {
         let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
-        let result = m.or(|| {
-            self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
-        });
+        let result = m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Invariant));
         if cfg!(feature = "zuban_debug") {
             let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
             debug!("Match invariant {got} ≡ {expected} -> {result:?}");
@@ -451,7 +463,7 @@ impl Type {
         }
     }
 
-    fn check_protocol_and_other_side(
+    fn check_other_side(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -459,24 +471,7 @@ impl Type {
         variance: Variance,
     ) -> Match {
         let mut m = Match::new_false();
-        // 2. Check if it is a class with a protocol
-        if let Some(class1) = self.maybe_class(i_s.db)
-            && class1.is_protocol(i_s.db)
-            && variance == Variance::Covariant
-        {
-            m = avoid_protocol_mismatch(
-                i_s.db,
-                self,
-                value_type,
-                matcher.has_type_var_matcher(),
-                || class1.check_protocol_match(i_s, matcher, value_type),
-            );
-            if m.bool() {
-                return m;
-            }
-        }
-        // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
-        //    again.
+        // Check if the value_type is special like Any or a Typevar and needs to be checked again.
         match value_type {
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(self, *cause);
@@ -914,7 +909,7 @@ impl Type {
                 Match::new_true()
             }
             Type::Any(_) => {
-                // Return false, because this case is handled in check_protocol_and_other_side.
+                // Return false, because this case is handled in check_other_side.
                 // We have to handle this to avoid expanding types below in maybe_callable and
                 // recursing, if the return value is a recursive type definition.
                 Match::new_false()
