@@ -1163,3 +1163,12 @@ X = TypeAliasType(
     list[T],
     type_params=(T,),
 )
+
+[case literal_type_alias_with_literal_aliased]
+import m
+def f(x: m.X, y: m.Y): ...
+
+[file m.py]
+from typing import Literal as L, Literal
+X = L["a", 'b']
+Y = Literal["z", 'x']

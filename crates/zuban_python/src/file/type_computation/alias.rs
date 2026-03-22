@@ -30,6 +30,7 @@ use crate::{
         },
     },
     getitem::{SliceOrSimple, SliceType},
+    imports::ImportResult,
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -955,6 +956,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         pr: PointResolution<'file>,
     ) -> PreClassCalculationLookup<'file> {
+        let db = self.i_s.db;
         match pr {
             PointResolution::NameDef { node_ref, .. } => {
                 let name_def = node_ref.expect_name_def();
@@ -962,15 +964,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     TypeLike::ClassDef(class_def) => {
                         let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
                         cache_class_name(node_ref, class_def);
-                        class_node_ref.ensure_cached_class_infos(&InferenceState::new(
-                            self.i_s.db,
-                            node_ref.file,
-                        ));
+                        class_node_ref
+                            .ensure_cached_class_infos(&InferenceState::new(db, node_ref.file));
                         return PreClassCalculationLookup::Class(class_node_ref);
                     }
-                    TypeLike::ImportFromAsName(_) => {
-                        // TODO this is probably not a good idea to match this by string
-                        if name_def.as_code() == "Literal" {
+                    TypeLike::ImportFromAsName(as_name) => {
+                        if let Some(import_from) = as_name.import_from()
+                            && let Some(ImportResult::File(imp)) = node_ref
+                                .file
+                                .import_from_first_part_without_loading_file(db, import_from)
+                            && imp == db.python_state.typing().file_index
+                            && as_name.unpack().0.as_code() == "Literal"
+                        {
                             return PreClassCalculationLookup::Literal;
                         }
                     }
@@ -978,18 +983,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             PointResolution::Inferred(inferred) => {
-                if let Some(Specific::TypingLiteral) = inferred.maybe_saved_specific(self.i_s.db) {
+                if let Some(Specific::TypingLiteral) = inferred.maybe_saved_specific(db) {
                     return PreClassCalculationLookup::Literal;
-                } else if let Some(ComplexPoint::Class(_)) =
-                    inferred.maybe_complex_point(self.i_s.db)
-                {
-                    let cls = ClassNodeRef::from_node_ref(
-                        inferred.maybe_saved_node_ref(self.i_s.db).unwrap(),
-                    );
+                } else if let Some(ComplexPoint::Class(_)) = inferred.maybe_complex_point(db) {
+                    let cls =
+                        ClassNodeRef::from_node_ref(inferred.maybe_saved_node_ref(db).unwrap());
                     return PreClassCalculationLookup::Class(cls);
                 }
-                if let Some(f) = inferred.maybe_file(self.i_s.db) {
-                    return PreClassCalculationLookup::Module(self.i_s.db.loaded_python_file(f));
+                if let Some(f) = inferred.maybe_file(db) {
+                    return PreClassCalculationLookup::Module(db.loaded_python_file(f));
                 }
             }
             _ => (),
