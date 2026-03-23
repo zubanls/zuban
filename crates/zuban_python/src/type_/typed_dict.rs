@@ -509,7 +509,6 @@ impl TypedDict {
         i_s: &InferenceState,
         matcher: &mut Matcher,
         other: &Self,
-        read_only: bool,
     ) -> Match {
         let mut matches = Match::new_true();
         let ms1 = self.members(i_s.db);
@@ -1171,7 +1170,7 @@ pub(crate) fn initialize_typed_dict<'db>(
             Type::TypedDict(arg_td) => {
                 if arg_td.defined_at != typed_dict.defined_at
                     && !typed_dict
-                        .is_super_type_of(i_s, &mut matcher, arg_td, false)
+                        .is_super_type_of(i_s, &mut matcher, arg_td)
                         .bool()
                 {
                     first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
