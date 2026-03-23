@@ -1127,7 +1127,7 @@ impl Inference<'_, '_, '_> {
         {
             let inf = self.infer_name_of_definition_by_index(node_index);
             let t = inf.as_type(&i_s).ensure_dunder_match_args_with_literals(
-                db,
+                &i_s,
                 Some(PointLink::new(self.file.file_index, node_index)),
             );
             let is_ok = match t {

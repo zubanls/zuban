@@ -446,3 +446,28 @@ def f(c: C) -> None:
         case C(x=a, y=b):
             assert_type(a, int)
             assert_type(b, int)
+
+[case match_args_with_tuple_annotation1]
+from typing import ClassVar
+class C:
+    __match_args__: ClassVar[tuple[str, ...]] = "a",
+    a = 1
+
+def f(c: C) -> None:
+    match c:
+        case C(x):
+            reveal_type(x)  # N: Revealed type is "int"
+
+[case match_args_with_tuple_annotation2]
+from typing import ClassVar, Literal, Any
+
+def create_match_args() -> Any: ...
+
+class C:
+    __match_args__: ClassVar[tuple[Literal["a"]]] = create_match_args()
+    a = 1
+
+def f(c: C) -> None:
+    match c:
+        case C(x):
+            reveal_type(x)  # N: Revealed type is "int"

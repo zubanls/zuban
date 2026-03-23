@@ -2335,12 +2335,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.infer_expression_with_context(expr, result_context)
             }
             StarExpressionContent::StarExpression(expr) => {
-                self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
-                Inferred::new_any_from_error()
+                if !self.point(exprs.index()).calculated() {
+                    self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
+                }
+                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, exprs.index())
             }
-            StarExpressionContent::Tuple(tuple) => self
-                .infer_tuple_iterator(tuple.iter(), result_context)
-                .save_redirect(self.i_s, self.file, tuple.index()),
+            StarExpressionContent::Tuple(tuple) => {
+                if let Some(inferred) = self.check_point_cache(tuple.index()) {
+                    return inferred;
+                }
+                self.infer_tuple_iterator(tuple.iter(), result_context)
+                    .save_redirect(self.i_s, self.file, tuple.index())
+            }
         }
     }
 
