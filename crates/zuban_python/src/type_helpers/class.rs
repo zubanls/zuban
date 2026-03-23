@@ -383,7 +383,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
                 let had_binding_error = Cell::new(false);
                 let mut had_lookup_error = false;
-                let protocol_lookup_details = Instance::new(c, None).lookup(
+                let protocol_lookup_details = self.instance().lookup(
                     i_s,
                     name,
                     InstanceLookupOptions::new(&|_| {
@@ -478,7 +478,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &protocol_t,
                                             &t2,
-                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| false)
+                                            &self.lookup(i_s, name, ClassLookupOptions::new(&|_| false)
                                                     .with_as_type_type(&|| if other.is_subclassable(i_s.db) {
                                                         Type::Type(Arc::new(other.clone()))
                                                     } else {
