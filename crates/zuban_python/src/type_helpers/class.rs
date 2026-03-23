@@ -799,7 +799,7 @@ impl<'db: 'a, 'a> Class<'a> {
             );
         }
         for (mro_index, c) in self
-            .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db) || without_object)
+            .mro_without_remap(i_s.db, self.incomplete_mro(i_s.db) || without_object)
             .skip(super_count)
         {
             let (_, result) = c.lookup_symbol(i_s, name);
@@ -1023,8 +1023,31 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &'db Database,
         without_object: bool,
-    ) -> MroIterator<'db, 'a> {
+    ) -> MroIterator<'db, '_> {
         let class_infos = self.use_cached_class_infos(db);
+        let generics = if let Some(type_var_remap) = self.type_var_remap {
+            Generics::List(type_var_remap, Some(&self.generics))
+        } else {
+            self.generics
+        };
+        MroIterator::new(
+            db,
+            TypeOrClass::Class(*self),
+            generics,
+            class_infos.mro.iter(),
+            without_object || self.node_ref == db.python_state.object_node_ref(),
+        )
+    }
+
+    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, '_> {
+        self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
+    }
+
+    pub fn mro_without_remap(
+        &self,
+        db: &'db Database,
+        without_object: bool,
+    ) -> MroIterator<'db, 'a> {
         if let Some(type_var_remap) = self.type_var_remap
             && matches!(self.generics, Generics::Self_ { .. } | Generics::None)
         {
@@ -1034,9 +1057,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 Generics::List(type_var_remap, None),
                 None,
             )
-            .mro_maybe_without_object(db, without_object);
+            .mro_without_remap(db, without_object);
         }
-        // TODO Do something similar for generics, because otherwise we lose type_var_remap
+
+        // TODO This is necessary in theory to do proper remapping and avoid crashes
+        //debug_assert!(self.type_var_remap.is_none(), "{:?}", self.generics);
+        let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
             TypeOrClass::Class(*self),
@@ -1044,10 +1070,6 @@ impl<'db: 'a, 'a> Class<'a> {
             class_infos.mro.iter(),
             without_object || self.node_ref == db.python_state.object_node_ref(),
         )
-    }
-
-    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
-        self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
     }
 
     pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'_>> {

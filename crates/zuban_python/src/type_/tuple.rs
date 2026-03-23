@@ -772,7 +772,7 @@ pub(crate) fn lookup_on_tuple<'x>(
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
         let tuple_cls = tuple.class(i_s.db);
-        for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
+        for (mro_index, class_or_type) in tuple_cls.mro_without_remap(i_s.db, false) {
             let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
             if let Some(inf) = lookup.into_maybe_inferred() {
                 let Some(cls) = cls else {

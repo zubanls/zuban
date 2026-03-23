@@ -341,7 +341,7 @@ impl<'a> Instance<'a> {
         let mut attr_kind = AttributeKind::Attribute;
         for (mro_index, class) in self
             .class
-            .mro_maybe_without_object(i_s.db, options.without_object)
+            .mro_without_remap(i_s.db, options.without_object)
             .skip(options.super_count)
         {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);

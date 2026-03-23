@@ -253,7 +253,10 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(instance_class) = instance.inner_generic_class(i_s) else {
             unreachable!("{instance:?}")
         };
-        let Some((_, class_t)) = instance_class.mro(i_s.db).nth(mro_index.0 as usize) else {
+        let Some((_, class_t)) = instance_class
+            .mro_without_remap(i_s.db, false)
+            .nth(mro_index.0 as usize)
+        else {
             // Happens with super().__init__ when self: SomeProtocol.
             return i_s.db.python_state.object_class();
         };
