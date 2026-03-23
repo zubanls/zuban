@@ -1050,8 +1050,12 @@ impl<'db: 'a, 'a> Class<'a> {
         self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
     }
 
-    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> {
-        let generics = self.generics;
+    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'_>> {
+        let generics = if let Some(type_var_remap) = self.type_var_remap {
+            Generics::List(type_var_remap, Some(&self.generics))
+        } else {
+            self.generics
+        };
         self.use_cached_class_infos(db)
             .base_types()
             .map(move |b| apply_generics_to_base_class(db, b, generics))
@@ -2162,11 +2166,13 @@ impl<'db: 'a, 'a> Class<'a> {
             .use_cached_class_infos(db)
             .in_django_stubs
             .get_or_init(|| {
-                self.node_ref.file.is_from_django(db)
-                    || self.bases(db).any(|b| match b {
+                let result = self.node_ref.file.is_from_django(db) || {
+                    self.bases(db).any(|b| match b {
                         TypeOrClass::Type(_) => false,
                         TypeOrClass::Class(class) => class.has_django_stubs_base_class(db),
                     })
+                };
+                result
             })
     }
 
@@ -2436,7 +2442,6 @@ fn apply_generics_to_base_class<'a>(
                 ),
             })
         }
-        // TODO is this needed?
         //Type::RecursiveType(r) if matches!(r.origin(db), RecursiveTypeOrigin::Class(_)) => TypeOrClass::Class(Class::from_position(NodeRef::from_link(db, r.link), generics, r.generics.as_ref())),
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet { .. }) => {
             TypeOrClass::Type(Cow::Borrowed(t))
