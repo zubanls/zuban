@@ -542,11 +542,10 @@ fn matches_simple_params_part2<
                 WrappedParamType::StarStar(d1) => match specific2 {
                     WrappedParamType::StarStar(d2) => match (d1, d2) {
                         (WrappedStarStar::UnpackTypedDict(td1), _) => {
-                            // TODO extra_items: handle?!
                             return matches_simple_params_part2(
                                 i_s,
                                 matcher,
-                                td1.members(i_s.db).named.iter().map(TypedDictMemberParam),
+                                typed_dict_to_params(i_s.db, td1),
                                 params2,
                                 variance,
                             );
@@ -563,11 +562,10 @@ fn matches_simple_params_part2<
                     ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
                     | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
                         WrappedStarStar::UnpackTypedDict(td1) => {
-                            // TODO extra_items: handle?!
                             return matches_simple_params_part2(
                                 i_s,
                                 matcher,
-                                td1.members(i_s.db).named.iter().map(TypedDictMemberParam),
+                                typed_dict_to_params(i_s.db, td1),
                                 params2,
                                 variance,
                             );
@@ -755,6 +753,14 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
         ));
     }
     None
+}
+
+fn typed_dict_to_params<'x>(
+    db: &Database,
+    td1: &'x TypedDict,
+) -> impl Iterator<Item = impl Param<'x>> {
+    // TODO extra_items: handle?!
+    td1.members(db).named.iter().map(TypedDictMemberParam)
 }
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
