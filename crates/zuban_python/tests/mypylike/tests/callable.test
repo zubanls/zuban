@@ -603,3 +603,20 @@ def func6(cb1: Callable[[], str], cb2: Callable[[int], str]) -> None:
 
     f3: Callback1[...] = cb2  # OK
     f4: Callback2[...] = cb2  # OK
+
+[case callable_override_of_typeddict_unpacks]
+from typing import Never, Unpack, TypedDict
+
+class TDBase(TypedDict):
+    x: int
+
+class TD(TDBase, total=False):
+    y: int
+
+def a1(**kwargs: Unpack[TDBase]) -> None: ...
+def a2(**kwargs: Unpack[TD]) -> None: ...
+
+if bool():
+    a1 = a2
+else:
+    a2 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TDBase]], None]", variable has type "Callable[[**Unpack[TD]], None]")

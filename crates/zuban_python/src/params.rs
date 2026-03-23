@@ -509,7 +509,7 @@ pub fn matches_simple_params<
                         (
                             WrappedStarStar::UnpackTypedDict(td1),
                             WrappedStarStar::UnpackTypedDict(td2),
-                        ) => matches &= td2.matches(i_s, matcher, td1, true),
+                        ) => matches &= td1.is_super_type_of(i_s, matcher, &td2, true),
                         (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
                             if let Some(t2) = t2 {
                                 // TODO extra_items: handle?!
