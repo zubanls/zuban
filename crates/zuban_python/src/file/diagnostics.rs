@@ -2938,7 +2938,7 @@ pub(super) fn check_override(
                                         .issues
                                         .is_ignored_and_return_non_covered_error_code(
                                             &issue,
-                                            dbg!(type_ignore_comment),
+                                            type_ignore_comment,
                                         )
                                         .0
                                 {
