@@ -335,6 +335,7 @@ impl<'db: 'a, 'a> Class<'a> {
         matcher.ignore_positional_param_names = positional_default;
 
         let mut protocol_member_count = 0;
+        let mut match_result = Match::new_true();
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 debug!("Ignored a type in protocol mro. Why is it there in the first place?");
@@ -520,6 +521,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                 }
                             }
+                            match_result &= m;
 
                             let proto_setter_type = protocol_lookup_details.attr_kind.property_setter_type();
                             if other_setter_type.is_some() || proto_setter_type.is_some() {
@@ -704,7 +706,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         matcher.ignore_positional_param_names = ignore_positional_param_names_old;
         if notes.is_empty() && missing_members_empty {
-            Match::new_true()
+            match_result
         } else {
             Match::False {
                 similar: false,
