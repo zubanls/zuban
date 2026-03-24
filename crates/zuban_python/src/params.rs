@@ -132,14 +132,8 @@ pub fn matches_simple_params<
                     )
                 })
                 .map(|p| p.into_callable_param())
-                .chain(
-                    td2.members(i_s.db)
-                        .named
-                        .iter()
-                        .map(|m| TypedDictMemberParam(m).into_callable_param()),
-                )
+                .chain(typed_dict_to_params(i_s.db, &td2).map(|p| p.into_callable_param()))
                 .collect();
-            // TODO extra_items: handle?!
             return matches_simple_params_part2(
                 i_s,
                 matcher,
@@ -759,8 +753,18 @@ fn typed_dict_to_params<'x>(
     db: &Database,
     td1: &'x TypedDict,
 ) -> impl Iterator<Item = impl Param<'x>> {
-    // TODO extra_items: handle?!
-    td1.members(db).named.iter().map(TypedDictMemberParam)
+    let members = td1.members(db);
+    members
+        .named
+        .iter()
+        .map(TypedDictMemberParam::Member)
+        .chain(
+            members
+                .extra_items
+                .as_ref()
+                .map(|t| TypedDictMemberParam::ExtraItems(&t.t))
+                .into_iter(),
+        )
 }
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
@@ -1377,36 +1381,64 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-struct TypedDictMemberParam<'member>(&'member TypedDictMember);
+enum TypedDictMemberParam<'member> {
+    Member(&'member TypedDictMember),
+    ExtraItems(&'member Type),
+}
 
 impl<'member> Param<'member> for TypedDictMemberParam<'member> {
     fn has_default(&self) -> bool {
-        !self.0.required
+        match self {
+            Self::Member(m) => !m.required,
+            Self::ExtraItems(_) => false,
+        }
     }
 
     fn name(&self, db: &'member Database) -> Option<&str> {
-        Some(self.0.name.as_str(db))
+        match self {
+            Self::Member(m) => Some(m.name.as_str(db)),
+            Self::ExtraItems(_) => None,
+        }
     }
 
     fn specific<'db: 'member>(&self, _: &'db Database) -> WrappedParamType<'member> {
-        WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&self.0.type_)))
+        match self {
+            Self::Member(m) => WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&m.type_))),
+            Self::ExtraItems(t) => {
+                WrappedParamType::StarStar(WrappedStarStar::ValueType(Some(Cow::Borrowed(t))))
+            }
+        }
     }
 
     fn kind(&self, _: &Database) -> ParamKind {
-        ParamKind::KeywordOnly
+        match self {
+            Self::Member(_) => ParamKind::KeywordOnly,
+            Self::ExtraItems(_) => ParamKind::StarStar,
+        }
     }
 
     fn into_callable_param(self) -> CallableParam {
-        CallableParam {
-            type_: ParamType::KeywordOnly(self.0.type_.clone()),
-            name: Some(DbString::StringSlice(self.0.name)),
-            has_default: self.has_default(),
-            might_have_type_vars: true,
+        match self {
+            Self::Member(m) => CallableParam {
+                type_: ParamType::KeywordOnly(m.type_.clone()),
+                name: Some(DbString::StringSlice(m.name)),
+                has_default: self.has_default(),
+                might_have_type_vars: true,
+            },
+            Self::ExtraItems(t) => CallableParam {
+                type_: ParamType::StarStar(StarStarParamType::ValueType(t.clone())),
+                name: None,
+                has_default: self.has_default(),
+                might_have_type_vars: true,
+            },
         }
     }
 
     fn has_self_type(&self, db: &Database) -> bool {
-        self.0.type_.has_self_type(db)
+        match self {
+            Self::Member(m) => m.type_.has_self_type(db),
+            Self::ExtraItems(t) => t.has_self_type(db),
+        }
     }
 }
 

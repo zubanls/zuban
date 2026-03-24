@@ -646,3 +646,29 @@ if bool():
     a1 = a3
 else:
     a3 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD1]], None]", variable has type "Callable[[**Unpack[TD3]], None]")
+
+[case callable_override_of_typeddict_unpacks_with_extra_items]
+from typing import Never, Unpack, TypedDict, ReadOnly
+
+class TD1(TypedDict, extra_items=int):
+    x: str
+
+class TD2(TypedDict, extra_items=object):
+    x: str
+
+class TD3(TypedDict):
+    x: str
+
+def a1(**kwargs: Unpack[TD1]) -> None: ...
+def a2(**kwargs: Unpack[TD2]) -> None: ...
+def a3(**kwargs: Unpack[TD3]) -> None: ...
+
+if bool():
+    a1 = a2
+else:
+    a2 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD1]], None]", variable has type "Callable[[**Unpack[TD2]], None]")
+
+if bool():
+    a1 = a3  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD3]], None]", variable has type "Callable[[**Unpack[TD1]], None]")
+else:
+    a3 = a1
