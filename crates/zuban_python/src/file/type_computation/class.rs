@@ -18,7 +18,7 @@ use crate::{
         ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
-    diagnostics::IssueKind,
+    diagnostics::{Issue, IssueKind},
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::{NameResolution, PointResolution},
@@ -313,6 +313,11 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 reason: reason.clone(),
             });
         }
+    }
+    pub fn add_issue_on_args(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
+        let range = self.node().closing_and_opening_parentheses().unwrap();
+        self.file
+            .add_issue(i_s, Issue::from_start_stop(range.start, range.end, issue))
     }
 }
 

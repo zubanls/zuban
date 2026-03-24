@@ -959,7 +959,6 @@ impl Inference<'_, '_, '_> {
     pub fn ensure_class_diagnostics(&self, class_node_ref: ClassNodeRef) {
         let class = class_node_ref.maybe_class().unwrap();
         let db = self.i_s.db;
-        let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
 
@@ -1067,8 +1066,6 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let add_issue_to_arguments =
-            |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue);
         for base in class_infos.base_types() {
             if matches!(base, Type::NamedTuple(_)) {
                 // NamedTuple class definitions are special and don't need to be checked, because
@@ -1080,7 +1077,7 @@ impl Inference<'_, '_, '_> {
                 c.node_ref.as_link(),
                 type_vars,
                 base,
-                add_issue_to_arguments,
+                |issue| c.add_issue_on_args(self.i_s, issue),
             );
         }
         check_multiple_inheritance(
@@ -1092,7 +1089,7 @@ impl Inference<'_, '_, '_> {
                     .into_maybe_inferred()
                     .is_none()
             },
-            add_issue_to_arguments,
+            |issue| c.add_issue_on_args(self.i_s, issue),
         );
 
         let i_s = self.i_s.with_class_context(&c);
@@ -1172,7 +1169,7 @@ impl Inference<'_, '_, '_> {
                         );
                     }
                 }
-                if type_params.is_none() {
+                if class.type_params().is_none() {
                     check_protocol_type_var_variances(self.i_s, c)
                 }
             }

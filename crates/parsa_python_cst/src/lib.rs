@@ -2371,6 +2371,16 @@ impl<'db> ClassDef<'db> {
     pub fn docstring(&self) -> Option<Strings<'db>> {
         self.block().iter_stmt_likes().next()?.node.maybe_string()
     }
+
+    pub fn closing_and_opening_parentheses(&self) -> Option<std::ops::Range<CodeIndex>> {
+        let mut iterator = self.node.iter_children().skip(2);
+        let opening_paren = iterator.next().unwrap();
+        if opening_paren.as_code() != "(" {
+            return None;
+        }
+        let closing_paren = iterator.skip(1).next().unwrap();
+        Some(opening_paren.start()..closing_paren.end())
+    }
 }
 
 pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);
