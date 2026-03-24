@@ -1266,3 +1266,24 @@ def a4(x: DAny[tuple[int, int]]) -> None: ...
 def a5(x: DAny[tuple[int]]) -> None: ...
 @overload
 def a5(x: DAny[tuple[Any, ...]]) -> None: ...
+
+[case allow_subclass_as_self_argument_for_overloads]
+[file m.pyi]
+from typing import overload, assert_type
+
+class A:
+    # Not allowed, because why would one ever put it here
+    def f(self: B): ...  # E: The erased type of self "m.B" is not a supertype of its class "m.A"
+
+    @overload
+    def o(self: B, x: int) -> int: ...
+    @overload
+    def o(self, x: str) -> str: ...
+    @overload
+    def o(self, x: int) -> bytes: ...
+
+class B(A): ...
+
+assert_type(A().o(1), bytes)
+assert_type(B().o(""), str)
+assert_type(B().o(1), int)

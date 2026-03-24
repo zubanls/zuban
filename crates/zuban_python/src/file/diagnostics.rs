@@ -1770,7 +1770,13 @@ impl Inference<'_, '_, '_> {
                         if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
                             class_t = Type::Type(Arc::new(class_t));
                         };
-                        if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
+                        if !erased.is_simple_super_type_of(i_s, &class_t).bool()
+                            // For overloads we also allow members to have subclasses as Self
+                            // types, because this is useful. Mypy doesn't do this as of now, but
+                            // these are used e.g. in scipy-stubs.
+                            && (!is_overload_member
+                                || !erased.is_simple_sub_type_of(i_s, &class_t).bool())
+                        {
                             let param_name = first_param.name_def().as_code();
                             let issue = if ["self", "cls"].contains(&param_name) {
                                 let format_data = &FormatData::new_reveal_type(i_s.db);
