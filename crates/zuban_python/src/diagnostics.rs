@@ -2388,18 +2388,22 @@ impl Diagnostics {
                 return Err(issue);
             }
         }
-        self.0.push(Box::pin(issue));
-        let last_issue = self.0.last().unwrap();
+        let result = self.add(issue);
         if let Some(s) = add_not_covered_note {
             self.0.push(Box::pin(Issue::from_start_stop(
-                last_issue.start_position,
-                last_issue.end_position,
+                result.start_position,
+                result.end_position,
                 IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
                 ),
             )));
         }
-        Ok(last_issue)
+        Ok(result)
+    }
+
+    pub fn add(&self, issue: Issue) -> &Issue {
+        self.0.push(Box::pin(issue));
+        self.0.last().unwrap()
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {

@@ -312,18 +312,13 @@ impl<'db> PythonFile {
         let mut ignore_type_errors =
             tree.has_type_ignore_at_start()
                 .unwrap_or_else(|ignore_code| {
-                    issues
-                        .add_if_not_ignored(
-                            Issue::from_start_stop(
-                                1,
-                                1,
-                                IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
-                                    ignore_code: ignore_code.into(),
-                                },
-                            ),
-                            None,
-                        )
-                        .ok();
+                    issues.add(Issue::from_start_stop(
+                        1,
+                        1,
+                        IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                            ignore_code: ignore_code.into(),
+                        },
+                    ));
                     true
                 });
         let directives_info = info_from_directives(
@@ -339,9 +334,7 @@ impl<'db> PythonFile {
 
         if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
         {
-            let result =
-                issues.add_if_not_ignored(Issue::from_node_index(&tree, 0, issue, false), None);
-            debug_assert!(result.is_ok());
+            issues.add(Issue::from_node_index(&tree, 0, issue, false));
         }
         let points = Points::new(tree.length());
         Self::new_internal(
@@ -959,16 +952,11 @@ fn info_from_directives<'x>(
                 Ok(())
             };
             if let Err(err) = check() {
-                issues
-                    .add_if_not_ignored(
-                        Issue::from_start_stop(
-                            start_position,
-                            start_position + rest.len() as CodeIndex,
-                            IssueKind::DirectiveSyntaxError(err.to_string().into()),
-                        ),
-                        None,
-                    )
-                    .ok();
+                issues.add(Issue::from_start_stop(
+                    start_position,
+                    start_position + rest.len() as CodeIndex,
+                    IssueKind::DirectiveSyntaxError(err.to_string().into()),
+                ));
             }
         }
     }
@@ -988,51 +976,40 @@ struct DirectiveSplitter<'db, 'code> {
 impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
     type Item = (&'code str, Option<&'code str>);
     fn next(&mut self) -> Option<Self::Item> {
-        let split_name_value =
-            |start_position: CodeIndex, directive: &'code str, had_quotation_marks: bool| {
-                let (name, value) = if let Some((first, second)) = directive.split_once('=') {
-                    let mut second = second.trim();
-                    if had_quotation_marks {
-                        if second.chars().next().is_some_and(|first| first == '"')
-                            && second.chars().last().is_some_and(|last| last == '"')
-                        {
-                            second = &second[1..second.len() - 1];
-                        } else {
-                            self.issues
-                                .add_if_not_ignored(
-                                    Issue::from_start_stop(
-                                        start_position - 1,
-                                        start_position,
-                                        IssueKind::DirectiveSyntaxError(
-                                            "Content after quote in configuration comment".into(),
-                                        ),
-                                    ),
-                                    None,
-                                )
-                                .ok();
-                            second = &second[1..];
-                        }
-                    }
-                    (first.trim(), Some(second))
-                } else {
-                    (directive.trim(), None)
-                };
-                if name.contains('"') {
-                    self.issues
-                        .add_if_not_ignored(
-                            Issue::from_start_stop(
-                                start_position - 1,
-                                start_position,
-                                IssueKind::DirectiveSyntaxError(
-                                    "Quotes should not be part of the key".into(),
-                                ),
+        let split_name_value = |start_position: CodeIndex,
+                                directive: &'code str,
+                                had_quotation_marks: bool| {
+            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
+                let mut second = second.trim();
+                if had_quotation_marks {
+                    if second.chars().next().is_some_and(|first| first == '"')
+                        && second.chars().last().is_some_and(|last| last == '"')
+                    {
+                        second = &second[1..second.len() - 1];
+                    } else {
+                        self.issues.add(Issue::from_start_stop(
+                            start_position - 1,
+                            start_position,
+                            IssueKind::DirectiveSyntaxError(
+                                "Content after quote in configuration comment".into(),
                             ),
-                            None,
-                        )
-                        .ok();
+                        ));
+                        second = &second[1..];
+                    }
                 }
-                Some((name, value))
+                (first.trim(), Some(second))
+            } else {
+                (directive.trim(), None)
             };
+            if name.contains('"') {
+                self.issues.add(Issue::from_start_stop(
+                    start_position - 1,
+                    start_position,
+                    IssueKind::DirectiveSyntaxError("Quotes should not be part of the key".into()),
+                ));
+            }
+            Some((name, value))
+        };
         let mut opened_quotation_mark = false;
         let mut had_quotation_marks = false;
         for (i, n) in self.rest.bytes().enumerate() {
@@ -1051,18 +1028,13 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             }
         }
         if opened_quotation_mark {
-            self.issues
-                .add_if_not_ignored(
-                    Issue::from_start_stop(
-                        self.start_position,
-                        self.start_position + self.rest.len() as CodeIndex,
-                        IssueKind::DirectiveSyntaxError(
-                            "Unterminated quote in configuration comment".into(),
-                        ),
-                    ),
-                    None,
-                )
-                .ok();
+            self.issues.add(Issue::from_start_stop(
+                self.start_position,
+                self.start_position + self.rest.len() as CodeIndex,
+                IssueKind::DirectiveSyntaxError(
+                    "Unterminated quote in configuration comment".into(),
+                ),
+            ));
         } else {
             let rest = self.rest.trim();
             if !rest.is_empty() {
