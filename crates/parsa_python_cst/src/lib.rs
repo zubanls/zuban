@@ -2374,9 +2374,13 @@ impl<'db> ClassDef<'db> {
 
     pub fn closing_and_opening_parentheses(&self) -> Option<std::ops::Range<CodeIndex>> {
         let mut iterator = self.node.iter_children().skip(2);
-        let opening_paren = iterator.next().unwrap();
+        let mut opening_paren = iterator.next().unwrap();
         if opening_paren.as_code() != "(" {
-            return None;
+            if opening_paren.is_type(Nonterminal(type_params)) {
+                opening_paren = iterator.next().unwrap();
+            } else {
+                return None;
+            }
         }
         let closing_paren = iterator.skip(1).next().unwrap();
         Some(opening_paren.start()..closing_paren.end())
