@@ -536,13 +536,14 @@ fn matches_simple_params_part2<
                 WrappedParamType::StarStar(d1) => match specific2 {
                     WrappedParamType::StarStar(d2) => match (d1, d2) {
                         (WrappedStarStar::UnpackTypedDict(td1), _) => {
-                            return matches_simple_params_part2(
-                                i_s,
-                                matcher,
-                                typed_dict_to_params(i_s.db, td1),
-                                params2,
-                                variance,
-                            );
+                            return matches
+                                & matches_simple_params_part2(
+                                    i_s,
+                                    matcher,
+                                    typed_dict_to_params(i_s.db, td1),
+                                    params2,
+                                    variance,
+                                );
                         }
                         (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
                             matches &= match_(i_s, matcher, t1, &t2)
@@ -556,13 +557,14 @@ fn matches_simple_params_part2<
                     ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
                     | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
                         WrappedStarStar::UnpackTypedDict(td1) => {
-                            return matches_simple_params_part2(
-                                i_s,
-                                matcher,
-                                typed_dict_to_params(i_s.db, td1),
-                                params2,
-                                variance,
-                            );
+                            return matches
+                                & matches_simple_params_part2(
+                                    i_s,
+                                    matcher,
+                                    typed_dict_to_params(i_s.db, td1),
+                                    params2,
+                                    variance,
+                                );
                         }
                         WrappedStarStar::ValueType(t1)
                             if param2.has_default()

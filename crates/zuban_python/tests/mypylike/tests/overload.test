@@ -1215,3 +1215,15 @@ def check2(x: dict[Any, Any], y: Any):
     reveal_type(g({y: y}))  # N: Revealed type is "Any"
     reveal_type(g({y: 1}))  # N: Revealed type is "int"
     reveal_type(g({1: y}))  # N: Revealed type is "int"
+
+[case overload_with_typed_dict_unpacks]
+[file m.pyi]
+from typing import Never, Unpack, TypedDict, overload, Literal
+
+class TD1(TypedDict):
+    x: int
+
+@overload
+def a1(y: Literal[1], **kwargs: Unpack[TD1]) -> None: ...
+@overload
+def a1(y: Literal[2], **kwargs: Unpack[TD1]) -> None: ...
