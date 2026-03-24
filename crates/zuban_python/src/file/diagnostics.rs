@@ -2920,8 +2920,34 @@ pub(super) fn check_override(
                         added_liskov_note = true;
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
-                                from.file
-                                    .add_issue(i_s, Issue::from_start_stop(s.start, s.end, issue));
+                                if let Some(func) = maybe_func()
+                                    && let node = func.node()
+                                    && let type_ignore_comment =
+                                        from.file.tree.type_ignore_comment_for(
+                                            node.start(),
+                                            node.end_position_of_colon(),
+                                        )
+                                    && from
+                                        .file
+                                        .issues
+                                        .is_ignored_and_return_non_covered_error_code(
+                                            &issue,
+                                            dbg!(type_ignore_comment),
+                                        )
+                                        .0
+                                {
+                                    // Somehow Mypy also allows ignores on the first line even
+                                    // though it adds the error to the params:
+                                    //
+                                    //     def f(  # type: ignore[override]
+                                    //         self, x: str, y: str
+                                    //     )
+                                } else {
+                                    from.file.add_issue(
+                                        i_s,
+                                        Issue::from_start_stop(s.start, s.end, issue),
+                                    );
+                                }
                             }
                             _ => {
                                 from.add_issue(i_s, issue);

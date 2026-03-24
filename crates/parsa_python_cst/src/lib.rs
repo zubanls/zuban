@@ -460,6 +460,7 @@ impl Tree {
     }
 }
 
+#[derive(Debug)]
 pub enum TypeIgnoreComment<'db> {
     WithCodes {
         codes: &'db str,
