@@ -148,9 +148,13 @@ def expect_a(x: dict[str, A]) -> None: ...
 
 def foo(x: Literal[A.x], y: Literal[A.y], z: A) -> None:
     a3 = {"x": x, "y": y}
-    expect_a(a3)
+    expect_a(a3)  # E: Argument 1 to "expect_a" has incompatible type "dict[str, Literal[A.x, A.y]]"; expected "dict[str, A]" \
+                  # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                  # N: Consider using "Mapping" instead, which is covariant in the value type
     a4 = {"x": x, "x2": x}
-    expect_a(a4)
+    expect_a(a4)  # E: Argument 1 to "expect_a" has incompatible type "dict[str, Literal[A.x]]"; expected "dict[str, A]" \
+                  # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                  # N: Consider using "Mapping" instead, which is covariant in the value type
     a5 = {"x": x, "x2": A.x}
     expect_a(a5)
     a6 = {"x": x, "x2": A.y}
@@ -181,9 +185,14 @@ def expect_a(x: dict[str, A]) -> None: ...
 
 def foo(x: Literal[A.x], y: Literal[A.y], z: A) -> None:
     a3 = {"x": x, "y": y}
-    expect_a(a3)
+    expect_a(a3)  # E: Argument 1 to "expect_a" has incompatible type "dict[str, Literal[A.x, A.y]]"; expected "dict[str, A]" \
+                  # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                  # N: Consider using "Mapping" instead, which is covariant in the value type
     a4 = {"x": x, "x2": x}
-    expect_a(a4)
+    expect_a(a4)  # E: Argument 1 to "expect_a" has incompatible type "dict[str, Literal[A.x]]"; expected "dict[str, A]" \
+                  # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                  # N: Consider using "Mapping" instead, which is covariant in the value type
+    a4 = {"x": x, "x2": x}
     a5 = {"x": x, "x2": A.x}
     expect_a(a5)
     a6 = {"x": x, "x2": A.y}

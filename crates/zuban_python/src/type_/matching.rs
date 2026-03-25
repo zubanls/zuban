@@ -207,7 +207,9 @@ impl Type {
             },
             Type::Enum(e1) => match value_type {
                 Type::Enum(e2) => (e1 == e2).into(),
-                Type::EnumMember(member) => (e1 == &member.enum_).into(),
+                Type::EnumMember(member) if variance == Variance::Covariant => {
+                    (e1 == &member.enum_).into()
+                }
                 _ => Match::new_false(),
             },
             Type::EnumMember(m1) => match value_type {
