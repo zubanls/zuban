@@ -34,6 +34,28 @@ use crate::{
 use super::ClassNodeRef;
 
 impl<'db> Inference<'db, '_, '_> {
+    pub fn infer_list_or_set<'x>(
+        &self,
+        list_or_set_node_ref: ClassNodeRef,
+        elements: StarLikeExpressionIterator,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        self.infer_list_or_set_literal_from_context(
+            elements.clone(),
+            result_context,
+            list_or_set_node_ref,
+        )
+        .unwrap_or_else(|| {
+            let result = match elements {
+                elements @ StarLikeExpressionIterator::Elements(_) => {
+                    self.create_list_or_set_generics(elements)
+                }
+                StarLikeExpressionIterator::Empty => Type::Any(AnyCause::UnknownTypeParam),
+            };
+            Inferred::from_type(new_class!(list_or_set_node_ref.as_link(), result,))
+        })
+    }
+
     pub fn create_list_or_set_generics<'x>(
         &self,
         elements: impl Iterator<Item = StarLikeExpression<'x>>,

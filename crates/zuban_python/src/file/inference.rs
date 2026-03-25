@@ -3669,23 +3669,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Bool(b) => return check_literal(result_context, i_s, b.index(), Specific::BoolLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
-                if let Some(result) = self.infer_list_or_set_literal_from_context(
-                    list.unpack(),
-                    result_context,
-                    i_s.db.python_state.list_node_ref(),
-                ) {
-                    return result.save_redirect(i_s, self.file, atom.index());
-                }
-                let result = match list.unpack() {
-                    elements @ StarLikeExpressionIterator::Elements(_) => {
-                        self.create_list_or_set_generics(elements)
-                    }
-                    StarLikeExpressionIterator::Empty => Type::Any(AnyCause::UnknownTypeParam),
-                };
-                return Inferred::from_type(new_class!(
-                    i_s.db.python_state.list_node_ref().as_link(),
-                    result,
-                ));
+                return self
+                    .infer_list_or_set(
+                        self.i_s.db.python_state.list_node_ref(),
+                        list.unpack(),
+                        result_context,
+                    )
+                    .save_redirect(i_s, self.file, atom.index());
             }
             ListComprehension(comp) => return self.infer_list_comprehension(comp, result_context),
             Dict(dict) => {
@@ -3697,23 +3687,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             DictComprehension(comp) => return self.infer_dict_comprehension(comp, result_context),
             Set(set) => {
-                if let Some(result) = self.infer_list_or_set_literal_from_context(
-                    set.unpack(),
-                    result_context,
-                    i_s.db.python_state.set_node_ref(),
-                ) {
-                    return result.save_redirect(i_s, self.file, atom.index());
-                }
-                if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
-                    return Inferred::from_type(new_class!(
-                        i_s.db.python_state.set_node_ref().as_link(),
-                        self.create_list_or_set_generics(elements),
-                    ))
+                return self
+                    .infer_list_or_set(
+                        self.i_s.db.python_state.set_node_ref(),
+                        set.unpack(),
+                        result_context,
+                    )
                     .save_redirect(i_s, self.file, atom.index());
-                } else {
-                    // A set can never be empty, because at that point it's a dict: `{}`
-                    unreachable!()
-                }
             }
             SetComprehension(comp) => return self.infer_set_comprehension(comp, result_context),
             Tuple(tuple) => {
