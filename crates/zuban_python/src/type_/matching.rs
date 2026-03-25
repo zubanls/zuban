@@ -108,7 +108,12 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::Union(union_type1) => {
-                self.matches_union(i_s, matcher, union_type1, value_type, variance)
+                if variance == Variance::Invariant {
+                    return self.is_super_type_of(i_s, matcher, value_type)
+                        & self.is_sub_type_of(i_s, matcher, value_type);
+                } else {
+                    self.union_is_super_type_of(i_s, matcher, union_type1, value_type)
+                }
             }
             Type::FunctionOverload(_) if variance == Variance::Invariant => self
                 .matches_internal(i_s, matcher, value_type, Variance::Covariant)
@@ -570,39 +575,25 @@ impl Type {
         }
     }
 
-    fn matches_union(
+    fn union_is_super_type_of(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         u1: &UnionType,
         value_type: &Self,
-        variance: Variance,
     ) -> Match {
-        let matches_true_and_false = || {
-            // For covariance we want true and false to be present, for invariance, the entry count
-            // has to match.
-            u1.bool_literal_count() == 2
-                && (variance == Variance::Covariant || u1.entries.len() == 2)
-        };
         match value_type {
             Type::Union(u2) => {
                 if !u1.might_have_type_vars && !u2.might_have_type_vars && u1 == u2 {
                     return Match::new_true();
                 }
-                match variance {
-                    Variance::Covariant => Match::all(u2.iter(), |g2| {
-                        if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
-                            Match::new_true()
-                        } else {
-                            self.matches_union(i_s, matcher, u1, g2, variance)
-                        }
-                    }),
-                    Variance::Invariant => {
-                        self.is_super_type_of(i_s, matcher, value_type)
-                            & self.is_sub_type_of(i_s, matcher, value_type)
+                Match::all(u2.iter(), |g2| {
+                    if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        Match::new_true()
+                    } else {
+                        self.union_is_super_type_of(i_s, matcher, u1, g2)
                     }
-                    Variance::Contravariant => unreachable!(),
-                }
+                })
             }
             Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
                 let Type::Union(u) = t.as_ref() else {
@@ -612,10 +603,10 @@ impl Type {
                     u.iter().map(|t| Type::Type(Arc::new(t.clone()))),
                     u.might_have_type_vars,
                 ));
-                self.matches_union(i_s, matcher, u1, &repacked, variance)
+                self.union_is_super_type_of(i_s, matcher, u1, &repacked)
             }
             Type::Class(c2)
-                if c2.link == i_s.db.python_state.bool_link() && matches_true_and_false() =>
+                if c2.link == i_s.db.python_state.bool_link() && u1.bool_literal_count() == 2 =>
             {
                 Match::new_true()
             }
@@ -623,7 +614,10 @@ impl Type {
                 if let Type::TypeVar(type_var2) = value_type {
                     if matcher.is_matching_reverse() {
                         if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
-                            i_s, type_var2, self, variance,
+                            i_s,
+                            type_var2,
+                            self,
+                            Variance::Covariant,
                         ) {
                             return matched;
                         }
@@ -631,25 +625,13 @@ impl Type {
                     // It is possible for bounds to be unions and we therefore need to be able to
                     // match int | str against a TypeVar with the same bound.
                     if let TypeVarKind::Bound(bound) = type_var2.type_var.kind(i_s.db)
-                        && let m = self.matches_union(i_s, matcher, u1, bound, variance)
+                        && let m = self.union_is_super_type_of(i_s, matcher, u1, bound)
                         && m.bool()
                     {
                         return m;
                     }
                 }
-                match variance {
-                    Variance::Covariant => {
-                        Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
-                    }
-                    Variance::Invariant => Match::all(u1.iter(), |g| {
-                        if matches!(g, Type::None) && i_s.should_ignore_none_in_untyped_context() {
-                            Match::new_true()
-                        } else {
-                            g.matches(i_s, matcher, value_type, variance)
-                        }
-                    }),
-                    Variance::Contravariant => unreachable!(),
-                }
+                Match::any(u1.iter(), |g| g.is_super_type_of(i_s, matcher, value_type))
             }
         }
     }
