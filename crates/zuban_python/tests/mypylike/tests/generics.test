@@ -1995,3 +1995,16 @@ T = TypeVar("T", bound="C")
 
 class C(list[T], Generic[T]):
     def f(self, y: T) -> C[Self]: ...
+
+[case invariant_union_matching_with_subtypes]
+# See also discussion on GH #316
+from typing import Sequence, Literal
+class A: ...
+class B(A): ...
+class C(A): ...
+def f(a: Sequence[list[int | Literal[1]]], b: list[A | B]) -> None:
+    x: Sequence[list[int]] = a
+    y: list[A] = b
+    z: list[A | C] = b
+    k: list[A | B] = b
+    i: list[A | B] = y

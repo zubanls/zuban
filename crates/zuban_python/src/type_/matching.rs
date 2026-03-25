@@ -510,13 +510,19 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                Match::all(u2.iter(), |t| {
-                    if matches!(t, Type::None)  && i_s.should_ignore_none_in_untyped_context() {
-                        Match::new_true()
-                    } else {
-                        self.matches(i_s, matcher, t, variance)
-                    }
-                })
+                let m =
+                    Match::all(u2.iter(), |t| {
+                        if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            Match::new_true()
+                        } else {
+                            self.is_super_type_of(i_s, matcher, t)
+                        }
+                    });
+                if variance == Variance::Invariant {
+                    m & self.is_sub_type_of(i_s, matcher, value_type)
+                } else {
+                    m
+                }
             }
             Type::Intersection(intersection2) => {
                 Match::any(intersection2.iter_entries(), |t| {
