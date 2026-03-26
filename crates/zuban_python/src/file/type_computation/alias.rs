@@ -70,7 +70,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     alias.type_vars.format(&FormatData::new_short(db))
                 };
                 Some(format!(
-                    "{name}{type_vars} = {}",
+                    "{name}{} = {}",
+                    type_vars.trim(),
                     alias.type_if_valid().format_short(db)
                 ))
             }
