@@ -685,3 +685,18 @@ class P(Protocol):
 def diags(dtype: P | None = ...) -> str: ...
 @overload
 def diags(*, dtype: int) -> int: ...
+
+[case transitive_constraints_with_protocol]
+from typing import TypeVar, Protocol, Sequence
+T = TypeVar("T", contravariant=True)
+U = TypeVar("U", covariant=True)
+
+class P(Protocol[T, U]):
+    def map(self, x: T) -> U: ...
+
+class C:
+    def map[S](self, x: S) -> S: ...
+
+def f[S, R](x: Sequence[P[S, R]], y: S) -> R: ...
+
+reveal_type(f([C()], int()))  # N: Revealed type is "int"

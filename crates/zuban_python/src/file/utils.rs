@@ -571,7 +571,9 @@ fn check_elements_with_context<'db>(
     // Since it's a list or a set, now check all the entries if they match the given
     // result generic;
     let mut had_error = false;
-    let mut with_any_matches = Type::NEVER;
+    let mut result = Type::NEVER;
+    let mut has_any_match = false;
+    let needs_actual_return_type = i_s.mode.is_avoiding_errors() || generic_t.has_type_vars();
     for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             let value_t = inferred.as_cow_type(i_s);
@@ -602,7 +604,11 @@ fn check_elements_with_context<'db>(
                 },
             );
             if matches!(m, Match::True { with_any: true }) {
-                with_any_matches.simplified_union_in_place(i_s, &value_t)
+                has_any_match = true;
+            }
+
+            if needs_actual_return_type {
+                result.simplified_union_in_place(i_s, &value_t.avoid_implicit_literal_cow(i_s.db))
             }
         };
         let inference = file.inference(i_s);
@@ -632,7 +638,14 @@ fn check_elements_with_context<'db>(
             StarLikeExpression::StarExpression(_) => unreachable!(),
         };
     }
-    (!had_error).then(|| merge_with_any_matches(i_s, matcher, generic_t, with_any_matches))
+    (!had_error).then(|| {
+        let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t);
+        if needs_actual_return_type && (replaced.has_any(i_s) || has_any_match) {
+            result
+        } else {
+            replaced.into_owned()
+        }
+    })
 }
 
 fn merge_with_any_matches(

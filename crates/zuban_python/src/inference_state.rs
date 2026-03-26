@@ -49,6 +49,12 @@ pub(crate) enum Mode<'a> {
     AvoidErrors { had_error: &'a Cell<bool> },
 }
 
+impl Mode<'_> {
+    pub fn is_avoiding_errors(&self) -> bool {
+        matches!(self, Self::AvoidErrors { .. })
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct InferenceState<'db, 'a> {
     pub db: &'db Database,
