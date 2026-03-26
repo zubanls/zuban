@@ -26,5 +26,5 @@ pub trait File: std::fmt::Debug {
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
     fn invalidate_full_db(&mut self, project: &PythonProject);
-    fn has_super_file(&self) -> bool;
+    fn is_part_of_super_file(&self) -> bool;
 }

@@ -243,8 +243,9 @@ impl File for PythonFile {
         );
     }
 
-    fn has_super_file(&self) -> bool {
-        self.super_file.is_some()
+    fn is_part_of_super_file(&self) -> bool {
+        self.super_file
+            .is_some_and(|super_file| super_file.offset.is_some())
     }
 }
 

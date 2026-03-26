@@ -1368,7 +1368,7 @@ impl Database {
     fn invalidate_db(&mut self) {
         for file_state in self.vfs.files.iter_mut() {
             if let Some(file) = file_state.file_mut() {
-                if file.has_super_file() {
+                if file.is_part_of_super_file() {
                     file_state.unload();
                 } else {
                     file.invalidate_full_db(&self.project);
