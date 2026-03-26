@@ -29,6 +29,7 @@ use crate::{
             typed_dict::new_typed_dict_with_execution_syntax,
         },
     },
+    format_data::FormatData,
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
     inference_state::InferenceState,
@@ -52,6 +53,38 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             self.compute_type_assignment(assignment),
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_))
         )
+    }
+
+    pub fn documentation_for_assignment(&self, assignment: Assignment<'file>) -> Option<String> {
+        self.documentation_for_lookup(self.compute_type_assignment(assignment))
+    }
+
+    fn documentation_for_lookup(&self, lookup: Lookup) -> Option<String> {
+        match lookup {
+            Lookup::T(TypeContent::TypeAlias(alias)) => {
+                let db = self.i_s.db;
+                let name = alias.name(db);
+                let type_vars = if alias.type_vars.is_empty() {
+                    "".into()
+                } else {
+                    alias.type_vars.format(&FormatData::new_short(db))
+                };
+                Some(format!(
+                    "{name}{type_vars} = {}",
+                    alias.type_if_valid().format_short(db)
+                ))
+            }
+            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => None,
+            // TODO for some of these we want documentation and a nicer representation
+            _ => None,
+        }
+    }
+
+    pub fn documentation_for_type_alias(
+        &self,
+        alias: parsa_python_cst::TypeAlias,
+    ) -> Option<String> {
+        self.documentation_for_lookup(self.compute_type_alias_syntax(alias))
     }
 
     pub(super) fn compute_type_assignment(

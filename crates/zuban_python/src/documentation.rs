@@ -1,7 +1,9 @@
+use parsa_python_cst::{GotoNode, TypeLike};
+
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
     format_data::FormatData,
-    goto::GotoResolver,
+    goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::Range,
     node_ref::NodeRef,
@@ -14,39 +16,77 @@ impl<'project> Document<'project> {
         position: InputPosition,
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
-        let mut resolver = GotoResolver::new(
-            self.positional_document(position)?,
-            GotoGoal::Indifferent,
-            |n: ValueName| n.name.documentation().to_string(),
-        );
+        let document = self.positional_document(position)?;
+        Ok(with_i_s_non_self(
+            document.db,
+            document.file,
+            document.scope,
+            |i_s| self.documentation_part2(document, only_docstrings, i_s),
+        ))
+    }
+    fn documentation_part2(
+        &self,
+        document: PositionalDocument<'project, GotoNode<'project>>,
+        only_docstrings: bool,
+        i_s: &InferenceState,
+    ) -> Option<DocumentationResult<'_>> {
+        let mut resolver = GotoResolver::new(document, GotoGoal::Indifferent, |n: ValueName| {
+            n.name.documentation().to_string()
+        });
         let (inf, mut results) = resolver.infer_definition();
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
-            return Ok(None);
+            return None;
         };
 
         let db = &self.project.db;
         let mut overwritten_results = vec![];
 
-        let mut type_formatted = resolver.infos.with_i_s(|i_s| {
-            if only_docstrings {
-                "".into()
-            } else {
-                pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
-            }
-        });
+        let mut type_formatted = if only_docstrings {
+            "".into()
+        } else {
+            pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
+        };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
-                && let Some(func) = name_def.maybe_name_of_func()
-                && let Some(Type::Callable(c)) = NodeRef::new(n.file, func.index()).maybe_type()
-                && matches!(c.kind, FunctionKind::Property { .. })
             {
-                overwritten_results.push(n.documentation().to_string());
-                type_formatted = c.format_pretty(&FormatData::new_short(db)).into_string();
-                return "property";
+                match name_def.expect_type() {
+                    TypeLike::Assignment(assignment) => {
+                        if let Some(type_docs) = n
+                            .file
+                            .name_resolution_for_types(&InferenceState::new(db, n.file))
+                            .documentation_for_assignment(assignment)
+                        {
+                            type_formatted = type_docs;
+                            return "type";
+                        }
+                    }
+                    TypeLike::TypeAlias(type_alias) => {
+                        if let Some(type_docs) = n
+                            .file
+                            .name_resolution_for_types(&InferenceState::new(db, n.file))
+                            .documentation_for_type_alias(type_alias)
+                        {
+                            type_formatted = type_docs;
+                            return "type";
+                        }
+                    }
+                    TypeLike::Function(func) => {
+                        if let Some(Type::Callable(c)) =
+                            NodeRef::new(n.file, func.index()).maybe_type()
+                            && matches!(c.kind, FunctionKind::Property { .. })
+                        {
+                            overwritten_results.push(n.documentation().to_string());
+                            type_formatted =
+                                c.format_pretty(&FormatData::new_short(db)).into_string();
+                            return "property";
+                        }
+                    }
+                    _ => (),
+                }
             }
             kind
         });
@@ -56,7 +96,7 @@ impl<'project> Document<'project> {
             results = overwritten_results;
         }
         if results.is_empty() {
-            return Ok(None);
+            return None;
         }
         results.retain(|doc| !doc.is_empty());
 
@@ -81,11 +121,7 @@ impl<'project> Document<'project> {
                             type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
-                    ["function" | "property"] => (),
-                    ["type"] => {
-                        out += name.as_code();
-                        out += " = ";
-                    }
+                    ["function" | "property" | "type"] => (),
                     _ => {
                         out += name.as_code();
                         out += ": ";
@@ -100,10 +136,10 @@ impl<'project> Document<'project> {
             }
             out
         };
-        Ok(Some(DocumentationResult {
+        Some(DocumentationResult {
             documentation,
             on_symbol_range,
-        }))
+        })
     }
 }
 
