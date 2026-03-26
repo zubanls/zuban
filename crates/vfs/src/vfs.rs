@@ -474,9 +474,12 @@ impl<F: VfsFile> Vfs<F> {
         if tracing::enabled!(Level::INFO)
             && let InvalidationDetail::Some(invs) = &*ensured.invalidations.borrow()
         {
+            let path = &self.file_state(file_index).path.path;
+            if invs.is_empty() {
+                tracing::info!("Loading {path} does not invalidate any other files");
+            }
             for invalidation in invs {
                 let p = &self.file_state(*invalidation).path.path;
-                let path = &self.file_state(file_index).path.path;
                 tracing::info!("Invalidate {p} because we're loading {path}");
             }
         }

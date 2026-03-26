@@ -260,6 +260,10 @@ impl vfs::VfsFile for PythonFile {
     }
 
     fn invalidate_references_to(&mut self, file_index: Option<FileIndex>) {
+        tracing::trace!(
+            "Invalidating references to {file_index:?} from {:?}",
+            self.file_index
+        );
         self.points.invalidate_references_to(file_index);
         self.issues.invalidate_non_name_binder_issues();
         if let Some(cache) = self.stub_cache.as_mut() {
