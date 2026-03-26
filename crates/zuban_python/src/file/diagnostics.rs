@@ -347,6 +347,7 @@ impl Inference<'_, '_, '_> {
                             start_position,
                             end_position,
                             IssueKind::UnreachableStatement,
+                            false,
                         ),
                     );
                 })
@@ -2951,7 +2952,7 @@ pub(super) fn check_override(
                                 } else {
                                     from.file.add_issue(
                                         i_s,
-                                        Issue::from_start_stop(s.start, s.end, issue),
+                                        Issue::from_start_stop(s.start, s.end, issue, false),
                                     );
                                 }
                             }

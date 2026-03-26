@@ -1860,3 +1860,25 @@ str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore
 [out]
 __main__:10: error: Name "undefined" is not defined
 __main__:10: note: Error code "name-defined" not covered by "type: ignore" comment
+
+[case name_binder_keep_notes_during_invalidation]
+[file m.py]
+import n
+x  # type: ignore[assignment]
+x = 1
+
+reveal_type(n.x)
+
+[file n.py]
+x = 1
+[file n.py.2]
+x = ""
+
+[out]
+m.py:2: error: Name "x" is used before definition
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:5: note: Revealed type is "int"
+==
+m.py:2: error: Name "x" is used before definition
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:5: note: Revealed type is "str"

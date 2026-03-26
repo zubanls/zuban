@@ -718,12 +718,13 @@ impl Issue {
         start_position: CodeIndex,
         end_position: CodeIndex,
         kind: IssueKind,
+        from_name_binder: bool,
     ) -> Self {
         Self {
             kind,
             start_position,
             end_position,
-            from_name_binder: false,
+            from_name_binder,
         }
     }
 }
@@ -2365,6 +2366,7 @@ impl Diagnostics {
         if is_ignored {
             return Err(issue);
         }
+        let from_name_binder = issue.from_name_binder;
         let result = self.add(issue);
         if let Some(s) = add_not_covered_note {
             self.0.push(Box::pin(Issue::from_start_stop(
@@ -2373,6 +2375,7 @@ impl Diagnostics {
                 IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
                 ),
+                from_name_binder,
             )));
         }
         Ok(result)

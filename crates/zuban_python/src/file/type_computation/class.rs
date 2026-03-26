@@ -316,8 +316,10 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
     pub fn add_issue_on_args(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         let range = self.node().closing_and_opening_parentheses().unwrap();
-        self.file
-            .add_issue(i_s, Issue::from_start_stop(range.start, range.end, issue))
+        self.file.add_issue(
+            i_s,
+            Issue::from_start_stop(range.start, range.end, issue, false),
+        )
     }
 }
 

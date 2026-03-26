@@ -2707,6 +2707,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
+                            false,
                         ),
                     );
                 }
@@ -2741,6 +2742,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
+                            false,
                         ),
                     );
                 }
@@ -2785,6 +2787,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     element_type: formatted.got,
                                     container_type: formatted.expected,
                                 },
+                                false,
                             ),
                         );
                     }

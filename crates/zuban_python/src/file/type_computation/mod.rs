@@ -435,6 +435,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     start,
                     end as CodeIndex,
                     IssueKind::InvalidSyntaxInTypeAnnotation,
+                    false,
                 ),
             );
             TypeContent::UNKNOWN_REPORTED
@@ -4032,6 +4033,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     IssueKind::InvalidSyntaxInTypeComment {
                         type_comment: s.trim().into(),
                     },
+                    false,
                 ),
             );
             TypeCommentDetails::new_any()

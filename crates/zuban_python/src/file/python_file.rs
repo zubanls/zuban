@@ -322,6 +322,7 @@ impl<'db> PythonFile {
                         IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
                             ignore_code: ignore_code.into(),
                         },
+                        true,
                     ));
                     true
                 });
@@ -960,6 +961,7 @@ fn info_from_directives<'x>(
                     start_position,
                     start_position + rest.len() as CodeIndex,
                     IssueKind::DirectiveSyntaxError(err.to_string().into()),
+                    true,
                 ));
             }
         }
@@ -997,6 +999,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                             IssueKind::DirectiveSyntaxError(
                                 "Content after quote in configuration comment".into(),
                             ),
+                            true,
                         ));
                         second = &second[1..];
                     }
@@ -1010,6 +1013,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                     start_position - 1,
                     start_position,
                     IssueKind::DirectiveSyntaxError("Quotes should not be part of the key".into()),
+                    true,
                 ));
             }
             Some((name, value))
@@ -1038,6 +1042,7 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
                 IssueKind::DirectiveSyntaxError(
                     "Unterminated quote in configuration comment".into(),
                 ),
+                true,
             ));
         } else {
             let rest = self.rest.trim();
