@@ -360,7 +360,7 @@ def f() -> None:
 __main__.py:6:documentation -> "```python\n(class) Any | None\n```"
 __main__.py:8:documentation -> "```python\n(variable) x: Any | None\n```"
 
-[case type_alias_documentation]
+[case type_alias_documentation_as_normal_values]
 from typing import TypeAliasType, TypeAlias, TypeVar, Any
 T = TypeVar("T", bound=list[Any], default=list[str])
 
@@ -439,3 +439,152 @@ __main__.py:54:documentation -> "```python\n(type) X1 = list[int]\n```"
 __main__.py:56:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
 __main__.py:58:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
 __main__.py:60:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
+
+[case type_alias_documentation_in_funcs]
+from typing import TypeAliasType, TypeAlias, TypeVar, Any
+T = TypeVar("T", bound=list[Any], default=list[str])
+
+X1 = list[int]
+Y1 = list[T] | int
+Z1 = list["Z1[T]"] | T
+
+X2: TypeAlias = list[int]
+Y2: TypeAlias = list[T] | int
+Z2: TypeAlias = list["Z2[T]"] | T
+
+X3 = TypeAliasType("X3", list[int])
+Y3 = TypeAliasType("Y3", list[T] | int, type_params=(T,))
+Z3 = TypeAliasType("Z3", list["Z3[T]"] | T, type_params=(T,))
+
+type X4 = list[int]
+type Y4[S: list[Any] = list[str]] = list[S] | int
+type Z4[S] = list[Z4[S]] | S
+
+def f1(
+#? documentation
+    a: X1
+#? documentation
+    , b: Y1
+#? documentation
+    , c: Z1
+) -> None: ...
+
+def f2(
+#? documentation
+    a: X2
+#? documentation
+    , b: Y2
+#? documentation
+    , c: Z2
+) -> None: ...
+
+def f3(
+#? documentation
+    a: X3
+#? documentation
+    , b: Y3
+#? documentation
+    , c: Z3
+) -> None: ...
+
+def f4(
+#? documentation
+    a: X4
+#? documentation
+    , b: Y4
+#? documentation
+    , c: Z4
+) -> None: ...
+
+Indirect1 = X1
+Indirect2 = Y2
+Indirect3 = Z3
+Indirect4 = Z4
+
+def f5(
+#? documentation
+    a: Indirect1
+#? documentation
+    , b: Indirect2
+#? documentation
+    , c: Indirect3
+#? documentation
+    , d: Indirect4
+) -> None: ...
+
+[out]
+__main__.py:22:documentation -> "```python\n(type) X1 = list[int]\n```"
+__main__.py:24:documentation -> "```python\n(type) Y1[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:26:documentation -> "```python\n(type) Z1[T: list[Any] = list[str]] = list[Z1[T = list[str]]] | T = list[str]\n```"
+__main__.py:31:documentation -> "```python\n(type) X2 = list[int]\n```"
+__main__.py:33:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:35:documentation -> "```python\n(type) Z2[T: list[Any] = list[str]] = list[Z2[T = list[str]]] | T = list[str]\n```"
+__main__.py:40:documentation -> "```python\n(type) X3 = list[int]\n```"
+__main__.py:42:documentation -> "```python\n(type) Y3[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:44:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
+__main__.py:49:documentation -> "```python\n(type) X4 = list[int]\n```"
+__main__.py:51:documentation -> "```python\n(type) Y4[S: list[Any] = list[str]] = list[S = list[str]] | int\n```"
+__main__.py:53:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
+__main__.py:63:documentation -> "```python\n(type) X1 = list[int]\n```"
+__main__.py:65:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:67:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
+__main__.py:69:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
+
+[case type_alias_documentation_on_definitions]
+from typing import TypeAliasType, TypeAlias, TypeVar, Any
+T = TypeVar("T", bound=list[Any], default=list[str])
+
+#? --codepoint-column 0 documentation
+X1 = list[int]
+#? --codepoint-column 0 documentation
+Y1 = list[T] | int
+#? --codepoint-column 0 documentation
+Z1 = list["Z1[T]"] | T
+
+#? --codepoint-column 0 documentation
+X2: TypeAlias = list[int]
+#? --codepoint-column 0 documentation
+Y2: TypeAlias = list[T] | int
+#? --codepoint-column 0 documentation
+Z2: TypeAlias = list["Z2[T]"] | T
+
+#? --codepoint-column 0 documentation
+X3 = TypeAliasType("X3", list[int])
+#? --codepoint-column 0 documentation
+Y3 = TypeAliasType("Y3", list[T] | int, type_params=(T,))
+#? --codepoint-column 0 documentation
+Z3 = TypeAliasType("Z3", list["Z3[T]"] | T, type_params=(T,))
+
+#? --codepoint-column 6 documentation
+type X4 = list[int]
+#? --codepoint-column 6 documentation
+type Y4[S: list[Any] = list[str]] = list[S] | int
+#? --codepoint-column 6 documentation
+type Z4[S] = list[Z4[S]] | S
+
+#? --codepoint-column 0 documentation
+Indirect1 = X1
+#? --codepoint-column 0 documentation
+Indirect2 = Y2
+#? --codepoint-column 0 documentation
+Indirect3 = Z3
+#? --codepoint-column 0 documentation
+Indirect4 = Z4
+
+[out]
+__main__.py:5:documentation -> "```python\n(type) X1 = list[int]\n```"
+__main__.py:7:documentation -> "```python\n(type) Y1[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:9:documentation -> "```python\n(type) Z1[T: list[Any] = list[str]] = list[Z1[T = list[str]]] | T = list[str]\n```"
+__main__.py:12:documentation -> "```python\n(type) X2 = list[int]\n```"
+__main__.py:14:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:16:documentation -> "```python\n(type) Z2[T: list[Any] = list[str]] = list[Z2[T = list[str]]] | T = list[str]\n```"
+__main__.py:19:documentation -> "```python\n(type) X3 = list[int]\n```"
+__main__.py:21:documentation -> "```python\n(type) Y3[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:23:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
+__main__.py:26:documentation -> "```python\n(type) X4 = list[int]\n```"
+__main__.py:28:documentation -> "```python\n(type) Y4[S: list[Any] = list[str]] = list[S = list[str]] | int\n```"
+__main__.py:30:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
+__main__.py:33:documentation -> "```python\n(type) X1 = list[int]\n```"
+__main__.py:35:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
+__main__.py:37:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
+__main__.py:39:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
