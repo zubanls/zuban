@@ -44,10 +44,16 @@ impl<'project> Document<'project> {
         let db = &self.project.db;
         let mut overwritten_results = vec![];
 
+        let mut known_kind = None;
         let mut type_formatted = if only_docstrings {
             "".into()
         } else {
-            pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
+            let t = inf.as_cow_type(i_s);
+            if let Type::Namespace(_) = t.as_ref() {
+                // Namespaces need a kind earlier, because goto doesn't work on them
+                known_kind = Some("namespace");
+            }
+            pretty_type_formatting(i_s, &t).into_string()
         };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
@@ -62,7 +68,9 @@ impl<'project> Document<'project> {
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_assignment(assignment)
                         {
-                            type_formatted = type_docs;
+                            if !only_docstrings {
+                                type_formatted = type_docs;
+                            }
                             return "type";
                         }
                     }
@@ -72,7 +80,9 @@ impl<'project> Document<'project> {
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_type_alias(type_alias)
                         {
-                            type_formatted = type_docs;
+                            if !only_docstrings {
+                                type_formatted = type_docs;
+                            }
                             return "type";
                         }
                     }
@@ -82,8 +92,10 @@ impl<'project> Document<'project> {
                             && matches!(c.kind, FunctionKind::Property { .. })
                         {
                             overwritten_results.push(n.documentation().to_string());
-                            type_formatted =
-                                c.format_pretty(&FormatData::new_short(db)).into_string();
+                            if !only_docstrings {
+                                type_formatted =
+                                    c.format_pretty(&FormatData::new_short(db)).into_string();
+                            }
                             return "property";
                         }
                     }
@@ -91,7 +103,9 @@ impl<'project> Document<'project> {
                         if let Some(ComplexPoint::TypeVarLike(tvl)) =
                             NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
                         {
-                            type_formatted = tvl.format_for_docs(&FormatData::new_short(db))
+                            if !only_docstrings {
+                                type_formatted = tvl.format_for_docs(&FormatData::new_short(db))
+                            }
                         } else {
                             recoverable_error!("Expected a type param to have a saved TypeVarLike")
                         }
@@ -107,7 +121,7 @@ impl<'project> Document<'project> {
         if !overwritten_results.is_empty() {
             results = overwritten_results;
         }
-        if results.is_empty() {
+        if results.is_empty() && only_docstrings {
             return None;
         }
         results.retain(|doc| !doc.is_empty());
@@ -122,6 +136,10 @@ impl<'project> Document<'project> {
                 out.push('(');
                 out += &declaration_kinds.join(", ");
                 out += ") ";
+            } else if let Some(known_kind) = &known_kind {
+                out.push('(');
+                out += known_kind;
+                out += ") ";
             }
             if let Some(name) = on_name {
                 match declaration_kinds.as_slice() {
@@ -133,10 +151,12 @@ impl<'project> Document<'project> {
                             type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
-                    ["function" | "property" | "type"] => (),
+                    ["function" | "property" | "type" | "module"] => (),
                     _ => {
-                        out += name.as_code();
-                        out += ": ";
+                        if known_kind.is_none() {
+                            out += name.as_code();
+                            out += ": ";
+                        }
                     }
                 }
             }
@@ -178,6 +198,8 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
             }
             out.into_boxed_str()
         }
+        Type::Module(m) => db.loaded_python_file(*m).qualified_name(db).into(),
+        Type::Namespace(n) => n.qualified_name().into(),
         _ => t.format_short(db),
     }
 }

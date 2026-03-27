@@ -681,3 +681,59 @@ __main__.py:28:documentation -> "```python\n(type) TypeVarTuple *Ts\n```"
 __main__.py:30:documentation -> "```python\n(type) ParamSpec **P\n```"
 __main__.py:35:documentation -> "```python\n(type) ParamSpec **P\n```"
 __main__.py:37:documentation -> "```python\n(type) ParamSpec **P\n```"
+
+[case module_documentation]
+# pkgs: typedpkg_ns_a, typedpkg_ns_b, typedpkg_ns_b-stubs
+
+#? --codepoint-column 10 documentation
+import typedpkg_ns.a.bbb as a
+#? --codepoint-column 10 documentation
+import typedpkg_ns.a.bbb
+#? documentation
+typedpkg_ns
+
+#? documentation
+import m
+#? documentation
+import n
+
+#? documentation
+n.n2.o
+#? --codepoint-column 3 documentation
+n.n2.o
+
+#? documentation
+from n import n2
+#? documentation
+n2
+
+#? documentation
+m
+#? documentation
+n
+
+#? documentation
+x = m
+#? documentation
+y = n
+
+[file m.py]
+"""
+hello
+"""
+[file n/n2/o.py]
+
+[out]
+__main__.py:4:documentation -> "```python\n(namespace) typedpkg_ns\n```"
+__main__.py:6:documentation -> "```python\n(namespace) typedpkg_ns\n```"
+__main__.py:8:documentation -> "```python\n(import) typedpkg_ns\n```"
+__main__.py:11:documentation -> "```python\n(module) m\n```\n---\nhello"
+__main__.py:13:documentation -> "```python\n(namespace) n\n```"
+__main__.py:16:documentation -> "```python\n(module) n.n2.o\n```"
+__main__.py:18:documentation -> "```python\n(namespace) n.n2\n```"
+__main__.py:21:documentation -> "```python\n(namespace) n.n2\n```"
+__main__.py:23:documentation -> "```python\n(import) n.n2\n```"
+__main__.py:26:documentation -> "```python\n(module) m\n```\n---\nhello"
+__main__.py:28:documentation -> "```python\n(import) n\n```"
+__main__.py:31:documentation -> "```python\n(module) m\n```\n---\nhello"
+__main__.py:33:documentation -> "```python\n(import) n\n```"
