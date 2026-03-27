@@ -2815,7 +2815,8 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
             | Type::Tuple(_)
             | Type::NewType(_)
             | Type::TypeVar(_)
-            | Type::Enum(_) => t.clone(),
+            | Type::Enum(_)
+            | Type::NamedTuple(_) => t.clone(),
             Type::Literal(l) => l.fallback_type(i_s.db),
             Type::Type(type_) => match type_.as_ref() {
                 Type::Class(c) => match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
@@ -2825,7 +2826,7 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
                 Type::Any(cause) => Type::Any(*cause),
                 _ => i_s.db.python_state.object_type(),
             },
-            Type::Module(_) | Type::NamedTuple(_) => i_s.db.python_state.module_type(),
+            Type::Module(_) | Type::Namespace(_) => i_s.db.python_state.module_type(),
             Type::EnumMember(m) => Type::Enum(m.enum_.clone()),
             Type::Super { .. } => i_s.db.python_state.super_type(),
             Type::ParamSpecArgs(_) => i_s.db.python_state.tuple_of_obj.clone(),
