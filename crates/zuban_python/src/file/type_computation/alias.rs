@@ -60,9 +60,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     }
 
     fn documentation_for_lookup(&self, lookup: Lookup) -> Option<String> {
+        let db = self.i_s.db;
         match lookup {
             Lookup::T(TypeContent::TypeAlias(alias)) => {
-                let db = self.i_s.db;
                 let name = alias.name(db);
                 let type_vars = if alias.type_vars.is_empty() {
                     "".into()
@@ -75,6 +75,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     alias.type_if_valid().format_short(db)
                 ))
             }
+            Lookup::TypeVarLike(tvl) => Some(tvl.format_for_docs(&FormatData::new_short(db))),
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => None,
             // TODO for some of these we want documentation and a nicer representation
             _ => None,

@@ -461,38 +461,38 @@ type Y4[S: list[Any] = list[str]] = list[S] | int
 type Z4[S] = list[Z4[S]] | S
 
 def f1(
-#? documentation
+    #? documentation
     a: X1
-#? documentation
+    #? documentation
     , b: Y1
-#? documentation
+    #? documentation
     , c: Z1
 ) -> None: ...
 
 def f2(
-#? documentation
+    #? documentation
     a: X2
-#? documentation
+    #? documentation
     , b: Y2
-#? documentation
+    #? documentation
     , c: Z2
 ) -> None: ...
 
 def f3(
-#? documentation
+    #? documentation
     a: X3
-#? documentation
+    #? documentation
     , b: Y3
-#? documentation
+    #? documentation
     , c: Z3
 ) -> None: ...
 
 def f4(
-#? documentation
+    #? documentation
     a: X4
-#? documentation
+    #? documentation
     , b: Y4
-#? documentation
+    #? documentation
     , c: Z4
 ) -> None: ...
 
@@ -502,13 +502,13 @@ Indirect3 = Z3
 Indirect4 = Z4
 
 def f5(
-#? documentation
+    #? documentation
     a: Indirect1
-#? documentation
+    #? documentation
     , b: Indirect2
-#? documentation
+    #? documentation
     , c: Indirect3
-#? documentation
+    #? documentation
     , d: Indirect4
 ) -> None: ...
 
@@ -588,3 +588,96 @@ __main__.py:33:documentation -> "```python\n(type) X1 = list[int]\n```"
 __main__.py:35:documentation -> "```python\n(type) Y2[T: list[Any] = list[str]] = list[T = list[str]] | int\n```"
 __main__.py:37:documentation -> "```python\n(type) Z3[T: list[Any] = list[str]] = list[Z3[T = list[str]]] | T = list[str]\n```"
 __main__.py:39:documentation -> "```python\n(type) Z4[S] = list[Z4[S]] | S\n```"
+
+[case type_var_documentation]
+from typing import TypeAliasType, TypeAlias, TypeVar, Any, Literal, ParamSpec, TypeVarTuple, Unpack
+
+#? --codepoint-column 0 documentation
+T = TypeVar("T", bound=int, default=Literal[1])
+#? --codepoint-column 0 documentation
+Ts = TypeVarTuple("Ts", default=Unpack[tuple[int]])
+#? --codepoint-column 0 documentation
+P = ParamSpec("P", default=[int])
+
+#? documentation
+T
+#? documentation
+Ts
+#? documentation
+P
+
+def f(
+    #? documentation
+    x: T
+    #? documentation
+    , y: list[T
+]) -> None: ...
+
+#? documentation
+X = list[T
+]
+
+[out]
+__main__.py:4:documentation -> "```python\n(type) TypeVar T: int = Literal[1]\n```"
+__main__.py:6:documentation -> "```python\n(type) TypeVarTuple *Ts = Unpack[tuple[int]]\n```"
+__main__.py:8:documentation -> "```python\n(type) ParamSpec **P = [int]\n```"
+__main__.py:11:documentation -> "```python\n(type) TypeVar T: int = Literal[1]\n```"
+__main__.py:13:documentation -> "```python\n(type) TypeVarTuple *Ts = Unpack[tuple[int]]\n```"
+__main__.py:15:documentation -> "```python\n(type) ParamSpec **P = [int]\n```"
+__main__.py:19:documentation -> "```python\n(type) TypeVar T: int = Literal[1]\n```"
+__main__.py:21:documentation -> "```python\n(type) TypeVar T: int = Literal[1]\n```"
+__main__.py:25:documentation -> "```python\n(type) TypeVar T: int = Literal[1]\n```"
+
+[case type_var_syntax_documentation]
+type A[
+#? --codepoint-column 4 documentation
+    T: int
+#? documentation
+    ,S
+] = list[
+#? documentation
+    tuple[S, T
+    ]
+]
+
+class C[T, *Ts, **P]:
+    def f[S, U: (int, str)](
+        #? documentation
+        self, x: T
+        #? documentation
+        , y: S
+        #? documentation
+        , z: U
+    ): ...
+
+    #? documentation
+    def g(self, *args: *Ts
+    ):
+        #? documentation
+        T
+        #? documentation
+        Ts
+        #? documentation
+        P
+
+    def h(
+        self,
+        #? --codepoint-column 16 documentation
+        *args: P.args,
+        #? --codepoint-column 19 documentation
+        **kwargs: P.kwargs,
+    ): ...
+
+[out]
+__main__.py:3:documentation -> "```python\n(type) TypeVar T: int\n```"
+__main__.py:5:documentation -> "```python\n(type) TypeVar S\n```"
+__main__.py:8:documentation -> "```python\n(type) TypeVar T: int\n```"
+__main__.py:15:documentation -> "```python\n(type) TypeVar T\n```"
+__main__.py:17:documentation -> "```python\n(type) TypeVar S\n```"
+__main__.py:19:documentation -> "```python\n(type) TypeVar U: (int, str)\n```"
+__main__.py:23:documentation -> "```python\n(type) TypeVarTuple *Ts\n```"
+__main__.py:26:documentation -> "```python\n(type) TypeVar T\n```"
+__main__.py:28:documentation -> "```python\n(type) TypeVarTuple *Ts\n```"
+__main__.py:30:documentation -> "```python\n(type) ParamSpec **P\n```"
+__main__.py:35:documentation -> "```python\n(type) ParamSpec **P\n```"
+__main__.py:37:documentation -> "```python\n(type) ParamSpec **P\n```"

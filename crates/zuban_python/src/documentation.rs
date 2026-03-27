@@ -2,11 +2,13 @@ use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
+    database::ComplexPoint,
     format_data::FormatData,
     goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::Range,
     node_ref::NodeRef,
+    recoverable_error,
     type_::{CallableLike, FunctionKind, Type},
 };
 
@@ -84,6 +86,16 @@ impl<'project> Document<'project> {
                                 c.format_pretty(&FormatData::new_short(db)).into_string();
                             return "property";
                         }
+                    }
+                    TypeLike::TypeParam(type_param) => {
+                        if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                            NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
+                        {
+                            type_formatted = tvl.format_for_docs(&FormatData::new_short(db))
+                        } else {
+                            recoverable_error!("Expected a type param to have a saved TypeVarLike")
+                        }
+                        return "type";
                     }
                     _ => (),
                 }

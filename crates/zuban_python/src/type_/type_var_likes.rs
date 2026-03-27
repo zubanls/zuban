@@ -836,6 +836,16 @@ impl TypeVarLike {
             _ => false,
         }
     }
+
+    pub fn format_for_docs(&self, format_data: &FormatData) -> String {
+        match self {
+            TypeVarLike::TypeVar(type_var) => format!("TypeVar {}", type_var.format(format_data)),
+            TypeVarLike::TypeVarTuple(tvt) => format!("TypeVarTuple *{}", tvt.format(format_data)),
+            TypeVarLike::ParamSpec(param_spec) => {
+                format!("ParamSpec **{}", param_spec.format(format_data))
+            }
+        }
+    }
 }
 
 impl Hash for TypeVarLike {
