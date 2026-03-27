@@ -1367,11 +1367,12 @@ impl Database {
 
     fn invalidate_db(&mut self) {
         for file_state in self.vfs.files.iter_mut() {
+            let file_entry = file_state.file_entry().clone();
             if let Some(file) = file_state.file_mut() {
                 if file.is_part_of_super_file() {
                     file_state.unload();
                 } else {
-                    file.invalidate_full_db(&self.project);
+                    file.invalidate_full_db(&self.project, &file_entry);
                 }
             }
         }

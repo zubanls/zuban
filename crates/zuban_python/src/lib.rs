@@ -52,8 +52,8 @@ use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 pub use code_actions::CodeAction;
 use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use database::Database;
 pub use database::RunCause;
-use database::{Database, PythonProject};
 pub use diagnostics::Severity;
 pub use documentation::DocumentationResult;
 use file::File;

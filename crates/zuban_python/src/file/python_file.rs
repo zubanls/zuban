@@ -224,29 +224,6 @@ impl File for PythonFile {
         vec.sort_by_key(|diag| diag.issue.start_position);
         vec.into_boxed_slice()
     }
-
-    fn invalidate_full_db(&mut self, project: &PythonProject) {
-        debug_assert!(self.super_file.is_none());
-        let mut points = std::mem::take(&mut self.points);
-        points.invalidate_full_db();
-        let is_stub = self.is_stub();
-        let tree = std::mem::replace(&mut self.tree, Tree::invalid_empty());
-        *self = Self::new_internal(
-            self.file_index,
-            tree,
-            points,
-            Diagnostics::default(),
-            is_stub,
-            self.flags.take().map(|flags| flags.into_unfinalized()),
-            project,
-            self.ignore_type_errors,
-        );
-    }
-
-    fn is_part_of_super_file(&self) -> bool {
-        self.super_file
-            .is_some_and(|super_file| super_file.offset.is_some())
-    }
 }
 
 impl vfs::VfsFile for PythonFile {
@@ -307,7 +284,7 @@ impl<'db> PythonFile {
     }
 
     pub fn new(
-        project_options: &PythonProject,
+        project: &PythonProject,
         file_index: FileIndex,
         file_entry: &FileEntry,
         tree: Tree,
@@ -328,14 +305,14 @@ impl<'db> PythonFile {
                     true
                 });
         let directives_info = info_from_directives(
-            project_options,
+            project,
             file_entry,
             &issues,
             tree.mypy_inline_config_directives(),
         );
         ignore_type_errors |= match &directives_info.flags {
             Some(flags) => flags.ignore_errors,
-            None => project_options.flags.ignore_errors,
+            None => project.flags.ignore_errors,
         };
 
         if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
@@ -350,7 +327,7 @@ impl<'db> PythonFile {
             issues,
             is_stub,
             directives_info.flags,
-            project_options,
+            project,
             ignore_type_errors,
         )
     }
@@ -880,6 +857,20 @@ impl<'db> PythonFile {
         file.newline_indices
             .numbers_with_lines(file.tree.code(), from_line)
             .take(line_range.len() + 1 + 2 * add_lines_at_start_and_end)
+    }
+
+    pub fn invalidate_full_db(&mut self, project: &PythonProject, file_entry: &FileEntry) {
+        debug_assert!(self.super_file.is_none());
+        let mut points = std::mem::take(&mut self.points);
+        points.invalidate_full_db();
+        let tree = std::mem::replace(&mut self.tree, Tree::invalid_empty());
+        debug_assert!(!self.is_part_of_super_file());
+        *self = Self::new(project, self.file_index, file_entry, tree);
+    }
+
+    pub fn is_part_of_super_file(&self) -> bool {
+        self.super_file
+            .is_some_and(|super_file| super_file.offset.is_some())
     }
 }
 
