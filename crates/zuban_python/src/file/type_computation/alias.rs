@@ -29,7 +29,6 @@ use crate::{
             typed_dict::new_typed_dict_with_execution_syntax,
         },
     },
-    format_data::FormatData,
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
     inference_state::InferenceState,
@@ -47,6 +46,11 @@ use crate::{
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ALIAS_TYPE_CACHE_OFFSET: u32 = 1;
 
+pub enum TypeDocs<'file> {
+    TypeVarLike(TypeVarLike),
+    TypeAlias(&'file TypeAlias),
+}
+
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub fn is_valid_type_assignment(&self, assignment: Assignment<'file>) -> bool {
         !matches!(
@@ -55,27 +59,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         )
     }
 
-    pub fn documentation_for_assignment(&self, assignment: Assignment<'file>) -> Option<String> {
+    pub fn documentation_for_assignment(
+        &self,
+        assignment: Assignment<'file>,
+    ) -> Option<TypeDocs<'file>> {
         self.documentation_for_lookup(self.compute_type_assignment(assignment))
     }
 
-    fn documentation_for_lookup(&self, lookup: Lookup) -> Option<String> {
-        let db = self.i_s.db;
+    fn documentation_for_lookup(&self, lookup: Lookup<'file, 'file>) -> Option<TypeDocs<'file>> {
         match lookup {
-            Lookup::T(TypeContent::TypeAlias(alias)) => {
-                let name = alias.name(db);
-                let type_vars = if alias.type_vars.is_empty() {
-                    "".into()
-                } else {
-                    alias.type_vars.format(&FormatData::new_short(db))
-                };
-                Some(format!(
-                    "{name}{} = {}",
-                    type_vars.trim(),
-                    alias.type_if_valid().format_short(db)
-                ))
-            }
-            Lookup::TypeVarLike(tvl) => Some(tvl.format_for_docs(&FormatData::new_short(db))),
+            Lookup::T(TypeContent::TypeAlias(alias)) => Some(TypeDocs::TypeAlias(alias)),
+            Lookup::TypeVarLike(tvl) => Some(TypeDocs::TypeVarLike(tvl)),
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => None,
             // TODO for some of these we want documentation and a nicer representation
             _ => None,
@@ -85,7 +79,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub fn documentation_for_type_alias(
         &self,
         alias: parsa_python_cst::TypeAlias,
-    ) -> Option<String> {
+    ) -> Option<TypeDocs<'file>> {
         self.documentation_for_lookup(self.compute_type_alias_syntax(alias))
     }
 

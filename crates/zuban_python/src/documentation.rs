@@ -3,6 +3,7 @@ use parsa_python_cst::{GotoNode, TypeLike};
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
     database::ComplexPoint,
+    file::TypeDocs,
     format_data::FormatData,
     goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
@@ -85,6 +86,23 @@ impl<'project> Document<'project> {
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
             {
+                let format_type_docs = |docs| match docs {
+                    TypeDocs::TypeVarLike(tvl) => tvl.format_for_docs(&FormatData::new_short(db)),
+                    TypeDocs::TypeAlias(alias) => {
+                        let name = alias.name(db);
+                        let type_vars = if alias.type_vars.is_empty() {
+                            "".into()
+                        } else {
+                            alias.type_vars.format(&FormatData::new_short(db))
+                        };
+                        format!(
+                            "{name}{} = {}",
+                            type_vars.trim(),
+                            alias.type_if_valid().format_short(db)
+                        )
+                    }
+                };
+
                 match name_def.expect_type() {
                     TypeLike::Assignment(assignment) => {
                         if let Some(type_docs) = n
@@ -93,7 +111,7 @@ impl<'project> Document<'project> {
                             .documentation_for_assignment(assignment)
                         {
                             if !only_docstrings {
-                                type_formatted = type_docs;
+                                type_formatted = format_type_docs(type_docs);
                             }
                             return "type";
                         }
@@ -105,7 +123,7 @@ impl<'project> Document<'project> {
                             .documentation_for_type_alias(type_alias)
                         {
                             if !only_docstrings {
-                                type_formatted = type_docs;
+                                type_formatted = format_type_docs(type_docs);
                             }
                             return "type";
                         }
