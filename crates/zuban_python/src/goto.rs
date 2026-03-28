@@ -697,6 +697,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
 
         //  1. Find the original definition
 
+        let mut definition_results = vec![];
         GotoResolver::new2(self.infos.clone(), GotoGoal::Indifferent, |n| {
             follow_goto_if_necessary(n, &mut |name| {
                 if !self.definitions.is_empty() {
@@ -726,7 +727,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 if let Some(other) = other {
                     self.definitions.insert(to_unique_position(&other));
                     if should_add_results {
-                        self.results.push((self.on_result)(other))
+                        definition_results.push((self.on_result)(other))
                     }
                 }
 
@@ -734,11 +735,12 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 if should_add_results
                     || include_declarations && name.file().file_index == self.infos.file.file_index
                 {
-                    self.results.push((self.on_result)(name));
+                    definition_results.push((self.on_result)(name));
                 }
             });
         })
         .goto_name(false);
+
         if self.definitions.is_empty() {
             if on_name.name_def().is_some() {
                 debug!(
@@ -753,7 +755,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     on_name,
                 ));
                 self.definitions.insert(to_unique_position(&n));
-                self.results.push((self.on_result)(n))
+                definition_results.push((self.on_result)(n))
             } else {
                 debug!("Did not find the original reference definition for {search_name}");
                 return vec![];
@@ -783,6 +785,8 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     search_name,
                 ),
         }
+        // Definitions should not be at the start
+        self.results.extend(definition_results);
         self.results
     }
 
