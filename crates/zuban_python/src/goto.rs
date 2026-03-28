@@ -380,10 +380,33 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     }
 
     pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
+        if let GotoNode::Name(name) = self.infos.node
+            && let Some(name_def) = name.name_def()
+        {
+            let p = self.infos.file.points.get(name_def.index());
+            // This currently only handles goto on self. We typically want to go to the class when
+            // we are on the self param.
+            if p.calculated() && p.maybe_specific() == Some(Specific::MaybeSelfParam) {
+                let cls_name =
+                    with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
+                        let cls = i_s.current_class()?.to_db_lifetime(i_s.db);
+                        Some(TreeName::new(
+                            self.infos.db,
+                            self.infos.file,
+                            Scope::Module,
+                            cls.node().name(),
+                        ))
+                    });
+                if let Some(cls_name) = cls_name {
+                    return vec![(self.on_result)(Name::TreeName(cls_name))];
+                }
+            }
+        }
         if let Some(names) = self.goto_name(follow_imports) {
             return names;
         }
         let mut callback = self.on_result;
+
         GotoResolver {
             infos: self.infos,
             goal: self.goal,
