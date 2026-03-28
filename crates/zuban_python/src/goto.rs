@@ -19,7 +19,7 @@ use crate::{
     database::{Database, ParentScope, PointKind, Specific},
     debug,
     file::{
-        ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile,
+        ClassInitializer, ClassNodeRef, File, FuncNodeRef, OtherDefinitionIterator, PythonFile,
         expect_class_or_simple_generic, first_defined_name,
     },
     format_data::FormatData,
@@ -722,21 +722,40 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
-                let should_add_results =
-                    include_declarations && !matches!(goal, ReferencesGoal::OnlyCurrentFile);
-                if let Some(other) = other {
-                    self.definitions.insert(to_unique_position(&other));
-                    if should_add_results {
-                        definition_results.push((self.on_result)(other))
-                    }
-                }
-
                 self.definitions.insert(to_unique_position(&name));
-                if should_add_results
-                    || include_declarations && name.file().file_index == self.infos.file.file_index
-                {
-                    definition_results.push((self.on_result)(name));
+                let mut add_definitions = |name| {
+                    self.definitions.insert(to_unique_position(&name));
+                    let should_add = include_declarations
+                        && (!matches!(goal, ReferencesGoal::OnlyCurrentFile)
+                            || include_declarations
+                                && name.file().file_index == self.infos.file.file_index);
+                    if should_add {
+                        definition_results.push((self.on_result)(name));
+                    }
+                    // Add the other definitions (there may be multiple ones for e.g. narrowing
+                    // or overloads)
+                    if let Name::TreeName(n) = name {
+                        let p = n.file.points.get(n.cst_name.index());
+                        if p.maybe_calculated_and_specific() == Some(Specific::FirstNameOfNameDef) {
+                            for name_index in
+                                OtherDefinitionIterator::new(&n.file.points, n.cst_name.index())
+                            {
+                                let new_name = Name::TreeName(TreeName {
+                                    cst_name: CSTName::by_index(&n.file.tree, name_index),
+                                    ..n
+                                });
+                                self.definitions.insert(to_unique_position(&new_name));
+                                if should_add {
+                                    definition_results.push((self.on_result)(new_name));
+                                }
+                            }
+                        }
+                    }
+                };
+                if let Some(other) = other {
+                    add_definitions(other);
                 }
+                add_definitions(name);
             });
         })
         .goto_name(false);

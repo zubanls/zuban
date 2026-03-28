@@ -104,7 +104,65 @@ f
 f
 
 [out]
-__main__.py:5:references -> __main__.py:8:4; __main__.py:10:4; __main__.py:14:0; __main__.py:15:0; __main__.py:5:4
-__main__.py:8:references -> __main__.py:8:4; __main__.py:10:4; __main__.py:14:0; __main__.py:15:0; __main__.py:5:4
-__main__.py:10:references -> __main__.py:8:4; __main__.py:10:4; __main__.py:14:0; __main__.py:15:0; __main__.py:5:4
-__main__.py:14:references -> __main__.py:8:4; __main__.py:10:4; __main__.py:14:0; __main__.py:15:0; __main__.py:5:4
+__main__.py:5:references -> __main__.py:14:0; __main__.py:15:0; __main__.py:5:4; __main__.py:8:4; __main__.py:10:4
+__main__.py:8:references -> __main__.py:14:0; __main__.py:15:0; __main__.py:5:4; __main__.py:8:4; __main__.py:10:4
+__main__.py:10:references -> __main__.py:14:0; __main__.py:15:0; __main__.py:5:4; __main__.py:8:4; __main__.py:10:4
+__main__.py:14:references -> __main__.py:14:0; __main__.py:15:0; __main__.py:5:4; __main__.py:8:4; __main__.py:10:4
+
+[case overload_references_without_including_declarations]
+from typing import overload
+
+@overload
+#? --codepoint-column 4 references --no-include-declarations
+def f() -> None: ...
+@overload
+#? --codepoint-column 4 references --no-include-declarations
+def f(x: int) -> int: ...
+#? --codepoint-column 4 references --no-include-declarations
+def f(x = None):
+    return x
+
+#? references --no-include-declarations
+f
+f
+
+[out]
+__main__.py:5:references -> __main__.py:14:0; __main__.py:15:0
+__main__.py:8:references -> __main__.py:14:0; __main__.py:15:0
+__main__.py:10:references -> __main__.py:14:0; __main__.py:15:0
+__main__.py:14:references -> __main__.py:14:0; __main__.py:15:0
+
+[case multi_definition_of_name]
+def f():
+    if bool():
+        #? --codepoint-column 9 references
+        myname = 1
+    else:
+        #? --codepoint-column 9 references
+        myname = 2
+    #? references
+    myname
+    def nested():
+        myname
+[out]
+__main__.py:4:references -> __main__.py:9:4; __main__.py:11:8; __main__.py:4:8; __main__.py:7:8
+__main__.py:7:references -> __main__.py:9:4; __main__.py:11:8; __main__.py:4:8; __main__.py:7:8
+__main__.py:9:references -> __main__.py:9:4; __main__.py:11:8; __main__.py:4:8; __main__.py:7:8
+
+
+[case multi_definition_of_name_no_include_declarations]
+def f():
+    if bool():
+        #? --codepoint-column 9 references --no-include-declarations
+        myname = 1
+    else:
+        #? --codepoint-column 9 references --no-include-declarations
+        myname = 2
+    #? references --no-include-declarations
+    myname
+    def nested():
+        myname
+[out]
+__main__.py:4:references -> __main__.py:9:4; __main__.py:11:8
+__main__.py:7:references -> __main__.py:9:4; __main__.py:11:8
+__main__.py:9:references -> __main__.py:9:4; __main__.py:11:8

@@ -20,7 +20,7 @@ use crate::{
 
 pub type Range<'a> = (PositionInfos<'a>, PositionInfos<'a>);
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Name<'db, 'x> {
     TreeName(TreeName<'db>),
     ModuleName(ModuleName<'db>),
@@ -356,7 +356,7 @@ fn lookup_parent_scope_in_other_file<'db>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct TreeName<'db> {
     pub(crate) db: &'db Database,
     pub(crate) file: &'db PythonFile,
@@ -520,7 +520,7 @@ fn parent_scope_to_scope(file: &PythonFile, parent_scope: ParentScope) -> Scope<
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct NodeName<'db, 'x> {
     db: &'db Database,
     node_ref: NodeRef<'db>,
@@ -533,7 +533,7 @@ impl<'db, 'x> NodeName<'db, 'x> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ModuleName<'db> {
     pub(crate) db: &'db Database,
     pub(crate) file: &'db PythonFile,
