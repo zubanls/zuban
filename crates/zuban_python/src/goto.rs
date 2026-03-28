@@ -389,11 +389,12 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             if p.calculated() && p.maybe_specific() == Some(Specific::MaybeSelfParam) {
                 let cls_name =
                     with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
-                        let cls = i_s.current_class()?.to_db_lifetime(i_s.db);
-                        Some(TreeName::new(
+                        let c = i_s.current_class()?;
+                        let cls = c.to_db_lifetime(i_s.db);
+                        Some(TreeName::with_parent_scope(
                             self.infos.db,
                             self.infos.file,
-                            Scope::Module,
+                            c.class_storage.parent_scope,
                             cls.node().name(),
                         ))
                     });

@@ -1,4 +1,4 @@
-use parsa_python_cst::{GotoNode, Scope, TypeLike};
+use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
@@ -37,8 +37,13 @@ impl<'project> Document<'project> {
                 Type::Self_ => {
                     if let Some(cls) = i_s.current_class() {
                         let mut result = format!("*Self is class {}*", cls.name());
-                        let doc = TreeName::new(i_s.db, cls.file, Scope::Module, cls.node().name())
-                            .documentation();
+                        let doc = TreeName::with_parent_scope(
+                            i_s.db,
+                            cls.file,
+                            cls.class_storage.parent_scope,
+                            cls.node().name(),
+                        )
+                        .documentation();
                         if !doc.is_empty() {
                             result += ":\n";
                             result += &doc;
