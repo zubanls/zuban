@@ -1,4 +1,4 @@
-use parsa_python_cst::{GotoNode, TypeLike};
+use parsa_python_cst::{GotoNode, Scope, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
@@ -6,7 +6,7 @@ use crate::{
     format_data::FormatData,
     goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
-    name::Range,
+    name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableLike, FunctionKind, Type},
@@ -33,7 +33,26 @@ impl<'project> Document<'project> {
         i_s: &InferenceState,
     ) -> Option<DocumentationResult<'_>> {
         let mut resolver = GotoResolver::new(document, GotoGoal::Indifferent, |n: ValueName| {
-            n.name.documentation().to_string()
+            match &n.type_ {
+                Type::Self_ => {
+                    if let Some(cls) = i_s.current_class() {
+                        let mut result = format!("*Self is class {}*", cls.name());
+                        let doc = TreeName::new(i_s.db, cls.file, Scope::Module, cls.node().name())
+                            .documentation();
+                        if !doc.is_empty() {
+                            result += ":\n";
+                            result += &doc;
+                        }
+                        result
+                    } else {
+                        recoverable_error!(
+                            "There should to be a current class for Self documentation"
+                        );
+                        "".into()
+                    }
+                }
+                _ => n.name.documentation().to_string(),
+            }
         });
         let (inf, mut results) = resolver.infer_definition();
         let Some(on_symbol_range) = resolver.on_node_range() else {

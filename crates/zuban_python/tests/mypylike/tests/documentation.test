@@ -737,3 +737,47 @@ __main__.py:26:documentation -> "```python\n(module) m\n```\n---\nhello"
 __main__.py:28:documentation -> "```python\n(import) n\n```"
 __main__.py:31:documentation -> "```python\n(module) m\n```\n---\nhello"
 __main__.py:33:documentation -> "```python\n(import) n\n```"
+
+[case self_documentation]
+#? documentation
+from typing import Self
+
+class F:
+    def f(
+        #? documentation
+        self
+        #? documentation
+        ,other
+        #? documentation
+        : Self
+    ):
+        #? --codepoint-column 10 documentation
+        self.foo = 1
+        #? --codepoint-column 10 documentation
+        self.foo
+        #? documentation
+        self
+        #? documentation
+        other
+
+        new_var = other
+        #? documentation
+        new_var
+
+class C:
+    "doc"
+    def f(
+        #? documentation
+        self
+    ): ...
+[out]
+__main__.py:2:documentation -> "```python\n(variable) Self: _SpecialForm\n```"
+__main__.py:7:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class F*"
+__main__.py:9:documentation -> "```python\n(param) other: Self\n```\n---\n*Self is class F*"
+__main__.py:11:documentation -> "```python\n(variable) Self: _SpecialForm\n```"
+__main__.py:14:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class F*"
+__main__.py:16:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class F*"
+__main__.py:18:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class F*"
+__main__.py:20:documentation -> "```python\n(param) other: Self\n```\n---\n*Self is class F*"
+__main__.py:24:documentation -> "```python\n(variable) new_var: Self\n```\n---\n*Self is class F*"
+__main__.py:30:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class C*:\ndoc"
