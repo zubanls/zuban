@@ -646,11 +646,11 @@ __main__.py:8:documentation -> "```python\n(ParamSpec) **P = [int]\n```"
 __main__.py:11:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```"
 __main__.py:13:documentation -> "```python\n(TypeVarTuple) *Ts = Unpack[tuple[int]]\n```"
 __main__.py:15:documentation -> "```python\n(ParamSpec) **P = [int]\n```"
-__main__.py:19:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in function __main__.f"
-__main__.py:21:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in function __main__.f"
+__main__.py:19:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in function `__main__.f`"
+__main__.py:21:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in function `__main__.f`"
 __main__.py:25:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```"
-__main__.py:29:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in class C\nT is invariant"
-__main__.py:32:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in class C\nT is invariant"
+__main__.py:29:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in class `C`\n\n`T` is `invariant`"
+__main__.py:32:documentation -> "```python\n(TypeVar) T: int = Literal[1]\n```\n---\nBound in class `C`\n\n`T` is `invariant`"
 
 [case type_var_syntax_documentation]
 type A[
@@ -696,16 +696,15 @@ class C[T, *Ts, **P]:
 __main__.py:3:documentation -> "```python\n(TypeVar) T: int\n```"
 __main__.py:5:documentation -> "```python\n(TypeVar) S\n```"
 __main__.py:8:documentation -> "```python\n(TypeVar) T: int\n```"
-__main__.py:15:documentation -> "```python\n(TypeVar) T\n```\n---\nBound in class C\nT is contravariant (inferred)"
-__main__.py:17:documentation -> "```python\n(TypeVar) S\n```\n---\nBound in function __main__.C.f"
-__main__.py:19:documentation -> "```python\n(TypeVar) U: (int, str)\n```\n---\nBound in function __main__.C.f"
-__main__.py:23:documentation -> "```python\n(TypeVarTuple) *Ts\n```\n---\nBound in class C"
-__main__.py:26:documentation -> "```python\n(TypeVar) T\n```\n---\nBound in class C\nT is contravariant (inferred)"
-__main__.py:28:documentation -> "```python\n(TypeVarTuple) *Ts\n```\n---\nBound in class C"
-__main__.py:30:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class C"
-__main__.py:35:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class C"
-__main__.py:37:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class C"
-
+__main__.py:15:documentation -> "```python\n(TypeVar) T\n```\n---\nBound in class `C`\n\n`T` is `contravariant` (inferred)"
+__main__.py:17:documentation -> "```python\n(TypeVar) S\n```\n---\nBound in function `__main__.C.f`"
+__main__.py:19:documentation -> "```python\n(TypeVar) U: (int, str)\n```\n---\nBound in function `__main__.C.f`"
+__main__.py:23:documentation -> "```python\n(TypeVarTuple) *Ts\n```\n---\nBound in class `C`"
+__main__.py:26:documentation -> "```python\n(TypeVar) T\n```\n---\nBound in class `C`\n\n`T` is `contravariant` (inferred)"
+__main__.py:28:documentation -> "```python\n(TypeVarTuple) *Ts\n```\n---\nBound in class `C`"
+__main__.py:30:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class `C`"
+__main__.py:35:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class `C`"
+__main__.py:37:documentation -> "```python\n(ParamSpec) **P\n```\n---\nBound in class `C`"
 
 [case module_documentation]
 # pkgs: typedpkg_ns_a, typedpkg_ns_b, typedpkg_ns_b-stubs
