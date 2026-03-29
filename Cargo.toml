@@ -51,6 +51,7 @@ tracing-appender = "*"
 
 # Dev dependencies
 insta = "*"
+tempfile = "*"
 
 [workspace.metadata.release]
 pre-release-hook = [

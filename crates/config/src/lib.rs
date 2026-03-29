@@ -11,6 +11,7 @@ use toml_edit::{DocumentMut, Item, Table, Value};
 use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
 pub use searcher::{find_cli_config, find_workspace_config};
+pub use venv::extract_version_from_pyvenv_cfg;
 
 type ConfigResult = anyhow::Result<()>;
 
@@ -145,6 +146,14 @@ impl Settings {
             bail!(ERR)
         }
         self.environment = environment;
+
+        if self.python_version.is_none() {
+            if let Some(env_path) = &self.environment {
+                if let Some(version) = extract_version_from_pyvenv_cfg(env_path.as_ref()) {
+                    self.python_version = Some(version);
+                }
+            }
+        }
         Ok(())
     }
 
