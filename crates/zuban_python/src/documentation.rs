@@ -3,14 +3,15 @@ use parsa_python_cst::{GotoNode, TypeLike};
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
     database::ComplexPoint,
-    file::TypeDocs,
+    file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     format_data::FormatData,
     goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
-    type_::{CallableLike, FunctionKind, Type},
+    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
+    type_helpers::Class,
 };
 
 impl<'project> Document<'project> {
@@ -86,8 +87,56 @@ impl<'project> Document<'project> {
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
             {
-                let format_type_docs = |docs| match docs {
-                    TypeDocs::TypeVarLike(tvl) => tvl.format_for_docs(&FormatData::new_short(db)),
+                let mut format_type_docs = |docs| match docs {
+                    TypeDocs::TypeVarLike(tvl) => {
+                        let mut doc = String::default();
+                        if let Some(TypeVarCallbackReturn::TypeVarLike(usage)) =
+                            i_s.find_parent_type_var(&tvl)
+                        {
+                            let in_definition = usage.in_definition();
+                            let definition = NodeRef::from_link(i_s.db, in_definition);
+                            // The definition is just a hint where the TypeVar is defined. It's no
+                            // guarantuee that there are always a class or function.
+                            if definition.maybe_class().is_some() {
+                                let class_ref = ClassNodeRef::from_node_ref(definition);
+                                doc += &format!("Bound in class {}", class_ref.name());
+                                if let TypeVarLikeUsage::TypeVar(tv) = usage {
+                                    let variance = tv.type_var.inferred_variance(
+                                        db,
+                                        &Class::from_undefined_generics(i_s.db, in_definition),
+                                    );
+                                    doc += &format!(
+                                        "\n{} is {}",
+                                        tv.type_var.name(i_s.db),
+                                        variance.name().to_lowercase()
+                                    );
+                                    if matches!(tv.type_var.variance, TypeVarVariance::Inferred) {
+                                        doc += " (inferred)";
+                                    }
+                                }
+                            }
+                            if definition.maybe_function().is_some() {
+                                doc += &format!(
+                                    "Bound in function {}",
+                                    FuncNodeRef::from_node_ref(definition).qualified_name(i_s.db)
+                                );
+                            }
+                        }
+                        overwritten_results.push(doc);
+                        let format_data = &FormatData::new_short(db);
+
+                        match tvl {
+                            TypeVarLike::TypeVar(type_var) => {
+                                format!("TypeVar {}", type_var.format(format_data))
+                            }
+                            TypeVarLike::TypeVarTuple(tvt) => {
+                                format!("TypeVarTuple *{}", tvt.format(format_data))
+                            }
+                            TypeVarLike::ParamSpec(param_spec) => {
+                                format!("ParamSpec **{}", param_spec.format(format_data))
+                            }
+                        }
+                    }
                     TypeDocs::TypeAlias(alias) => {
                         let name = alias.name(db);
                         let type_vars = if alias.type_vars.is_empty() {
@@ -146,7 +195,8 @@ impl<'project> Document<'project> {
                             NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
                         {
                             if !only_docstrings {
-                                type_formatted = tvl.format_for_docs(&FormatData::new_short(db))
+                                type_formatted =
+                                    format_type_docs(TypeDocs::TypeVarLike(tvl.clone()))
                             }
                         } else {
                             recoverable_error!("Expected a type param to have a saved TypeVarLike")
