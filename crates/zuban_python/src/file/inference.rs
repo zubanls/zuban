@@ -453,6 +453,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         annotation: Annotation,
         right_side: Option<AssignmentRightSide>,
     ) {
+        self.set_calculating_on_target(target.clone());
         self.ensure_cached_annotation(annotation, right_side.is_some());
         let specific = self.point(annotation.index()).maybe_specific();
         let assign_kind = AssignKind::Annotation { specific };

@@ -809,3 +809,13 @@ class Service:
 import basedep
 class Client(basedep.BaseDep):
     pass
+
+[case circular_nested_import]
+# From GH #350
+[file x.py]
+from y import *
+
+foo: int
+
+[file y.py]
+from x import *
