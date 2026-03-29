@@ -17,6 +17,7 @@ testLocalPartialTypesWithNestedFunction2
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
+testUnreachableWhenSuperclassIsAny
 # Regressions for Never-generics to Any-generics
 testOverloadVarargsSelection
 testOverloadingInferUnionReturnWithObjectTypevarReturn

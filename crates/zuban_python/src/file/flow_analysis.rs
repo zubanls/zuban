@@ -1842,8 +1842,7 @@ impl<'file> Inference<'_, 'file, '_> {
             return;
         }
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            if self.allow_redefinitions_in_specific_scope()
-                && matches!(key, FlowKey::Name(_))
+            if matches!(key, FlowKey::Name(_))
                 && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
             {
                 RedefinitionResult::RedefinitionAllowed
