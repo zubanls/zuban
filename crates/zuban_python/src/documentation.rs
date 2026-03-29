@@ -87,68 +87,86 @@ impl<'project> Document<'project> {
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
             {
-                let mut format_type_docs = |docs| match docs {
-                    TypeDocs::TypeVarLike(tvl) => {
-                        let mut doc = String::default();
-                        if let Some(TypeVarCallbackReturn::TypeVarLike(usage)) =
-                            i_s.find_parent_type_var(&tvl)
-                        {
-                            let in_definition = usage.in_definition();
-                            let definition = NodeRef::from_link(i_s.db, in_definition);
-                            // The definition is just a hint where the TypeVar is defined. It's no
-                            // guarantuee that there are always a class or function.
-                            if definition.maybe_class().is_some() {
-                                let class_ref = ClassNodeRef::from_node_ref(definition);
-                                doc += &format!("Bound in class {}", class_ref.name());
-                                if let TypeVarLikeUsage::TypeVar(tv) = usage {
-                                    let variance = tv.type_var.inferred_variance(
-                                        db,
-                                        &Class::from_undefined_generics(i_s.db, in_definition),
-                                    );
-                                    doc += &format!(
-                                        "\n{} is {}",
-                                        tv.type_var.name(i_s.db),
-                                        variance.name().to_lowercase()
-                                    );
-                                    if matches!(tv.type_var.variance, TypeVarVariance::Inferred) {
-                                        doc += " (inferred)";
+                let mut format_type_docs = |docs| {
+                    if !only_docstrings {
+                        type_formatted = match &docs {
+                            TypeDocs::TypeVarLike(tvl) => {
+                                let mut doc = String::default();
+                                if let Some(TypeVarCallbackReturn::TypeVarLike(usage)) =
+                                    i_s.find_parent_type_var(&tvl)
+                                {
+                                    let in_definition = usage.in_definition();
+                                    let definition = NodeRef::from_link(i_s.db, in_definition);
+                                    // The definition is just a hint where the TypeVar is defined.
+                                    // It's no guarantuee that there are always a class or
+                                    // function.
+                                    if definition.maybe_class().is_some() {
+                                        let class_ref = ClassNodeRef::from_node_ref(definition);
+                                        doc += &format!("Bound in class {}", class_ref.name());
+                                        if let TypeVarLikeUsage::TypeVar(tv) = usage {
+                                            let variance = tv.type_var.inferred_variance(
+                                                db,
+                                                &Class::from_undefined_generics(
+                                                    i_s.db,
+                                                    in_definition,
+                                                ),
+                                            );
+                                            doc += &format!(
+                                                "\n{} is {}",
+                                                tv.type_var.name(i_s.db),
+                                                variance.name().to_lowercase()
+                                            );
+                                            if matches!(
+                                                tv.type_var.variance,
+                                                TypeVarVariance::Inferred
+                                            ) {
+                                                doc += " (inferred)";
+                                            }
+                                        }
+                                    }
+                                    if definition.maybe_function().is_some() {
+                                        doc += &format!(
+                                            "Bound in function {}",
+                                            FuncNodeRef::from_node_ref(definition)
+                                                .qualified_name(i_s.db)
+                                        );
+                                    }
+                                }
+                                overwritten_results.push(doc);
+                                let format_data = &FormatData::new_short(db);
+
+                                match tvl {
+                                    TypeVarLike::TypeVar(type_var) => type_var.format(format_data),
+                                    TypeVarLike::TypeVarTuple(tvt) => {
+                                        format!("*{}", tvt.format(format_data))
+                                    }
+                                    TypeVarLike::ParamSpec(param_spec) => {
+                                        format!("**{}", param_spec.format(format_data))
                                     }
                                 }
                             }
-                            if definition.maybe_function().is_some() {
-                                doc += &format!(
-                                    "Bound in function {}",
-                                    FuncNodeRef::from_node_ref(definition).qualified_name(i_s.db)
-                                );
-                            }
-                        }
-                        overwritten_results.push(doc);
-                        let format_data = &FormatData::new_short(db);
-
-                        match tvl {
-                            TypeVarLike::TypeVar(type_var) => {
-                                format!("TypeVar {}", type_var.format(format_data))
-                            }
-                            TypeVarLike::TypeVarTuple(tvt) => {
-                                format!("TypeVarTuple *{}", tvt.format(format_data))
-                            }
-                            TypeVarLike::ParamSpec(param_spec) => {
-                                format!("ParamSpec **{}", param_spec.format(format_data))
+                            TypeDocs::TypeAlias(alias) => {
+                                let name = alias.name(db);
+                                let type_vars = if alias.type_vars.is_empty() {
+                                    "".into()
+                                } else {
+                                    alias.type_vars.format(&FormatData::new_short(db))
+                                };
+                                format!(
+                                    "{name}{} = {}",
+                                    type_vars.trim(),
+                                    alias.type_if_valid().format_short(db)
+                                )
                             }
                         }
                     }
-                    TypeDocs::TypeAlias(alias) => {
-                        let name = alias.name(db);
-                        let type_vars = if alias.type_vars.is_empty() {
-                            "".into()
-                        } else {
-                            alias.type_vars.format(&FormatData::new_short(db))
-                        };
-                        format!(
-                            "{name}{} = {}",
-                            type_vars.trim(),
-                            alias.type_if_valid().format_short(db)
-                        )
+                    match docs {
+                        TypeDocs::TypeVarLike(tvl) => match tvl {
+                            TypeVarLike::TypeVar(_) => "TypeVar",
+                            TypeVarLike::TypeVarTuple(_) => "TypeVarTuple",
+                            TypeVarLike::ParamSpec(_) => "ParamSpec",
+                        },
+                        TypeDocs::TypeAlias(_) => "type alias",
                     }
                 };
 
@@ -159,10 +177,7 @@ impl<'project> Document<'project> {
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_assignment(assignment)
                         {
-                            if !only_docstrings {
-                                type_formatted = format_type_docs(type_docs);
-                            }
-                            return "type";
+                            return format_type_docs(type_docs);
                         }
                     }
                     TypeLike::TypeAlias(type_alias) => {
@@ -171,10 +186,7 @@ impl<'project> Document<'project> {
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_type_alias(type_alias)
                         {
-                            if !only_docstrings {
-                                type_formatted = format_type_docs(type_docs);
-                            }
-                            return "type";
+                            return format_type_docs(type_docs);
                         }
                     }
                     TypeLike::Function(func) => {
@@ -194,14 +206,10 @@ impl<'project> Document<'project> {
                         if let Some(ComplexPoint::TypeVarLike(tvl)) =
                             NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
                         {
-                            if !only_docstrings {
-                                type_formatted =
-                                    format_type_docs(TypeDocs::TypeVarLike(tvl.clone()))
-                            }
+                            return format_type_docs(TypeDocs::TypeVarLike(tvl.clone()));
                         } else {
                             recoverable_error!("Expected a type param to have a saved TypeVarLike")
                         }
-                        return "type";
                     }
                     _ => (),
                 }
@@ -243,7 +251,10 @@ impl<'project> Document<'project> {
                             type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
-                    ["function" | "property" | "type" | "module"] => (),
+                    [
+                        "function" | "property" | "type" | "type alias" | "TypeVar"
+                        | "TypeVarTuple" | "ParamSpec" | "module",
+                    ] => (),
                     _ => {
                         if known_kind.is_none() {
                             out += name.as_code();
