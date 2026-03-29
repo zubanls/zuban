@@ -102,7 +102,7 @@ impl<'project> Document<'project> {
                                     // function.
                                     if definition.maybe_class().is_some() {
                                         let class_ref = ClassNodeRef::from_node_ref(definition);
-                                        doc += &format!("Bound in class {}", class_ref.name());
+                                        doc += &format!("Bound in class `{}`", class_ref.name());
                                         if let TypeVarLikeUsage::TypeVar(tv) = usage {
                                             let variance = tv.type_var.inferred_variance(
                                                 db,
@@ -112,7 +112,7 @@ impl<'project> Document<'project> {
                                                 ),
                                             );
                                             doc += &format!(
-                                                "\n{} is {}",
+                                                "\n\n`{}` is `{}`",
                                                 tv.type_var.name(i_s.db),
                                                 variance.name().to_lowercase()
                                             );
@@ -126,7 +126,7 @@ impl<'project> Document<'project> {
                                     }
                                     if definition.maybe_function().is_some() {
                                         doc += &format!(
-                                            "Bound in function {}",
+                                            "Bound in function `{}`",
                                             FuncNodeRef::from_node_ref(definition)
                                                 .qualified_name(i_s.db)
                                         );
