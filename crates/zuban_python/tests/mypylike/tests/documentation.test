@@ -66,11 +66,24 @@ def bar() -> OtherAlias:
     OtherAlias
     return str()
 
+#? --codepoint-column 7 documentation
+ThirdAlias = list
+
+#? --codepoint-column 15 documentation
+def baz() -> ThirdAlias:
+    #? documentation
+    ThirdAlias
+    raise NotImplementedError
+
 [out]
-__main__.py:3:documentation -> "```python\n(type) Alias = int\n```"
-__main__.py:5:documentation -> "```python\n(type) Alias = int\n```"
-__main__.py:8:documentation -> "```python\n(variable) OtherAlias: type[str]\n```"
-__main__.py:11:documentation -> "```python\n(variable) OtherAlias: type[str]\n```"
+__main__.py:3:documentation -> "```python\n(type alias) Alias = int\n```"
+__main__.py:5:documentation -> "```python\n(type alias) Alias = int\n```"
+__main__.py:8:documentation -> "```python\n(type alias) OtherAlias = str\n```"
+__main__.py:11:documentation -> "```python\n(type alias) OtherAlias = str\n```"
+__main__.py:13:documentation -> "```python\n(type alias) OtherAlias = str\n```"
+__main__.py:17:documentation -> "```python\n(type alias) ThirdAlias = list\n```"
+__main__.py:20:documentation -> "```python\n(type alias) ThirdAlias = list\n```"
+__main__.py:22:documentation -> "```python\n(type alias) ThirdAlias = list\n```"
 
 [case docs_function_mypy_compatible]
 # flags: --mode mypy

@@ -158,6 +158,9 @@ impl<'project> Document<'project> {
                                     alias.type_if_valid().format_short(db)
                                 )
                             }
+                            TypeDocs::SimpleClassTypeAlias(class) => {
+                                format!("{} = {}", name_def.as_code(), class.name())
+                            }
                         }
                     }
                     match docs {
@@ -166,7 +169,7 @@ impl<'project> Document<'project> {
                             TypeVarLike::TypeVarTuple(_) => "TypeVarTuple",
                             TypeVarLike::ParamSpec(_) => "ParamSpec",
                         },
-                        TypeDocs::TypeAlias(_) => "type alias",
+                        TypeDocs::TypeAlias(_) | TypeDocs::SimpleClassTypeAlias(_) => "type alias",
                     }
                 };
 
