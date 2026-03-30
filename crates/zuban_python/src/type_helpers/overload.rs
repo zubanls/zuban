@@ -522,7 +522,15 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .map(|callable| {
                         let mut callable = replace_class_type_vars_in_callable(
                             i_s.db,
-                            &callable.remove_first_positional_param().unwrap(),
+                            callable
+                                .remove_first_positional_param()
+                                .as_ref()
+                                .unwrap_or_else(|| {
+                                    // The callable did not have a first positional param. This
+                                    // should be flagged when generating diagnostics. here we just
+                                    // try to not crash.
+                                    callable
+                                }),
                             self.class.as_ref(),
                             &|| Some(replace_self_type()),
                         );

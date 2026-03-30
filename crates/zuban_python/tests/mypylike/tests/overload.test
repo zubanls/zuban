@@ -1287,3 +1287,16 @@ class B(A): ...
 assert_type(A().o(1), bytes)
 assert_type(B().o(""), str)
 assert_type(B().o(1), int)
+
+[case overload_no_crash_when_self_is_missing]
+# From GH #358
+[file m.pyi]
+from typing import overload
+
+class C[T]:
+    @overload
+    def m(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    @overload
+    def m(): ...  # E: Method must have at least one argument. Did you forget the "self" argument? \
+                  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
