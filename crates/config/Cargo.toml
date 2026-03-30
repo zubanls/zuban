@@ -19,3 +19,7 @@ rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://g
 regex.workspace = true
 tracing.workspace = true
 toml_edit.workspace = true
+
+
+[dev-dependencies]
+tempfile.workspace = true
