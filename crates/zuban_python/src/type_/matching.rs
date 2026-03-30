@@ -138,11 +138,11 @@ impl Type {
             },
             original_t1 @ Type::RecursiveType(rec1) => {
                 if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
-                    match value_type {
-                        Type::Class(_) | Type::RecursiveType(_) => {
-                            // Classes like aliases can also be recursive in mypy, like
-                            // `class B(List[B])`.
-                            matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                    matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                        match value_type {
+                            Type::Class(_) | Type::RecursiveType(_) => {
+                                // Classes like aliases can also be recursive in mypy, like
+                                // `class B(List[B])`.
                                 if let Type::RecursiveType(rec2) = value_type
                                     && rec1.link == rec2.link
                                     && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
@@ -155,10 +155,10 @@ impl Type {
                                 } else {
                                     t1.matches(i_s, matcher, value_type, variance)
                                 }
-                            })
+                            }
+                            _ => t1.matches(i_s, matcher, value_type, variance),
                         }
-                        _ => t1.matches(i_s, matcher, value_type, variance),
-                    }
+                    })
                 } else {
                     // Happens for example when creating the MRO of a class with a
                     // tuple base class.
