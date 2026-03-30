@@ -236,7 +236,7 @@ pub(crate) struct PythonState {
     mypy_extensions_var_arg_func: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
-    warnings_deprecated_index: Option<NodeIndex>,
+    pub deprecated_link: PointLink,
     pub type_of_any: Type,
     pub type_of_self: Type,
     pub type_of_arbitrary_tuple: Type,
@@ -371,7 +371,7 @@ impl PythonState {
             mypy_extensions_var_arg_func: 0,
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
-            warnings_deprecated_index: None,
+            deprecated_link: PointLink::new(FileIndex(0), 0),
             type_of_any: Type::Type(Arc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Arc::new(Type::Self_)),
             type_of_arbitrary_tuple: Type::Type(Arc::new(Type::Tuple(
@@ -560,8 +560,8 @@ impl PythonState {
                 );
             };
         }
-        macro_rules! cache_typing_link_with_typing_extensions_fallback {
-            ($attr_name:ident, $name:literal, $is_func:expr) => {
+        macro_rules! cache_link_with_typing_extensions_fallback {
+            ($attr_name:ident, $name:literal, $original_module: ident, $is_func:expr) => {
                 // NewType is special, because the fallback is a function in current
                 // Typeshed, so use TypingExtensions for now...
                 let use_new_type_from_typing_extensions = $name == "NewType" && legacy_new_type(db);
@@ -571,7 +571,7 @@ impl PythonState {
                         if use_new_type_from_typing_extensions {
                             return db.python_state.typing_extensions();
                         }
-                        db.python_state.typing()
+                        db.python_state.$original_module()
                     },
                     $name,
                     |db, new_index| {
@@ -599,7 +599,7 @@ impl PythonState {
                         let file_index = if use_new_type_from_typing_extensions {
                             db.python_state.typing_extensions().file_index
                         } else {
-                            db.python_state.typing().file_index
+                            db.python_state.$original_module().file_index
                         };
                         db.python_state.$attr_name = PointLink::new(file_index, new_index);
                     },
@@ -701,25 +701,28 @@ impl PythonState {
             typeshed,
             "SupportsKeysAndGetItem"
         );
-        cache_typing_link_with_typing_extensions_fallback!(
+        cache_link_with_typing_extensions_fallback!(
             type_var_tuple_link,
             "TypeVarTuple",
+            typing,
             false
         );
-        cache_typing_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", false);
-        cache_typing_link_with_typing_extensions_fallback!(
+        cache_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", typing, false);
+        cache_link_with_typing_extensions_fallback!(
             typinglike_namedtuple_link,
             "NamedTuple",
+            typing,
             false
         );
-        cache_typing_link_with_typing_extensions_fallback!(new_type_link, "NewType", false);
-        cache_typing_link_with_typing_extensions_fallback!(reveal_type_link, "reveal_type", true);
-        cache_typing_link_with_typing_extensions_fallback!(
+        cache_link_with_typing_extensions_fallback!(new_type_link, "NewType", typing, false);
+        cache_link_with_typing_extensions_fallback!(reveal_type_link, "reveal_type", typing, true);
+        cache_link_with_typing_extensions_fallback!(
             type_alias_type_link,
             "TypeAliasType",
+            typing,
             false
         );
-        cache_typing_link_with_typing_extensions_fallback!(typing_override_link, "override", true);
+        cache_link_with_typing_extensions_fallback!(typing_override_link, "override", typing, true);
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
@@ -768,10 +771,7 @@ impl PythonState {
 
         cache_index!(dataclasses_replace_index, dataclasses_file, "replace", true);
 
-        cache_optional_index!(warnings_deprecated_index, warnings, "deprecated");
-        if db.python_state.warnings_deprecated_index.is_none() {
-            cache_optional_index!(warnings_deprecated_index, typing_extensions, "deprecated");
-        }
+        cache_link_with_typing_extensions_fallback!(deprecated_link, "deprecated", warnings, false);
 
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
         cache_index!(abc_abstractmethod_index, abc, "abstractmethod", true);
@@ -1068,7 +1068,6 @@ impl PythonState {
     class_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
     class_node_ref!(typing, pub mutable_mapping_node_ref, typing_mutable_mapping_index);
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
-    optional_attribute_node_ref!(warnings, pub deprecated, warnings_deprecated_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
@@ -1145,7 +1144,6 @@ impl PythonState {
         dataclasses_capital_field_link,
         dataclasses_capital_field_index
     );
-    optional_attribute_link!(warnings, pub deprecated_link, warnings_deprecated_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);

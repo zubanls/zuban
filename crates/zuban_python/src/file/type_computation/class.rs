@@ -517,7 +517,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             dataclass_transform = Some(Box::new(d.clone()));
                         }
                         Some(Lookup::T(TypeContent::Class { node_ref, .. }))
-                            if Some(*node_ref) == db.python_state.deprecated() =>
+                            if node_ref.as_link() == db.python_state.deprecated_link =>
                         {
                             deprecated_reason =
                                 Some(self.file.inference(i_s).infer_deprecated_reason(decorator));

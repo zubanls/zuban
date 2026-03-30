@@ -346,3 +346,12 @@ ignore_errors = false
 [[tool.mypy.overrides]]
 module = 'n'
 ignore_errors = true
+
+[case deprecated_typing_extensions_older_python]
+# flags: --enable-error-code=deprecated --python-version 3.12
+from typing_extensions import deprecated
+
+@deprecated("Deprecated")
+def foo(): ...
+
+foo()  # E: function __main__.foo is deprecated: Deprecated
