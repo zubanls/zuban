@@ -1383,6 +1383,7 @@ fn typing_changes(
     set_typing_inference(t, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(t, "Required", Specific::TypingRequired);
+    set_typing_inference(t, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
 

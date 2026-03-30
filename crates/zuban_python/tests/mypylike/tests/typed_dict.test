@@ -1137,3 +1137,11 @@ def f(key: str):
     test[key]  # E: TypedDict key must be a string literal; expected one of ("a", "b")  [literal-required]
     test.setdefault(key, "")  # E: Expected TypedDict key to be string literal  [literal-required]
     test.pop(key)  # E: Expected TypedDict key to be string literal  [literal-required]
+
+[case typing_extensions_typed_dict_older_python_version_read_only]
+# flags: --python-version 3.12
+from typing_extensions import ReadOnly
+from typing import TypedDict
+
+class C(TypedDict):
+    x: ReadOnly[int]
