@@ -1321,11 +1321,20 @@ fn split_off_enum_member(
                     add(f);
                     continue;
                 }
+                let is_class = |link| match sub_t {
+                    Type::Class(c) => c.link == link,
+                    _ => false,
+                };
                 if abort_on_custom_eq
-                    && matches!(
-                        enum_member.enum_.kind(i_s),
-                        EnumKind::IntEnum | EnumKind::StrEnum
-                    )
+                    && match enum_member.enum_.kind(i_s) {
+                        EnumKind::IntEnum => {
+                            is_class(i_s.db.python_state.int_link()) || has_custom_eq(i_s, sub_t)
+                        }
+                        EnumKind::StrEnum => {
+                            is_class(i_s.db.python_state.str_link()) || has_custom_eq(i_s, sub_t)
+                        }
+                        _ => false,
+                    }
                 {
                     return None;
                 }
