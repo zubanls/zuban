@@ -2008,3 +2008,21 @@ def f(a: Sequence[list[int | Literal[1]]], b: list[A | B]) -> None:
     z: list[A | C] = b
     k: list[A | B] = b
     i: list[A | B] = y
+
+[case no_crash_on_matching_generic_overloads]
+# From GH #348
+from typing import Protocol, TypeVar, overload
+
+_GMaybeTZDT = TypeVar("_GMaybeTZDT", covariant=True)
+_FuncTZ = TypeVar("_FuncTZ")
+
+
+class DateTime(Protocol[_GMaybeTZDT]):
+    @overload
+    def replace(self) -> DateTime[_FuncTZ]: ...
+    @overload
+    def replace(self) -> NaiveDateTime: ...  # type: ignore
+
+
+class NaiveDateTime(DateTime[None], Protocol):
+    pass
