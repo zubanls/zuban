@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path, sync::Arc};
 
-use crate::{DiagnosticConfig, Mode, ProjectOptions};
+use crate::{DiagnosticConfig, Mode, ProjectOptions, get_zuban_config_and_apply_mode};
 use toml_edit::DocumentMut;
 use vfs::{AbsPath, VfsHandler};
 
@@ -108,7 +108,7 @@ fn initialize_config(
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: Arc<AbsPath>,
-    mode: Option<Mode>,
+    mut mode: Option<Mode>,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<Option<FoundConfig>> {
     let mut end_result = None;
@@ -123,14 +123,19 @@ fn find_mypy_config_file_in_dir(
             }
             let config_path = vfs.absolute_path(&dir, config_name);
             tracing::info!("Potential config found: {config_path}");
+            // In the case of pyproject.toml we first check for Mypy specific parts, because the
+            // general zuban parts just overwrite all Mypy specific config (other files such as
+            // mypy.ini included). However mypy.ini still needs to be loaded first.
             if *config_name == PYPROJECT_TOML_NAME {
                 let mut diagnostic_config = DiagnosticConfig::default();
                 pyproject_toml = Some(content.parse()?);
+                let document = pyproject_toml.as_ref().unwrap();
+                get_zuban_config_and_apply_mode(document, &mut mode)?;
                 let project_options = ProjectOptions::apply_pyproject_toml_mypy_part(
                     vfs,
                     &dir,
                     &config_path,
-                    pyproject_toml.as_ref().unwrap(),
+                    document,
                     &mut diagnostic_config,
                     mode,
                 )?;
@@ -195,7 +200,7 @@ fn default_config(
     dir: Arc<AbsPath>,
 ) -> FoundConfig {
     FoundConfig {
-        project_options: ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Default)),
+        project_options: ProjectOptions::default_for_mode(mode.unwrap_or_default()),
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
         most_probable_base: dir,
