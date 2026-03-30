@@ -2026,3 +2026,11 @@ class DateTime(Protocol[_GMaybeTZDT]):
 
 class NaiveDateTime(DateTime[None], Protocol):
     pass
+
+[case mypy_mode_promotion_in_max_generics]
+# From GH #359
+a = 1.0
+b = 20
+c = -20
+
+clamped = max(b, min(c, a))
