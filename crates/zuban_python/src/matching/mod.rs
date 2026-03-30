@@ -50,7 +50,7 @@ pub fn invalidate_protocol_cache() {
     })
 }
 
-pub fn avoid_protocol_mismatch(
+pub fn avoid_protocol_recursion(
     db: &Database,
     t1: &Type,
     t2: &Type,
@@ -82,7 +82,7 @@ pub fn avoid_protocol_mismatch(
                     // where it replace function type vars repeatedly with new generated type vars.
                     // I'm not 100% sure this holds for all cases, but it feels like this is fine.
                     drop(current);
-                    return avoid_protocol_mismatch(
+                    return avoid_protocol_recursion(
                         db,
                         &new_t1,
                         t2,

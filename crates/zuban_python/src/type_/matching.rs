@@ -11,7 +11,7 @@ use crate::{
     inference_state::InferenceState,
     match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_protocol_mismatch, format_got_expected,
+        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_protocol_recursion, format_got_expected,
     },
     params::matches_params,
     recoverable_error,
@@ -351,7 +351,7 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
-                    avoid_protocol_mismatch(
+                    avoid_protocol_recursion(
                         i_s.db,
                         self,
                         value_type,
