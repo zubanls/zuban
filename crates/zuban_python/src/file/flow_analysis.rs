@@ -1939,6 +1939,10 @@ impl<'file> Inference<'_, 'file, '_> {
         )
     }
 
+    pub fn save_narrowed_initial_name_definition(&self, link: PointLink, type_: Type) {
+        self.save_narrowed(FlowKey::Name(link), type_, false)
+    }
+
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.overwrite_entry(

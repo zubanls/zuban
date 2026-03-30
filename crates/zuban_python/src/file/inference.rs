@@ -1561,14 +1561,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
                 return;
             }
-            let value = match assign_kind {
+            let mut need_additional_narrowing = false;
+            let new_declaration_value = match assign_kind {
                 AssignKind::Normal | AssignKind::Walrus => {
-                    value.avoid_implicit_literal_cow(self.i_s)
+                    match value.maybe_avoid_implicit_literal(self.i_s) {
+                        Some(inf) => {
+                            need_additional_narrowing = true;
+                            Cow::Owned(inf)
+                        }
+                        None => Cow::Borrowed(value),
+                    }
                 }
                 _ => Cow::Borrowed(value),
             };
             if assign_kind.is_normal_assignment() {
-                if let Some(partial) = value.maybe_new_partial(i_s, |t| {
+                if let Some(partial) = new_declaration_value.maybe_new_partial(i_s, |t| {
                     set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
                 }) {
                     let name_def_index = name_def.index();
@@ -1609,7 +1616,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
 
                     return;
-                } else if let Some(inf) = value
+                } else if let Some(inf) = new_declaration_value
                     .maybe_any_with_unknown_type_params(i_s, NodeRef::new(self.file, current_index))
                 {
                     save(name_def.index(), &inf);
@@ -1624,10 +1631,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return;
                 }
             }
-            if let Some(value_without_final) = value.remove_final(i_s) {
+            if need_additional_narrowing {
+                if false {
+                    // TODO reenable this
+                    self.save_narrowed_initial_name_definition(
+                        PointLink::new(self.file.file_index, current_index),
+                        value.as_type(i_s),
+                    )
+                }
+            }
+            if let Some(value_without_final) = new_declaration_value.remove_final(i_s) {
                 save(name_def.index(), &value_without_final);
             } else {
-                save(name_def.index(), &value);
+                save(name_def.index(), &new_declaration_value);
             }
         }
     }
