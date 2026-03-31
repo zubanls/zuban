@@ -3,7 +3,7 @@ use lsp_types::{
     DidChangeNotebookDocumentParams, DidChangeTextDocumentParams, DidCloseNotebookDocumentParams,
     DidCloseTextDocumentParams, DidOpenNotebookDocumentParams, DidOpenTextDocumentParams,
     NotebookCell, NotebookCellKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentItem, Uri, VersionedTextDocumentIdentifier,
+    TextDocumentItem, Url, VersionedTextDocumentIdentifier,
 };
 use vfs::PathWithScheme;
 
@@ -39,7 +39,7 @@ impl GlobalState<'_> {
             .store_file_with_lsp_changes(path, content_changes, |pos| encoding.input_position(pos))
     }
 
-    fn store_in_memory_file(&mut self, uri: lsp_types::Uri, code: Box<str>) -> anyhow::Result<()> {
+    fn store_in_memory_file(&mut self, uri: Url, code: Box<str>) -> anyhow::Result<()> {
         let project = self.project();
         let path = Self::uri_to_path(project, &uri)?;
         tracing::info!("Loading {}", path.as_uri());
@@ -95,7 +95,7 @@ impl GlobalState<'_> {
 
     fn new_cells(
         &mut self,
-        notebook: &Uri,
+        notebook: &Url,
         cells: Vec<NotebookCell>,
         mut text_documents: Vec<TextDocumentItem>,
         start_at_nth_cell: usize,

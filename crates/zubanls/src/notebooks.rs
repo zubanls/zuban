@@ -1,11 +1,11 @@
 use std::{collections::HashMap, ops::Range};
 
 use anyhow::bail;
-use lsp_types::Uri;
+use lsp_types::Url;
 use vfs::PathWithScheme;
 
 #[derive(Default)]
-pub(crate) struct Notebooks(HashMap<Uri, Notebook>);
+pub(crate) struct Notebooks(HashMap<Url, Notebook>);
 
 #[derive(Default)]
 pub(crate) struct Notebook {
@@ -13,15 +13,15 @@ pub(crate) struct Notebook {
 }
 
 impl Notebooks {
-    pub fn add_notebook(&mut self, notebook_uri: Uri) {
+    pub fn add_notebook(&mut self, notebook_uri: Url) {
         self.0.insert(notebook_uri, Default::default());
     }
 
-    pub fn close_notebook(&mut self, notebook_uri: Uri) {
+    pub fn close_notebook(&mut self, notebook_uri: Url) {
         self.0.remove(&notebook_uri);
     }
 
-    pub fn remove_cells(&mut self, notebook_uri: &Uri, range: Range<usize>) -> anyhow::Result<()> {
+    pub fn remove_cells(&mut self, notebook_uri: &Url, range: Range<usize>) -> anyhow::Result<()> {
         let Some(notebook) = self.0.get_mut(notebook_uri) else {
             bail!("Expected a notebook for {notebook_uri:?}");
         };
@@ -31,7 +31,7 @@ impl Notebooks {
 
     pub fn add_cell_and_return_parent(
         &mut self,
-        notebook_uri: &Uri,
+        notebook_uri: &Url,
         cell_path: PathWithScheme,
         at_nth_cell: usize,
     ) -> anyhow::Result<Option<PathWithScheme>> {
@@ -55,7 +55,7 @@ impl Notebooks {
 
     pub fn nth_cell(
         &mut self,
-        notebook_uri: &Uri,
+        notebook_uri: &Url,
         index: usize,
     ) -> anyhow::Result<Option<PathWithScheme>> {
         let Some(notebook) = self.0.get_mut(notebook_uri) else {

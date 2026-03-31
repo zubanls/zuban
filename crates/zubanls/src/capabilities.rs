@@ -116,6 +116,7 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             },
         )),
         inline_completion_provider: None,
+        type_hierarchy_provider: None,
     }
 }
 
@@ -256,19 +257,6 @@ impl ClientCapabilities {
 
     pub fn should_push_diagnostics(&self) -> bool {
         self.should_push_diagnostics
-    }
-
-    #[expect(dead_code)]
-    pub(crate) fn diagnostics_refresh(&self) -> bool {
-        (|| {
-            self.caps
-                .workspace
-                .as_ref()?
-                .diagnostic
-                .as_ref()?
-                .refresh_support
-        })()
-        .unwrap_or_default()
     }
 
     #[expect(dead_code)]

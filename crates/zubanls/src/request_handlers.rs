@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr as _};
 
 use anyhow::bail;
 use lsp_server::ErrorCode;
@@ -17,7 +17,7 @@ use lsp_types::{
     ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri,
+    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Url,
     WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
     WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
     WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
@@ -791,8 +791,8 @@ fn ensure_valid_workspace_edit(
     Ok(())
 }
 
-pub(crate) fn to_uri(s: String) -> Uri {
-    Uri::from_str(&s)
+pub(crate) fn to_uri(s: String) -> Url {
+    Url::from_str(&s)
         .unwrap_or_else(|err| panic!("Tried to parse the URI {s}, but failed with {err:?}"))
 }
 

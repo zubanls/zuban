@@ -35,8 +35,10 @@ crossbeam-channel = "*"
 dirs = "*"
 fnv = "*"
 lazy_static = "*"
-lsp-types = { version = "0.97.0", features = ["proposed"]}
-lsp-server = "0.7.7"
+lsp-types = { git = "https://github.com/astral-sh/lsp-types.git", rev = "e15db0593f0ecbbd80599c3f5880e4bf5da1ca0c", features = [
+    "proposed",
+] }
+lsp-server.version = "0.7.9"
 notify = "*"
 num-bigint = "*"
 num-traits = "*"

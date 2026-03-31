@@ -8,13 +8,11 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, RwLock};
 
-use anyhow::bail;
 use config::ProjectOptions;
 use crossbeam_channel::{Receiver, Sender, never, select};
-use fluent_uri::Scheme;
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
-use lsp_types::{TextDocumentPositionParams, Uri};
+use lsp_types::{TextDocumentPositionParams, Url};
 use notify::EventKind;
 use serde::{Serialize, de::DeserializeOwned};
 use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _};
@@ -633,14 +631,11 @@ impl<'sender> GlobalState<'sender> {
         }
     }
 
-    pub(crate) fn uri_to_path(
-        project: &Project,
-        uri: &lsp_types::Uri,
-    ) -> anyhow::Result<PathWithScheme> {
+    pub(crate) fn uri_to_path(project: &Project, uri: &Url) -> anyhow::Result<PathWithScheme> {
         let (scheme, path) = unpack_uri(uri)?;
         let handler = project.vfs_handler();
         let path = handler.unchecked_abs_path_from_uri(Arc::from(path));
-        Ok(if scheme.eq_lowercase("file") {
+        Ok(if scheme == "file" {
             let path = handler.normalize_rc_path(path);
             PathWithScheme::with_file_scheme(path)
         } else {
@@ -823,7 +818,7 @@ impl std::fmt::Display for LspError {
 
 impl std::error::Error for LspError {}
 
-fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
+fn patch_path_prefix(path: &Url) -> anyhow::Result<String> {
     let (_, path) = unpack_uri(path)?;
     use std::path::{Component, Prefix};
     if cfg!(windows) {
@@ -861,11 +856,17 @@ fn patch_path_prefix(path: &Uri) -> anyhow::Result<String> {
     }
 }
 
-fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
-    let Some(scheme) = uri.scheme() else {
-        bail!("No scheme found in uri {}", uri.as_str())
+fn unpack_uri(uri: &Url) -> anyhow::Result<(&str, Cow<'_, str>)> {
+    let scheme = uri.scheme();
+    let Some(rest) = uri.as_str().strip_prefix(scheme) else {
+        unreachable!("{scheme:?} should always be a part of the URI {:?}", uri);
     };
-
+    let rest = rest.strip_prefix(':').unwrap_or(rest);
+    Ok((
+        scheme,
+        urlencoding::decode(rest.strip_prefix("//").unwrap_or(rest))?,
+    ))
+    /*
     let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
     let mut p = if let Some(auth) = &uri.auth {
         uri.as_str().get(auth.start.get().get() as usize..).unwrap()
@@ -879,8 +880,8 @@ fn unpack_uri(uri: &lsp_types::Uri) -> anyhow::Result<(&Scheme, Cow<'_, str>)> {
         p = new_p;
     }
 
-    let decoded = urlencoding::decode(p)?;
-    Ok((scheme, decoded))
+    let decoded = ;
+    */
 }
 
 #[test]
