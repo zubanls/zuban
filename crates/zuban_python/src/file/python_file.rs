@@ -95,10 +95,18 @@ pub(crate) struct FileImport {
     pub in_global_scope: bool,
 }
 
+#[derive(Clone)]
+pub(crate) enum DunderAllState {
+    Simple(Box<[DbString]>),
+    // In some cases __all__ is modified in a dynamic complex way where we don't know the exact
+    // literals.
+    ComplexUnknown,
+}
+
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
-    maybe_dunder_all: OnceLock<Option<Box<[DbString]>>>, // For __all__
+    maybe_dunder_all: OnceLock<Option<DunderAllState>>, // For __all__
     pub points: Points,
     pub complex_points: ComplexValues,
     pub file_index: FileIndex,
@@ -570,7 +578,7 @@ impl<'db> PythonFile {
         Some(loaded)
     }
 
-    pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
+    pub fn maybe_dunder_all(&self, db: &Database) -> Option<&DunderAllState> {
         self.maybe_dunder_all
             .get_or_init(|| {
                 self.symbol_table
@@ -587,8 +595,11 @@ impl<'db> PythonFile {
                                     assignment.maybe_simple_type_expression_assignment()
                                 })
                         {
-                            let base = maybe_dunder_all_names(vec![], self.file_index, expr)?;
-                            self.gather_dunder_all_modifications(db, dunder_all_index, base)
+                            let Some(base) = maybe_dunder_all_names(vec![], self.file_index, expr)
+                            else {
+                                return Some(DunderAllState::ComplexUnknown);
+                            };
+                            Some(self.gather_dunder_all_modifications(db, dunder_all_index, base))
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
                         {
@@ -604,24 +615,40 @@ impl<'db> PythonFile {
                                 .as_redirected_node_ref(db)
                                 .file
                                 .maybe_dunder_all(db)?;
-                            self.gather_dunder_all_modifications(db, dunder_all_index, base.into())
+                            match base {
+                                DunderAllState::Simple(base) => {
+                                    Some(self.gather_dunder_all_modifications(
+                                        db,
+                                        dunder_all_index,
+                                        base.clone().into_vec(),
+                                    ))
+                                }
+                                DunderAllState::ComplexUnknown => {
+                                    Some(DunderAllState::ComplexUnknown)
+                                }
+                            }
                         } else {
-                            None
+                            Some(DunderAllState::ComplexUnknown)
                         }
                     })
             })
-            .as_deref()
+            .as_ref()
     }
 
     pub fn is_name_exported_for_star_import(&self, db: &Database, name: &str) -> bool {
         if let Some(dunder) = self.maybe_dunder_all(db) {
-            // Name not in __all__
-            if !dunder.iter().any(|x| x.as_str(db) == name) {
-                debug!(
-                    "Name {name} found in star imports of {}, but it's not in __all__",
-                    self.file_path(db)
-                );
-                return false;
+            match dunder {
+                DunderAllState::Simple(dunder) => {
+                    // Name not in __all__
+                    if !dunder.iter().any(|x| x.as_str(db) == name) {
+                        debug!(
+                            "Name {name} found in star imports of {}, but it's not in __all__",
+                            self.file_path(db)
+                        );
+                        return false;
+                    }
+                }
+                DunderAllState::ComplexUnknown => return true,
             }
         } else if name.starts_with('_') {
             return false;
@@ -634,7 +661,7 @@ impl<'db> PythonFile {
         db: &Database,
         dunder_all_index: NodeIndex,
         mut dunder_all: Vec<DbString>,
-    ) -> Option<Box<[DbString]>> {
+    ) -> DunderAllState {
         let file_index = self.file_index;
         let check_multi_def = |dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
             let name_def = name.name_def().unwrap();
@@ -689,17 +716,25 @@ impl<'db> PythonFile {
         if p.calculated() && p.maybe_specific() == Some(Specific::FirstNameOfNameDef) {
             for index in OtherDefinitionIterator::new(&self.points, dunder_all_index) {
                 let name = NodeRef::new(self, index as NodeIndex).expect_name();
-                dunder_all = check_multi_def(dunder_all, name)?
+                if let Some(new) = check_multi_def(dunder_all, name) {
+                    dunder_all = new
+                } else {
+                    return DunderAllState::ComplexUnknown;
+                }
             }
         }
         for (index, point) in self.points.iter().enumerate() {
             if point.maybe_redirect_to(PointLink::new(file_index, dunder_all_index))
                 && let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name()
             {
-                dunder_all = check_ref(dunder_all, name)?
+                if let Some(new) = check_ref(dunder_all, name) {
+                    dunder_all = new
+                } else {
+                    return DunderAllState::ComplexUnknown;
+                }
             }
         }
-        Some(dunder_all.into())
+        DunderAllState::Simple(dunder_all.into())
     }
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Arc<FileEntry> {
