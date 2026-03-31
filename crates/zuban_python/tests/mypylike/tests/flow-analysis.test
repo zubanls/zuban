@@ -577,3 +577,39 @@ class Y:
     def f(self):
         reveal_type(self.x)  # N: Revealed type is "Any | None"
         return self.x.foo
+
+[case pydantic_mre_fix_non_deterministic_errors]
+# From GH #311
+[file pkg/pydantic.py]
+from typing import dataclass_transform, Literal, overload
+
+from abc import ABCMeta
+
+@overload
+def Field(pattern: Literal['foo']) -> str: ...
+@overload
+def Field(pattern: Literal['']) -> str: ...
+def Field(pattern):
+    raise NotImplementedError
+
+@dataclass_transform(field_specifiers=(Field,))
+class ModelMetaclass(ABCMeta):
+    pass
+
+class BaseModel(metaclass=ModelMetaclass):
+    name: str
+
+[file pkg/x.py]
+from pkg.z import MyModel
+
+x = MyModel(name="hello")
+
+[file pkg/z.py]
+from typing import Final
+from pkg.pydantic import BaseModel, Field
+
+_REGEX: Final = r''
+
+class MyModel(BaseModel):
+    name: str = Field(_REGEX)
+
