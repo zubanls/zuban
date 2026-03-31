@@ -889,7 +889,7 @@ fn unpack_uri(uri: &Url) -> anyhow::Result<(&str, Cow<'_, str>)> {
 fn patch_path_prefix_works() {
     use std::str::FromStr as _;
     assert_eq!(
-        patch_path_prefix(&Uri::from_str(r"file:///c:/foo/bar").unwrap()).unwrap(),
+        patch_path_prefix(&Url::from_str(r"file:///c:/foo/bar").unwrap()).unwrap(),
         r"C:\foo\bar",
     );
     // This doesn't seem to be possible with URIs and we therefore ignore it for now.
