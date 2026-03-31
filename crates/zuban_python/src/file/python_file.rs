@@ -26,7 +26,8 @@ use super::{
 use crate::{
     InputPosition,
     database::{
-        ComplexPoint, Database, Locality, Point, PointLink, Points, PythonProject, Specific,
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Points, PythonProject,
+        Specific,
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
@@ -583,7 +584,7 @@ impl<'db> PythonFile {
             .get_or_init(|| {
                 self.symbol_table
                     .lookup_symbol("__all__")
-                    .and_then(|dunder_all_index| {
+                    .map(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
                             .expect_name()
                             .name_def()
@@ -597,9 +598,9 @@ impl<'db> PythonFile {
                         {
                             let Some(base) = maybe_dunder_all_names(vec![], self.file_index, expr)
                             else {
-                                return Some(DunderAllState::ComplexUnknown);
+                                return DunderAllState::ComplexUnknown;
                             };
-                            Some(self.gather_dunder_all_modifications(db, dunder_all_index, base))
+                            self.gather_dunder_all_modifications(db, dunder_all_index, base)
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
                         {
@@ -611,24 +612,32 @@ impl<'db> PythonFile {
                             // exactly this method.
                             let name_def_point =
                                 NodeRef::new(self, as_name.name_def().index()).point();
-                            let base = name_def_point
+                            if !name_def_point.calculated()
+                                || name_def_point.kind() != PointKind::Redirect
+                            {
+                                // This happens when the import is not resolvable, e.g. __all__
+                                // does not exist in the imported file.
+                                return DunderAllState::ComplexUnknown;
+                            }
+                            let Some(base) = name_def_point
                                 .as_redirected_node_ref(db)
                                 .file
-                                .maybe_dunder_all(db)?;
+                                .maybe_dunder_all(db)
+                            else {
+                                // Not sure if this ever happens
+                                return DunderAllState::ComplexUnknown;
+                            };
                             match base {
-                                DunderAllState::Simple(base) => {
-                                    Some(self.gather_dunder_all_modifications(
+                                DunderAllState::Simple(base) => self
+                                    .gather_dunder_all_modifications(
                                         db,
                                         dunder_all_index,
                                         base.clone().into_vec(),
-                                    ))
-                                }
-                                DunderAllState::ComplexUnknown => {
-                                    Some(DunderAllState::ComplexUnknown)
-                                }
+                                    ),
+                                DunderAllState::ComplexUnknown => DunderAllState::ComplexUnknown,
                             }
                         } else {
-                            Some(DunderAllState::ComplexUnknown)
+                            DunderAllState::ComplexUnknown
                         }
                     })
             })

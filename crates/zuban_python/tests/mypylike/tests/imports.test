@@ -846,3 +846,15 @@ from other import C
 __all__ = dir()
 [file other.pyi]
 class C: ...
+
+[case no_implicit_reexport_only_for_stubs3_not_defined_dunder_all]
+# flags: --strict
+import m
+from m import C
+m.C
+
+[file m.py]
+from other import C
+from other import __all__  # E: Module "other" has no attribute "__all__"
+[file other.pyi]
+class C: ...
