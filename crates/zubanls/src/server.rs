@@ -862,41 +862,33 @@ fn unpack_uri(uri: &Url) -> anyhow::Result<(&str, Cow<'_, str>)> {
         unreachable!("{scheme:?} should always be a part of the URI {:?}", uri);
     };
     let rest = rest.strip_prefix(':').unwrap_or(rest);
-    Ok((
-        scheme,
-        urlencoding::decode(rest.strip_prefix("//").unwrap_or(rest))?,
-    ))
-    /*
-    let scheme_end = uri.scheme_end.expect("The scheme above is Some()");
-    let mut p = if let Some(auth) = &uri.auth {
-        uri.as_str().get(auth.start.get().get() as usize..).unwrap()
-    } else {
-        // + 1 for the colon in file:/
-        uri.as_str().get(scheme_end.get() as usize + 1..).unwrap()
-    };
+    let mut rest = rest.strip_prefix("//").unwrap_or(rest);
     if cfg!(windows)
-        && let Some(new_p) = p.strip_prefix('/')
+        && let Some(new_p) = rest.strip_prefix('/')
     {
-        p = new_p;
+        rest = new_p;
     }
-
-    let decoded = ;
-    */
+    Ok((scheme, urlencoding::decode(rest)?))
 }
 
-#[test]
-#[cfg(windows)]
-fn patch_path_prefix_works() {
-    use std::str::FromStr as _;
-    assert_eq!(
-        patch_path_prefix(&Url::from_str(r"file:///c:/foo/bar").unwrap()).unwrap(),
-        r"C:\foo\bar",
-    );
-    // This doesn't seem to be possible with URIs and we therefore ignore it for now.
-    /*
-    assert_eq!(
-        &patch_path_prefix(&Uri::from_str(r"\\?\c:/foo/bar").unwrap()),
-        r"\\?\C:\foo\bar",
-    );
-    */
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+    #[test]
+    #[cfg(windows)]
+    fn patch_path_prefix_works() {
+        use std::str::FromStr as _;
+        assert_eq!(
+            patch_path_prefix(&Url::from_str(r"file:///c:/foo/bar").unwrap()).unwrap(),
+            r"C:\foo\bar",
+        );
+        // This doesn't seem to be possible with URIs and we therefore ignore it for now.
+        /*
+        assert_eq!(
+            &patch_path_prefix(&Uri::from_str(r"\\?\c:/foo/bar").unwrap()),
+            r"\\?\C:\foo\bar",
+        );
+        */
+    }
 }
