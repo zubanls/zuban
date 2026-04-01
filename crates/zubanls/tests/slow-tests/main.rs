@@ -667,15 +667,16 @@ fn files_outside_of_root_with_push_diagnostics() {
     // Check random files that don't really make sense
     let mut check_other_uris = vec![
         Url::from_str("file:///bar/foo").unwrap(),
-        Url::from_str("file://foo").unwrap(),
-        Url::from_str("file://").unwrap(),
         Url::from_str("https://www.example.com/foo.py").unwrap(),
-        Url::from_str("file:/single_slash").unwrap(),
     ];
 
     if cfg!(windows) {
-        check_other_uris.pop();
         check_other_uris.push(Url::from_str("file:/C:/single_slash").unwrap());
+    } else {
+        check_other_uris.push(Url::from_str("file:/single_slash").unwrap());
+        // Some of these are just really weird on Windows, because these paths don't really exist.
+        check_other_uris.push(Url::from_str("file://foo").unwrap());
+        check_other_uris.push(Url::from_str("file://").unwrap());
     }
 
     for uri in &mut check_other_uris {
@@ -684,12 +685,6 @@ fn files_outside_of_root_with_push_diagnostics() {
         if uri.authority() == "" {
             // Make sure all uris have an authority, because that's how zubanls returns it.
             *uri = Url::from_str(&uri.as_str().replace("file:/", "file:///")).unwrap();
-        }
-        if cfg!(windows) && (uri.as_str() == "file://foo" || uri.as_str() == "file://") {
-            // TODO this is probably a bug in Windows handling, but for now this shouldn't matter
-            // and we leave it like that as long as it does not crash. Also these paths don't
-            // really exist on Windows
-            *uri = Url::from_str(&uri.as_str().replace("file:/", "file://")).unwrap();
         }
         assert_eq!(file.as_str(), uri.as_str());
         assert_eq!(diags, [r#""int" not callable"#]);
