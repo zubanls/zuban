@@ -1628,12 +1628,21 @@ fn add_workspace_and_check_for_pth_files(
                         let path =
                             handler.normalize_rc_path(handler.absolute_path(&workspace_path, line));
                         tracing::info!("Add entry {path} in .pth file: {}", pth_path.as_uri());
+                        // Sometimes pth files link to subfolders of the current workspace. In that
+                        // case we want this to still be a type checked (nested) workspace.
+                        let kind = if workspaces_builder
+                            .path_is_contained_in_type_checking_folder(&path)
+                        {
+                            WorkspaceKind::TypeChecking
+                        } else {
+                            WorkspaceKind::SitePackages
+                        };
                         add_workspace_and_check_for_pth_files(
                             handler,
                             workspaces_builder,
                             path,
                             is_recovery,
-                            WorkspaceKind::SitePackages,
+                            kind,
                         )
                     }
                 }

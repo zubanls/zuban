@@ -77,6 +77,12 @@ impl<'x> WorkspacesBuilder<'x> {
             .last()
             .expect("There should always be a workspace")
     }
+
+    pub fn path_is_contained_in_type_checking_folder(&self, path: &NormalizedPath) -> bool {
+        self.items
+            .iter()
+            .any(|workspace| path.as_ref().starts_with(workspace.root_path.as_ref()))
+    }
 }
 
 impl From<WorkspacesBuilder<'_>> for Workspaces {
