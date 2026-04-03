@@ -786,6 +786,10 @@ a:'''
 __main__:5:1:5:5: error: Invalid syntax
 __main__:6:2:6:3: error: Invalid syntax
 
+[out.windows]
+__main__:4:7:5:4: error: Invalid syntax
+__main__:6:1:6:2: error: Invalid syntax
+
 [case allow_incomplete_generics]
 # flags: --allow-incomplete-generics
 from typing import Generic, TypeVar, assert_type, Any
