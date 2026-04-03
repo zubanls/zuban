@@ -672,7 +672,9 @@ impl Type {
                         t.inferred_variance(i_s.db, class1).invert()
                     }
                     TypeVarLike::TypeVar(_) => Variance::Invariant,
-                    TypeVarLike::TypeVarTuple(_) | TypeVarLike::ParamSpec(_) => Variance::Covariant,
+                    TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
+                    // TODO this should probably not be covariant
+                    TypeVarLike::ParamSpec(_) => Variance::Covariant,
                 };
                 matches &= t1.matches(i_s, matcher, &t2, v);
             }

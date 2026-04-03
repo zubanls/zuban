@@ -85,6 +85,30 @@ class ClassA(Generic[Shape]):  # E: Free type variable expected in Generic[...]
     def method1(*args: Shape) -> None:  # E: TypeVarTuple "Shape" is only valid with an unpack
         ...
 
+[case typevartuples_are_invariant_in_conformance_tests]
+# flags: --mode default
+# Copied from conformance tests (generics_typevartuple_basic.py)
+from typing import TypeVarTuple, assert_type, Generic, NewType
+Shape = TypeVarTuple("Shape")
+
+Height = NewType("Height", int)
+Width = NewType("Width", int)
+
+class Array(Generic[*Shape]):
+    def __init__(self, shape: tuple[*Shape]):
+        self._shape: tuple[*Shape] = shape
+
+    def get_shape(self) -> tuple[*Shape]:
+        return self._shape
+
+def multiply(x: Array[*Shape], y: Array[*Shape]) -> Array[*Shape]:
+    raise NotImplementedError
+
+def func3(x: Array[Height], y: Array[Width], z: Array[Height, Width]) -> None:
+    multiply(x, x)  # OK
+    multiply(x, y)  # E: Argument 2 to "multiply" has incompatible type "Array[Width]"; expected "Array[Height]"
+    multiply(x, z)  # E: Argument 2 to "multiply" has incompatible type "Array[Height, Width]"; expected "Array[Height]"
+
 [case copied_testAliasToCallableWithUnpack]
 # We want to ensure this does not fail for no-mypy-compatible mode, because
 # *args/**kwargs handling is a bit specialized for those two modes.
