@@ -17,7 +17,7 @@ jobs:
         working-directory: ${{ github.workspace }}
     steps:
       - name: "Download Wheels from GitHub Artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: wheels
