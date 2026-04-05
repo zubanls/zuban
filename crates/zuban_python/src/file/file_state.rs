@@ -3,7 +3,7 @@ use parsa_python_cst::CodeIndex;
 use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
-    InputPosition, PythonProject,
+    InputPosition,
     database::Database,
     diagnostics::Diagnostic,
     lines::{BytePositionInfos, PositionInfos},
@@ -25,6 +25,4 @@ pub trait File: std::fmt::Debug {
     fn code(&self) -> &str;
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
-    fn invalidate_full_db(&mut self, project: &PythonProject);
-    fn has_super_file(&self) -> bool;
 }

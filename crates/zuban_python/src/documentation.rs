@@ -1,11 +1,17 @@
+use parsa_python_cst::{GotoNode, TypeLike};
+
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
+    database::ComplexPoint,
+    file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     format_data::FormatData,
-    goto::GotoResolver,
+    goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
-    name::Range,
+    name::{Range, TreeName},
     node_ref::NodeRef,
-    type_::{CallableLike, FunctionKind, Type},
+    recoverable_error,
+    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
+    type_helpers::Class,
 };
 
 impl<'project> Document<'project> {
@@ -14,39 +20,202 @@ impl<'project> Document<'project> {
         position: InputPosition,
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
-        let mut resolver = GotoResolver::new(
-            self.positional_document(position)?,
-            GotoGoal::Indifferent,
-            |n: ValueName| n.name.documentation().to_string(),
-        );
+        let document = self.positional_document(position)?;
+        Ok(with_i_s_non_self(
+            document.db,
+            document.file,
+            document.scope,
+            |i_s| self.documentation_part2(document, only_docstrings, i_s),
+        ))
+    }
+    fn documentation_part2(
+        &self,
+        document: PositionalDocument<'project, GotoNode<'project>>,
+        only_docstrings: bool,
+        i_s: &InferenceState,
+    ) -> Option<DocumentationResult<'_>> {
+        let mut resolver = GotoResolver::new(document, GotoGoal::Indifferent, |n: ValueName| {
+            match &n.type_ {
+                Type::Self_ => {
+                    if let Some(cls) = i_s.current_class() {
+                        let mut result = format!("*Self is class {}*", cls.name());
+                        let doc = TreeName::with_parent_scope(
+                            i_s.db,
+                            cls.file,
+                            cls.class_storage.parent_scope,
+                            cls.node().name(),
+                        )
+                        .documentation();
+                        if !doc.is_empty() {
+                            result += ":\n";
+                            result += &doc;
+                        }
+                        result
+                    } else {
+                        recoverable_error!(
+                            "There should to be a current class for Self documentation"
+                        );
+                        "".into()
+                    }
+                }
+                _ => n.name.documentation().to_string(),
+            }
+        });
         let (inf, mut results) = resolver.infer_definition();
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
-            return Ok(None);
+            return None;
         };
 
         let db = &self.project.db;
         let mut overwritten_results = vec![];
 
-        let mut type_formatted = resolver.infos.with_i_s(|i_s| {
-            if only_docstrings {
-                "".into()
-            } else {
-                pretty_type_formatting(i_s, &inf.as_cow_type(i_s)).into_string()
+        let mut known_kind = None;
+        let mut type_formatted = if only_docstrings {
+            "".into()
+        } else {
+            let t = inf.as_cow_type(i_s);
+            if let Type::Namespace(_) = t.as_ref() {
+                // Namespaces need a kind earlier, because goto doesn't work on them
+                known_kind = Some("namespace");
             }
-        });
+            pretty_type_formatting(i_s, &t).into_string()
+        };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
-                && let Some(func) = name_def.maybe_name_of_func()
-                && let Some(Type::Callable(c)) = NodeRef::new(n.file, func.index()).maybe_type()
-                && matches!(c.kind, FunctionKind::Property { .. })
             {
-                overwritten_results.push(n.documentation().to_string());
-                type_formatted = c.format_pretty(&FormatData::new_short(db)).into_string();
-                return "property";
+                let mut format_type_docs = |docs| {
+                    if !only_docstrings {
+                        type_formatted = match &docs {
+                            TypeDocs::TypeVarLike(tvl) => {
+                                let mut doc = String::default();
+                                if let Some(TypeVarCallbackReturn::TypeVarLike(usage)) =
+                                    i_s.find_parent_type_var(&tvl)
+                                {
+                                    let in_definition = usage.in_definition();
+                                    let definition = NodeRef::from_link(i_s.db, in_definition);
+                                    // The definition is just a hint where the TypeVar is defined.
+                                    // It's no guarantuee that there are always a class or
+                                    // function.
+                                    if definition.maybe_class().is_some() {
+                                        let class_ref = ClassNodeRef::from_node_ref(definition);
+                                        doc += &format!("Bound in class `{}`", class_ref.name());
+                                        if let TypeVarLikeUsage::TypeVar(tv) = usage {
+                                            let variance = tv.type_var.inferred_variance(
+                                                db,
+                                                &Class::from_undefined_generics(
+                                                    i_s.db,
+                                                    in_definition,
+                                                ),
+                                            );
+                                            doc += &format!(
+                                                "\n\n`{}` is `{}`",
+                                                tv.type_var.name(i_s.db),
+                                                variance.name().to_lowercase()
+                                            );
+                                            if matches!(
+                                                tv.type_var.variance,
+                                                TypeVarVariance::Inferred
+                                            ) {
+                                                doc += " (inferred)";
+                                            }
+                                        }
+                                    }
+                                    if definition.maybe_function().is_some() {
+                                        doc += &format!(
+                                            "Bound in function `{}`",
+                                            FuncNodeRef::from_node_ref(definition)
+                                                .qualified_name(i_s.db)
+                                        );
+                                    }
+                                }
+                                overwritten_results.push(doc);
+                                let format_data = &FormatData::new_short(db);
+
+                                match tvl {
+                                    TypeVarLike::TypeVar(type_var) => type_var.format(format_data),
+                                    TypeVarLike::TypeVarTuple(tvt) => {
+                                        format!("*{}", tvt.format(format_data))
+                                    }
+                                    TypeVarLike::ParamSpec(param_spec) => {
+                                        format!("**{}", param_spec.format(format_data))
+                                    }
+                                }
+                            }
+                            TypeDocs::TypeAlias(alias) => {
+                                let name = alias.name(db);
+                                let type_vars = if alias.type_vars.is_empty() {
+                                    "".into()
+                                } else {
+                                    alias.type_vars.format(&FormatData::new_short(db))
+                                };
+                                format!(
+                                    "{name}{} = {}",
+                                    type_vars.trim(),
+                                    alias.type_if_valid().format_short(db)
+                                )
+                            }
+                            TypeDocs::SimpleClassTypeAlias(class) => {
+                                format!("{} = {}", name_def.as_code(), class.name())
+                            }
+                        }
+                    }
+                    match docs {
+                        TypeDocs::TypeVarLike(tvl) => match tvl {
+                            TypeVarLike::TypeVar(_) => "TypeVar",
+                            TypeVarLike::TypeVarTuple(_) => "TypeVarTuple",
+                            TypeVarLike::ParamSpec(_) => "ParamSpec",
+                        },
+                        TypeDocs::TypeAlias(_) | TypeDocs::SimpleClassTypeAlias(_) => "type alias",
+                    }
+                };
+
+                match name_def.expect_type() {
+                    TypeLike::Assignment(assignment) => {
+                        if let Some(type_docs) = n
+                            .file
+                            .name_resolution_for_types(&InferenceState::new(db, n.file))
+                            .documentation_for_assignment(assignment)
+                        {
+                            return format_type_docs(type_docs);
+                        }
+                    }
+                    TypeLike::TypeAlias(type_alias) => {
+                        if let Some(type_docs) = n
+                            .file
+                            .name_resolution_for_types(&InferenceState::new(db, n.file))
+                            .documentation_for_type_alias(type_alias)
+                        {
+                            return format_type_docs(type_docs);
+                        }
+                    }
+                    TypeLike::Function(func) => {
+                        if let Some(Type::Callable(c)) =
+                            NodeRef::new(n.file, func.index()).maybe_type()
+                            && matches!(c.kind, FunctionKind::Property { .. })
+                        {
+                            overwritten_results.push(n.documentation().to_string());
+                            if !only_docstrings {
+                                type_formatted =
+                                    c.format_pretty(&FormatData::new_short(db)).into_string();
+                            }
+                            return "property";
+                        }
+                    }
+                    TypeLike::TypeParam(type_param) => {
+                        if let Some(ComplexPoint::TypeVarLike(tvl)) =
+                            NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
+                        {
+                            return format_type_docs(TypeDocs::TypeVarLike(tvl.clone()));
+                        } else {
+                            recoverable_error!("Expected a type param to have a saved TypeVarLike")
+                        }
+                    }
+                    _ => (),
+                }
             }
             kind
         });
@@ -55,8 +224,8 @@ impl<'project> Document<'project> {
         if !overwritten_results.is_empty() {
             results = overwritten_results;
         }
-        if results.is_empty() {
-            return Ok(None);
+        if results.is_empty() && only_docstrings {
+            return None;
         }
         results.retain(|doc| !doc.is_empty());
 
@@ -70,6 +239,10 @@ impl<'project> Document<'project> {
                 out.push('(');
                 out += &declaration_kinds.join(", ");
                 out += ") ";
+            } else if let Some(known_kind) = &known_kind {
+                out.push('(');
+                out += known_kind;
+                out += ") ";
             }
             if let Some(name) = on_name {
                 match declaration_kinds.as_slice() {
@@ -81,14 +254,15 @@ impl<'project> Document<'project> {
                             type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
-                    ["function" | "property"] => (),
-                    ["type"] => {
-                        out += name.as_code();
-                        out += " = ";
-                    }
+                    [
+                        "function" | "property" | "type" | "type alias" | "TypeVar"
+                        | "TypeVarTuple" | "ParamSpec" | "module",
+                    ] => (),
                     _ => {
-                        out += name.as_code();
-                        out += ": ";
+                        if known_kind.is_none() {
+                            out += name.as_code();
+                            out += ": ";
+                        }
                     }
                 }
             }
@@ -100,10 +274,10 @@ impl<'project> Document<'project> {
             }
             out
         };
-        Ok(Some(DocumentationResult {
+        Some(DocumentationResult {
             documentation,
             on_symbol_range,
-        }))
+        })
     }
 }
 
@@ -130,6 +304,8 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
             }
             out.into_boxed_str()
         }
+        Type::Module(m) => db.loaded_python_file(*m).qualified_name(db).into(),
+        Type::Namespace(n) => n.qualified_name().into(),
         _ => t.format_short(db),
     }
 }

@@ -19,7 +19,7 @@ use lsp_types::{
     ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType,
     SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Uri,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Url,
     WorkDoneProgressParams, WorkspaceDiagnosticParams, WorkspaceSymbolParams,
     request::{
         CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
@@ -92,7 +92,9 @@ fn request_after_shutdown_is_invalid() {
 
     let r = con.request_with_response::<lsp_types::request::DocumentDiagnosticRequest>(
         DocumentDiagnosticParams {
-            text_document: TextDocumentIdentifier::new(Uri::from_str("does-not-exist").unwrap()),
+            text_document: TextDocumentIdentifier::new(
+                Url::from_str("file://does-not-exist").unwrap(),
+            ),
             identifier: None,
             previous_result_id: None,
             work_done_progress_params: WorkDoneProgressParams::default(),
@@ -292,6 +294,111 @@ fn diagnostics_for_saved_files_and_workspace_diagnostics() {
               "version": null
             }
           ],
+        }),
+    );
+}
+
+#[test]
+#[serial]
+fn diagnostics_for_protocols_invalidation() {
+    let server = Project::with_fixture(
+        r#"
+        [file pyproject.toml]
+
+        [file foo.py]
+        from typing import Protocol
+        from other import Alias
+
+        class P(Protocol):
+            x: int
+        class C:
+            x: Alias
+
+        p: P = C()
+
+        [file other.py]
+        Alias = int
+        "#,
+    )
+    .into_server();
+
+    server.request_and_expect_json::<DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: server.doc_id("foo.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!({
+            "items": [],
+            "kind": "full"
+        }),
+    );
+
+    // Change if the protocol matches
+    server.write_file_and_wait("other.py", "Alias = str\n");
+
+    server.request_and_expect_json::<DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: server.doc_id("foo.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!({
+            "items": [
+              {
+                "code": "assignment",
+                "message": "Incompatible types in assignment (expression has type \"C\", variable has type \"P\")",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 1,
+                "source": "zuban"
+              },
+              {
+                "code": "note",
+                "message": "Following member(s) of \"C\" have conflicts:",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 3,
+                "source": "zuban"
+              },
+              {
+                "code": "note",
+                "message": "    x: expected \"int\", got \"str\"",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 3,
+                "source": "zuban"
+              }
+            ],
+            "kind": "full"
         }),
     );
 }
@@ -564,7 +671,7 @@ fn files_outside_of_root() {
     let response =
         server.request_with_response::<DocumentDiagnosticRequest>(DocumentDiagnosticParams {
             text_document: TextDocumentIdentifier {
-                uri: Uri::from_str(&format!(
+                uri: Url::from_str(&format!(
                     "file://{}/outside_workdir.py",
                     server.tmp_dir.path_for_uri()
                 ))
@@ -585,17 +692,20 @@ fn files_outside_of_root() {
     );
 
     assert_eq!(d("base/with%20space.py"), [r#""bytes" not callable"#]);
+    // This is not a valid URI, but a lot of clients seem to do that, so we allow that for now and
+    // test it here so LSP clients can do that.
+    assert_eq!(d("base/with space.py"), [r#""bytes" not callable"#]);
 
     // Check random files that don't really make sense
     let check_other_uris = [
-        Uri::from_str("file:///bar/foo").unwrap(),
-        Uri::from_str("file://foo").unwrap(),
-        Uri::from_str("file://").unwrap(),
-        Uri::from_str("https://www.example.com/foo.py").unwrap(),
-        Uri::from_str("file:/single_slash").unwrap(),
+        Url::from_str("file:///bar/foo").unwrap(),
+        Url::from_str("file://foo").unwrap(),
+        Url::from_str("file://").unwrap(),
+        Url::from_str("https://www.example.com/foo.py").unwrap(),
+        Url::from_str("file:/single_slash").unwrap(),
     ];
 
-    let diags_for_uri = |uri: &Uri| {
+    let diags_for_uri = |uri: &Url| {
         server
             .full_diagnostics_for_abs_path(TextDocumentIdentifier { uri: uri.clone() })
             .into_iter()
@@ -661,30 +771,25 @@ fn files_outside_of_root_with_push_diagnostics() {
 
     // Check random files that don't really make sense
     let mut check_other_uris = vec![
-        Uri::from_str("file:///bar/foo").unwrap(),
-        Uri::from_str("file://foo").unwrap(),
-        Uri::from_str("file://").unwrap(),
-        Uri::from_str("https://www.example.com/foo.py").unwrap(),
-        Uri::from_str("file:/single_slash").unwrap(),
+        Url::from_str("file:///bar/foo").unwrap(),
+        Url::from_str("https://www.example.com/foo.py").unwrap(),
     ];
 
     if cfg!(windows) {
-        check_other_uris.pop();
-        check_other_uris.push(Uri::from_str("file:/C:/single_slash").unwrap());
+        check_other_uris.push(Url::from_str("file:/C:/single_slash").unwrap());
+    } else {
+        check_other_uris.push(Url::from_str("file:/single_slash").unwrap());
+        // Some of these are just really weird on Windows, because these paths don't really exist.
+        check_other_uris.push(Url::from_str("file://foo").unwrap());
+        check_other_uris.push(Url::from_str("file://").unwrap());
     }
 
     for uri in &mut check_other_uris {
         server.open_in_memory_file_for_uri(uri.clone(), "import m\n1()");
         let (file, diags) = server.expect_publish_diagnostics_with_uri();
-        if uri.authority().is_none() {
+        if uri.authority() == "" {
             // Make sure all uris have an authority, because that's how zubanls returns it.
-            *uri = Uri::from_str(&uri.as_str().replace("file:/", "file:///")).unwrap();
-        }
-        if cfg!(windows) && (uri.as_str() == "file://foo" || uri.as_str() == "file://") {
-            // TODO this is probably a bug in Windows handling, but for now this shouldn't matter
-            // and we leave it like that as long as it does not crash. Also these paths don't
-            // really exist on Windows
-            *uri = Uri::from_str(&uri.as_str().replace("file:/", "file://")).unwrap();
+            *uri = Url::from_str(&uri.as_str().replace("file:/", "file:///")).unwrap();
         }
         assert_eq!(file.as_str(), uri.as_str());
         assert_eq!(diags, [r#""int" not callable"#]);

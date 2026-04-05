@@ -7,7 +7,7 @@ concurrency:
 
 permissions:
     id-token: write
-    contents: read
+    contents: write
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: "Download Wheels from GitHub Artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: wheels
@@ -41,3 +41,12 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
             packages-dir: "wheels/"
+      - name: Publish GitHub Release
+        env:
+          TITLE: "${{ github.ref_name }}"
+          BODY: "Full changelog available [here](https://docs.zubanls.com/en/latest/changelog.html)"
+          COMMIT: "${{ github.sha }}"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "$BODY" > $RUNNER_TEMP/notes.txt
+          gh release create "${{ github.ref_name }}" --target "$COMMIT" --title "$TITLE" --notes-file "$RUNNER_TEMP/notes.txt"

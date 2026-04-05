@@ -11,9 +11,9 @@ use crate::{
     match_::Match,
     matching::Matcher,
     type_::{
-        AnyCause, CallableParam, CallableParams, MaybeUnpackGatherer, ParamSpecUsage, ParamType,
-        StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type,
-        TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
+        AnyCause, CallableParam, CallableParams, DbString, MaybeUnpackGatherer, ParamSpecUsage,
+        ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack,
+        Type, TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
         match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
     },
 };
@@ -101,15 +101,60 @@ fn matches_params_detailed(
     }
 }
 
-// Check whether params of f2 are assignable to params of f1, like f1 = f2 or in other words that
-// f2 is wider than f1.
 pub fn matches_simple_params<
     'db: 'x + 'y,
     'x,
     'y,
     P1: Param<'x>,
     P2: Param<'y>,
-    I1: Iterator<Item = P1> + Clone,
+    I1: Iterator<Item = P1>,
+>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    params1: I1,
+    params2: Peekable<impl Iterator<Item = P2> + Clone>,
+    variance: Variance,
+) -> Match {
+    for param2 in params2.clone() {
+        if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td2)) =
+            param2.specific(i_s.db)
+        {
+            // To avoid implementing **Unpack[TypedDict] matching we gather the types here and make
+            // sure that they never appear within the second part of matching. This feels like it's
+            // allocating a bit much, but it felt impossible to create a Param for
+            // P1 | TypedDictMemberParam, so this is the workaround. It's not called often and
+            // should not be a performance issue.
+            let new2: Vec<_> = params2
+                .filter(|p| {
+                    !matches!(
+                        p.specific(i_s.db),
+                        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_))
+                    )
+                })
+                .map(|p| p.into_callable_param())
+                .chain(typed_dict_to_params(i_s.db, &td2).map(|p| p.into_callable_param()))
+                .collect();
+            return matches_simple_params_part2(
+                i_s,
+                matcher,
+                params1,
+                new2.iter().peekable(),
+                variance,
+            );
+        }
+    }
+    matches_simple_params_part2(i_s, matcher, params1, params2, variance)
+}
+
+// Check whether params of f2 are assignable to params of f1, like f1 = f2 or in other words that
+// f2 is wider than f1.
+fn matches_simple_params_part2<
+    'db: 'x + 'y,
+    'x,
+    'y,
+    P1: Param<'x>,
+    P2: Param<'y>,
+    I1: Iterator<Item = P1>,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
@@ -313,19 +358,6 @@ pub fn matches_simple_params<
                             matches &= match_(i_s, matcher, t1, t2);
                             continue;
                         }
-                        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
-                            let m = params1_matches_unpacked_dict(
-                                i_s,
-                                matcher,
-                                std::iter::once(param1).chain(params1.by_ref()),
-                                u,
-                                variance,
-                            );
-                            if !m.bool() {
-                                return m;
-                            }
-                            break;
-                        }
                         WrappedParamType::StarStar(_) => {
                             debug!(
                                 "Params mismatch, because had {:?} vs {:?}",
@@ -503,40 +535,36 @@ pub fn matches_simple_params<
                 },
                 WrappedParamType::StarStar(d1) => match specific2 {
                     WrappedParamType::StarStar(d2) => match (d1, d2) {
+                        (WrappedStarStar::UnpackTypedDict(td1), _) => {
+                            return matches
+                                & matches_simple_params_part2(
+                                    i_s,
+                                    matcher,
+                                    typed_dict_to_params(i_s.db, td1),
+                                    params2,
+                                    variance,
+                                );
+                        }
                         (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
                             matches &= match_(i_s, matcher, t1, &t2)
                         }
-                        (
-                            WrappedStarStar::UnpackTypedDict(td1),
-                            WrappedStarStar::UnpackTypedDict(td2),
-                        ) => matches &= td2.matches(i_s, matcher, td1, true),
-                        (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
-                            if let Some(t2) = t2 {
-                                // TODO extra_items: handle?!
-                                for member in td1.members(i_s.db).named.iter() {
-                                    matches &= member.type_.matches(i_s, matcher, &t2, variance)
-                                }
-                            }
-                        }
-                        (WrappedStarStar::ValueType(_), WrappedStarStar::UnpackTypedDict(_)) => {
-                            return Match::new_false();
-                        }
                         (_, WrappedStarStar::ParamSpecKwargs(_))
-                        | (WrappedStarStar::ParamSpecKwargs(_), _) => {
+                        | (WrappedStarStar::ParamSpecKwargs(_), _)
+                        | (_, WrappedStarStar::UnpackTypedDict(_)) => {
                             unreachable!()
                         }
                     },
                     ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
                     | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
                         WrappedStarStar::UnpackTypedDict(td1) => {
-                            // TODO extra_items: handle?!
-                            return matches_simple_params(
-                                i_s,
-                                matcher,
-                                td1.members(i_s.db).named.iter().map(TypedDictMemberParam),
-                                params2,
-                                variance,
-                            );
+                            return matches
+                                & matches_simple_params_part2(
+                                    i_s,
+                                    matcher,
+                                    typed_dict_to_params(i_s.db, td1),
+                                    params2,
+                                    variance,
+                                );
                         }
                         WrappedStarStar::ValueType(t1)
                             if param2.has_default()
@@ -641,55 +669,6 @@ pub fn matches_simple_params<
     matches
 }
 
-fn params1_matches_unpacked_dict<'db: 'x, 'x>(
-    i_s: &InferenceState<'db, '_>,
-    matcher: &mut Matcher,
-    params1: impl Iterator<Item = impl Param<'x>>,
-    u: &TypedDict,
-    variance: Variance,
-) -> Match {
-    let tdm = u.members(i_s.db);
-    // TODO extra_items: handle?
-    let mut required_members: Vec<_> = tdm.named.iter().filter(|m| m.required).collect();
-    for param1 in params1 {
-        match param1.specific(i_s.db) {
-            WrappedParamType::KeywordOnly(t1) => {
-                if let Some(member2) = param1
-                    .name(i_s.db)
-                    .and_then(|name1| u.find_member(i_s.db, name1))
-                {
-                    required_members.retain(|n| n.name == member2.name);
-                    // TODO check if param can be optional
-                    if let Some(t1) = t1 {
-                        let m = t1.matches(i_s, matcher, &member2.type_, variance);
-                        if !m.bool() {
-                            debug!(
-                                "Param mismatch because unpacked type mismatched for {:?}",
-                                param1.name(i_s.db)
-                            );
-                            return m;
-                        }
-                    }
-                } else {
-                    debug!("Param mismatch because kw name was not found in unpack");
-                    return Match::new_false();
-                }
-            }
-            _ => return Match::new_false(),
-        }
-    }
-    if cfg!(debug_assertions) && !required_members.is_empty() {
-        debug!(
-            "Param mismatch because the required members {:?} were not matched",
-            required_members
-                .iter()
-                .map(|m| m.name.as_str(i_s.db))
-                .collect::<Vec<_>>()
-        );
-    }
-    required_members.is_empty().into()
-}
-
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     db: &'db Database,
     previous_arbitrary_len_match: Option<WrappedParamType>,
@@ -770,6 +749,24 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
         ));
     }
     None
+}
+
+fn typed_dict_to_params<'x>(
+    db: &Database,
+    td1: &'x TypedDict,
+) -> impl Iterator<Item = impl Param<'x>> {
+    let members = td1.members(db);
+    members
+        .named
+        .iter()
+        .map(TypedDictMemberParam::Member)
+        .chain(
+            members
+                .extra_items
+                .as_ref()
+                .map(|t| TypedDictMemberParam::ExtraItems(&t.t))
+                .into_iter(),
+        )
 }
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
@@ -1386,31 +1383,64 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-struct TypedDictMemberParam<'member>(&'member TypedDictMember);
+enum TypedDictMemberParam<'member> {
+    Member(&'member TypedDictMember),
+    ExtraItems(&'member Type),
+}
 
 impl<'member> Param<'member> for TypedDictMemberParam<'member> {
     fn has_default(&self) -> bool {
-        !self.0.required
+        match self {
+            Self::Member(m) => !m.required,
+            Self::ExtraItems(_) => false,
+        }
     }
 
     fn name(&self, db: &'member Database) -> Option<&str> {
-        Some(self.0.name.as_str(db))
+        match self {
+            Self::Member(m) => Some(m.name.as_str(db)),
+            Self::ExtraItems(_) => None,
+        }
     }
 
     fn specific<'db: 'member>(&self, _: &'db Database) -> WrappedParamType<'member> {
-        WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&self.0.type_)))
+        match self {
+            Self::Member(m) => WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&m.type_))),
+            Self::ExtraItems(t) => {
+                WrappedParamType::StarStar(WrappedStarStar::ValueType(Some(Cow::Borrowed(t))))
+            }
+        }
     }
 
     fn kind(&self, _: &Database) -> ParamKind {
-        ParamKind::KeywordOnly
+        match self {
+            Self::Member(_) => ParamKind::KeywordOnly,
+            Self::ExtraItems(_) => ParamKind::StarStar,
+        }
     }
 
     fn into_callable_param(self) -> CallableParam {
-        unreachable!()
+        match self {
+            Self::Member(m) => CallableParam {
+                type_: ParamType::KeywordOnly(m.type_.clone()),
+                name: Some(DbString::StringSlice(m.name)),
+                has_default: self.has_default(),
+                might_have_type_vars: true,
+            },
+            Self::ExtraItems(t) => CallableParam {
+                type_: ParamType::StarStar(StarStarParamType::ValueType(t.clone())),
+                name: None,
+                has_default: self.has_default(),
+                might_have_type_vars: true,
+            },
+        }
     }
 
     fn has_self_type(&self, db: &Database) -> bool {
-        self.0.type_.has_self_type(db)
+        match self {
+            Self::Member(m) => m.type_.has_self_type(db),
+            Self::ExtraItems(t) => t.has_self_type(db),
+        }
     }
 }
 

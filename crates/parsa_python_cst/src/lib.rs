@@ -460,6 +460,7 @@ impl Tree {
     }
 }
 
+#[derive(Debug)]
 pub enum TypeIgnoreComment<'db> {
     WithCodes {
         codes: &'db str,
@@ -2370,6 +2371,20 @@ impl<'db> ClassDef<'db> {
 
     pub fn docstring(&self) -> Option<Strings<'db>> {
         self.block().iter_stmt_likes().next()?.node.maybe_string()
+    }
+
+    pub fn closing_and_opening_parentheses(&self) -> Option<std::ops::Range<CodeIndex>> {
+        let mut iterator = self.node.iter_children().skip(2);
+        let mut opening_paren = iterator.next().unwrap();
+        if opening_paren.as_code() != "(" {
+            if opening_paren.is_type(Nonterminal(type_params)) {
+                opening_paren = iterator.next().unwrap();
+            } else {
+                return None;
+            }
+        }
+        let closing_paren = iterator.skip(1).next().unwrap();
+        Some(opening_paren.start()..closing_paren.end())
     }
 }
 

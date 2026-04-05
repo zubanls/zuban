@@ -277,3 +277,18 @@ class C:
         class Inner:
             def test_foo(self, some_fixture) -> None:
                 assert_type(some_fixture, Any)
+
+[case pytest_fixture_lookup_issue_with_star_imports]
+# pkgs: pytest-stubs
+# From GH #349
+[file conftest.py]
+from test import *
+
+[file test.py]
+# Note the issing pytest import
+def test_user(mock_user):
+    mock_user
+
+@pytest.fixture  # E: Name "pytest" is not defined
+def mock_user():
+    pass

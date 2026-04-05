@@ -335,6 +335,7 @@ impl<'db: 'a, 'a> Class<'a> {
         matcher.ignore_positional_param_names = positional_default;
 
         let mut protocol_member_count = 0;
+        let mut match_result = Match::new_true();
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 debug!("Ignored a type in protocol mro. Why is it there in the first place?");
@@ -383,7 +384,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
                 let had_binding_error = Cell::new(false);
                 let mut had_lookup_error = false;
-                let protocol_lookup_details = Instance::new(c, None).lookup(
+                let protocol_lookup_details = self.instance().lookup(
                     i_s,
                     name,
                     InstanceLookupOptions::new(&|_| {
@@ -478,7 +479,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &protocol_t,
                                             &t2,
-                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| false)
+                                            &self.lookup(i_s, name, ClassLookupOptions::new(&|_| false)
                                                     .with_as_type_type(&|| if other.is_subclassable(i_s.db) {
                                                         Type::Type(Arc::new(other.clone()))
                                                     } else {
@@ -520,6 +521,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                 }
                             }
+                            match_result &= m;
 
                             let proto_setter_type = protocol_lookup_details.attr_kind.property_setter_type();
                             if other_setter_type.is_some() || proto_setter_type.is_some() {
@@ -704,7 +706,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         matcher.ignore_positional_param_names = ignore_positional_param_names_old;
         if notes.is_empty() && missing_members_empty {
-            Match::new_true()
+            match_result
         } else {
             Match::False {
                 similar: false,
@@ -799,7 +801,7 @@ impl<'db: 'a, 'a> Class<'a> {
             );
         }
         for (mro_index, c) in self
-            .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db) || without_object)
+            .mro_without_remap(i_s.db, self.incomplete_mro(i_s.db) || without_object)
             .skip(super_count)
         {
             let (_, result) = c.lookup_symbol(i_s, name);
@@ -1023,8 +1025,31 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         db: &'db Database,
         without_object: bool,
-    ) -> MroIterator<'db, 'a> {
+    ) -> MroIterator<'db, '_> {
         let class_infos = self.use_cached_class_infos(db);
+        let generics = if let Some(type_var_remap) = self.type_var_remap {
+            Generics::List(type_var_remap, Some(&self.generics))
+        } else {
+            self.generics
+        };
+        MroIterator::new(
+            db,
+            TypeOrClass::Class(*self),
+            generics,
+            class_infos.mro.iter(),
+            without_object || self.node_ref == db.python_state.object_node_ref(),
+        )
+    }
+
+    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, '_> {
+        self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
+    }
+
+    pub fn mro_without_remap(
+        &self,
+        db: &'db Database,
+        without_object: bool,
+    ) -> MroIterator<'db, 'a> {
         if let Some(type_var_remap) = self.type_var_remap
             && matches!(self.generics, Generics::Self_ { .. } | Generics::None)
         {
@@ -1034,9 +1059,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 Generics::List(type_var_remap, None),
                 None,
             )
-            .mro_maybe_without_object(db, without_object);
+            .mro_without_remap(db, without_object);
         }
-        // TODO Do something similar for generics, because otherwise we lose type_var_remap
+
+        // TODO This is necessary in theory to do proper remapping and avoid crashes
+        //debug_assert!(self.type_var_remap.is_none(), "{:?}", self.generics);
+        let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
             TypeOrClass::Class(*self),
@@ -1046,12 +1074,12 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
-        self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
-    }
-
-    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> {
-        let generics = self.generics;
+    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'_>> {
+        let generics = if let Some(type_var_remap) = self.type_var_remap {
+            Generics::List(type_var_remap, Some(&self.generics))
+        } else {
+            self.generics
+        };
         self.use_cached_class_infos(db)
             .base_types()
             .map(move |b| apply_generics_to_base_class(db, b, generics))
@@ -2162,11 +2190,13 @@ impl<'db: 'a, 'a> Class<'a> {
             .use_cached_class_infos(db)
             .in_django_stubs
             .get_or_init(|| {
-                self.node_ref.file.is_from_django(db)
-                    || self.bases(db).any(|b| match b {
+                let result = self.node_ref.file.is_from_django(db) || {
+                    self.bases(db).any(|b| match b {
                         TypeOrClass::Type(_) => false,
                         TypeOrClass::Class(class) => class.has_django_stubs_base_class(db),
                     })
+                };
+                result
             })
     }
 
@@ -2436,7 +2466,6 @@ fn apply_generics_to_base_class<'a>(
                 ),
             })
         }
-        // TODO is this needed?
         //Type::RecursiveType(r) if matches!(r.origin(db), RecursiveTypeOrigin::Class(_)) => TypeOrClass::Class(Class::from_position(NodeRef::from_link(db, r.link), generics, r.generics.as_ref())),
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet { .. }) => {
             TypeOrClass::Type(Cow::Borrowed(t))
@@ -2786,7 +2815,8 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
             | Type::Tuple(_)
             | Type::NewType(_)
             | Type::TypeVar(_)
-            | Type::Enum(_) => t.clone(),
+            | Type::Enum(_)
+            | Type::NamedTuple(_) => t.clone(),
             Type::Literal(l) => l.fallback_type(i_s.db),
             Type::Type(type_) => match type_.as_ref() {
                 Type::Class(c) => match &c.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
@@ -2796,7 +2826,7 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
                 Type::Any(cause) => Type::Any(*cause),
                 _ => i_s.db.python_state.object_type(),
             },
-            Type::Module(_) | Type::NamedTuple(_) => i_s.db.python_state.module_type(),
+            Type::Module(_) | Type::Namespace(_) => i_s.db.python_state.module_type(),
             Type::EnumMember(m) => Type::Enum(m.enum_.clone()),
             Type::Super { .. } => i_s.db.python_state.super_type(),
             Type::ParamSpecArgs(_) => i_s.db.python_state.tuple_of_obj.clone(),

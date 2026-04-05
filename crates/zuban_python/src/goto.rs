@@ -19,7 +19,7 @@ use crate::{
     database::{Database, ParentScope, PointKind, Specific},
     debug,
     file::{
-        ClassInitializer, ClassNodeRef, File, FuncNodeRef, PythonFile,
+        ClassInitializer, ClassNodeRef, File, FuncNodeRef, OtherDefinitionIterator, PythonFile,
         expect_class_or_simple_generic, first_defined_name,
     },
     format_data::FormatData,
@@ -380,10 +380,34 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     }
 
     pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
-        if let Some(names) = self.goto_name(follow_imports, true) {
+        if let GotoNode::Name(name) = self.infos.node
+            && let Some(name_def) = name.name_def()
+        {
+            let p = self.infos.file.points.get(name_def.index());
+            // This currently only handles goto on self. We typically want to go to the class when
+            // we are on the self param.
+            if p.calculated() && p.maybe_specific() == Some(Specific::MaybeSelfParam) {
+                let cls_name =
+                    with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
+                        let c = i_s.current_class()?;
+                        let cls = c.to_db_lifetime(i_s.db);
+                        Some(TreeName::with_parent_scope(
+                            self.infos.db,
+                            self.infos.file,
+                            c.class_storage.parent_scope,
+                            cls.node().name(),
+                        ))
+                    });
+                if let Some(cls_name) = cls_name {
+                    return vec![(self.on_result)(Name::TreeName(cls_name))];
+                }
+            }
+        }
+        if let Some(names) = self.goto_name(follow_imports) {
             return names;
         }
         let mut callback = self.on_result;
+
         GotoResolver {
             infos: self.infos,
             goal: self.goal,
@@ -427,7 +451,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         ))
     }
 
-    fn goto_name(&mut self, follow_imports: bool, check_inferred_attrs: bool) -> Option<Vec<T>> {
+    fn goto_name(&mut self, follow_imports: bool) -> Option<Vec<T>> {
         let db = self.infos.db;
         let file = self.infos.file;
         let node = self.infos.node.clone();
@@ -500,24 +524,14 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
                     let base = self.infos.infer_primary_or_atom(primary.first());
-                    self.goto_primary_attr(
-                        base,
-                        name.as_code(),
-                        follow_imports,
-                        check_inferred_attrs,
-                    )
+                    self.goto_primary_attr(base, name.as_code(), follow_imports)
                 }),
                 _ => None,
             },
             GotoNode::PrimaryTarget(target) => match target.second() {
                 PrimaryContent::Attribute(name) => {
                     let inf = self.infos.infer_primary_target_or_atom(target.first())?;
-                    self.goto_primary_attr(
-                        inf,
-                        name.as_code(),
-                        follow_imports,
-                        check_inferred_attrs,
-                    )
+                    self.goto_primary_attr(inf, name.as_code(), follow_imports)
                 }
                 _ => None,
             },
@@ -551,7 +565,6 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         base: Inferred,
         name: &str,
         follow_imports: bool,
-        check_inferred_attrs: bool,
     ) -> Option<Vec<T>> {
         let mut results = vec![];
         let db = self.infos.db;
@@ -575,13 +588,6 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                         continue;
                     }
                     _ => (),
-                }
-                if check_inferred_attrs && let Some(inf) = lookup.into_maybe_inferred() {
-                    let t = inf.as_cow_type(i_s);
-                    type_to_name(i_s, &t, &mut |name| {
-                        let name = goto_with_goal(name, self.goal);
-                        results.push((self.on_result)(name))
-                    })
                 }
             }
         });
@@ -691,6 +697,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
 
         //  1. Find the original definition
 
+        let mut definition_results = vec![];
         GotoResolver::new2(self.infos.clone(), GotoGoal::Indifferent, |n| {
             follow_goto_if_necessary(n, &mut |name| {
                 if !self.definitions.is_empty() {
@@ -715,24 +722,44 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
-                let should_add_results =
-                    include_declarations && !matches!(goal, ReferencesGoal::OnlyCurrentFile);
-                if let Some(other) = other {
-                    self.definitions.insert(to_unique_position(&other));
-                    if should_add_results {
-                        self.results.push((self.on_result)(other))
-                    }
-                }
-
                 self.definitions.insert(to_unique_position(&name));
-                if should_add_results
-                    || include_declarations && name.file().file_index == self.infos.file.file_index
-                {
-                    self.results.push((self.on_result)(name));
+                let mut add_definitions = |name| {
+                    self.definitions.insert(to_unique_position(&name));
+                    let should_add = include_declarations
+                        && (!matches!(goal, ReferencesGoal::OnlyCurrentFile)
+                            || include_declarations
+                                && name.file().file_index == self.infos.file.file_index);
+                    if should_add {
+                        definition_results.push((self.on_result)(name));
+                    }
+                    // Add the other definitions (there may be multiple ones for e.g. narrowing
+                    // or overloads)
+                    if let Name::TreeName(n) = name {
+                        let p = n.file.points.get(n.cst_name.index());
+                        if p.maybe_calculated_and_specific() == Some(Specific::FirstNameOfNameDef) {
+                            for name_index in
+                                OtherDefinitionIterator::new(&n.file.points, n.cst_name.index())
+                            {
+                                let new_name = Name::TreeName(TreeName {
+                                    cst_name: CSTName::by_index(&n.file.tree, name_index),
+                                    ..n
+                                });
+                                self.definitions.insert(to_unique_position(&new_name));
+                                if should_add {
+                                    definition_results.push((self.on_result)(new_name));
+                                }
+                            }
+                        }
+                    }
+                };
+                if let Some(other) = other {
+                    add_definitions(other);
                 }
+                add_definitions(name);
             });
         })
-        .goto_name(false, false);
+        .goto_name(false);
+
         if self.definitions.is_empty() {
             if on_name.name_def().is_some() {
                 debug!(
@@ -747,7 +774,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     on_name,
                 ));
                 self.definitions.insert(to_unique_position(&n));
-                self.results.push((self.on_result)(n))
+                definition_results.push((self.on_result)(n))
             } else {
                 debug!("Did not find the original reference definition for {search_name}");
                 return vec![];
@@ -777,6 +804,8 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     search_name,
                 ),
         }
+        // Definitions should not be at the start
+        self.results.extend(definition_results);
         self.results
     }
 
@@ -802,7 +831,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                         })
                     },
                 )
-                .goto_name(false, false);
+                .goto_name(false);
                 if add_all_names {
                     let n = Name::TreeName(TreeName::with_unknown_parent_scope(
                         self.infos.db,
@@ -872,7 +901,7 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
             GotoGoal::Indifferent,
             |n: Name<'db, '_>| follow_goto_if_necessary(n, on_name),
         )
-        .goto_name(false, false);
+        .goto_name(false);
     };
     if let Name::TreeName(tree_name) = &name
         && let Some(name_def) = tree_name.cst_name.name_def()

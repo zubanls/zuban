@@ -1215,3 +1215,88 @@ def check2(x: dict[Any, Any], y: Any):
     reveal_type(g({y: y}))  # N: Revealed type is "Any"
     reveal_type(g({y: 1}))  # N: Revealed type is "int"
     reveal_type(g({1: y}))  # N: Revealed type is "int"
+
+[case overload_with_typed_dict_unpacks]
+[file m.pyi]
+from typing import Never, Unpack, TypedDict, overload, Literal
+
+class TD1(TypedDict):
+    x: int
+
+@overload
+def a1(y: Literal[1], **kwargs: Unpack[TD1]) -> None: ...
+@overload
+def a1(y: Literal[2], **kwargs: Unpack[TD1]) -> None: ...
+
+[case overload_with_protocols_and_any]
+[file m.pyi]
+from typing import overload, Callable, Protocol, TypeVar, Any
+
+T = TypeVar("T", default=tuple[Any, ...], covariant=True)
+
+class DAny(Protocol[T]):
+    def __len__(self, /) -> int: ...
+    def __array__(self, /) -> T: ...
+
+class D1(Protocol[T]):
+    def __len__(self, /) -> int: ...
+    def __array__(self, /) -> tuple[int]: ...
+
+@overload
+def a1(x: D1) -> None: ...
+@overload
+def a1(x: DAny) -> None: ...
+
+@overload
+def a2(x: DAny) -> None: ...
+@overload
+def a2(x: D1) -> None: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def a3(x: D1) -> None: ...
+@overload
+def a3(x: DAny[tuple[int, int]]) -> None: ...
+
+@overload
+def a4(x: DAny[tuple[int]]) -> None: ...
+@overload
+def a4(x: DAny[tuple[int, int]]) -> None: ...
+
+@overload
+def a5(x: DAny[tuple[int]]) -> None: ...
+@overload
+def a5(x: DAny[tuple[Any, ...]]) -> None: ...
+
+[case allow_subclass_as_self_argument_for_overloads]
+[file m.pyi]
+from typing import overload, assert_type
+
+class A:
+    # Not allowed, because why would one ever put it here
+    def f(self: B): ...  # E: The erased type of self "m.B" is not a supertype of its class "m.A"
+
+    @overload
+    def o(self: B, x: int) -> int: ...
+    @overload
+    def o(self, x: str) -> str: ...
+    @overload
+    def o(self, x: int) -> bytes: ...
+
+class B(A): ...
+
+assert_type(A().o(1), bytes)
+assert_type(B().o(""), str)
+assert_type(B().o(1), int)
+
+[case overload_no_crash_when_self_is_missing]
+# From GH #358
+[file m.pyi]
+from typing import overload
+
+class C[T]:
+    @overload
+    def m(): ...  # E: Method must have at least one argument. Did you forget the "self" argument?
+
+    @overload
+    def m(): ...  # E: Method must have at least one argument. Did you forget the "self" argument? \
+                  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader

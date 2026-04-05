@@ -13,7 +13,7 @@ use lsp_types::{
     DocumentDiagnosticReport, DocumentDiagnosticReportResult, NotebookCell, NotebookCellKind,
     NotebookDocument, NotebookDocumentCellChange, NotebookDocumentChangeEvent,
     NotebookDocumentChangeTextContent, PartialResultParams, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentItem, Uri, VersionedNotebookDocumentIdentifier,
+    TextDocumentIdentifier, TextDocumentItem, Url, VersionedNotebookDocumentIdentifier,
     VersionedTextDocumentIdentifier, WorkDoneProgressParams,
     notification::{
         DidChangeNotebookDocument, DidChangeTextDocument, DidCloseTextDocument,
@@ -126,7 +126,7 @@ impl Drop for Server {
 }
 
 impl Server {
-    pub(crate) fn uri_from_rel_path(&self, rel_path: &str) -> Uri {
+    pub(crate) fn uri_from_rel_path(&self, rel_path: &str) -> Url {
         let path = join(&self.tmp_dir.path_for_uri(), rel_path);
         path_to_uri(&path)
     }
@@ -242,7 +242,7 @@ impl Server {
         )
     }
 
-    pub fn expect_publish_diagnostics_with_uri(&self) -> (Uri, Vec<String>) {
+    pub fn expect_publish_diagnostics_with_uri(&self) -> (Url, Vec<String>) {
         let publish = self.expect_notification::<lsp_types::notification::PublishDiagnostics>();
         (
             publish.uri,
@@ -319,7 +319,7 @@ impl Server {
         self.open_in_memory_file_for_uri(self.doc_id(path).uri, code)
     }
 
-    pub fn open_in_memory_file_for_uri(&self, uri: lsp_types::Uri, code: &str) {
+    pub fn open_in_memory_file_for_uri(&self, uri: lsp_types::Url, code: &str) {
         self.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri,
@@ -336,11 +336,11 @@ impl Server {
         });
     }
 
-    fn notebook_uri(&self) -> Uri {
+    fn notebook_uri(&self) -> Url {
         self.uri_from_rel_path(NOTEBOOK_NAME)
     }
 
-    pub fn notebook_cell_uri(&self, nth: usize) -> Uri {
+    pub fn notebook_cell_uri(&self, nth: usize) -> Url {
         self.uri_from_rel_path(&format!("{NOTEBOOK_NAME}/{nth}"))
     }
 

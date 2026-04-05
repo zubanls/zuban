@@ -69,7 +69,7 @@ pub(crate) fn find_pytest_fixture_for_param<'db>(
         let func = Function::new(NodeRef::new(node_ref.file, func_node.index()), None);
         if !is_fixture(
             db,
-            file,
+            node_ref.file,
             func_node.maybe_decorated().map(|dec| dec.decorators()),
         ) {
             return None;

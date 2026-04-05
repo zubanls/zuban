@@ -2280,3 +2280,30 @@ def f(x: object) -> int:
         return 0
     else:
         return 1
+
+[case normal_assignment_narrowing_with_any]
+# From GH #352
+from typing import Any, reveal_type
+
+def process(x: list[int], y: list[Any]) -> None:
+    for e in x: ...
+
+    if bool():
+        e = y[0]
+        reveal_type(e)  # N: Revealed type is "Any"
+    else:
+        for e in y:
+            reveal_type(e)  # N: Revealed type is "Any"
+            e["foo"]
+
+[case narrow_literals_locally_for_assignments]
+import m
+reveal_type(m.y)  # N: Revealed type is "str"
+
+[file m.py]
+from typing import LiteralString, reveal_type
+
+y = 'a'
+reveal_type(y)  # N: Revealed type is "Literal['a']?"
+z = 'a'
+reveal_type(z)  # N: Revealed type is "Literal['a']?"

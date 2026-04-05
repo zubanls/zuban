@@ -1137,3 +1137,76 @@ __main__.py:50:goto -> x.pyi:4:8:x.X.__xor__
 __main__.py:52:goto -> x.pyi:12:8:x.X.__lshift__
 __main__.py:54:goto -> x.pyi:13:8:x.X.__rshift__
 __main__.py:56:goto -> x.pyi:15:8:x.X.__matmul__
+
+[case goto_on_self]
+#? goto --no-positions
+from typing import Self
+
+class F:
+    def f(
+        #? goto
+        self
+        #? goto
+        ,other
+        #? goto
+        : Self
+    ):
+        #? --codepoint-column 10 goto
+        self.foo = 1
+        #? --codepoint-column 10 goto
+        self.foo
+        #? goto
+        self
+        #? goto
+        other
+
+        new_var = other
+        #? goto
+        new_var
+[out]
+__main__.py:2:goto -> typing.py:typing.Self
+__main__.py:7:goto -> __main__.py:4:6:__main__.F
+__main__.py:9:goto -> __main__.py:9:9:__main__.other@9
+__main__.py:11:goto -> __main__.py:2:19:__main__.Self
+__main__.py:14:goto -> __main__.py:7:8:__main__.self@7
+__main__.py:16:goto -> __main__.py:7:8:__main__.self@7
+__main__.py:18:goto -> __main__.py:7:8:__main__.self@7
+__main__.py:20:goto -> __main__.py:9:9:__main__.other@9
+__main__.py:24:goto -> __main__.py:22:8:__main__.new_var@22
+
+[case infer_on_self]
+#? infer --no-positions
+from typing import Self
+
+class F:
+    def f(
+        #? infer
+        self
+        #? infer
+        ,other
+        #? infer --no-positions
+        : Self
+    ):
+        #? --codepoint-column 10 infer
+        self.foo = 1
+        #? --codepoint-column 10 infer
+        self.foo
+        #? infer
+        self
+        #? infer
+        other
+
+        new_var = other
+        #? infer
+        new_var
+
+[out]
+__main__.py:2:infer -> typing.py:typing._SpecialForm
+__main__.py:7:infer -> __main__.py:4:6:__main__.F
+__main__.py:9:infer -> __main__.py:4:6:__main__.F
+__main__.py:11:infer -> typing.py:typing._SpecialForm
+__main__.py:14:infer -> __main__.py:4:6:__main__.F
+__main__.py:16:infer -> __main__.py:4:6:__main__.F
+__main__.py:18:infer -> __main__.py:4:6:__main__.F
+__main__.py:20:infer -> __main__.py:4:6:__main__.F
+__main__.py:24:infer -> __main__.py:4:6:__main__.F

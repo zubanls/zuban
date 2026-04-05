@@ -1367,11 +1367,12 @@ impl Database {
 
     fn invalidate_db(&mut self) {
         for file_state in self.vfs.files.iter_mut() {
+            let file_entry = file_state.file_entry().clone();
             if let Some(file) = file_state.file_mut() {
-                if file.has_super_file() {
+                if file.is_part_of_super_file() {
                     file_state.unload();
                 } else {
-                    file.invalidate_full_db(&self.project);
+                    file.invalidate_full_db(&self.project, &file_entry);
                 }
             }
         }
@@ -1627,12 +1628,21 @@ fn add_workspace_and_check_for_pth_files(
                         let path =
                             handler.normalize_rc_path(handler.absolute_path(&workspace_path, line));
                         tracing::info!("Add entry {path} in .pth file: {}", pth_path.as_uri());
+                        // Sometimes pth files link to subfolders of the current workspace. In that
+                        // case we want this to still be a type checked (nested) workspace.
+                        let kind = if workspaces_builder
+                            .path_is_contained_in_type_checking_folder(&path)
+                        {
+                            WorkspaceKind::TypeChecking
+                        } else {
+                            WorkspaceKind::SitePackages
+                        };
                         add_workspace_and_check_for_pth_files(
                             handler,
                             workspaces_builder,
                             path,
                             is_recovery,
-                            WorkspaceKind::SitePackages,
+                            kind,
                         )
                     }
                 }

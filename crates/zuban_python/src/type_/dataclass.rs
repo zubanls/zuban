@@ -491,7 +491,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                 if name.file_index == file.file_index {
                     file.add_issue(
                         i_s,
-                        Issue::from_start_stop(name.start, name.end, issue_type),
+                        Issue::from_start_stop(name.start, name.end, issue_type, false),
                     );
                 } else {
                     // The class arguments are always set, because we are working with params from

@@ -257,8 +257,8 @@ x
 x
 
 [out]
-c.notebook:4:references -> c.notebook:2:0; c.notebook:4:0
+c.notebook:4:references -> c.notebook:4:0; c.notebook:2:0
 ==
-c.notebook:3:references -> b.notebook:3:0; c.notebook:3:0
+c.notebook:3:references -> c.notebook:3:0; b.notebook:3:0
 ==
-c.notebook:3:references -> a.notebook:1:0; c.notebook:3:0
+c.notebook:3:references -> c.notebook:3:0; a.notebook:1:0

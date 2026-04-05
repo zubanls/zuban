@@ -585,20 +585,15 @@ impl<'a> Matcher<'a> {
         .into()
     }
 
-    pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>>(
+    pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>, I: Iterator<Item = P2>>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
         p1: &ParamSpecUsage,
-        params2_iterator: impl Iterator<Item = P2> + Clone,
+        params2_iterator: I,
         variance: Variance,
     ) -> Match {
-        let new_params = || {
-            CallableParams::new_simple(
-                params2_iterator
-                    .clone()
-                    .map(|p| p.into_callable_param())
-                    .collect(),
-            )
+        let new_params = |params: I| {
+            CallableParams::new_simple(params.map(|p| p.into_callable_param()).collect())
         };
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
@@ -607,7 +602,7 @@ impl<'a> Matcher<'a> {
                 i_s,
                 matcher_index,
                 p1,
-                new_params(),
+                new_params(params2_iterator),
                 variance,
             );
         }
@@ -616,7 +611,12 @@ impl<'a> Matcher<'a> {
                 && class.node_ref.as_link() == p1.in_definition
             {
                 let usage = class.nth_param_spec_usage(i_s.db, p1);
-                return matches_params(i_s, &mut Matcher::default(), &usage.params, &new_params());
+                return matches_params(
+                    i_s,
+                    &mut Matcher::default(),
+                    &usage.params,
+                    &new_params(params2_iterator),
+                );
             }
             let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
@@ -624,7 +624,12 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, usage)
                     .expect_param_spec_arg();
-                return matches_params(i_s, &mut Matcher::default(), &ts1.params, &new_params());
+                return matches_params(
+                    i_s,
+                    &mut Matcher::default(),
+                    &ts1.params,
+                    &new_params(params2_iterator),
+                );
             }
         }
         let mut star_count = 0;

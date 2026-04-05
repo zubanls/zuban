@@ -809,3 +809,52 @@ class Service:
 import basedep
 class Client(basedep.BaseDep):
     pass
+
+[case circular_nested_import]
+# From GH #350
+[file x.py]
+from y import *
+
+foo: int
+
+[file y.py]
+from x import *
+
+[case no_implicit_reexport_only_for_stubs1]
+# flags: --strict
+# From GH #344
+import m
+from m import C
+m.C
+
+[file m.py]
+__all__ = ["C"]
+for x in dir():
+    __all__.append(x)
+from other import C
+[file other.pyi]
+class C: ...
+
+[case no_implicit_reexport_only_for_stubs2]
+# flags: --strict
+import m
+from m import C
+m.C
+
+[file m.py]
+from other import C
+__all__ = dir()
+[file other.pyi]
+class C: ...
+
+[case no_implicit_reexport_only_for_stubs3_not_defined_dunder_all]
+# flags: --strict
+import m
+from m import C
+m.C
+
+[file m.py]
+from other import C
+from other import __all__  # E: Module "other" has no attribute "__all__"
+[file other.pyi]
+class C: ...

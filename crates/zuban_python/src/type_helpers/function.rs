@@ -2472,7 +2472,7 @@ fn infer_decorator_details(
             InferredDecorator::DataclassTransform(transform.clone())
         }
         Some(ComplexPoint::TypeInstance(Type::Class(c)))
-            if Some(c.link) == i_s.db.python_state.deprecated_link() =>
+            if c.link == i_s.db.python_state.deprecated_link =>
         {
             let reason = inference.infer_deprecated_reason(decorator);
             InferredDecorator::Deprecated(reason)

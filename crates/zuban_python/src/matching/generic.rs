@@ -79,9 +79,13 @@ impl<'a> Generic<'a> {
                 _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
-                Self::TypeArgs(ts2) => {
-                    match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
-                }
+                Self::TypeArgs(ts2) => match_tuple_type_arguments(
+                    i_s,
+                    matcher,
+                    &ts1.args,
+                    &ts2.args,
+                    Variance::Invariant,
+                ),
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(p1) => match other {

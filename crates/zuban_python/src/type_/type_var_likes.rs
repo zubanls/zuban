@@ -1346,7 +1346,7 @@ impl ParamSpec {
         self.name.as_str(db)
     }
 
-    fn format(&self, format_data: &FormatData) -> String {
+    pub fn format(&self, format_data: &FormatData) -> String {
         if let Some(default) = self.default(format_data.db) {
             format!(
                 "{} = [{}]",

@@ -50,8 +50,14 @@ pub struct ProjectOptions {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, clap::ValueEnum)]
 pub enum Mode {
-    Mypy,
     Default,
+    Mypy,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Self::Default
+    }
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug, clap::ValueEnum)]
@@ -296,16 +302,7 @@ impl ProjectOptions {
         mut mode: Option<Mode>,
     ) -> anyhow::Result<Option<Self>> {
         let document: DocumentMut = code.parse()?;
-        let zuban_config = document.get("tool").and_then(|item| item.get("zuban"));
-        if let Some(Item::Table(table)) = zuban_config
-            && let Some(item) = table.get("mode")
-            && let Some(value) = item.as_value()
-        {
-            mode = Some(
-                Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
-                    .map_err(|err| map_clap_error("mode", err))?,
-            );
-        }
+        let zuban_config = get_zuban_config_and_apply_mode(&document, &mut mode)?;
         let result = Self::apply_pyproject_toml_mypy_part(
             vfs,
             project_dir,
@@ -316,7 +313,7 @@ impl ProjectOptions {
         )?;
         Ok(if let Some(config) = zuban_config {
             let mut result =
-                result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or(Mode::Default)));
+                result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or_default()));
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -331,7 +328,7 @@ impl ProjectOptions {
         })
     }
 
-    pub fn apply_pyproject_toml_mypy_part(
+    fn apply_pyproject_toml_mypy_part(
         vfs: &dyn VfsHandler,
         project_dir: &AbsPath,
         config_file_path: &AbsPath,
@@ -342,7 +339,7 @@ impl ProjectOptions {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             // If an explicit mode is provided, use that, otherwise since we have an explicit Mypy
             // configuration we default to that.
-            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Mypy));
+            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or_default());
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -426,6 +423,23 @@ impl ProjectOptions {
         order_overrides_for_priority(&mut self.overrides);
         Ok(())
     }
+}
+
+pub(crate) fn get_zuban_config_and_apply_mode<'document>(
+    pyright_toml: &'document DocumentMut,
+    mode: &mut Option<Mode>,
+) -> anyhow::Result<Option<&'document Item>> {
+    let zuban_config = pyright_toml.get("tool").and_then(|item| item.get("zuban"));
+    if let Some(Item::Table(table)) = zuban_config
+        && let Some(item) = table.get("mode")
+        && let Some(value) = item.as_value()
+    {
+        *mode = Some(
+            Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
+                .map_err(|err| map_clap_error("mode", err))?,
+        );
+    }
+    Ok(zuban_config)
 }
 
 fn parse_python_ini(code: &str) -> anyhow::Result<Ini> {

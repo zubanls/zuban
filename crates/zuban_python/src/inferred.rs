@@ -253,7 +253,10 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(instance_class) = instance.inner_generic_class(i_s) else {
             unreachable!("{instance:?}")
         };
-        let Some((_, class_t)) = instance_class.mro(i_s.db).nth(mro_index.0 as usize) else {
+        let Some((_, class_t)) = instance_class
+            .mro_without_remap(i_s.db, false)
+            .nth(mro_index.0 as usize)
+        else {
             // Happens with super().__init__ when self: SomeProtocol.
             return i_s.db.python_state.object_class();
         };
@@ -777,15 +780,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn avoid_implicit_literal(self, i_s: &InferenceState) -> Self {
-        match self.avoid_implicit_literal_cow(i_s) {
-            Cow::Borrowed(_) => self,
-            Cow::Owned(owned) => owned,
-        }
+        self.maybe_avoid_implicit_literal(i_s).unwrap_or(self)
     }
 
-    pub fn avoid_implicit_literal_cow(&self, i_s: &InferenceState) -> Cow<'_, Self> {
+    pub fn maybe_avoid_implicit_literal(&self, i_s: &InferenceState) -> Option<Self> {
         if i_s.is_calculating_enum_members() {
-            return Cow::Borrowed(self);
+            return None;
         }
         match self.state {
             InferredState::Saved(link) => {
@@ -794,30 +794,30 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.kind() {
                     PointKind::Specific => match point.specific() {
                         Specific::MaybeSelfParam => {
-                            return Cow::Owned(Inferred::from_type(i_s.current_type().unwrap()));
+                            return Some(Inferred::from_type(i_s.current_type().unwrap()));
                         }
                         Specific::IntLiteral
                         | Specific::StringLiteral
                         | Specific::BytesLiteral
                         | Specific::BoolLiteral
                         | Specific::AnnotationOrTypeCommentFinal => (),
-                        _ => return Cow::Borrowed(self),
+                        _ => return None,
                     },
                     PointKind::Complex => {
                         if node_ref.maybe_complex().unwrap().maybe_instance().is_none() {
-                            return Cow::Borrowed(self);
+                            return None;
                         }
                     }
-                    _ => return Cow::Borrowed(self),
+                    _ => return None,
                 }
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
-            _ => return Cow::Borrowed(self),
+            _ => return None,
         }
         if let Some(t) = self.as_cow_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
-            Cow::Owned(Self::from_type(t))
+            Some(Self::from_type(t))
         } else {
-            Cow::Borrowed(self)
+            None
         }
     }
 

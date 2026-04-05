@@ -10,7 +10,7 @@ use crate::{
     database::{Database, Locality, Point, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::File,
+    file::{File, python_file::DunderAllState},
     imports::{ImportResult, LoadedImportResult, namespace_import},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -955,9 +955,16 @@ pub(crate) fn is_private_import_and_not_in_dunder_all(
     if let Some(dunder_all) = name_ref.file.maybe_dunder_all(db) {
         debug_assert!(name_ref.maybe_name().is_some());
         let name = name_ref.as_code();
-        if dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__" {
-            // Name was exported in __all__
-            return false;
+        match dunder_all {
+            DunderAllState::Simple(dunder_all) => {
+                if dunder_all.iter().any(|d| d.as_str(db) == name) || name == "__all__" {
+                    // Name was exported in __all__
+                    return false;
+                }
+            }
+            DunderAllState::ComplexUnknown => {
+                return false;
+            }
         }
     }
     is_private_import_with_ensurance(name_ref, ensure_private)

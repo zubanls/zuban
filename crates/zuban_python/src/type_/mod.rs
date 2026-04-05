@@ -1528,7 +1528,7 @@ impl Type {
                 },
                 false,
             ),
-            Type::Class(c) => c.class(db).mro(db),
+            Type::Class(c) => c.class(db).mro_without_remap(db, false),
             Type::Tuple(tup) => {
                 let tuple_class = tup.class(db);
                 MroIterator::new(
@@ -1540,7 +1540,7 @@ impl Type {
                 )
             }
             Type::Dataclass(d) => {
-                let mut mro = d.class(db).mro(db);
+                let mut mro = d.class(db).mro_without_remap(db, false);
                 mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
                 mro
             }

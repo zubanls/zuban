@@ -7,13 +7,15 @@ testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 goto_doc_contains_stdlib_compiled
 
-docs_alias
+narrow_literals_locally_for_assignments
+pydantic_mre_fix_non_deterministic_errors
 
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
-# Regression from context calculation, see #340
-testSpecialSignatureForSubclassOfDict
+# https://github.com/python/typing/discussions/2238
+testVariadicSubclassSame
+testVariadicSubclassExtra
 
 # Regression from calculating nested functions in a different way
 testLocalPartialTypesWithNestedFunction
@@ -22,6 +24,7 @@ testLocalPartialTypesWithNestedFunction2
 # regressions
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testOptionalTypeNarrowedByGenericCall3
+testUnreachableWhenSuperclassIsAny
 # Regressions for Never-generics to Any-generics
 testOverloadVarargsSelection
 testOverloadingInferUnionReturnWithObjectTypevarReturn

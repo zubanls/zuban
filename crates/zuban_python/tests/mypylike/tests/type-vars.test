@@ -291,8 +291,8 @@ class CoToContraToContra_WithTA(Contra_TA[Co_TA[Contra_TA[T_contra]]]):  # E: Va
 class CoToContraToContra_WithTA_valid(Contra_TA[Co_TA[Contra_TA[T_co]]]):
     ...
 
-class ContraToContraToContra_WithTA(
-    Contra_TA[Contra_TA[Contra_TA[T_co]]]  # E: Variance of TypeVar "T_co" incompatible with variance in parent type
+class ContraToContraToContra_WithTA(  # E: Variance of TypeVar "T_co" incompatible with variance in parent type
+    Contra_TA[Contra_TA[Contra_TA[T_co]]]
 ):
     ...
 

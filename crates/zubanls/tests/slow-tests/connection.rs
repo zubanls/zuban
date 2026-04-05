@@ -4,22 +4,22 @@ use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
 use lsp_types::{
     DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, InitializeResult,
-    ServerCapabilities, TextDocumentClientCapabilities, Uri, WorkspaceFolder,
+    ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
-pub(crate) fn path_to_uri(path: &str) -> Uri {
+pub(crate) fn path_to_uri(path: &str) -> Url {
     assert!(!path.starts_with("file:"));
     // URI's are always absolute within LSP
     let path = format!("file://{path}");
     let uri = if cfg!(target_os = "windows") {
-        Uri::from_str(&path.replace('\\', "/"))
+        Url::from_str(&path.replace('\\', "/"))
     } else {
-        Uri::from_str(&path)
+        Url::from_str(&path)
     }
     .unwrap();
-    assert!(!uri.is_relative());
+    assert!(!uri.scheme().is_empty());
     uri
 }
 

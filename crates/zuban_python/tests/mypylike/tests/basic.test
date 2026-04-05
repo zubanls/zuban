@@ -1860,3 +1860,101 @@ str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore
 [out]
 __main__:10: error: Name "undefined" is not defined
 __main__:10: note: Error code "name-defined" not covered by "type: ignore" comment
+
+[case name_binder_keep_notes_during_invalidation]
+[file m.py]
+import n
+x  # type: ignore[assignment]
+x = 1
+
+reveal_type(n.x)
+
+[file n.py]
+x = 1
+[file n.py.2]
+x = ""
+
+[out]
+m.py:2: error: Name "x" is used before definition
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:5: note: Revealed type is "int"
+==
+m.py:2: error: Name "x" is used before definition
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:5: note: Revealed type is "str"
+
+[case name_binder_unreachability_in_complex_case1]
+# flags: --warn-unreachable
+# From GH #363
+from typing import TYPE_CHECKING
+
+if False and not TYPE_CHECKING:  # E: Right operand of "and" is never evaluated
+    def foo() -> None:
+        pass
+else:
+    def foo(bar: int | None = None) -> int | None:
+        return bar
+
+foo(1)
+
+[case name_binder_unreachability_in_complex_case2]
+# flags: --warn-unreachable
+from typing import TYPE_CHECKING, assert_type
+
+if bool() and not TYPE_CHECKING:
+    x = str()
+else:
+    x = int()
+assert_type(x, int)
+
+if not TYPE_CHECKING and bool():
+    y = str()
+else:
+    y = int()
+assert_type(y, int)
+
+if not (not TYPE_CHECKING and bool()):
+    z = str()
+else:
+    z = int()
+assert_type(z, str)
+
+if bool() or TYPE_CHECKING:
+    a = str()
+else:
+    a = int()
+assert_type(a, str)
+
+if TYPE_CHECKING or bool():
+    b = str()
+else:
+    b = int()
+assert_type(b, str)
+
+if not (TYPE_CHECKING or bool()):
+    c = str()
+else:
+    c = int()
+assert_type(c, int)
+
+[case name_binder_reachability_in_complex_case3]
+# flags: --mode default
+from typing import TYPE_CHECKING, assert_type
+
+if bool() or not TYPE_CHECKING:
+    x = str()
+else:
+    x = int()
+assert_type(x, str | int)
+
+if bool() and TYPE_CHECKING:
+    y = str()
+else:
+    y = int()
+assert_type(y, str | int)
+
+if not (not TYPE_CHECKING or bool()):
+    z = str()
+else:
+    z = int()
+assert_type(z, str | int)

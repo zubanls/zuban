@@ -341,7 +341,7 @@ impl<'a> Instance<'a> {
         let mut attr_kind = AttributeKind::Attribute;
         for (mro_index, class) in self
             .class
-            .mro_maybe_without_object(i_s.db, options.without_object)
+            .mro_without_remap(i_s.db, options.without_object)
             .skip(options.super_count)
         {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
@@ -511,8 +511,10 @@ impl<'a> Instance<'a> {
             }
         }
         // Add access for Django's *_id attributes for ForeignKeys
-        if self.class.has_django_stubs_base_class(i_s.db) {
-            if let Some(foreign_key_name) = name.strip_suffix("_id")
+        if let Some(non_id_suffix) = name.strip_suffix("id")
+            && self.class.has_django_stubs_base_class(i_s.db)
+        {
+            if let Some(foreign_key_name) = non_id_suffix.strip_suffix("_")
                 && self.class.is_django_foreign_key(i_s.db, foreign_key_name)
             {
                 // TODO lookup pk
@@ -523,7 +525,7 @@ impl<'a> Instance<'a> {
                     mro_index: None,
                 };
             }
-            if name == "id" {
+            if non_id_suffix.is_empty() {
                 return LookupDetails {
                     class: TypeOrClass::Class(self.class),
                     lookup: LookupResult::any(AnyCause::Todo),

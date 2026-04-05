@@ -453,6 +453,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         annotation: Annotation,
         right_side: Option<AssignmentRightSide>,
     ) {
+        self.set_calculating_on_target(target.clone());
         self.ensure_cached_annotation(annotation, right_side.is_some());
         let specific = self.point(annotation.index()).maybe_specific();
         let assign_kind = AssignKind::Annotation { specific };
@@ -1160,7 +1161,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let current_t = value.as_cow_type(i_s);
                 self.narrow_or_widen_name_target(first_name_link, declaration_t, &current_t, || {
                     let allow_redefinitions = self.allow_redefinitions_in_specific_scope();
-                    let r = if (allow_redefinitions || matches!(*current_t, Type::None))
+                    let r = if (allow_redefinitions
+                        || matches!(*current_t, Type::None | Type::Any(_)))
                         && (NodeRef::from_link(self.i_s.db, first_name_link)
                             .point()
                             .can_be_redefined()
@@ -1559,14 +1561,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
                 return;
             }
-            let value = match assign_kind {
+            let mut need_additional_narrowing = false;
+            let new_declaration_value = match assign_kind {
                 AssignKind::Normal | AssignKind::Walrus => {
-                    value.avoid_implicit_literal_cow(self.i_s)
+                    match value.maybe_avoid_implicit_literal(self.i_s) {
+                        Some(inf) => {
+                            need_additional_narrowing = true;
+                            Cow::Owned(inf)
+                        }
+                        None => Cow::Borrowed(value),
+                    }
                 }
                 _ => Cow::Borrowed(value),
             };
             if assign_kind.is_normal_assignment() {
-                if let Some(partial) = value.maybe_new_partial(i_s, |t| {
+                if let Some(partial) = new_declaration_value.maybe_new_partial(i_s, |t| {
                     set_defaultdict_type(NodeRef::new(self.file, name_def.index()), t)
                 }) {
                     let name_def_index = name_def.index();
@@ -1607,7 +1616,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
 
                     return;
-                } else if let Some(inf) = value
+                } else if let Some(inf) = new_declaration_value
                     .maybe_any_with_unknown_type_params(i_s, NodeRef::new(self.file, current_index))
                 {
                     save(name_def.index(), &inf);
@@ -1622,10 +1631,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return;
                 }
             }
-            if let Some(value_without_final) = value.remove_final(i_s) {
+            if need_additional_narrowing {
+                if false {
+                    // TODO reenable this
+                    self.save_narrowed_initial_name_definition(
+                        PointLink::new(self.file.file_index, current_index),
+                        value.as_type(i_s),
+                    )
+                }
+            }
+            if let Some(value_without_final) = new_declaration_value.remove_final(i_s) {
                 save(name_def.index(), &value_without_final);
             } else {
-                save(name_def.index(), &value);
+                save(name_def.index(), &new_declaration_value);
             }
         }
     }
@@ -2335,12 +2353,18 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.infer_expression_with_context(expr, result_context)
             }
             StarExpressionContent::StarExpression(expr) => {
-                self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
-                Inferred::new_any_from_error()
+                if !self.point(exprs.index()).calculated() {
+                    self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
+                }
+                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, exprs.index())
             }
-            StarExpressionContent::Tuple(tuple) => self
-                .infer_tuple_iterator(tuple.iter(), result_context)
-                .save_redirect(self.i_s, self.file, tuple.index()),
+            StarExpressionContent::Tuple(tuple) => {
+                if let Some(inferred) = self.check_point_cache(tuple.index()) {
+                    return inferred;
+                }
+                self.infer_tuple_iterator(tuple.iter(), result_context)
+                    .save_redirect(self.i_s, self.file, tuple.index())
+            }
         }
     }
 
@@ -2701,6 +2725,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
+                            false,
                         ),
                     );
                 }
@@ -2735,6 +2760,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 left_type: formatted_err.got,
                                 right_type: formatted_err.expected,
                             },
+                            false,
                         ),
                     );
                 }
@@ -2779,6 +2805,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     element_type: formatted.got,
                                     container_type: formatted.expected,
                                 },
+                                false,
                             ),
                         );
                     }
@@ -3663,23 +3690,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             Bool(b) => return check_literal(result_context, i_s, b.index(), Specific::BoolLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
-                if let Some(result) = self.infer_list_or_set_literal_from_context(
-                    list.unpack(),
-                    result_context,
-                    i_s.db.python_state.list_node_ref(),
-                ) {
-                    return result.save_redirect(i_s, self.file, atom.index());
-                }
-                let result = match list.unpack() {
-                    elements @ StarLikeExpressionIterator::Elements(_) => {
-                        self.create_list_or_set_generics(elements)
-                    }
-                    StarLikeExpressionIterator::Empty => Type::Any(AnyCause::UnknownTypeParam),
-                };
-                return Inferred::from_type(new_class!(
-                    i_s.db.python_state.list_node_ref().as_link(),
-                    result,
-                ));
+                return self
+                    .infer_list_or_set(
+                        self.i_s.db.python_state.list_node_ref(),
+                        list.unpack(),
+                        result_context,
+                    )
+                    .save_redirect(i_s, self.file, atom.index());
             }
             ListComprehension(comp) => return self.infer_list_comprehension(comp, result_context),
             Dict(dict) => {
@@ -3691,23 +3708,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             DictComprehension(comp) => return self.infer_dict_comprehension(comp, result_context),
             Set(set) => {
-                if let Some(result) = self.infer_list_or_set_literal_from_context(
-                    set.unpack(),
-                    result_context,
-                    i_s.db.python_state.set_node_ref(),
-                ) {
-                    return result.save_redirect(i_s, self.file, atom.index());
-                }
-                if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
-                    return Inferred::from_type(new_class!(
-                        i_s.db.python_state.set_node_ref().as_link(),
-                        self.create_list_or_set_generics(elements),
-                    ))
+                return self
+                    .infer_list_or_set(
+                        self.i_s.db.python_state.set_node_ref(),
+                        set.unpack(),
+                        result_context,
+                    )
                     .save_redirect(i_s, self.file, atom.index());
-                } else {
-                    // A set can never be empty, because at that point it's a dict: `{}`
-                    unreachable!()
-                }
             }
             SetComprehension(comp) => return self.infer_set_comprehension(comp, result_context),
             Tuple(tuple) => {

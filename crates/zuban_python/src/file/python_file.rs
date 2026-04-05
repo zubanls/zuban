@@ -26,7 +26,8 @@ use super::{
 use crate::{
     InputPosition,
     database::{
-        ComplexPoint, Database, Locality, Point, PointLink, Points, PythonProject, Specific,
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Points, PythonProject,
+        Specific,
     },
     debug,
     diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
@@ -95,10 +96,18 @@ pub(crate) struct FileImport {
     pub in_global_scope: bool,
 }
 
+#[derive(Clone)]
+pub(crate) enum DunderAllState {
+    Simple(Box<[DbString]>),
+    // In some cases __all__ is modified in a dynamic complex way where we don't know the exact
+    // literals.
+    ComplexUnknown,
+}
+
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
-    maybe_dunder_all: OnceLock<Option<Box<[DbString]>>>, // For __all__
+    maybe_dunder_all: OnceLock<Option<DunderAllState>>, // For __all__
     pub points: Points,
     pub complex_points: ComplexValues,
     pub file_index: FileIndex,
@@ -224,28 +233,6 @@ impl File for PythonFile {
         vec.sort_by_key(|diag| diag.issue.start_position);
         vec.into_boxed_slice()
     }
-
-    fn invalidate_full_db(&mut self, project: &PythonProject) {
-        debug_assert!(self.super_file.is_none());
-        let mut points = std::mem::take(&mut self.points);
-        points.invalidate_full_db();
-        let is_stub = self.is_stub();
-        let tree = std::mem::replace(&mut self.tree, Tree::invalid_empty());
-        *self = Self::new_internal(
-            self.file_index,
-            tree,
-            points,
-            Diagnostics::default(),
-            is_stub,
-            self.flags.take().map(|flags| flags.into_unfinalized()),
-            project,
-            self.ignore_type_errors,
-        );
-    }
-
-    fn has_super_file(&self) -> bool {
-        self.super_file.is_some()
-    }
 }
 
 impl vfs::VfsFile for PythonFile {
@@ -260,6 +247,10 @@ impl vfs::VfsFile for PythonFile {
     }
 
     fn invalidate_references_to(&mut self, file_index: Option<FileIndex>) {
+        tracing::trace!(
+            "Invalidating references to {file_index:?} from {:?}",
+            self.file_index
+        );
         self.points.invalidate_references_to(file_index);
         self.issues.invalidate_non_name_binder_issues();
         if let Some(cache) = self.stub_cache.as_mut() {
@@ -302,7 +293,7 @@ impl<'db> PythonFile {
     }
 
     pub fn new(
-        project_options: &PythonProject,
+        project: &PythonProject,
         file_index: FileIndex,
         file_entry: &FileEntry,
         tree: Tree,
@@ -312,36 +303,30 @@ impl<'db> PythonFile {
         let mut ignore_type_errors =
             tree.has_type_ignore_at_start()
                 .unwrap_or_else(|ignore_code| {
-                    issues
-                        .add_if_not_ignored(
-                            Issue::from_start_stop(
-                                1,
-                                1,
-                                IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
-                                    ignore_code: ignore_code.into(),
-                                },
-                            ),
-                            None,
-                        )
-                        .ok();
+                    issues.add(Issue::from_start_stop(
+                        1,
+                        1,
+                        IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                            ignore_code: ignore_code.into(),
+                        },
+                        true,
+                    ));
                     true
                 });
         let directives_info = info_from_directives(
-            project_options,
+            project,
             file_entry,
             &issues,
             tree.mypy_inline_config_directives(),
         );
         ignore_type_errors |= match &directives_info.flags {
             Some(flags) => flags.ignore_errors,
-            None => project_options.flags.ignore_errors,
+            None => project.flags.ignore_errors,
         };
 
         if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
         {
-            let result =
-                issues.add_if_not_ignored(Issue::from_node_index(&tree, 0, issue, false), None);
-            debug_assert!(result.is_ok());
+            issues.add(Issue::from_node_index(&tree, 0, issue, false));
         }
         let points = Points::new(tree.length());
         Self::new_internal(
@@ -351,7 +336,7 @@ impl<'db> PythonFile {
             issues,
             is_stub,
             directives_info.flags,
-            project_options,
+            project,
             ignore_type_errors,
         )
     }
@@ -594,12 +579,12 @@ impl<'db> PythonFile {
         Some(loaded)
     }
 
-    pub fn maybe_dunder_all(&self, db: &Database) -> Option<&[DbString]> {
+    pub fn maybe_dunder_all(&self, db: &Database) -> Option<&DunderAllState> {
         self.maybe_dunder_all
             .get_or_init(|| {
                 self.symbol_table
                     .lookup_symbol("__all__")
-                    .and_then(|dunder_all_index| {
+                    .map(|dunder_all_index| {
                         let name_def = NodeRef::new(self, dunder_all_index)
                             .expect_name()
                             .name_def()
@@ -611,7 +596,10 @@ impl<'db> PythonFile {
                                     assignment.maybe_simple_type_expression_assignment()
                                 })
                         {
-                            let base = maybe_dunder_all_names(vec![], self.file_index, expr)?;
+                            let Some(base) = maybe_dunder_all_names(vec![], self.file_index, expr)
+                            else {
+                                return DunderAllState::ComplexUnknown;
+                            };
                             self.gather_dunder_all_modifications(db, dunder_all_index, base)
                         } else if let Some(NameImportParent::ImportFromAsName(as_name)) =
                             name_def.maybe_import()
@@ -624,28 +612,52 @@ impl<'db> PythonFile {
                             // exactly this method.
                             let name_def_point =
                                 NodeRef::new(self, as_name.name_def().index()).point();
-                            let base = name_def_point
+                            if !name_def_point.calculated()
+                                || name_def_point.kind() != PointKind::Redirect
+                            {
+                                // This happens when the import is not resolvable, e.g. __all__
+                                // does not exist in the imported file.
+                                return DunderAllState::ComplexUnknown;
+                            }
+                            let Some(base) = name_def_point
                                 .as_redirected_node_ref(db)
                                 .file
-                                .maybe_dunder_all(db)?;
-                            self.gather_dunder_all_modifications(db, dunder_all_index, base.into())
+                                .maybe_dunder_all(db)
+                            else {
+                                // Not sure if this ever happens
+                                return DunderAllState::ComplexUnknown;
+                            };
+                            match base {
+                                DunderAllState::Simple(base) => self
+                                    .gather_dunder_all_modifications(
+                                        db,
+                                        dunder_all_index,
+                                        base.clone().into_vec(),
+                                    ),
+                                DunderAllState::ComplexUnknown => DunderAllState::ComplexUnknown,
+                            }
                         } else {
-                            None
+                            DunderAllState::ComplexUnknown
                         }
                     })
             })
-            .as_deref()
+            .as_ref()
     }
 
     pub fn is_name_exported_for_star_import(&self, db: &Database, name: &str) -> bool {
         if let Some(dunder) = self.maybe_dunder_all(db) {
-            // Name not in __all__
-            if !dunder.iter().any(|x| x.as_str(db) == name) {
-                debug!(
-                    "Name {name} found in star imports of {}, but it's not in __all__",
-                    self.file_path(db)
-                );
-                return false;
+            match dunder {
+                DunderAllState::Simple(dunder) => {
+                    // Name not in __all__
+                    if !dunder.iter().any(|x| x.as_str(db) == name) {
+                        debug!(
+                            "Name {name} found in star imports of {}, but it's not in __all__",
+                            self.file_path(db)
+                        );
+                        return false;
+                    }
+                }
+                DunderAllState::ComplexUnknown => return true,
             }
         } else if name.starts_with('_') {
             return false;
@@ -658,7 +670,7 @@ impl<'db> PythonFile {
         db: &Database,
         dunder_all_index: NodeIndex,
         mut dunder_all: Vec<DbString>,
-    ) -> Option<Box<[DbString]>> {
+    ) -> DunderAllState {
         let file_index = self.file_index;
         let check_multi_def = |dunder_all: Vec<DbString>, name: Name| -> Option<Vec<DbString>> {
             let name_def = name.name_def().unwrap();
@@ -713,17 +725,25 @@ impl<'db> PythonFile {
         if p.calculated() && p.maybe_specific() == Some(Specific::FirstNameOfNameDef) {
             for index in OtherDefinitionIterator::new(&self.points, dunder_all_index) {
                 let name = NodeRef::new(self, index as NodeIndex).expect_name();
-                dunder_all = check_multi_def(dunder_all, name)?
+                if let Some(new) = check_multi_def(dunder_all, name) {
+                    dunder_all = new
+                } else {
+                    return DunderAllState::ComplexUnknown;
+                }
             }
         }
         for (index, point) in self.points.iter().enumerate() {
             if point.maybe_redirect_to(PointLink::new(file_index, dunder_all_index))
                 && let Some(name) = NodeRef::new(self, index as NodeIndex).maybe_name()
             {
-                dunder_all = check_ref(dunder_all, name)?
+                if let Some(new) = check_ref(dunder_all, name) {
+                    dunder_all = new
+                } else {
+                    return DunderAllState::ComplexUnknown;
+                }
             }
         }
-        Some(dunder_all.into())
+        DunderAllState::Simple(dunder_all.into())
     }
 
     pub fn file_entry(&self, db: &'db Database) -> &'db Arc<FileEntry> {
@@ -882,6 +902,20 @@ impl<'db> PythonFile {
             .numbers_with_lines(file.tree.code(), from_line)
             .take(line_range.len() + 1 + 2 * add_lines_at_start_and_end)
     }
+
+    pub fn invalidate_full_db(&mut self, project: &PythonProject, file_entry: &FileEntry) {
+        debug_assert!(self.super_file.is_none());
+        let mut points = std::mem::take(&mut self.points);
+        points.invalidate_full_db();
+        let tree = std::mem::replace(&mut self.tree, Tree::invalid_empty());
+        debug_assert!(!self.is_part_of_super_file());
+        *self = Self::new(project, self.file_index, file_entry, tree);
+    }
+
+    pub fn is_part_of_super_file(&self) -> bool {
+        self.super_file
+            .is_some_and(|super_file| super_file.offset.is_some())
+    }
 }
 
 pub fn dotted_path_from_dir(dir: &Directory) -> String {
@@ -959,16 +993,12 @@ fn info_from_directives<'x>(
                 Ok(())
             };
             if let Err(err) = check() {
-                issues
-                    .add_if_not_ignored(
-                        Issue::from_start_stop(
-                            start_position,
-                            start_position + rest.len() as CodeIndex,
-                            IssueKind::DirectiveSyntaxError(err.to_string().into()),
-                        ),
-                        None,
-                    )
-                    .ok();
+                issues.add(Issue::from_start_stop(
+                    start_position,
+                    start_position + rest.len() as CodeIndex,
+                    IssueKind::DirectiveSyntaxError(err.to_string().into()),
+                    true,
+                ));
             }
         }
     }
@@ -988,51 +1018,42 @@ struct DirectiveSplitter<'db, 'code> {
 impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
     type Item = (&'code str, Option<&'code str>);
     fn next(&mut self) -> Option<Self::Item> {
-        let split_name_value =
-            |start_position: CodeIndex, directive: &'code str, had_quotation_marks: bool| {
-                let (name, value) = if let Some((first, second)) = directive.split_once('=') {
-                    let mut second = second.trim();
-                    if had_quotation_marks {
-                        if second.chars().next().is_some_and(|first| first == '"')
-                            && second.chars().last().is_some_and(|last| last == '"')
-                        {
-                            second = &second[1..second.len() - 1];
-                        } else {
-                            self.issues
-                                .add_if_not_ignored(
-                                    Issue::from_start_stop(
-                                        start_position - 1,
-                                        start_position,
-                                        IssueKind::DirectiveSyntaxError(
-                                            "Content after quote in configuration comment".into(),
-                                        ),
-                                    ),
-                                    None,
-                                )
-                                .ok();
-                            second = &second[1..];
-                        }
-                    }
-                    (first.trim(), Some(second))
-                } else {
-                    (directive.trim(), None)
-                };
-                if name.contains('"') {
-                    self.issues
-                        .add_if_not_ignored(
-                            Issue::from_start_stop(
-                                start_position - 1,
-                                start_position,
-                                IssueKind::DirectiveSyntaxError(
-                                    "Quotes should not be part of the key".into(),
-                                ),
+        let split_name_value = |start_position: CodeIndex,
+                                directive: &'code str,
+                                had_quotation_marks: bool| {
+            let (name, value) = if let Some((first, second)) = directive.split_once('=') {
+                let mut second = second.trim();
+                if had_quotation_marks {
+                    if second.chars().next().is_some_and(|first| first == '"')
+                        && second.chars().last().is_some_and(|last| last == '"')
+                    {
+                        second = &second[1..second.len() - 1];
+                    } else {
+                        self.issues.add(Issue::from_start_stop(
+                            start_position - 1,
+                            start_position,
+                            IssueKind::DirectiveSyntaxError(
+                                "Content after quote in configuration comment".into(),
                             ),
-                            None,
-                        )
-                        .ok();
+                            true,
+                        ));
+                        second = &second[1..];
+                    }
                 }
-                Some((name, value))
+                (first.trim(), Some(second))
+            } else {
+                (directive.trim(), None)
             };
+            if name.contains('"') {
+                self.issues.add(Issue::from_start_stop(
+                    start_position - 1,
+                    start_position,
+                    IssueKind::DirectiveSyntaxError("Quotes should not be part of the key".into()),
+                    true,
+                ));
+            }
+            Some((name, value))
+        };
         let mut opened_quotation_mark = false;
         let mut had_quotation_marks = false;
         for (i, n) in self.rest.bytes().enumerate() {
@@ -1051,18 +1072,14 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
             }
         }
         if opened_quotation_mark {
-            self.issues
-                .add_if_not_ignored(
-                    Issue::from_start_stop(
-                        self.start_position,
-                        self.start_position + self.rest.len() as CodeIndex,
-                        IssueKind::DirectiveSyntaxError(
-                            "Unterminated quote in configuration comment".into(),
-                        ),
-                    ),
-                    None,
-                )
-                .ok();
+            self.issues.add(Issue::from_start_stop(
+                self.start_position,
+                self.start_position + self.rest.len() as CodeIndex,
+                IssueKind::DirectiveSyntaxError(
+                    "Unterminated quote in configuration comment".into(),
+                ),
+                true,
+            ));
         } else {
             let rest = self.rest.trim();
             if !rest.is_empty() {

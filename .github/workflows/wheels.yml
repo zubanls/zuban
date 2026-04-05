@@ -100,11 +100,11 @@ jobs:
             install_cmd: apk add bash
     runs-on: ${{ matrix.t.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
           persist-credentials: false
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
         with:
           # The target is needed, because there were issues when reusing
           # caches, probably related to cross compiling.
@@ -121,7 +121,7 @@ jobs:
           args: --release --locked --out dist --ignore-rust-version
 
       - name: "Setup Python ${{ inputs.python_version }} (native)"
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         if: matrix.t.test == 'native'
         with:
           python-version: ${{ inputs.python_version }}
@@ -147,7 +147,7 @@ jobs:
             "
 
       - name: "Upload wheel as a GitHub Artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.t.os }}-${{ matrix.t.target }}
           path: "${{ env.DEPLOY_DIR }}/dist"

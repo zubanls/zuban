@@ -538,6 +538,57 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn test_pth_file_link_to_type_checked_part() {
+        // From GH #360
+        logging_config::setup_logging_for_tests();
+        let fixture = format!(
+            r#"
+            [file venv/bin/python]
+
+            [file venv/pyvenv.cfg]
+            include-system-site-packages = false
+            version = 3.14.0
+
+            [file venv/lib/python3.12/site-packages/__editable__.package.pth]
+            ../../../../packages
+
+            [file pyproject.toml]
+            [tool.zuban]
+            explicit_package_bases = true
+
+            [file packages/m1.py]
+            import m2
+            from m2 import C
+            reveal_type(m2)
+            reveal_type(C)
+            [file packages/m2.py]
+            class C: ...
+            "#
+        );
+        let test_dir = test_utils::write_files_from_fixture(&fixture, false);
+
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                "packages/m1.py:3: note: Revealed type is \"types.ModuleType\"",
+                "packages/m1.py:4: note: Revealed type is \"def () -> m2.C\""
+            ]
+        );
+        test_dir.remove_file("pyproject.toml");
+
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                "packages/m1.py:3: note: Revealed type is \"types.ModuleType\"",
+                "packages/m1.py:4: note: Revealed type is \"def () -> m2.C\""
+            ]
+        );
+    }
+
+    #[test]
     fn correct_exit_code() {
         logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(
@@ -908,6 +959,38 @@ mod tests {
             [
                 r#"src/elems.py:3: error: Module "base" has no attribute "where"  [attr-defined]"#,
                 r#"src/elems.py:4: error: Module "__init__" has no attribute "which"  [attr-defined]"#
+            ]
+        );
+    }
+
+    #[test]
+    fn test_zuban_mode_choice() {
+        // Discussed in #320
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file m.py]
+            def f():
+                x: int = ''
+
+            [file pyproject.toml]
+            [tool.mypy]
+            ",
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                r#"m.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]"#,
+            ]
+        );
+        test_dir.write_file("pyproject.toml", "[tool.mypy]\n[tool.zuban]\nmode = 'mypy'");
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                r#"m.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]"#
             ]
         );
     }

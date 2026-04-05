@@ -130,7 +130,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let node = self.node();
         self.file.add_issue(
             i_s,
-            Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind),
+            Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind, false),
         )
     }
 
@@ -143,7 +143,12 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if let Some(decorated) = node.maybe_decorated() {
             self.file.add_issue(
                 i_s,
-                Issue::from_start_stop(decorated.start(), decorated.end_position_last_leaf(), kind),
+                Issue::from_start_stop(
+                    decorated.start(),
+                    decorated.end_position_last_leaf(),
+                    kind,
+                    false,
+                ),
             )
         } else {
             self.add_issue_for_declaration(i_s, kind)

@@ -347,6 +347,7 @@ impl Inference<'_, '_, '_> {
                             start_position,
                             end_position,
                             IssueKind::UnreachableStatement,
+                            false,
                         ),
                     );
                 })
@@ -959,7 +960,6 @@ impl Inference<'_, '_, '_> {
     pub fn ensure_class_diagnostics(&self, class_node_ref: ClassNodeRef) {
         let class = class_node_ref.maybe_class().unwrap();
         let db = self.i_s.db;
-        let (type_params, arguments, _) = class.unpack();
         let c = Class::with_self_generics(db, class_node_ref);
         let class_infos = class_node_ref.use_cached_class_infos(db);
 
@@ -1067,8 +1067,6 @@ impl Inference<'_, '_, '_> {
             }
         }
 
-        let add_issue_to_arguments =
-            |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue);
         for base in class_infos.base_types() {
             if matches!(base, Type::NamedTuple(_)) {
                 // NamedTuple class definitions are special and don't need to be checked, because
@@ -1080,7 +1078,7 @@ impl Inference<'_, '_, '_> {
                 c.node_ref.as_link(),
                 type_vars,
                 base,
-                add_issue_to_arguments,
+                |issue| c.add_issue_on_args(self.i_s, issue),
             );
         }
         check_multiple_inheritance(
@@ -1092,7 +1090,7 @@ impl Inference<'_, '_, '_> {
                     .into_maybe_inferred()
                     .is_none()
             },
-            add_issue_to_arguments,
+            |issue| c.add_issue_on_args(self.i_s, issue),
         );
 
         let i_s = self.i_s.with_class_context(&c);
@@ -1127,7 +1125,7 @@ impl Inference<'_, '_, '_> {
         {
             let inf = self.infer_name_of_definition_by_index(node_index);
             let t = inf.as_type(&i_s).ensure_dunder_match_args_with_literals(
-                db,
+                &i_s,
                 Some(PointLink::new(self.file.file_index, node_index)),
             );
             let is_ok = match t {
@@ -1172,7 +1170,7 @@ impl Inference<'_, '_, '_> {
                         );
                     }
                 }
-                if type_params.is_none() {
+                if class.type_params().is_none() {
                     check_protocol_type_var_variances(self.i_s, c)
                 }
             }
@@ -1773,7 +1771,13 @@ impl Inference<'_, '_, '_> {
                         if function.first_param_kind(i_s) == FirstParamKind::ClassOfSelf {
                             class_t = Type::Type(Arc::new(class_t));
                         };
-                        if !erased.is_simple_super_type_of(i_s, &class_t).bool() {
+                        if !erased.is_simple_super_type_of(i_s, &class_t).bool()
+                            // For overloads we also allow members to have subclasses as Self
+                            // types, because this is useful. Mypy doesn't do this as of now, but
+                            // these are used e.g. in scipy-stubs.
+                            && (!is_overload_member
+                                || !erased.is_simple_sub_type_of(i_s, &class_t).bool())
+                        {
                             let param_name = first_param.name_def().as_code();
                             let issue = if ["self", "cls"].contains(&param_name) {
                                 let format_data = &FormatData::new_reveal_type(i_s.db);
@@ -2923,8 +2927,34 @@ pub(super) fn check_override(
                         added_liskov_note = true;
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
-                                from.file
-                                    .add_issue(i_s, Issue::from_start_stop(s.start, s.end, issue));
+                                if let Some(func) = maybe_func()
+                                    && let node = func.node()
+                                    && let type_ignore_comment =
+                                        from.file.tree.type_ignore_comment_for(
+                                            node.start(),
+                                            node.end_position_of_colon(),
+                                        )
+                                    && from
+                                        .file
+                                        .issues
+                                        .is_ignored_and_return_non_covered_error_code(
+                                            &issue,
+                                            type_ignore_comment,
+                                        )
+                                        .0
+                                {
+                                    // Somehow Mypy also allows ignores on the first line even
+                                    // though it adds the error to the params:
+                                    //
+                                    //     def f(  # type: ignore[override]
+                                    //         self, x: str, y: str
+                                    //     )
+                                } else {
+                                    from.file.add_issue(
+                                        i_s,
+                                        Issue::from_start_stop(s.start, s.end, issue, false),
+                                    );
+                                }
                             }
                             _ => {
                                 from.add_issue(i_s, issue);

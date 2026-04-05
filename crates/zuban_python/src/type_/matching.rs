@@ -11,7 +11,8 @@ use crate::{
     inference_state::InferenceState,
     match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_protocol_mismatch, format_got_expected,
+        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_structural_matching_recursion,
+        format_got_expected,
     },
     params::matches_params,
     recoverable_error,
@@ -108,7 +109,12 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::Union(union_type1) => {
-                self.matches_union(i_s, matcher, union_type1, value_type, variance)
+                if variance == Variance::Invariant {
+                    return self.is_super_type_of(i_s, matcher, value_type)
+                        & self.is_sub_type_of(i_s, matcher, value_type);
+                } else {
+                    self.union_is_super_type_of(i_s, matcher, union_type1, value_type)
+                }
             }
             Type::FunctionOverload(_) if variance == Variance::Invariant => self
                 .matches_internal(i_s, matcher, value_type, Variance::Covariant)
@@ -133,11 +139,11 @@ impl Type {
             },
             original_t1 @ Type::RecursiveType(rec1) => {
                 if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
-                    match value_type {
-                        Type::Class(_) | Type::RecursiveType(_) => {
-                            // Classes like aliases can also be recursive in mypy, like
-                            // `class B(List[B])`.
-                            matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                    matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                        match value_type {
+                            Type::Class(_) | Type::RecursiveType(_) => {
+                                // Classes like aliases can also be recursive in mypy, like
+                                // `class B(List[B])`.
                                 if let Type::RecursiveType(rec2) = value_type
                                     && rec1.link == rec2.link
                                     && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
@@ -150,10 +156,10 @@ impl Type {
                                 } else {
                                     t1.matches(i_s, matcher, value_type, variance)
                                 }
-                            })
+                            }
+                            _ => t1.matches(i_s, matcher, value_type, variance),
                         }
-                        _ => t1.matches(i_s, matcher, value_type, variance),
-                    }
+                    })
                 } else {
                     // Happens for example when creating the MRO of a class with a
                     // tuple base class.
@@ -179,9 +185,25 @@ impl Type {
             },
             Type::TypedDict(d1) => match value_type {
                 Type::TypedDict(d2) => {
-                    let mut m = d1.matches(i_s, matcher, d2, false);
+                    if d1.defined_at == d2.defined_at && d1.generics.is_empty() {
+                        // This is a shortcut that might happen pretty often
+                        return Match::new_true();
+                    }
+                    let mut m = avoid_structural_matching_recursion(
+                        i_s.db,
+                        self,
+                        value_type,
+                        matcher.has_type_var_matcher(),
+                        || d1.is_super_type_of(i_s, matcher, d2),
+                    );
                     if variance == Variance::Invariant {
-                        m &= d2.matches(i_s, matcher, d1, false);
+                        m &= avoid_structural_matching_recursion(
+                            i_s.db,
+                            value_type,
+                            self,
+                            matcher.has_type_var_matcher(),
+                            || d2.is_super_type_of(i_s, matcher, d1),
+                        )
                     }
                     m.similar_if_false()
                 }
@@ -202,7 +224,9 @@ impl Type {
             },
             Type::Enum(e1) => match value_type {
                 Type::Enum(e2) => (e1 == e2).into(),
-                Type::EnumMember(member) => (e1 == &member.enum_).into(),
+                Type::EnumMember(member) if variance == Variance::Covariant => {
+                    (e1 == &member.enum_).into()
+                }
                 _ => Match::new_false(),
             },
             Type::EnumMember(m1) => match value_type {
@@ -344,7 +368,7 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
-                    avoid_protocol_mismatch(
+                    avoid_structural_matching_recursion(
                         i_s.db,
                         self,
                         value_type,
@@ -505,13 +529,19 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                Match::all(u2.iter(), |t| {
-                    if matches!(t, Type::None)  && i_s.should_ignore_none_in_untyped_context() {
-                        Match::new_true()
-                    } else {
-                        self.matches(i_s, matcher, t, variance)
-                    }
-                })
+                let m =
+                    Match::all(u2.iter(), |t| {
+                        if matches!(t, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                            Match::new_true()
+                        } else {
+                            self.is_super_type_of(i_s, matcher, t)
+                        }
+                    });
+                if variance == Variance::Invariant {
+                    m & self.is_sub_type_of(i_s, matcher, value_type)
+                } else {
+                    m
+                }
             }
             Type::Intersection(intersection2) => {
                 Match::any(intersection2.iter_entries(), |t| {
@@ -570,39 +600,25 @@ impl Type {
         }
     }
 
-    fn matches_union(
+    fn union_is_super_type_of(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         u1: &UnionType,
         value_type: &Self,
-        variance: Variance,
     ) -> Match {
-        let matches_true_and_false = || {
-            // For covariance we want true and false to be present, for invariance, the entry count
-            // has to match.
-            u1.bool_literal_count() == 2
-                && (variance == Variance::Covariant || u1.entries.len() == 2)
-        };
         match value_type {
             Type::Union(u2) => {
                 if !u1.might_have_type_vars && !u2.might_have_type_vars && u1 == u2 {
                     return Match::new_true();
                 }
-                match variance {
-                    Variance::Covariant => Match::all(u2.iter(), |g2| {
-                        if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
-                            Match::new_true()
-                        } else {
-                            self.matches_union(i_s, matcher, u1, g2, variance)
-                        }
-                    }),
-                    Variance::Invariant => {
-                        self.is_super_type_of(i_s, matcher, value_type)
-                            & self.is_sub_type_of(i_s, matcher, value_type)
+                Match::all(u2.iter(), |g2| {
+                    if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
+                        Match::new_true()
+                    } else {
+                        self.union_is_super_type_of(i_s, matcher, u1, g2)
                     }
-                    Variance::Contravariant => unreachable!(),
-                }
+                })
             }
             Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
                 let Type::Union(u) = t.as_ref() else {
@@ -612,10 +628,10 @@ impl Type {
                     u.iter().map(|t| Type::Type(Arc::new(t.clone()))),
                     u.might_have_type_vars,
                 ));
-                self.matches_union(i_s, matcher, u1, &repacked, variance)
+                self.union_is_super_type_of(i_s, matcher, u1, &repacked)
             }
             Type::Class(c2)
-                if c2.link == i_s.db.python_state.bool_link() && matches_true_and_false() =>
+                if c2.link == i_s.db.python_state.bool_link() && u1.bool_literal_count() == 2 =>
             {
                 Match::new_true()
             }
@@ -623,7 +639,10 @@ impl Type {
                 if let Type::TypeVar(type_var2) = value_type {
                     if matcher.is_matching_reverse() {
                         if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
-                            i_s, type_var2, self, variance,
+                            i_s,
+                            type_var2,
+                            self,
+                            Variance::Covariant,
                         ) {
                             return matched;
                         }
@@ -631,25 +650,13 @@ impl Type {
                     // It is possible for bounds to be unions and we therefore need to be able to
                     // match int | str against a TypeVar with the same bound.
                     if let TypeVarKind::Bound(bound) = type_var2.type_var.kind(i_s.db)
-                        && let m = self.matches_union(i_s, matcher, u1, bound, variance)
+                        && let m = self.union_is_super_type_of(i_s, matcher, u1, bound)
                         && m.bool()
                     {
                         return m;
                     }
                 }
-                match variance {
-                    Variance::Covariant => {
-                        Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
-                    }
-                    Variance::Invariant => Match::all(u1.iter(), |g| {
-                        if matches!(g, Type::None) && i_s.should_ignore_none_in_untyped_context() {
-                            Match::new_true()
-                        } else {
-                            g.matches(i_s, matcher, value_type, variance)
-                        }
-                    }),
-                    Variance::Contravariant => unreachable!(),
-                }
+                Match::any(u1.iter(), |g| g.is_super_type_of(i_s, matcher, value_type))
             }
         }
     }
@@ -682,7 +689,9 @@ impl Type {
                         t.inferred_variance(i_s.db, class1).invert()
                     }
                     TypeVarLike::TypeVar(_) => Variance::Invariant,
-                    TypeVarLike::TypeVarTuple(_) | TypeVarLike::ParamSpec(_) => Variance::Covariant,
+                    TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
+                    // TODO this should probably not be covariant
+                    TypeVarLike::ParamSpec(_) => Variance::Covariant,
                 };
                 matches &= t1.matches(i_s, matcher, &t2, v);
             }

@@ -2690,3 +2690,12 @@ class D(C):
 class E:
     def __mul__(self, other: Self, /) -> Self: ...
     def __imul__(self, other: int, /) -> Self: ...  # E: Signatures of "__imul__" and "__mul__" are incompatible  [misc]
+
+[case override_issues_can_be_ignored_on_first_line_of_method]
+class A:
+    def f(self, x: int, y: int): ...
+
+class B(A):
+    def f(  # type: ignore[override]
+        self, x: str, y: str
+    ): ...

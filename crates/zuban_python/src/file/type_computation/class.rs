@@ -18,7 +18,7 @@ use crate::{
         ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
-    diagnostics::IssueKind,
+    diagnostics::{Issue, IssueKind},
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::{NameResolution, PointResolution},
@@ -314,6 +314,13 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             });
         }
     }
+    pub fn add_issue_on_args(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
+        let range = self.node().closing_and_opening_parentheses().unwrap();
+        self.file.add_issue(
+            i_s,
+            Issue::from_start_stop(range.start, range.end, issue, false),
+        )
+    }
 }
 
 impl<'a> std::ops::Deref for ClassNodeRef<'a> {
@@ -510,7 +517,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             dataclass_transform = Some(Box::new(d.clone()));
                         }
                         Some(Lookup::T(TypeContent::Class { node_ref, .. }))
-                            if Some(*node_ref) == db.python_state.deprecated() =>
+                            if node_ref.as_link() == db.python_state.deprecated_link =>
                         {
                             deprecated_reason =
                                 Some(self.file.inference(i_s).infer_deprecated_reason(decorator));
@@ -1132,8 +1139,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 }
             }
             for type_var_like in unbound_type_vars.into_iter() {
-                NodeRef::new(self.node_ref.file, arguments.index()).add_type_issue(
-                    db,
+                self.add_issue_on_args(
+                    i_s,
                     IssueKind::TypeParametersShouldBeDeclared { type_var_like },
                 );
             }
@@ -1141,8 +1148,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         match class_kind {
             ClassKind::TypedDict => {
                 if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
-                    NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_type_issue(db, IssueKind::TypedDictBasesMustBeTypedDicts);
+                    self.add_issue_on_args(i_s, IssueKind::TypedDictBasesMustBeTypedDicts);
                 }
             }
             ClassKind::Protocol => {
@@ -1151,26 +1157,23 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         !cls.is_protocol(db) && cls.node_ref != db.python_state.object_node_ref()
                     })
                 }) {
-                    NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_type_issue(db, IssueKind::BasesOfProtocolMustBeProtocol);
+                    self.add_issue_on_args(i_s, IssueKind::BasesOfProtocolMustBeProtocol);
                 }
             }
             _ => (),
         }
         if is_new_named_tuple && bases.len() > 1 {
-            NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                .add_type_issue(db, IssueKind::NamedTupleShouldBeASingleBase);
+            self.add_issue_on_args(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
         let (mro, linearizable) = linearize_mro_and_return_linearizable(db, &bases);
         if !linearizable {
-            NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
-                .add_type_issue(
-                    db,
-                    IssueKind::InconsistentMro {
-                        name: self.name().into(),
-                    },
-                );
+            self.add_issue_on_args(
+                i_s,
+                IssueKind::InconsistentMro {
+                    name: self.name().into(),
+                },
+            );
         }
 
         let mut found_tuple_like = None;
@@ -1178,8 +1181,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             if matches!(base.type_, Type::Tuple(_) | Type::NamedTuple(_)) {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
-                        NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                            .add_type_issue(db, IssueKind::IncompatibleBaseTuples);
+                        self.add_issue_on_args(i_s, IssueKind::IncompatibleBaseTuples);
                     }
                 } else {
                     found_tuple_like = Some(&base.type_);

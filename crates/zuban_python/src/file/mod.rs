@@ -26,7 +26,7 @@ pub(crate) use python_file::{
 };
 pub(crate) use type_computation::{
     ANNOTATION_TO_EXPR_DIFFERENCE, CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef,
-    DecoratorState, FuncNodeRef, FuncParent, GenericCounts, ORDERING_METHODS,
+    DecoratorState, FuncNodeRef, FuncParent, GenericCounts, ORDERING_METHODS, TypeDocs,
     TypeVarCallbackReturn, TypeVarTupleDefaultOrigin, assignment_type_node_ref,
     expect_class_or_simple_generic, linearize_mro_and_return_linearizable, maybe_saved_annotation,
     use_cached_annotation_or_type_comment, use_cached_annotation_type,

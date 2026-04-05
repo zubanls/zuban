@@ -34,58 +34,71 @@ use crate::{
 };
 
 thread_local! {
-    static PROTOCOL_CACHE: ProtocolCache = ProtocolCache::default();
+    static STRUCTURAL_MATCHING_CACHE: StructuralMatchingCache = StructuralMatchingCache::default();
 }
 
 #[derive(Default)]
-struct ProtocolCache {
+struct StructuralMatchingCache {
     avoid_recursions: RefCell<Vec<(Type, Type)>>,
     cached: RefCell<HashMap<(Type, Type), Match>>,
 }
 
-pub fn invalidate_protocol_cache() {
-    PROTOCOL_CACHE.with(|cache| {
+pub fn invalidate_structural_matching_cache() {
+    STRUCTURAL_MATCHING_CACHE.with(|cache| {
         debug_assert!(cache.avoid_recursions.borrow().is_empty());
         cache.cached.borrow_mut().clear()
     })
 }
 
-pub fn avoid_protocol_mismatch(
+// For both Protocols and TypedDict
+pub fn avoid_structural_matching_recursion(
     db: &Database,
     t1: &Type,
     t2: &Type,
     had_type_var_matcher: bool,
     callable: impl FnOnce() -> Match,
 ) -> Match {
-    PROTOCOL_CACHE.with(|cache| {
+    STRUCTURAL_MATCHING_CACHE.with(|cache| {
         let mut current = cache.avoid_recursions.borrow_mut();
         if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
             Match::new_true()
         } else {
             if !current.is_empty() {
-                let mut had_temporary_matcher_id = false;
-                t1.search_type_vars(&mut |usage| {
-                    if usage.temporary_matcher_id() > 0 {
-                        had_temporary_matcher_id = true;
+                let replace = move |t: &Type| {
+                    let mut had_temporary_matcher_id = false;
+                    t.search_type_vars(&mut |usage| {
+                        if usage.temporary_matcher_id() > 0 {
+                            had_temporary_matcher_id = true;
+                        }
+                    });
+                    if !had_temporary_matcher_id {
+                        return None;
                     }
-                });
-                if had_temporary_matcher_id {
-                    let new_t1 = t1
-                        .replace_type_var_likes(db, &mut |mut usage| {
-                            usage.update_temporary_matcher_index(0);
-                            Some(usage.into_generic_item())
-                        })
-                        .map(Cow::Owned)
-                        .unwrap_or_else(|| Cow::Borrowed(t1));
+                    t.replace_type_var_likes(db, &mut |mut usage| {
+                        usage.update_temporary_matcher_index(0);
+                        Some(usage.into_generic_item())
+                    })
+                };
+                if let Some(new_t1) = replace(t1) {
                     // This case arose in
                     // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
                     // where it replace function type vars repeatedly with new generated type vars.
                     // I'm not 100% sure this holds for all cases, but it feels like this is fine.
                     drop(current);
-                    return avoid_protocol_mismatch(
+                    return avoid_structural_matching_recursion(
                         db,
                         &new_t1,
                         t2,
+                        had_type_var_matcher,
+                        callable,
+                    );
+                }
+                if let Some(new_t2) = replace(t2) {
+                    drop(current);
+                    return avoid_structural_matching_recursion(
+                        db,
+                        t1,
+                        &new_t2,
                         had_type_var_matcher,
                         callable,
                     );
@@ -95,7 +108,7 @@ pub fn avoid_protocol_mismatch(
             if !had_type_var_matcher && let Some(already_known) = cache.cached.borrow().get(&new_t)
             {
                 debug!(
-                    r#"Used protocol cache "{}" against "{}": {:?}"#,
+                    r#"Used structural matching cache "{}" against "{}": {:?}"#,
                     t1.format_short(db),
                     t2.format_short(db),
                     already_known,
@@ -105,7 +118,7 @@ pub fn avoid_protocol_mismatch(
             current.push(new_t);
             drop(current);
             debug!(
-                r#"Match protocol "{}" against "{}" (TypeVarMatcher: {:?})"#,
+                r#"Match protocol/TypedDict "{}" against "{}" (TypeVarMatcher: {:?})"#,
                 t1.format_short(db),
                 t2.format_short(db),
                 had_type_var_matcher,

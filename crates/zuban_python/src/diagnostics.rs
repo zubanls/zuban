@@ -718,12 +718,13 @@ impl Issue {
         start_position: CodeIndex,
         end_position: CodeIndex,
         kind: IssueKind,
+        from_name_binder: bool,
     ) -> Self {
         Self {
             kind,
             start_position,
             end_position,
-            from_name_binder: false,
+            from_name_binder,
         }
     }
 }
@@ -2360,6 +2361,31 @@ impl Diagnostics {
         issue: Issue,
         maybe_ignored: Option<TypeIgnoreComment>,
     ) -> Result<&Issue, Issue> {
+        let (is_ignored, add_not_covered_note) =
+            self.is_ignored_and_return_non_covered_error_code(&issue.kind, maybe_ignored);
+        if is_ignored {
+            return Err(issue);
+        }
+        let from_name_binder = issue.from_name_binder;
+        let result = self.add(issue);
+        if let Some(s) = add_not_covered_note {
+            self.0.push(Box::pin(Issue::from_start_stop(
+                result.start_position,
+                result.end_position,
+                IssueKind::Note(
+                    format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
+                ),
+                from_name_binder,
+            )));
+        }
+        Ok(result)
+    }
+
+    pub fn is_ignored_and_return_non_covered_error_code(
+        &self,
+        issue: &IssueKind,
+        maybe_ignored: Option<TypeIgnoreComment>,
+    ) -> (bool, Option<&'static str>) {
         let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
             if let TypeIgnoreComment::WithCodes {
@@ -2369,8 +2395,8 @@ impl Diagnostics {
             } = specific
             {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
-                let e = issue.kind.mypy_error_code();
-                let super_ = issue.kind.mypy_error_supercode();
+                let e = issue.mypy_error_code();
+                let super_ = issue.mypy_error_supercode();
                 if std::iter::once(codes)
                     .chain(codes_of_later_type_ignores)
                     .map(|codes| codes.split(','))
@@ -2380,26 +2406,20 @@ impl Diagnostics {
                         e == Some(code) || super_ == Some(code) || e.is_none()
                     })
                 {
-                    return Err(issue);
+                    return (true, None);
                 } else if e.is_some() {
                     add_not_covered_note = e;
                 }
             } else {
-                return Err(issue);
+                return (true, None);
             }
         }
+        (false, add_not_covered_note)
+    }
+
+    pub fn add(&self, issue: Issue) -> &Issue {
         self.0.push(Box::pin(issue));
-        let last_issue = self.0.last().unwrap();
-        if let Some(s) = add_not_covered_note {
-            self.0.push(Box::pin(Issue::from_start_stop(
-                last_issue.start_position,
-                last_issue.end_position,
-                IssueKind::Note(
-                    format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
-                ),
-            )));
-        }
-        Ok(last_issue)
+        self.0.last().unwrap()
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {

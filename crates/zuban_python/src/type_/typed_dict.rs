@@ -68,6 +68,12 @@ pub(crate) enum TypedDictGenerics {
     Generics(GenericsList),
 }
 
+impl TypedDictGenerics {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExtraItemsType {
     pub t: Type,
@@ -504,12 +510,11 @@ impl TypedDict {
         })
     }
 
-    pub fn matches(
+    pub fn is_super_type_of(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         other: &Self,
-        read_only: bool,
     ) -> Match {
         let mut matches = Match::new_true();
         let ms1 = self.members(i_s.db);
@@ -530,7 +535,7 @@ impl TypedDict {
                     // modifications propagate from one to the other TypedDict.
                     matches &= m1.type_.is_same_type(i_s, matcher, m2.type_);
                 }
-            } else if !read_only || m1.required {
+            } else {
                 return Match::new_false();
             }
         }
@@ -1170,7 +1175,9 @@ pub(crate) fn initialize_typed_dict<'db>(
         match arg_inf.as_cow_type(i_s).as_ref() {
             Type::TypedDict(arg_td) => {
                 if arg_td.defined_at != typed_dict.defined_at
-                    && !typed_dict.matches(i_s, &mut matcher, arg_td, false).bool()
+                    && !typed_dict
+                        .is_super_type_of(i_s, &mut matcher, arg_td)
+                        .bool()
                 {
                     first_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
                     return Inferred::new_any_from_error();

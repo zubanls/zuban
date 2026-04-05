@@ -56,16 +56,16 @@ class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one type var tuple in a cl
 [case typevartuple_match_length]
 # flags: --mode default
 # Copied from conformance tests (generics_typevartuple_basic.py)
-from typing import assert_type
+from typing import assert_type, Literal
 
 def func2[*Ts](arg1: tuple[*Ts], arg2: tuple[*Ts]) -> tuple[*Ts]: ...
 
-assert_type(func2((0,), (1,)), tuple[int])  # OK
+assert_type(func2((0,), (1,)), tuple[Literal[0, 1]])  # OK
 func2((0,), (0.0,))  # OK
 func2((0.0,), (0,))  # OK
 func2((0,), (1,))  # OK
 
-func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[str]"; expected "tuple[int]"
+func2((0,), ("0",))
 func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[int]"; expected "tuple[int, int]"
 
 [case typevartuple_non_unpacked_error]
@@ -84,6 +84,30 @@ class ClassA(Generic[Shape]):  # E: Free type variable expected in Generic[...]
 
     def method1(*args: Shape) -> None:  # E: TypeVarTuple "Shape" is only valid with an unpack
         ...
+
+[case typevartuples_are_invariant_in_conformance_tests]
+# flags: --mode default
+# Copied from conformance tests (generics_typevartuple_basic.py)
+from typing import TypeVarTuple, assert_type, Generic, NewType
+Shape = TypeVarTuple("Shape")
+
+Height = NewType("Height", int)
+Width = NewType("Width", int)
+
+class Array(Generic[*Shape]):
+    def __init__(self, shape: tuple[*Shape]):
+        self._shape: tuple[*Shape] = shape
+
+    def get_shape(self) -> tuple[*Shape]:
+        return self._shape
+
+def multiply(x: Array[*Shape], y: Array[*Shape]) -> Array[*Shape]:
+    raise NotImplementedError
+
+def func3(x: Array[Height], y: Array[Width], z: Array[Height, Width]) -> None:
+    multiply(x, x)  # OK
+    multiply(x, y)  # E: Argument 2 to "multiply" has incompatible type "Array[Width]"; expected "Array[Height]"
+    multiply(x, z)  # E: Argument 2 to "multiply" has incompatible type "Array[Height, Width]"; expected "Array[Height]"
 
 [case copied_testAliasToCallableWithUnpack]
 # We want to ensure this does not fail for no-mypy-compatible mode, because
@@ -129,3 +153,14 @@ def foo2(*args: Unpack[_Ts], **kwargs):
 def bar(c: Callable[_P, None], *args: _P.args, **kwargs: _P.kwargs):
     foo(*args)  # E: ParamSpec arguments must be of types "*_P.args, **_P.kwargs"  # E: Passing a ParamSpec to a tuple unpack is not possible
     foo2(*args, **kwargs)  # E: Passing a ParamSpec to a tuple unpack is not possible
+
+[case avoid_crash_in_usage_of_type_var_tuple_with_type_var]
+from typing_extensions import TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+class Base(tuple[*Ts]): ...
+class X(Base[T]): ...
+class Y(X[T]):
+    id: int

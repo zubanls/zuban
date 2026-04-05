@@ -6,17 +6,17 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, Atom, AtomContent, Block,
-    BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator, ComparisonContent,
-    Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction, ElseBlock,
-    ExceptExpression, ExceptExpressionContent, Expression, ExpressionContent, ExpressionPart,
-    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockIterator, IfBlockType, IfStmt,
-    KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern, MappingPatternItem,
-    MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent, NodeIndex, Operand,
-    ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget,
-    PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType, StarLikeExpression,
-    StarLikeExpressionIterator, StarPatternContent, SubjectExprContent, Target, Ternary,
-    TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
+    Argument, Arguments, ArgumentsDetails, AssertStmt, AssignmentContent, AssignmentRightSide,
+    Atom, AtomContent, Block, BreakStmt, CaseBlock, CasePattern, ClassPattern, CompIfIterator,
+    ComparisonContent, Comparisons, Conjunction, ContinueStmt, DelTarget, DelTargets, Disjunction,
+    ElseBlock, ExceptExpression, ExceptExpressionContent, Expression, ExpressionContent,
+    ExpressionPart, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockIterator, IfBlockType,
+    IfStmt, KeyEntryInPattern, LiteralPattern, LiteralPatternContent, MappingPattern,
+    MappingPatternItem, MatchStmt, Name, NameDef, NamedExpression, NamedExpressionContent,
+    NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType,
+    StarLikeExpression, StarLikeExpressionIterator, StarPatternContent, SubjectExprContent, Target,
+    Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -1321,11 +1321,20 @@ fn split_off_enum_member(
                     add(f);
                     continue;
                 }
+                let is_class = |link| match sub_t {
+                    Type::Class(c) => c.link == link,
+                    _ => false,
+                };
                 if abort_on_custom_eq
-                    && matches!(
-                        enum_member.enum_.kind(i_s),
-                        EnumKind::IntEnum | EnumKind::StrEnum
-                    )
+                    && match enum_member.enum_.kind(i_s) {
+                        EnumKind::IntEnum => {
+                            is_class(i_s.db.python_state.int_link()) || has_custom_eq(i_s, sub_t)
+                        }
+                        EnumKind::StrEnum => {
+                            is_class(i_s.db.python_state.str_link()) || has_custom_eq(i_s, sub_t)
+                        }
+                        _ => false,
+                    }
                 {
                     return None;
                 }
@@ -1842,8 +1851,7 @@ impl<'file> Inference<'_, 'file, '_> {
             return;
         }
         let error_result = if new_t.is_any() && !declaration_t.is_any_or_any_in_union(self.i_s.db) {
-            if self.allow_redefinitions_in_specific_scope()
-                && matches!(key, FlowKey::Name(_))
+            if matches!(key, FlowKey::Name(_))
                 && matches!(check_for_error(), RedefinitionResult::RedefinitionAllowed)
             {
                 RedefinitionResult::RedefinitionAllowed
@@ -1938,6 +1946,10 @@ impl<'file> Inference<'_, 'file, '_> {
             type_,
             false,
         )
+    }
+
+    pub fn save_narrowed_initial_name_definition(&self, link: PointLink, type_: Type) {
+        self.save_narrowed(FlowKey::Name(link), type_, false)
     }
 
     fn save_narrowed(&self, key: FlowKey, type_: Type, widens: bool) {
@@ -3454,7 +3466,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         let name = lookup.maybe_name();
                         lookup.into_maybe_inferred().map(|inf| {
                             let truthy = inf.as_type(i_s);
-                            truthy.ensure_dunder_match_args_with_literals(i_s.db, name)
+                            truthy.ensure_dunder_match_args_with_literals(i_s, name)
                         })
                     }) {
                         if let Some(tup_entries) = match_args.maybe_fixed_len_tuple() {
@@ -5230,24 +5242,54 @@ enum SubjectKey {
 impl Type {
     pub fn ensure_dunder_match_args_with_literals(
         self,
-        db: &Database,
+        i_s: &InferenceState,
         name: Option<PointLink>,
     ) -> Self {
         let Some(name) = name else { return self };
-        if let Some(tup_entries) = self.maybe_fixed_len_tuple() {
-            for entry in tup_entries {
-                if let Type::Class(_) = entry {
-                    let name_ref = NodeRef::from_link(db, name);
-                    if let Some(name) = name_ref.maybe_name()
-                        && let Some(assignment) = name.maybe_assignment_definition_name()
-                        && let Some((_, _, expr)) =
-                            assignment.maybe_simple_type_expression_assignment()
-                        && let Some(tuple) = expr.maybe_tuple()
-                        && let Some(t) = NodeRef::new(name_ref.file, tuple.index()).maybe_type()
-                    {
-                        return t.clone();
+        if let Type::Tuple(tup) = &self {
+            match &tup.args {
+                TupleArgs::FixedLen(tup_entries) => {
+                    for entry in tup_entries.iter() {
+                        if let Type::Class(_) = entry {
+                            let name_ref = NodeRef::from_link(i_s.db, name);
+                            if let Some(name) = name_ref.maybe_name()
+                                && let Some(assignment) = name.maybe_assignment_definition_name()
+                                && let Some((_, _, expr)) =
+                                    assignment.maybe_simple_type_expression_assignment()
+                                && let Some(tuple) = expr.maybe_tuple()
+                                && let Some(t) =
+                                    NodeRef::new(name_ref.file, tuple.index()).maybe_type()
+                            {
+                                return t.clone();
+                            }
+                        }
                     }
                 }
+                TupleArgs::ArbitraryLen(_) => {
+                    // Since it's possible to have:
+                    //
+                    //     __match_args__: ClassVar[tuple[str, ...]] = "a",
+                    //
+                    // we have to make sure to use the right side.
+                    let node_ref = NodeRef::from_link(i_s.db, name);
+                    if let Some(name) = node_ref.maybe_name()
+                        && let Some(assignment) = name.maybe_assignment_definition_name()
+                        && let AssignmentContent::WithAnnotation(
+                            ..,
+                            Some(AssignmentRightSide::StarExpressions(star_exprs)),
+                        ) = assignment.unpack()
+                        && let inf = node_ref
+                            .file
+                            .inference(i_s)
+                            .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
+                        && let t = inf.as_cow_type(i_s)
+                        && let Type::Tuple(tup) = t.as_ref()
+                        && let TupleArgs::FixedLen(_) = &tup.args
+                    {
+                        return t.into_owned();
+                    }
+                }
+                TupleArgs::WithUnpack(_) => (),
             }
         }
         self

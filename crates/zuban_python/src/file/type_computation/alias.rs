@@ -46,12 +46,45 @@ use crate::{
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ALIAS_TYPE_CACHE_OFFSET: u32 = 1;
 
+pub enum TypeDocs<'file> {
+    TypeVarLike(TypeVarLike),
+    TypeAlias(&'file TypeAlias),
+    SimpleClassTypeAlias(ClassNodeRef<'file>),
+}
+
 impl<'db, 'file> NameResolution<'db, 'file, '_> {
     pub fn is_valid_type_assignment(&self, assignment: Assignment<'file>) -> bool {
         !matches!(
             self.compute_type_assignment(assignment),
             Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_))
         )
+    }
+
+    pub fn documentation_for_assignment(
+        &self,
+        assignment: Assignment<'file>,
+    ) -> Option<TypeDocs<'file>> {
+        self.documentation_for_lookup(self.compute_type_assignment(assignment))
+    }
+
+    fn documentation_for_lookup(&self, lookup: Lookup<'file, 'file>) -> Option<TypeDocs<'file>> {
+        match lookup {
+            Lookup::T(TypeContent::TypeAlias(alias)) => Some(TypeDocs::TypeAlias(alias)),
+            Lookup::T(TypeContent::Class { node_ref, .. }) => {
+                Some(TypeDocs::SimpleClassTypeAlias(node_ref))
+            }
+            Lookup::TypeVarLike(tvl) => Some(TypeDocs::TypeVarLike(tvl)),
+            Lookup::T(TypeContent::InvalidVariable(_) | TypeContent::Unknown(_)) => None,
+            // TODO for some of these we want documentation and a nicer representation
+            _ => None,
+        }
+    }
+
+    pub fn documentation_for_type_alias(
+        &self,
+        alias: parsa_python_cst::TypeAlias,
+    ) -> Option<TypeDocs<'file>> {
+        self.documentation_for_lookup(self.compute_type_alias_syntax(alias))
     }
 
     pub(super) fn compute_type_assignment(
