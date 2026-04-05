@@ -266,9 +266,10 @@ pub fn namespace_import_with_unloaded_file(
         loop {
             match parent.maybe_dir() {
                 Ok(dir) => {
-                    if Directory::entries(&db.vfs, &dir)
-                        .search("py.typed")
-                        .is_some()
+                    if from_file.flags(db).follow_untyped_imports
+                        || Directory::entries(&db.vfs, &dir)
+                            .search("py.typed")
+                            .is_some()
                         || dir.name.ends_with(STUBS_SUFFIX)
                     {
                         return result;

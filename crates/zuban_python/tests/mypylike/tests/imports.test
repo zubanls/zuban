@@ -279,6 +279,10 @@ reveal_type(b)  # N: Revealed type is "Any"
 reveal_type(c)  # N: Revealed type is "Any"
 reveal_type(d)  # N: Revealed type is "Any"
 
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
 [case namespace_attributes]
 # pkgs: modulefinder-site-packages
 
@@ -294,6 +298,10 @@ from ns_pkg_w_stubs import typed_inline
 reveal_type(untyped)  # N: Revealed type is "Any"
 reveal_type(typed)  # N: Revealed type is "types.ModuleType"
 reveal_type(typed_inline)  # N: Revealed type is "types.ModuleType"
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
 
 [case namespace_star_attributes_should_not_error]
 # pkgs: modulefinder-site-packages
@@ -312,6 +320,10 @@ def typed_inline() -> None:
     from ns_pkg_w_stubs.typed_inline import *
     ZubanCls
     z: ZubanCls
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
 
 [case invalidation_of_relative_paths1]
 from foo import bar
@@ -858,3 +870,12 @@ from other import C
 from other import __all__  # E: Module "other" has no attribute "__all__"
 [file other.pyi]
 class C: ...
+
+[case namespace_packages_with_inner_py_typed]
+# pkgs: namespace-without-pytyped
+# flags: --strict --follow-untyped-imports
+# From GH #366
+from ns.pkg.v1.client import Client
+
+def get_name(client: Client) -> str:
+    return client.name
