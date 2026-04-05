@@ -107,6 +107,7 @@ impl Project {
     }
 
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
+        invalidate_structural_matching_cache();
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
         known_file_indexes
             .into_par_iter()
@@ -180,6 +181,7 @@ impl Project {
     }
 
     pub fn diagnostics(&mut self) -> anyhow::Result<Diagnostics<'_>> {
+        invalidate_structural_matching_cache();
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -209,7 +211,6 @@ impl Project {
             issues
         })?;
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
-        invalidate_structural_matching_cache();
         Ok(Diagnostics {
             checked_files,
             files_with_errors,
@@ -228,6 +229,7 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &PathWithScheme) -> Option<Document<'_>> {
+        invalidate_structural_matching_cache();
         let file_index = self.db.file_by_file_path(path)?;
         tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
         Some(Document {

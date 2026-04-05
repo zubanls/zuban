@@ -299,6 +299,111 @@ fn diagnostics_for_saved_files_and_workspace_diagnostics() {
 }
 
 #[test]
+#[serial]
+fn diagnostics_for_protocols_invalidation() {
+    let server = Project::with_fixture(
+        r#"
+        [file pyproject.toml]
+
+        [file foo.py]
+        from typing import Protocol
+        from other import Alias
+
+        class P(Protocol):
+            x: int
+        class C:
+            x: Alias
+
+        p: P = C()
+
+        [file other.py]
+        Alias = int
+        "#,
+    )
+    .into_server();
+
+    server.request_and_expect_json::<DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: server.doc_id("foo.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!({
+            "items": [],
+            "kind": "full"
+        }),
+    );
+
+    // Change if the protocol matches
+    server.write_file_and_wait("other.py", "Alias = str\n");
+
+    server.request_and_expect_json::<DocumentDiagnosticRequest>(
+        DocumentDiagnosticParams {
+            text_document: server.doc_id("foo.py"),
+            identifier: None,
+            previous_result_id: None,
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!({
+            "items": [
+              {
+                "code": "assignment",
+                "message": "Incompatible types in assignment (expression has type \"C\", variable has type \"P\")",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 1,
+                "source": "zuban"
+              },
+              {
+                "code": "note",
+                "message": "Following member(s) of \"C\" have conflicts:",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 3,
+                "source": "zuban"
+              },
+              {
+                "code": "note",
+                "message": "    x: expected \"int\", got \"str\"",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 7,
+                    "line": 8
+                  }
+                },
+                "severity": 3,
+                "source": "zuban"
+              }
+            ],
+            "kind": "full"
+        }),
+    );
+}
+
+#[test]
 #[parallel]
 fn in_memory_file_changes() {
     let server = Project::with_fixture(
