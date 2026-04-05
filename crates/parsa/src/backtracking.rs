@@ -1,4 +1,4 @@
-use crate::grammar::Token;
+use crate::{InternalNode, grammar::Token};
 
 #[derive(Debug)]
 pub struct BacktrackingTokenizer<T: Token, I: Iterator<Item = T>> {
@@ -38,6 +38,18 @@ impl<T: Token, I: Iterator<Item = T>> BacktrackingTokenizer<T, I> {
     #[inline]
     pub fn stop(&mut self) {
         self.is_recording = false;
+    }
+
+    pub fn reset_to_last_leaf(&mut self, leaf: &InternalNode) {
+        debug_assert!(self.is_recording);
+        for (i, token) in self.tokens.iter().enumerate().rev() {
+            if token.start_index() == leaf.start_index && token.length() == leaf.length {
+                debug_assert_ne!(leaf.length, 0);
+                self.next_index = i + 1;
+                return;
+            }
+        }
+        unreachable!("Expected a last leaf when backtracking");
     }
 }
 

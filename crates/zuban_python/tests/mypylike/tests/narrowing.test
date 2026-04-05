@@ -2271,3 +2271,12 @@ def check(records_iter: Iterator[str]) -> None:
     reveal_type(records_iter)  # N: Revealed type is "<subclass of "typing.Iterator[str]" and "list"> | <subclass of "typing.Iterator[str]" and "tuple[Any, ...]">"
 
 check(IterableList())
+
+[case object_can_be_narrowed_to_none]
+# flags: --warn-unreachable
+# From GH #341
+def f(x: object) -> int:
+    if x is None:
+        return 0
+    else:
+        return 1

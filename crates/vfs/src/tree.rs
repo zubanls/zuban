@@ -1,12 +1,15 @@
 use std::{
+    ops::Deref,
     path::Path,
     sync::{Arc, Mutex, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
 };
 
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use utils::{MappedReadGuard, MappedWriteGuard, VecRwLockWrapper};
+use utils::{FastHashMap, FastHashSet, MappedReadGuard, MappedWriteGuard};
 
 use crate::{NormalizedPath, PathWithScheme, Vfs, VfsHandler, Workspace, Workspaces};
+
+type EntriesMap = FastHashMap<Arc<str>, DirectoryEntry>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FileIndex(pub u32);
@@ -90,7 +93,7 @@ impl Parent {
 
 #[derive(Debug)]
 pub struct FileEntry {
-    pub name: Box<str>,
+    pub name: Arc<str>,
     file_index: Mutex<Option<FileIndex>>,
     pub(crate) invalidations: Invalidations,
     pub parent: Parent,
@@ -108,7 +111,7 @@ impl Clone for FileEntry {
 }
 
 impl FileEntry {
-    pub(crate) fn new(parent: Parent, name: Box<str>) -> Arc<Self> {
+    pub(crate) fn new(parent: Parent, name: Arc<str>) -> Arc<Self> {
         Arc::new(Self {
             name,
             file_index: Default::default(),
@@ -129,7 +132,7 @@ impl FileEntry {
     pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
         let mut path = self.parent.relative_path(vfs);
         if path.is_empty() {
-            return self.name.clone().into();
+            return self.name.as_ref().into();
         }
         path.push(vfs.separator());
         path + &self.name
@@ -157,7 +160,7 @@ impl FileEntry {
 
 #[derive(Debug, Clone)]
 pub struct MissingEntry {
-    pub(crate) name: Box<str>,
+    pub(crate) name: Arc<str>,
     pub(crate) invalidations: Invalidations,
 }
 
@@ -189,7 +192,7 @@ impl DirectoryEntry {
     fn walk_internal<X>(&self, vfs: &Vfs<X>, callable: &mut impl FnMut(&Entries, &Self) -> bool) {
         if let DirectoryEntry::Directory(dir) = self {
             let entries = Directory::entries(vfs, dir);
-            for entry in entries.borrow().iter() {
+            for (_, entry) in entries.borrow().iter() {
                 if callable(entries, entry) {
                     entry.walk_internal(vfs, callable);
                 };
@@ -199,7 +202,7 @@ impl DirectoryEntry {
 }
 
 #[derive(Debug, Default)]
-pub struct Entries(RwLock<Vec<DirectoryEntry>>);
+pub struct Entries(RwLock<FastHashMap<Arc<str>, DirectoryEntry>>);
 
 impl Clone for Entries {
     fn clone(&self) -> Self {
@@ -211,7 +214,7 @@ impl Clone for Entries {
 pub struct Directory {
     pub(crate) entries: OnceLock<DirEntries>,
     pub parent: Parent,
-    pub name: Box<str>,
+    pub name: Arc<str>,
 }
 
 #[derive(Debug, Clone)]
@@ -233,7 +236,7 @@ pub(crate) enum AddedKind {
 }
 
 impl Directory {
-    pub(crate) fn new(parent: Parent, name: Box<str>) -> Arc<Self> {
+    pub(crate) fn new(parent: Parent, name: Arc<str>) -> Arc<Self> {
         Arc::new(Self {
             entries: Default::default(),
             parent,
@@ -253,7 +256,7 @@ impl Directory {
     pub fn relative_path(&self, vfs: &dyn VfsHandler) -> String {
         let mut path = self.parent.relative_path(vfs);
         if path.is_empty() {
-            return self.name.clone().into();
+            return self.name.as_ref().into();
         }
         path.push(vfs.separator());
         path + &self.name
@@ -268,10 +271,31 @@ impl Directory {
         workspaces: &Workspaces,
         dir: &'x Arc<Directory>,
     ) -> &'x Entries {
+        let mut access = None;
+        Self::entries_with_workspace_likes(
+            vfs,
+            || {
+                access = Some(workspaces.items.load());
+                &****access.as_ref().unwrap()
+            },
+            dir,
+        )
+    }
+
+    pub(crate) fn entries_with_workspace_likes<
+        'x,
+        'workspaces,
+        C: FnOnce() -> T,
+        T: Deref<Target = [Arc<Workspace>]>,
+    >(
+        vfs: &dyn VfsHandler,
+        get_workspaces: C,
+        dir: &'x Arc<Directory>,
+    ) -> &'x Entries {
         dir.entries
             .get_or_init(|| {
                 DirEntries::Entries(vfs.read_and_watch_dir(
-                    &*workspaces.items.read().unwrap(),
+                    get_workspaces().as_ref(),
                     &dir.absolute_path(vfs).path,
                     Parent::Directory(Arc::downgrade(dir)),
                 ))
@@ -285,37 +309,25 @@ impl Directory {
 }
 
 impl Entries {
-    pub fn from_vec(vec: Vec<DirectoryEntry>) -> Self {
-        Self(RwLock::from(vec))
+    pub fn new(map: EntriesMap) -> Self {
+        Self(RwLock::from(map))
     }
 
-    pub fn borrow(&self) -> RwLockReadGuard<'_, Vec<DirectoryEntry>> {
+    pub fn borrow(&self) -> RwLockReadGuard<'_, EntriesMap> {
         self.0.read().unwrap()
     }
 
-    pub(crate) fn borrow_mut(&self) -> RwLockWriteGuard<'_, Vec<DirectoryEntry>> {
+    pub fn borrow_mut(&self) -> RwLockWriteGuard<'_, EntriesMap> {
         self.0.write().unwrap()
-    }
-
-    pub fn iter(&self) -> VecRwLockWrapper<'_, Vec<DirectoryEntry>, DirectoryEntry> {
-        VecRwLockWrapper::new(MappedReadGuard::map(self.borrow(), |x| x))
     }
 
     pub(crate) fn remove_name(&self, name: &str) -> Option<DirectoryEntry> {
         let mut entries = self.borrow_mut();
-        let pos = entries.iter().position(|f| f.name() == name)?;
-        Some(entries.swap_remove(pos))
+        entries.remove(name)
     }
 
-    pub fn search(
-        &self,
-        name: &str,
-    ) -> Option<MappedReadGuard<'_, Vec<DirectoryEntry>, DirectoryEntry>> {
-        let borrow = self.borrow();
-        // We need to do this indirectly, because Rust needs #![feature(cell_filter_map)]
-        // https://github.com/rust-lang/rust/issues/81061
-        let pos = borrow.iter().position(|entry| entry.name() == name)?;
-        Some(MappedReadGuard::map(borrow, |dir| &dir[pos]))
+    pub fn search(&self, name: &str) -> Option<MappedReadGuard<'_, EntriesMap, DirectoryEntry>> {
+        MappedReadGuard::map_optional(self.borrow(), |dir| dir.get(name))
     }
 
     pub(crate) fn search_path(
@@ -345,14 +357,8 @@ impl Entries {
     pub fn search_mut(
         &self,
         name: &str,
-    ) -> Option<MappedWriteGuard<'_, Vec<DirectoryEntry>, DirectoryEntry>> {
-        let borrow = self.borrow_mut();
-        // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
-        // https://github.com/rust-lang/rust/issues/81061
-        borrow.iter().find(|entry| entry.name() == name)?;
-        Some(MappedWriteGuard::map(borrow, |dir| {
-            dir.iter_mut().find(|entry| entry.name() == name).unwrap()
-        }))
+    ) -> Option<MappedWriteGuard<'_, EntriesMap, DirectoryEntry>> {
+        MappedWriteGuard::map_optional(self.borrow_mut(), |dir| dir.get_mut(name))
     }
 
     pub(crate) fn ensure_file(
@@ -398,15 +404,16 @@ impl Entries {
             }
         } else if name == ".gitignore" {
             let g = new_gitignore();
-            self.borrow_mut().push(DirectoryEntry::Gitignore(g.clone()));
+            self.borrow_mut()
+                .insert(name.into(), DirectoryEntry::Gitignore(g.clone()));
             return AddedFile {
                 invalidations: Default::default(),
                 kind: AddedKind::Gitignore(g),
             };
         } else {
-            let mut borrow = self.borrow_mut();
             let entry = FileEntry::new(parent, name.into());
-            borrow.push(DirectoryEntry::File(entry.clone()));
+            self.borrow_mut()
+                .insert(entry.name.clone(), DirectoryEntry::File(entry.clone()));
             entry
         };
         AddedFile {
@@ -437,32 +444,39 @@ impl Entries {
         }
     }
 
-    pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
-        let mut vec = self.borrow_mut();
-        if let Some(item) = vec.iter_mut().find(|x| x.name() == name) {
-            match &item {
-                DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
-                // Files might be named `pytest` and therefore not be a valid Python files, but
-                // still exist in the tree.
-                DirectoryEntry::File(file) => file.invalidations.add(invalidates),
-                DirectoryEntry::Directory(_) => {
-                    // TODO this probably happens with a directory called `foo.py`.
-                    tracing::error!("Did not add invalidation for directory {}", name);
-                }
-                DirectoryEntry::Gitignore(_) => {
-                    tracing::error!(
-                        "Did not add invalidation for .gitignore, which \
+    pub fn add_missing_entry_callback(&self, invalidates: FileIndex) -> impl FnMut(&str) {
+        let mut entries = self.borrow_mut();
+        move |name| {
+            if let Some(item) = entries.get(name) {
+                match &item {
+                    DirectoryEntry::MissingEntry(missing) => missing.invalidations.add(invalidates),
+                    // Files might be named `pytest` and therefore not be a valid Python files, but
+                    // still exist in the tree.
+                    DirectoryEntry::File(file) => file.invalidations.add(invalidates),
+                    DirectoryEntry::Directory(_) => {
+                        // TODO this probably happens with a directory called `foo.py`.
+                        tracing::error!("Did not add invalidation for directory {}", name);
+                    }
+                    DirectoryEntry::Gitignore(_) => {
+                        tracing::error!(
+                            "Did not add invalidation for .gitignore, which \
                         should probably not be necessary"
-                    );
+                        );
+                    }
                 }
+            } else {
+                let invalidations = Invalidations::default();
+                invalidations.add(invalidates);
+                let name: Arc<str> = name.into();
+                let result = entries.insert(
+                    name.clone(),
+                    DirectoryEntry::MissingEntry(MissingEntry {
+                        invalidations,
+                        name,
+                    }),
+                );
+                debug_assert!(result.is_none());
             }
-        } else {
-            let invalidations = Invalidations::default();
-            invalidations.add(invalidates);
-            vec.push(DirectoryEntry::MissingEntry(MissingEntry {
-                invalidations,
-                name: name.to_string().into_boxed_str(),
-            }))
         }
     }
 
@@ -504,7 +518,7 @@ impl Entries {
         vfs: &Vfs<X>,
         callable: &mut impl FnMut(&Self, &DirectoryEntry) -> bool,
     ) {
-        for entry in self.borrow().iter() {
+        for (_, entry) in self.borrow().iter() {
             if callable(self, entry) {
                 entry.walk_internal(vfs, callable)
             }
@@ -531,8 +545,10 @@ pub enum DirOrFile {
     File(Arc<FileEntry>),
 }
 
+type InvalidationsInner = InvalidationDetail<FastHashSet<FileIndex>>;
+
 #[derive(Debug, Default)]
-pub(crate) struct Invalidations(RwLock<InvalidationDetail<Vec<FileIndex>>>);
+pub(crate) struct Invalidations(RwLock<InvalidationsInner>);
 
 #[derive(Debug, Clone)]
 pub(crate) enum InvalidationDetail<T> {
@@ -568,10 +584,8 @@ impl Invalidations {
     }
 
     pub(crate) fn add(&self, element: FileIndex) {
-        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap()
-            && !invs.contains(&element)
-        {
-            invs.push(element);
+        if let InvalidationDetail::Some(invs) = &mut *self.0.write().unwrap() {
+            invs.insert(element);
         }
     }
 
@@ -589,20 +603,8 @@ impl Invalidations {
         Self(RwLock::new(std::mem::take(&mut self.0.write().unwrap())))
     }
 
-    pub(crate) fn iter(
-        &self,
-    ) -> InvalidationDetail<VecRwLockWrapper<'_, InvalidationDetail<Vec<FileIndex>>, FileIndex>>
-    {
-        let r = self.0.read().unwrap();
-        if let InvalidationDetail::InvalidatesDb = &*r {
-            return InvalidationDetail::InvalidatesDb;
-        }
-        InvalidationDetail::Some(VecRwLockWrapper::new(MappedReadGuard::map(r, |r| {
-            let InvalidationDetail::Some(vec) = r else {
-                unreachable!()
-            };
-            vec
-        })))
+    pub(crate) fn borrow(&self) -> RwLockReadGuard<'_, InvalidationsInner> {
+        self.0.read().unwrap()
     }
 
     pub(crate) fn into_iter(self) -> InvalidationDetail<impl Iterator<Item = FileIndex>> {

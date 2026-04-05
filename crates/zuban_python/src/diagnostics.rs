@@ -38,7 +38,7 @@ pub(crate) enum IssueKind {
     ImportStubNoExplicitReexport { module_name: Box<str>, attribute: Box<str> },
     UnsupportedClassScopedImport,
     UnimportedRevealType,  // From --enable-error-code=unimported-reveal
-    NameError { name: Box<str> },
+    NameError { name: Box<str>, note: Option<Box<str>> },
     ReadingDeletedVariable,
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
@@ -47,7 +47,7 @@ pub(crate) enum IssueKind {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
-    IncompatibleImplicitReturn { expected: Box<str> },
+    IncompatibleImplicitReturn { expected: Box<str>, note: Option<&'static str> },
     ReturnValueExpected,
     NoReturnValueExpected,
     IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
@@ -55,8 +55,8 @@ pub(crate) enum IssueKind {
     InvalidGeneratorReturnType,
     InvalidAsyncGeneratorReturnType,
     ReturnStmtInFunctionWithNeverReturn,
-    ImplicitReturnInFunctionWithNeverReturn,
-    MissingReturnStatement { code: &'static str },
+    ImplicitReturnInFunctionWithNeverReturn { note: Option<&'static str> },
+    MissingReturnStatement { code: &'static str, note: Option<&'static str> },
     YieldFromIncompatibleSendTypes { got: Box<str>, expected: Box<str> },
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
@@ -157,7 +157,7 @@ pub(crate) enum IssueKind {
     ProtocolWithTypeParamsNoBracketsExpected,
     InvalidShadowingOfTypeshedModule { module: &'static str },
 
-    InvalidType(Box<str>),
+    InvalidType { message: Box<str>, additional_note: Option<&'static str> },
     InvalidTypeDeclaration,
     ClassVarOnlyInAssignmentsInClass,
     ClassVarNestedInsideOtherType,
@@ -237,7 +237,7 @@ pub(crate) enum IssueKind {
         string_name: Box<str>,
         variable_name: Box<str>
     },
-    TypeVarInReturnButNotArgument,
+    TypeVarInReturnButNotArgument { note: Option<Box<str>> },
     TypeVarCovariantInParamType,
     TypeVarContravariantInReturnType,
     TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
@@ -308,7 +308,7 @@ pub(crate) enum IssueKind {
     InvalidSignature { signature: Box<str> },
     OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
     ForwardOperatorIsNotCallable { forward_name: &'static str },
-    SignaturesAreIncompatible { name1: Box<str>, name2: &'static str },
+    SignaturesAreIncompatible { name1: Box<str>, name2: &'static str, code: &'static str },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     MustReturnNone { function_name: Box<str> },
@@ -542,12 +542,12 @@ impl IssueKind {
             | NotIterableMissingIterInUnion { .. } => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject { .. } => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
-            InvalidType(_) => "valid-type",
+            InvalidType { .. } => "valid-type",
             IncompatibleReturn { .. }
             | IncompatibleImplicitReturn { .. }
             | ReturnValueExpected
             | NoReturnValueExpected => "return-value",
-            MissingReturnStatement { code } => code,
+            MissingReturnStatement { code, .. } | SignaturesAreIncompatible { code, .. } => code,
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
@@ -557,7 +557,7 @@ impl IssueKind {
             | InvalidSetItemTarget { .. } => "assignment",
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
-            TypeVarInReturnButNotArgument
+            TypeVarInReturnButNotArgument { .. }
             | TypeVarCovariantInParamType
             | TypeVarContravariantInReturnType
             | TypeVarVarianceIncompatibleWithParentType { .. }
@@ -659,25 +659,29 @@ impl IssueKind {
         })
     }
 
-    pub(crate) fn should_be_reported(&self, flags: &TypeCheckerFlags) -> bool {
+    pub(crate) fn is_disabled(&self, flags: &TypeCheckerFlags) -> bool {
         if !flags.disabled_error_codes.is_empty() {
-            let should_not_report = |code| {
-                if let Some(code) = code
-                    && flags.disabled_error_codes.iter().any(|c| c == code)
-                    && !flags.enabled_error_codes.iter().any(|c| c == code)
-                {
-                    return true;
-                }
-                false
+            let should_not_report = |code: Option<&str>| {
+                code.is_some_and(|code| {
+                    flags.disabled_error_codes.iter().any(|c| c == code)
+                        && !flags.enabled_error_codes.iter().any(|c| c == code)
+                })
             };
             if should_not_report(self.mypy_error_code()) {
-                return false;
+                return true;
             }
             if should_not_report(self.mypy_error_supercode()) {
-                return false;
+                return true;
             }
         }
-        true
+        false
+    }
+
+    pub(crate) fn new_invalid_type(message: impl Into<Box<str>>) -> Self {
+        IssueKind::InvalidType {
+            message: message.into(),
+            additional_note: None,
+        }
     }
 }
 
@@ -804,7 +808,7 @@ impl<'db> Diagnostic<'db> {
                 | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationParamsNotBroadEnough { .. }
-                | TypeVarInReturnButNotArgument
+                | TypeVarInReturnButNotArgument { .. }
                 | OnlyClassTypeApplication
                 | UnsupportedClassScopedImport
                 | CannotInheritFromFinalClass { .. }
@@ -851,7 +855,12 @@ impl<'db> Diagnostic<'db> {
             ),
             UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_string(),
-            NameError{name} => format!(r#"Name "{name}" is not defined"#),
+            NameError{ name, note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.clone().into())
+                }
+                format!(r#"Name "{name}" is not defined"#)
+            }
             ReadingDeletedVariable => format!(
                 r#"Trying to read deleted variable "{}""#,
                 self.code_under_issue()
@@ -859,9 +868,12 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!(r#"Incompatible return value type (got "{got}", expected "{expected}")"#)
             }
-            IncompatibleImplicitReturn { expected } => format!(
-                r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#
-            ),
+            IncompatibleImplicitReturn { expected, note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string())
+                }
+                format!(r#"Incompatible return value type (implicitly returns "None", expected "{expected}")"#)
+            }
             ReturnValueExpected => "Return value expected".to_string(),
             NoReturnValueExpected => "No return value expected".to_string(),
             IncompatibleTypes{cause, got, expected} => {
@@ -874,9 +886,18 @@ impl<'db> Diagnostic<'db> {
                 r#"The return type of an async generator function should be "AsyncGenerator" or one of its supertypes"#.to_string(),
             ReturnStmtInFunctionWithNeverReturn =>
                 "Return statement in function which does not return".to_string(),
-            ImplicitReturnInFunctionWithNeverReturn =>
-                "Implicit return in function which does not return".to_string(),
-            MissingReturnStatement { .. } => "Missing return statement".to_string(),
+            ImplicitReturnInFunctionWithNeverReturn { note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string());
+                }
+                "Implicit return in function which does not return".to_string()
+            }
+            MissingReturnStatement { note, .. } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.to_string());
+                }
+                "Missing return statement".to_string()
+            },
             YieldFromIncompatibleSendTypes { got, expected } => format!(
                 r#"Incompatible send types in yield from (actual type "{got}", expected type "{expected}")"#
             ),
@@ -971,7 +992,13 @@ impl<'db> Diagnostic<'db> {
             NameUsedBeforeDefinition { name } => format!(
                 r#"Name "{name}" is used before definition"#
             ),
-            ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
+            ArgumentIssue(s) | ArgumentTypeIssue(s) => s.clone().into(),
+            InvalidType { message, additional_note } => {
+                if let Some(additional_note) = additional_note {
+                    additional_notes.push(additional_note.to_string());
+                }
+                message.clone().into()
+            }
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IncompatibleDefaultArgument {argument_name, got, expected} => {
@@ -1542,8 +1569,12 @@ impl<'db> Diagnostic<'db> {
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
-            TypeVarInReturnButNotArgument =>
-                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
+            TypeVarInReturnButNotArgument { note } => {
+                if let Some(note) = note {
+                    additional_notes.push(note.clone().into())
+                }
+                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string()
+            }
             TypeVarCovariantInParamType =>
                 "Cannot use a covariant type variable as a parameter".to_string(),
             TypeVarContravariantInReturnType =>
@@ -1738,7 +1769,7 @@ impl<'db> Diagnostic<'db> {
             ForwardOperatorIsNotCallable { forward_name } => format!(
                 r#"Forward operator "{forward_name}" is not callable"#
             ),
-            SignaturesAreIncompatible { name1, name2 } => format!(
+            SignaturesAreIncompatible { name1, name2, .. } => format!(
                 r#"Signatures of "{name1}" and "{name2}" are incompatible"#
             ),
             NewMustReturnAnInstance { got } => format!(
@@ -2331,14 +2362,24 @@ impl Diagnostics {
     ) -> Result<&Issue, Issue> {
         let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
-            if let TypeIgnoreComment::WithCodes { codes, .. } = specific {
+            if let TypeIgnoreComment::WithCodes {
+                codes,
+                codes_of_later_type_ignores,
+                ..
+            } = specific
+            {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.kind.mypy_error_code();
                 let super_ = issue.kind.mypy_error_supercode();
-                if codes.split(',').any(|code| {
-                    let code = code.trim_matches(' ');
-                    e == Some(code) || super_ == Some(code) || e.is_none()
-                }) {
+                if std::iter::once(codes)
+                    .chain(codes_of_later_type_ignores)
+                    .map(|codes| codes.split(','))
+                    .flatten()
+                    .any(|code| {
+                        let code = code.trim_matches(' ');
+                        e == Some(code) || super_ == Some(code) || e.is_none()
+                    })
+                {
                     return Err(issue);
                 } else if e.is_some() {
                     add_not_covered_note = e;

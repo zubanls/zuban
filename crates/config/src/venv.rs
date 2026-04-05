@@ -34,6 +34,32 @@ impl Settings {
         if self.environment.is_some() {
             return;
         }
+        if try_to_find_env_in_dir(
+            &mut self.environment,
+            &mut self.python_version,
+            vfs_handler,
+            base_directory,
+        ) {
+            return;
+        }
+        for path in &self.mypy_path {
+            if **path.as_ref() != *base_directory
+                && try_to_find_env_in_dir(
+                    &mut self.environment,
+                    &mut self.python_version,
+                    vfs_handler,
+                    path,
+                )
+            {
+                return;
+            }
+        }
+        // The environment variable has an intentionally lower priority than looking for venvs.
+        // This appears to happen in a lot of cases where Zuban is run as a tool from e.g. uv, but
+        // probably also happens with pipx, where virtual environments are used to isolate Zuban
+        // (see also GitHub #21). This might also happen in VSCode when multiple projects are
+        // opened in a different order where the first and initial $VIRTUAL_ENV is different than
+        // the actual virtual envs of the later opened projects.
         match lookup_env_var("VIRTUAL_ENV").or_else(|_| lookup_env_var("CONDA_PREFIX")) {
             Ok(path) => {
                 self.environment = Some(
@@ -42,26 +68,6 @@ impl Settings {
             }
             Err(err) => {
                 tracing::info!("Tried to access $VIRTUAL_ENV, but got: {err}");
-                if try_to_find_env_in_dir(
-                    &mut self.environment,
-                    &mut self.python_version,
-                    vfs_handler,
-                    base_directory,
-                ) {
-                    return;
-                }
-                for path in &self.mypy_path {
-                    if **path.as_ref() != *base_directory
-                        && try_to_find_env_in_dir(
-                            &mut self.environment,
-                            &mut self.python_version,
-                            vfs_handler,
-                            path,
-                        )
-                    {
-                        return;
-                    }
-                }
             }
         }
     }
@@ -81,6 +87,7 @@ fn try_to_find_env_in_dir(
             return false;
         }
     };
+    let mut dir_entries = vec![];
     for entry in read_dir {
         let entry = match entry {
             Ok(entry) => entry,
@@ -90,44 +97,57 @@ fn try_to_find_env_in_dir(
             }
         };
         if entry.file_type().is_ok_and(|t| t.is_dir()) {
-            let venv_path = entry.path();
-            let pyvenv_cfg_path = venv_path.join("pyvenv.cfg");
-            let Some(venv_path_str) = venv_path.to_str() else {
-                tracing::debug!("{venv_path:?} must be utf8 if wants to be a venv -> ignored");
+            dir_entries.push(entry)
+        }
+    }
+    // Sort venvs in a more deterministic way.
+    dir_entries.sort_by_key(|e| {
+        let f = e.file_name();
+        let file_name = f.as_encoded_bytes();
+        let contains_bytes = |sought: &[u8]| file_name.windows(sought.len()).any(|w| w == sought);
+        match file_name {
+            b"venv" => 0,
+            b".venv" => 1,
+            _ if contains_bytes(b"venv") => 2,
+            _ if contains_bytes(b"virtualenv") => 3,
+            _ => 4,
+        }
+    });
+    for entry in dir_entries {
+        let venv_path = entry.path();
+        let pyvenv_cfg_path = venv_path.join("pyvenv.cfg");
+        let Some(venv_path_str) = venv_path.to_str() else {
+            tracing::debug!("{venv_path:?} must be utf8 if wants to be a venv -> ignored");
+            continue;
+        };
+        let code = match std::fs::read_to_string(&pyvenv_cfg_path) {
+            Ok(string) => string,
+            Err(err) => {
+                tracing::debug!("Error while reading {pyvenv_cfg_path:?}: {err}");
                 continue;
-            };
-            let code = match std::fs::read_to_string(&pyvenv_cfg_path) {
-                Ok(string) => string,
-                Err(err) => {
-                    tracing::debug!("Error while reading {pyvenv_cfg_path:?}: {err}");
-                    continue;
-                }
-            };
-            if let Ok(ini) = parse_python_ini(&code) {
-                // TODO use include-system-site-packages = false
-                *environment = Some(
-                    vfs_handler.normalize_rc_path(vfs_handler.unchecked_abs_path(venv_path_str)),
-                );
-
-                if py_version.is_none() {
-                    if let Some(version_str) = ini.get_from(None::<String>, "version") {
-                        match PythonVersion::from_str(version_str) {
-                            Ok(v) => *py_version = Some(v),
-                            Err(err) => {
-                                tracing::warn!(
-                                    "Parsing Python version in {pyvenv_cfg_path:?} failed: {err}"
-                                );
-                            }
-                        }
-                    } else {
-                        tracing::warn!(
-                            "Found {pyvenv_cfg_path:?}, but it has no \"version\" field"
-                        );
-                    }
-                }
-                tracing::info!("Found venv in {venv_path_str:?}");
-                return true;
             }
+        };
+        if let Ok(ini) = parse_python_ini(&code) {
+            // TODO use include-system-site-packages = false
+            *environment =
+                Some(vfs_handler.normalize_rc_path(vfs_handler.unchecked_abs_path(venv_path_str)));
+
+            if py_version.is_none() {
+                if let Some(version_str) = ini.get_from(None::<String>, "version") {
+                    match PythonVersion::from_str(version_str) {
+                        Ok(v) => *py_version = Some(v),
+                        Err(err) => {
+                            tracing::warn!(
+                                "Parsing Python version in {pyvenv_cfg_path:?} failed: {err}"
+                            );
+                        }
+                    }
+                } else {
+                    tracing::warn!("Found {pyvenv_cfg_path:?}, but it has no \"version\" field");
+                }
+            }
+            tracing::info!("Found venv in {venv_path_str:?}");
+            return true;
         }
     }
     false

@@ -1,0 +1,37 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 41
+expression: tree_to_string(tree)
+---
+file: 0-34
+ stmt: 1-34
+  match_stmt: 1-34
+   Keyword: 1-6 "match"
+   subject_expr: 7-8
+    named_expression: 7-8
+     expression: 7-8
+      atom: 7-8
+       Name: 7-8 "a"
+   Keyword: 8-9 ":"
+   Newline: 9-10 "\n"
+   Indent: 14-14 ""
+   case_block: 14-34
+    Keyword: 14-18 "case"
+    pattern: 19-21
+     literal_pattern: 19-21
+      signed_number: 19-21
+       Keyword: 19-20 "-"
+       Number: 20-21 "1"
+    Keyword: 21-22 ":"
+    block: 22-34
+     Newline: 22-23 "\n"
+     Indent: 29-29 ""
+     stmt: 29-34
+      simple_stmts: 29-34
+       simple_stmt: 29-33
+        pass_stmt: 29-33
+         Keyword: 29-33 "pass"
+       Newline: 33-34 "\n"
+     Dedent: 34-34 ""
+   Dedent: 34-34 ""
+ Endmarker: 34-34 ""

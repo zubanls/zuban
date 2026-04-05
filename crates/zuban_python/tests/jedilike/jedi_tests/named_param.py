@@ -105,32 +105,32 @@ def y(bam, *bal, bar, baz, **bag):
 def z(bam, bar=2, *, bas=1):
     pass
 
-#? 8 ['bar=', 'baz=']
+#? 8 ['bar=', 'baz=', "BaseException", "BaseExceptionGroup"]
 x4(1, ba)
 
-#? 15 ['baz=']
+#? 15 ['baz=', "BaseException", "BaseExceptionGroup"]
 x4(1, bar=2, ba)
-#? 8 ['bar=', 'baz=']
+#? 8 ['bar=', 'baz=', "BaseException", "BaseExceptionGroup"]
 x4(1, ba, baz=3)
-#? 15 ['baz=']
+#? 15 ['baz=', "BaseException", "BaseExceptionGroup"]
 x4(1, bar=2, baz=3)
 #? 8 ['BaseException', 'BaseExceptionGroup']
 x4(basee)
-#? 23 ['bar=', 'baz=']
+#? 23 ['bar=', 'baz=', "BaseException", "BaseExceptionGroup"]
 x4(1, 2, 3, 4, 5, 6, bar=2)
 
-#? 14 ['baz=']
+#? 14 ['baz=', "BaseException", "BaseExceptionGroup"]
 y(1, bar=2, ba)
-#? 7 ['bar=', 'BaseException', 'BaseExceptionGroup', 'baz=']
+#? 7 ['bar=', 'baz=', 'BaseException', 'BaseExceptionGroup']
 y(1, ba, baz=3)
-#? 14 ['baz=']
+#? 14 ['baz=', "BaseException", "BaseExceptionGroup"]
 y(1, bar=2, baz=3)
 #? 7 ['BaseException', 'BaseExceptionGroup']
 y(basee)
-#? 22 ['bar=', 'BaseException', 'BaseExceptionGroup', 'baz=']
+#? 22 ['bar=', 'baz=', 'BaseException', 'BaseExceptionGroup']
 y(1, 2, 3, 4, 5, 6, bar=2)
 
-#? 11 ['bar=', 'bas=']
+#? 11 ['bar=', 'bas=', "BaseException", "BaseExceptionGroup"]
 z(bam=1, bar=2, bas=3)
 #? 8 ['bas=', 'BaseException', 'BaseExceptionGroup']
 z(1, bas=2)

@@ -211,11 +211,9 @@ impl File for PythonFile {
             let result = self.ensure_calculated_diagnostics(db);
             debug_assert!(result.is_ok());
         }
-        let flags = self.flags(db);
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
-                .filter(|i| i.kind.should_be_reported(flags))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
@@ -443,7 +441,12 @@ impl<'db> PythonFile {
             .map(|node_index| NodeRef::new(self, node_index))
     }
 
-    pub fn lookup(&self, db: &Database, add_issue: impl Fn(IssueKind), name: &str) -> LookupResult {
+    pub fn lookup(
+        &self,
+        db: &Database,
+        add_issue: impl Fn(IssueKind) -> bool,
+        name: &str,
+    ) -> LookupResult {
         let i_s = &InferenceState::new(db, self);
         let inference = self.inference(i_s);
         if let Some((pr, redirect_to)) = inference.resolve_module_access(name, &add_issue) {
@@ -677,7 +680,7 @@ impl<'db> PythonFile {
                 && let PrimaryContent::Execution(arg_details) = maybe_call.second()
                 && let PrimaryContent::Attribute(attr) = primary.second()
             {
-                let maybe_single = arg_details.maybe_single_named_expr();
+                let maybe_single = arg_details.maybe_single_positional();
                 match attr.as_code() {
                     "append" => dunder_all.push(DbString::from_python_string(
                         file_index,
@@ -731,8 +734,9 @@ impl<'db> PythonFile {
         db.vfs.file_path(self.file_index)
     }
 
-    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
-        if !i_s.should_add_issue() {
+    /// Returns false if the issue was not added
+    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) -> bool {
+        if !i_s.should_add_issue() || issue.kind.is_disabled(i_s.flags()) {
             let config = DiagnosticConfig {
                 show_column_numbers: true,
                 ..Default::default()
@@ -741,9 +745,9 @@ impl<'db> PythonFile {
                 "Did ignore issue for now: {}",
                 Diagnostic::new(i_s.db, self, &issue).as_string(&config, None)
             );
-            return;
+            return false;
         }
-        self.add_type_issue(i_s.db, issue)
+        self.add_issue_without_checking_for_disabled_error_codes(i_s.db, issue)
     }
 
     pub fn is_from_django(&self, db: &Database) -> bool {
@@ -753,11 +757,16 @@ impl<'db> PythonFile {
             .is_some_and(|dir| *dir.name == *"django-stubs")
     }
 
-    pub fn add_type_issue(&self, db: &'db Database, issue: Issue) {
+    /// Returns false if the issue was not added
+    pub fn add_issue_without_checking_for_disabled_error_codes(
+        &self,
+        db: &'db Database,
+        issue: Issue,
+    ) -> bool {
         // This function adds issues in all normal cases and does not respect the InferenceState
         // mode.
         if self.ignore_type_errors {
-            return;
+            return false;
         }
         let (file, add) = match self.super_file {
             Some(super_file) if super_file.is_part_of_parent() => (
@@ -773,7 +782,8 @@ impl<'db> PythonFile {
             show_column_numbers: true,
             ..Default::default()
         };
-        match self.issues.add_if_not_ignored(issue, maybe_ignored) {
+        let result = self.issues.add_if_not_ignored(issue, maybe_ignored);
+        match &result {
             Ok(issue) => debug!(
                 "NEW ISSUE: {}",
                 Diagnostic::new(db, self, issue).as_string(&config, None)
@@ -783,6 +793,7 @@ impl<'db> PythonFile {
                 Diagnostic::new(db, self, &issue).as_string(&config, None)
             ),
         }
+        result.is_ok()
     }
 
     pub(crate) fn name_and_parent_dir(

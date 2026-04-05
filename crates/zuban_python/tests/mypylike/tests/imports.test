@@ -622,10 +622,9 @@ def g() -> None:
     from .. import inner  # E: No parent module -- cannot perform relative import
     from .. import outer  # E: No parent module -- cannot perform relative import
     from ..outer import x  # E: No parent module -- cannot perform relative import
-    from ..inner import y  # E: No parent module -- cannot perform relative import \
-                           # E: Cannot find implementation or library stub for module named "inner"
+    from ..inner import y  # E: No parent module -- cannot perform relative import
     reveal_type(x)  # N: Revealed type is "int"
-    reveal_type(y)  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "str"
 
 def h() -> None:
     from ... import inner  # E: No parent module -- cannot perform relative import
@@ -745,3 +744,68 @@ class C: ...
 -- TODO currently this does not work for in-memory files, but it works if the files actually exist in the file system, see test_read_file_only_once
 m1.py:2: error: Cannot find implementation or library stub for module named "inner"
 m1.py:3: error: Cannot find implementation or library stub for module named "src"
+
+[case import_parent_folder_without_dunder_init_cases]
+[file pkg/x.py]
+import m
+import pkg2
+import namespace
+import namespace_inner  # E: Cannot find implementation or library stub for module named "namespace_inner"
+import pkg_inner  # E: Cannot find implementation or library stub for module named "pkg_inner"
+[file pkg/m.py]
+[file pkg/pkg2/__init__.py]
+[file pkg/pkg2/pkg_inner.py]
+import pkg
+import x
+import namespace
+import namespace_inner  # E: Cannot find implementation or library stub for module named "namespace_inner"
+import pkg_inner  # E: Cannot find implementation or library stub for module named "pkg_inner"
+[file pkg/namespace/x.py]
+import pkg
+import x
+import namespace  # E: Cannot find implementation or library stub for module named "namespace"
+import namespace_inner
+import pkg_inner  # E: Cannot find implementation or library stub for module named "pkg_inner"
+[file pkg/namespace/namespace_inner.py]
+
+[case no_import_parent_folder_without_dunder_init_explicit_package_bases]
+[file pyproject.toml]
+[tool.zuban]
+explicit_package_bases = true
+
+[file pkg/x.py]
+import m  # E: Cannot find implementation or library stub for module named "m"
+[file pkg/m.py]
+
+[case import_parent_folder_without_dunder_init_incremental]
+[file pkg/x.py]
+import m
+[file pkg/m.py]
+[file pkg/__init__.py.2]
+[delete pkg/__init__.py.3]
+[file pkg/__init__.py.4]
+[delete pkg/__init__.py.5]
+[out]
+==
+pkg/x.py:1: error: Cannot find implementation or library stub for module named "m"
+==
+==
+pkg/x.py:1: error: Cannot find implementation or library stub for module named "m"
+==
+
+[case non_py_typed_site_packages_dependency]
+# pkgs: simple-file-with-class
+# From GH #329
+[file invalid/__init__.py]
+
+[file invalid/abc.py]
+from .clients import Client
+
+class Service:
+    def __init__(self) -> None:
+        self._client = Client()
+
+[file invalid/clients.py]
+import basedep
+class Client(basedep.BaseDep):
+    pass

@@ -253,6 +253,7 @@ impl Type {
                     t.replace_internal(replacer)
                 })?,
             ))),
+            Type::TypeForm(tf) => Some(Type::TypeForm(Arc::new(tf.replace_internal(replacer)?))),
             Type::Any(..)
             | Type::None
             | Type::Never(..)
@@ -926,7 +927,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                         .unwrap();
                     simplified_union_from_iterators_with_format_index(
                         &i_s,
-                        new_entries.into_iter().map(|e| (e.format_index, e.type_)),
+                        new_entries.iter().map(|e| (e.format_index, &e.type_)),
                         highest_union_format_index,
                     )
                 } else {

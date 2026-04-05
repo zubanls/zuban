@@ -10,7 +10,7 @@ use crate::{
     Document, InputPosition, PositionInfos,
     database::{ComplexPoint, Database, Specific},
     debug,
-    file::{File as _, PythonFile, assignment_type_node_ref},
+    file::{ClassNodeRef, File as _, PythonFile, assignment_type_node_ref},
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{ReplaceTypeVarLikes as _, Type},
@@ -133,17 +133,30 @@ fn avoid_inline_hint(
             }
             PrimaryContent::Execution(_) => {
                 let check = |index| {
-                    if let Some(inf) = NodeRef::new(file, index).maybe_inferred(i_s) {
-                        if matches!(
-                            inf.maybe_complex_point(i_s.db),
-                            Some(
-                                ComplexPoint::Class(_)
-                                    | ComplexPoint::TypedDictDefinition(_)
-                                    | ComplexPoint::TypeInstance(Type::Type(_))
-                            )
-                        ) {
-                            return true;
+                    if let Some(inf) = NodeRef::new(file, index).maybe_inferred(i_s)
+                        && let Some(node_ref) = inf.maybe_saved_node_ref(i_s.db)
+                    {
+                        if node_ref.maybe_class().is_some() {
+                            let c = ClassNodeRef::from_node_ref(node_ref);
+                            // Only show inlay hints if there are generics in the initialization
+                            return c.use_cached_type_vars(i_s.db).is_empty();
                         }
+                        return match inf.maybe_complex_point(i_s.db) {
+                            Some(ComplexPoint::TypedDictDefinition(_)) => {
+                                if let Some(name_def) = node_ref.maybe_name_def()
+                                    && let Some(class_def) = name_def.maybe_name_of_class()
+                                {
+                                    // Shows inlay hints when generics are present
+                                    return ClassNodeRef::new(node_ref.file, class_def.index())
+                                        .use_cached_type_vars(i_s.db)
+                                        .is_empty();
+                                }
+                                true
+                            }
+                            // Types like Type[SomeEnum]() initializations should not be shown
+                            Some(ComplexPoint::TypeInstance(Type::Type(_))) => true,
+                            _ => false,
+                        };
                     }
                     false
                 };

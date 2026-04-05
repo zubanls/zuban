@@ -4,9 +4,9 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType,
-    ReplaceTypeVarLikes, StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos,
-    TypeVarLike, TypeVarLikes, TypeVarUsage, TypedDict,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes,
+    StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike,
+    TypeVarLikes, TypeVarUsage, TypedDict,
 };
 use crate::{
     database::{Database, PointLink},
@@ -573,24 +573,24 @@ impl CallableContent {
         Some(c)
     }
 
-    pub fn first_positional_type(&self) -> Option<Type> {
+    pub fn first_positional_type(&self) -> Option<&Type> {
         match &self.params {
             CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
+                | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t),
                 ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
                     let TupleArgs::WithUnpack(w) = &tup.args else {
                         return None;
                     };
                     if let Some(first) = w.before.first() {
-                        return Some(first.clone());
+                        return Some(first);
                     }
-                    Some(Type::Never(NeverCause::Other))
+                    Some(&Type::NEVER)
                 }
                 _ => None,
             }),
-            CallableParams::Any(cause) => Some(Type::Any(*cause)),
+            CallableParams::Any(_) => Some(&Type::ERROR),
         }
     }
 
@@ -835,6 +835,111 @@ impl CallableContent {
         }
     }
 
+    pub fn merge_class_type_vars(
+        &self,
+        db: &Database,
+        class: Class,
+        attribute_class: Class,
+        func_class_type: &TypeOrClass,
+    ) -> Self {
+        self.merge_class_type_vars_detailed(
+            db,
+            class,
+            attribute_class,
+            self.has_self_type_after_first_param(db),
+            || func_class_type.as_type(db),
+        )
+    }
+
+    pub fn merge_class_type_vars_detailed(
+        &self,
+        db: &Database,
+        class: Class,
+        attribute_class: Class,
+        needs_self_type_variable: bool,
+        as_self_type: impl Fn() -> Type,
+    ) -> Self {
+        let mut attribute_class = attribute_class; // A lifetime issue
+        let mut type_vars = self.type_vars.as_vec();
+        let mut self_type_var_usage = None;
+        let needs_additional_remap =
+            matches!(attribute_class.generics, Generics::NotDefinedYet { .. })
+                && !class.use_cached_type_vars(db).is_empty();
+        if needs_self_type_variable {
+            let bound = as_self_type();
+            /*
+            let bound = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
+            let bound = class_t.replace_type_var_likes(db, &mut |usage| {
+                (usage.in_definition() == class.node_ref.as_link()).then(|| {
+                    usage.add_to_index(self.type_vars.len() as i32 + 1);
+                    usage.into_generic_item()
+                    //usage.as_any_generic_item()
+                })
+            }).unwrap_or(class_t);
+            */
+            let self_type_var = Arc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
+                TypeLikeInTypeVar::new_known(bound),
+            )));
+            self_type_var_usage = Some(TypeVarUsage::new(
+                self_type_var.clone(),
+                self.defined_at,
+                type_vars.len().into(),
+            ));
+            type_vars.push(TypeVarLike::TypeVar(self_type_var));
+        } else if needs_additional_remap {
+            // We actually want to retain generics.
+            attribute_class.generics = Generics::Self_ {
+                class_ref: class.node_ref,
+            };
+            for type_var in class.use_cached_type_vars(db).iter() {
+                type_vars.push(type_var.clone());
+            }
+        }
+
+        let type_vars = TypeVarLikes::from_vec(type_vars);
+        let remap_usage = |usage: TypeVarLikeUsage| {
+            if usage.in_definition() == attribute_class.node_ref.as_link() {
+                Some(
+                    type_vars
+                        .find(&usage.as_type_var_like(), self.defined_at)?
+                        .into_generic_item(),
+                )
+            } else {
+                None
+            }
+        };
+        let mut callable = self.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| {
+                // The ? can happen for example if the return value is a Callable with its
+                // own type vars.
+                let result = maybe_class_usage(db, &attribute_class, &usage)?;
+                if !needs_additional_remap {
+                    return Some(result);
+                }
+                Some(
+                    result
+                        .replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
+                        .unwrap_or(result),
+                )
+            },
+            &|| {
+                Some(match &self_type_var_usage {
+                    Some(u) => Type::TypeVar(u.clone()),
+                    None => {
+                        let t = as_self_type();
+                        if !needs_additional_remap {
+                            return Some(t);
+                        }
+                        t.replace_type_var_likes(db, &mut &remap_usage).unwrap_or(t)
+                    }
+                })
+            },
+        );
+        callable.type_vars = type_vars;
+        callable
+    }
+
     pub fn set_all_types_to_any_for_no_type_check(&mut self, cause: AnyCause) {
         self.params = match &self.params {
             CallableParams::Simple(params) => CallableParams::Simple(
@@ -977,95 +1082,6 @@ pub fn format_params_as_param_spec(
             format!("[{ps}, {name}]").into()
         }
     })
-}
-
-pub fn merge_class_type_vars(
-    db: &Database,
-    callable: &CallableContent,
-    class: Class,
-    attribute_class: Class,
-    func_class_type: &TypeOrClass,
-) -> CallableContent {
-    let mut attribute_class = attribute_class; // A lifetime issue
-    let needs_self_type_variable = callable.has_self_type_after_first_param(db);
-
-    let mut type_vars = callable.type_vars.as_vec();
-    let mut self_type_var_usage = None;
-    let needs_additional_remap = matches!(attribute_class.generics, Generics::NotDefinedYet { .. })
-        && !class.use_cached_type_vars(db).is_empty();
-    if needs_self_type_variable {
-        let bound = func_class_type.as_type(db);
-        /*
-        let bound = attribute_class.as_type_with_type_vars_for_not_yet_defined_generics(db);
-        let bound = class_t.replace_type_var_likes(db, &mut |usage| {
-            (usage.in_definition() == class.node_ref.as_link()).then(|| {
-                usage.add_to_index(callable.type_vars.len() as i32 + 1);
-                usage.into_generic_item()
-                //usage.as_any_generic_item()
-            })
-        }).unwrap_or(class_t);
-        */
-        let self_type_var = Arc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
-            TypeLikeInTypeVar::new_known(bound),
-        )));
-        self_type_var_usage = Some(TypeVarUsage::new(
-            self_type_var.clone(),
-            callable.defined_at,
-            type_vars.len().into(),
-        ));
-        type_vars.push(TypeVarLike::TypeVar(self_type_var));
-    } else if needs_additional_remap {
-        // We actually want to retain generics.
-        attribute_class.generics = Generics::Self_ {
-            class_ref: class.node_ref,
-        };
-        for type_var in class.use_cached_type_vars(db).iter() {
-            type_vars.push(type_var.clone());
-        }
-    }
-
-    let type_vars = TypeVarLikes::from_vec(type_vars);
-    let remap_usage = |usage: TypeVarLikeUsage| {
-        if usage.in_definition() == attribute_class.node_ref.as_link() {
-            Some(
-                type_vars
-                    .find(&usage.as_type_var_like(), callable.defined_at)?
-                    .into_generic_item(),
-            )
-        } else {
-            None
-        }
-    };
-    let mut callable = callable.replace_type_var_likes_and_self(
-        db,
-        &mut |usage| {
-            // The ? can happen for example if the return value is a Callable with its
-            // own type vars.
-            let result = maybe_class_usage(db, &attribute_class, &usage)?;
-            if !needs_additional_remap {
-                return Some(result);
-            }
-            Some(
-                result
-                    .replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
-                    .unwrap_or(result),
-            )
-        },
-        &|| {
-            Some(match &self_type_var_usage {
-                Some(u) => Type::TypeVar(u.clone()),
-                None => {
-                    let t = func_class_type.as_type(db);
-                    if !needs_additional_remap {
-                        return Some(t);
-                    }
-                    t.replace_type_var_likes(db, &mut &remap_usage).unwrap_or(t)
-                }
-            })
-        },
-    );
-    callable.type_vars = type_vars;
-    callable
 }
 
 pub fn add_param_spec_to_params(params: &mut Vec<CallableParam>, p: ParamSpecUsage) {

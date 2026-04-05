@@ -1,0 +1,31 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 57
+expression: tree_to_string(& tree)
+---
+file: 0-10
+ Error(stmt): 1-9
+  Error(simple_stmts): 1-9
+   Error(simple_stmt): 1-9
+    Error(star_expressions): 1-9
+     Error(expression): 1-9
+      Error(primary): 1-9
+       atom: 1-2
+        Name: 1-2 "f"
+       Keyword: 2-3 "("
+       Error(arguments): 3-9
+        named_expression: 3-4
+         expression: 3-4
+          atom: 3-4
+           Name: 3-4 "a"
+        Keyword: 4-5 ","
+        named_expression: 5-6
+         expression: 5-6
+          atom: 5-6
+           Name: 5-6 "b"
+        Keyword: 6-7 ","
+        Error(kwargs): 7-9
+         Error(kwarg): 7-9
+          Name: 7-8 "a"
+          Keyword: 8-9 "="
+ Endmarker: 10-10 ""

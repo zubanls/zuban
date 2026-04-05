@@ -219,7 +219,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         c.lookup(
                             self.i_s,
                             name_def.as_code(),
-                            ClassLookupOptions::new(&|_| ())
+                            ClassLookupOptions::new(&|_| false)
                                 .with_origin(ApplyClassDescriptorsOrigin::AssignContext),
                         )
                         .lookup
@@ -241,7 +241,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 LookupKind::Normal,
                                 &mut ResultContext::ValueExpected,
                                 // Errors don't matter, we just want a potential context.
-                                &|_| (),
+                                &|_| false,
                                 &|_| (),
                             )
                         }
@@ -562,6 +562,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         name_def.index(),
                         IssueKind::NameError {
                             name: name_def.as_code().into(),
+                            note: None,
                         },
                     )
                 }
@@ -583,7 +584,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 Target::IndexExpression(_) => unreachable!(),
                 // Invalid syntax
                 Target::Tuple(_) | Target::Starred(_) => unreachable!(),
-            }
+            };
             self.assign_any_to_target(target, node_ref)
         }
     }
@@ -836,7 +837,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         IssueKind::YieldFromCannotBeApplied {
                             to: expr_result.format_short(self.i_s),
                         },
-                    )
+                    );
                 }
             },
         );
@@ -898,7 +899,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     cls.lookup(
                         self.i_s,
                         name_def.as_code(),
-                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                        ClassLookupOptions::new(&|_| false).with_ignore_self(),
                     )
                     .lookup
                     .into_maybe_inferred()
@@ -914,7 +915,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 .lookup(
                                     self.i_s,
                                     name_def.as_code(),
-                                    InstanceLookupOptions::new(&|_| ())
+                                    InstanceLookupOptions::new(&|_| false)
                                         .with_skip_first_of_mro(self.i_s.db, cls),
                                 )
                                 .lookup
@@ -1028,7 +1029,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     name_str,
                     override_class.as_type(i_s.db),
                     *override_class,
-                    |issue| from.add_issue(i_s, issue),
+                    // Not sure if we should add an issue here. Issues should ideally be added to
+                    // the caller.
+                    |_| false,
                     MroIndex(0),
                     false,
                     false,
@@ -1050,7 +1053,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         IssueKind::CannotOverrideWritableWithFinalAttribute {
                             name: name_str.into(),
                         },
-                    )
+                    );
                 }
                 let matched = check_override(
                     i_s,
@@ -1122,7 +1125,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 let ancestor_lookup = class.instance().lookup(
                     i_s,
                     name_str,
-                    InstanceLookupOptions::new(&|_| ()).with_skip_first_of_mro(i_s.db, class),
+                    InstanceLookupOptions::new(&|_| false).with_skip_first_of_mro(i_s.db, class),
                 );
                 // __hash__ is allowed to be rewritten to None
                 if let Some(ancestor_inf) = ancestor_lookup.lookup.maybe_inferred().filter(|_| {
@@ -1589,7 +1592,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     .lookup(
                                         self.i_s,
                                         name_def.as_code(),
-                                        ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                                        ClassLookupOptions::new(&|_| false).with_ignore_self(),
                                     )
                                     .lookup
                                     .is_some();
@@ -1789,7 +1792,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         // metaclass and have an unknown frozen state. See also
                         // testDataclassTransformDirectMetaclassNeitherFrozenNorNotFrozen
                         let is_unknown = match inst
-                            .lookup(i_s, name_str, InstanceLookupOptions::new(&|_| ()))
+                            .lookup(i_s, name_str, InstanceLookupOptions::new(&|_| false))
                             .class
                         {
                             TypeOrClass::Type(t) => matches!(
@@ -1800,7 +1803,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         };
                         if !is_unknown {
                             save_narrowed.set(false);
-                            property_is_read_only(d.class(i_s.db).name().into())
+                            property_is_read_only(d.class(i_s.db).name().into());
                         }
                     }
                     if let Some(expected) =
@@ -2135,7 +2138,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     .iter_with_unpacked_unions_and_maybe_include_never(self.i_s.db, true)
                 {
                     if union_part == &self.i_s.db.python_state.str_type() {
-                        value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
+                        value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed);
                     }
                     if matches!(union_part, Type::None)
                         && self.i_s.should_ignore_none_in_untyped_context()
@@ -2390,7 +2393,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(crate) fn check_for_redefinition(
         &self,
         name_def: NodeRef,
-        add_issue: impl FnOnce(IssueKind),
+        add_issue: impl FnOnce(IssueKind) -> bool,
     ) {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file.file_index);
@@ -2406,7 +2409,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         first_index_of_definition: NodeIndex,
         name: &str,
         is_self_attribute: bool,
-        add_issue: impl FnOnce(IssueKind),
+        add_issue: impl FnOnce(IssueKind) -> bool,
     ) {
         let first_ref = NodeRef::new(self.file, first_index_of_definition);
         let mut line = first_ref.line_one_based(self.i_s.db);
@@ -2442,7 +2445,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             name: name.into(),
             suffix,
             is_self_attribute,
-        })
+        });
     }
 
     fn follow_and_maybe_saved(&self, name_index: NodeIndex) -> Option<NodeRef<'db>> {
@@ -2507,6 +2510,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     },
                 );
             }
+        }
+        if result_context.expects_type_form()
+            && !inferred
+                .as_cow_type(self.i_s)
+                .valid_in_type_form_assignment(self.i_s.db)
+        {
+            return self.compute_type_form_expr(expr);
         }
         inferred
     }
@@ -2633,7 +2643,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         node_ref.add_issue(
                             self.i_s,
                             IssueKind::UnsupportedOperandForUnary { operand, got },
-                        )
+                        );
                     },
                 )
             }
@@ -2692,7 +2702,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 right_type: formatted_err.expected,
                             },
                         ),
-                    )
+                    );
                 }
                 let from = NodeRef::new(self.file, op.index());
                 left_inf.type_lookup_and_execute(
@@ -2726,7 +2736,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 right_type: formatted_err.expected,
                             },
                         ),
-                    )
+                    );
                 }
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
@@ -2770,7 +2780,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     container_type: formatted.expected,
                                 },
                             ),
-                        )
+                        );
                     }
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
@@ -2881,7 +2891,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 &|issue| from.add_issue(i_s, issue),
                                 &|_| {
                                     let right = right_inf.format_short(i_s);
-                                    from.add_issue(i_s, IssueKind::UnsupportedIn { right })
+                                    from.add_issue(i_s, IssueKind::UnsupportedIn { right });
                                 },
                             )
                             .into_inferred()
@@ -3027,15 +3037,29 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     fn infer_operation(&self, op: Operation, result_context: &mut ResultContext) -> Inferred {
-        let context = if result_context.has_explicit_type() && op.infos.operand != "%" {
-            // Pass on the context to each side. I'm not sure that's correct, but it's necessary at
-            // least for list additions. However it's wrong for `"%s" % ...`.
-            &mut *result_context
-        } else {
-            &mut ResultContext::ValueExpected
+        let mut check = |part: ExpressionPart| {
+            let context = if result_context.has_explicit_type()
+                && matches!(
+                    part.maybe_unpacked_atom(),
+                    Some(
+                        AtomContent::List(_)
+                            | AtomContent::ListComprehension(_)
+                            | AtomContent::Set(_)
+                            | AtomContent::SetComprehension(_)
+                            | AtomContent::Dict(_)
+                            | AtomContent::DictComprehension(_)
+                    )
+                ) {
+                // Pass on the context to each side. It's nessary at least for list additions, but
+                // can potentially be wrong even here. Not sure this is right.
+                &mut *result_context
+            } else {
+                &mut ResultContext::ValueExpected
+            };
+            self.infer_expression_part_with_context(part, context)
         };
-        let left = self.infer_expression_part_with_context(op.left, context);
-        let right = self.infer_expression_part_with_context(op.right, context);
+        let left = check(op.left);
+        let right = check(op.right);
         self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 
@@ -3200,7 +3224,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 }),
                         };
                         add_to_union(result.unwrap_or_else(|| {
-                            had_error = true;
                             let issue = if left_op_method.is_none()
                                 && (right_op_method.is_none()
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
@@ -3208,7 +3231,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                 if matches!(l_type, Type::None)
                                     && i_s.should_ignore_none_in_untyped_context()
                                 {
-                                    had_error = false;
                                     return Inferred::new_any_from_error();
                                 }
                                 IssueKind::UnsupportedLeftOperand {
@@ -3222,7 +3244,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     right: r_type.format_short(i_s.db),
                                 }
                             };
-                            from.add_issue(i_s, issue);
+                            had_error |= from.add_issue(i_s, issue);
                             result_backup.unwrap_or_else(Inferred::new_any_from_error)
                         }))
                     }
@@ -3601,8 +3623,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         i_s.db,
                         Some(NodeRef::new(self.file, n.index())),
                         |issue| {
-                            self.add_issue(n.index(), issue);
                             should_save = true;
+                            self.add_issue(n.index(), issue)
                         },
                     );
                 }
@@ -3857,10 +3879,13 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         .lookup(
                             self.i_s,
                             attr.as_code(),
-                            InstanceLookupOptions::new(&|_| had_issue.set(true))
-                                .without_object()
-                                .with_skip_first_self_variables()
-                                .with_avoid_inferring_return_types(),
+                            InstanceLookupOptions::new(&|_| {
+                                had_issue.set(true);
+                                false
+                            })
+                            .without_object()
+                            .with_skip_first_self_variables()
+                            .with_avoid_inferring_return_types(),
                         )
                         .lookup;
                     if had_issue.get() {
@@ -3932,6 +3957,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.infer_module_point_resolution(pr, |issue| {
                         debug!("TODO Add an error around module point resolution {issue:?}");
                         tracing::warn!("Ignored an error around module point resolution");
+                        false
                     })
                 } else {
                     node_ref
@@ -3985,7 +4011,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         &Inferred::new_any_from_error(),
                         // Errors are reported when checking the file (the signature can only contain
                         // one positional argument)
-                        &|_| (),
+                        &|_| false,
                     ),
                 )
             }
@@ -3995,7 +4021,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     pub(super) fn infer_module_point_resolution(
         &self,
         pr: PointResolution,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
     ) -> Inferred {
         match pr {
             PointResolution::NameDef {
@@ -4848,7 +4874,7 @@ fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Ty
             }
         }
         Type::Any(cause) => Type::Any(*cause),
-        Type::Union(union) => Type::simplified_union_from_iterators(
+        Type::Union(union) => Type::owned_simplified_union_from_iterators(
             i_s,
             union
                 .iter()
@@ -4907,7 +4933,7 @@ pub(crate) fn await_(
                     got: inf.format_short(i_s),
                     expected: "Awaitable[Any]".into(),
                 },
-            )
+            );
         },
         inf.type_lookup_and_execute(
             i_s,

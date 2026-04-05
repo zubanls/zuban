@@ -65,8 +65,8 @@ func2((0,), (0.0,))  # OK
 func2((0.0,), (0,))  # OK
 func2((0,), (1,))  # OK
 
-func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal['0']]"; expected "tuple[int]"
-func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[Literal[0]]"; expected "tuple[int, int]"
+func2((0,), ("0",))  # E: Argument 2 to "func2" has incompatible type "tuple[str]"; expected "tuple[int]"
+func2((0, 0), (0,))  # E: Argument 2 to "func2" has incompatible type "tuple[int]"; expected "tuple[int, int]"
 
 [case typevartuple_non_unpacked_error]
 # flags: --mode default

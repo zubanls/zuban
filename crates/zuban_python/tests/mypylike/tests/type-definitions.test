@@ -1002,3 +1002,182 @@ def safe_getattr(obj, name, default=_sentinel):
 # Add a line to ensure the functions are not on the first line
 def f() -> "undefined_zuban": ...  # type: ignore[name-defined]
 def g() -> "undefined_zuban  # type: ignore[name-defined]": ...  # E: Name "undefined_zuban" is not defined
+
+[case invalid_type_form]
+# flags: --disallow-any-generics
+from typing_extensions import TypeForm
+x: TypeForm = int  # E: Missing type parameters for generic type "TypeForm"
+reveal_type(x)  # N: Revealed type is "typing.TypeForm(Any)"
+y: TypeForm[int, str] = int  # E: Invalid type comment or annotation
+
+[case type_form_basic1_conformance_tests]
+# Copied conformance tests (typeforms_typeform.py)
+from typing import Literal, Optional, Any, assert_type
+from typing_extensions import TypeForm
+
+ok1: TypeForm[str | None] = str | None  # OK
+ok2: TypeForm[str | None] = str  # OK
+ok3: TypeForm[str | None] = None  # OK
+ok4: TypeForm[str | None] = Literal[None]  # OK
+ok5: TypeForm[str | None] = Optional[str]  # OK
+ok6: TypeForm[str | None] = "str | None"  # OK
+ok7: TypeForm[str | None] = Any  # OK
+
+err1: TypeForm[str | None] = str | int  # E: Incompatible types in assignment (expression has type "typing.TypeForm(str | int)", variable has type "typing.TypeForm(str | None)")
+err2: TypeForm[str | None] = list[str | None]  # E: Incompatible types in assignment (expression has type "type[list[str | None]]", variable has type "typing.TypeForm(str | None)")
+
+v_any: TypeForm[Any] = int | str
+v_str: TypeForm[str] = str
+
+assert_type(v_any, TypeForm[Any])
+assert_type(v_str, TypeForm[str])
+
+v_any = v_str  # OK
+v_str = v_any  # OK
+
+[case type_form_basic2_conformance_tests]
+# Copied conformance tests (typeforms_typeform.py)
+from typing import Self, ClassVar, Final, Unpack, Optional, Annotated, TypeVarTuple
+from typing_extensions import TypeForm
+import types
+
+v1_actual: types.UnionType = str | None  # OK
+v1_type_form: TypeForm[str | None] = str | None  # OK
+
+v2_actual: types.GenericAlias = list[int]  # OK
+v2_type_form: TypeForm = list[int]  # OK
+
+v3: TypeForm[int | str] = Annotated[int | str, "metadata"]  # OK
+v4: TypeForm[set[str]] = "set[str]"  # OK
+
+Ts = TypeVarTuple("Ts")
+var = 1
+
+bad1: TypeForm = tuple()  # E: Invalid type comment or annotation
+bad2: TypeForm = (1, 2)  # E: Syntax error in type annotation \
+                         # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+bad3: TypeForm = 1  # E: Invalid type: try using Literal[1] instead?
+bad4: TypeForm = Self  # E: Self type is only allowed in annotations within class definition
+bad5: TypeForm = ClassVar[int]  # E: ClassVar can only be used for assignments in class body
+bad6: TypeForm = Final[int]  # E: Final can be only used as an outermost qualifier in a variable annotation
+bad7: TypeForm = Unpack[Ts]  # E: TypeVarTuple "Ts" is unbound
+bad8: TypeForm = Optional  # E: Optional[...] must have exactly one type argument
+bad9: TypeForm = "int + str"  # E: Invalid type comment or annotation
+
+[case type_form_execution_conformance_tests]
+# Copied conformance tests (typeforms_typeform.py)
+from typing_extensions import TypeForm
+from typing import assert_type
+
+x1 = TypeForm(str | None)
+assert_type(x1, TypeForm[str | None])
+
+x2 = TypeForm("list[int]")
+assert_type(x2, TypeForm[list[int]])
+
+x3 = TypeForm("type(1)")  # E: Invalid type comment or annotation
+x4 = type(1)  # OK
+x5 = TypeForm(type(1))  # E: Invalid type comment or annotation
+
+[case type_form_subtyping_conformance_tests]
+# Copied conformance tests (typeforms_typeform.py)
+from typing_extensions import TypeForm
+
+def get_type_form() -> TypeForm[int]:
+    return int
+
+t1: TypeForm[int | str] = get_type_form()  # OK
+t2: TypeForm[str] = get_type_form()  # E: Incompatible types in assignment (expression has type "typing.TypeForm(int)", variable has type "typing.TypeForm(str)")
+
+def get_type() -> type[int]:
+    return int
+
+t3: TypeForm[int | str] = get_type()  # OK
+t4: TypeForm[str] = get_type()  # E: Incompatible types in assignment (expression has type "type[int]", variable has type "typing.TypeForm(str)")
+
+[case type_form_executions_error_cases]
+from typing_extensions import TypeForm
+TypeForm(str)
+TypeForm(str + int)  # E: Invalid type comment or annotation
+TypeForm()  # E: TypeForm expects a single positional argument
+TypeForm(int, str)  # E: TypeForm expects a single positional argument
+TypeForm(type=int)  # E: TypeForm expects a single positional argument
+
+[case type_form_access_attribute]
+from typing_extensions import TypeForm
+
+def get_type_form() -> TypeForm[list]:
+    return list
+
+x = get_type_form()
+x.index  # E: "typing.TypeForm(list[Any])" has no attribute "index"
+x.__str__()
+
+[case type_form_assert_type]
+# Copied conformance tests (typeforms_typeform.py)
+from typing import assert_type, Any
+from typing_extensions import TypeForm
+
+def func1(x: TypeForm, y: TypeForm[int]) -> None:
+    assert_type(x, TypeForm[Any])
+    assert_type(y, TypeForm[int])
+
+
+[case generic_alias_access_and_assignment]
+from types import GenericAlias
+x = list[int]
+y: GenericAlias = list[int]
+z: GenericAlias = list  # E: Incompatible types in assignment (expression has type "type[list]", variable has type "GenericAlias")
+
+x.index
+x.__origin__
+x.__args__
+
+reveal_type(y.index)  # N: Revealed type is "Any"
+reveal_type(y.__origin__)  # N: Revealed type is "type[Any] | Any"
+reveal_type(y.__args__)  # N: Revealed type is "tuple[Any, ...]"
+
+list[str].index
+list[str].__origin__
+list[str].__args__
+
+list.index
+list.__origin__  # E: "type[list]" has no attribute "__origin__"
+list.__args__  # E: "type[list]" has no attribute "__args__"
+
+[case type_alias_type_imported]
+# From GH #316
+import m
+
+def f(x: m.X, y: m.X[int]):
+    reveal_type(x)  # N: Revealed type is "list[Any]"
+    reveal_type(y)  # N: Revealed type is "list[int]"
+
+[file m.py]
+from typing import TypeAliasType, TypeVar
+
+T = TypeVar("T")
+
+X = TypeAliasType(
+    "X",
+    list[T],
+    type_params=(T,),
+)
+
+[case literal_type_alias_with_literal_aliased]
+import m
+def f(x: m.X, y: m.Y): ...
+
+[file m.py]
+from typing import Literal as L, Literal
+X = L["a", 'b']
+Y = Literal["z", 'x']
+
+[case literal_type_alias_with_literal_aliased_in_typing_extensions]
+import m
+def f(x: m.X, y: m.Y): ...
+
+[file m.py]
+from typing_extensions import Literal as L, Literal
+X = L["a", 'b']
+Y = Literal["z", 'x']

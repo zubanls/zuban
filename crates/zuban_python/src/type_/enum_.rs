@@ -270,7 +270,7 @@ impl Enum {
     pub fn has_customized_dunder_init(&self, i_s: &InferenceState) -> bool {
         let lookup = self.class(i_s.db).instance().lookup_on_self(
             i_s,
-            &|_issue| (),
+            &|_issue| false,
             "__init__",
             LookupKind::Normal,
         );
@@ -307,7 +307,7 @@ pub(crate) enum EnumKind {
 
 pub(crate) fn lookup_on_enum_class<'a>(
     i_s: &InferenceState<'a, '_>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     in_type: &Arc<Type>,
     enum_: &Arc<Enum>,
     name: &str,
@@ -351,7 +351,7 @@ impl LookupDetails<'_> {
 
 pub(crate) fn lookup_on_enum_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
     enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
@@ -372,7 +372,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
 
 fn lookup_on_enum_instance_fallback<'a>(
     i_s: &'a InferenceState,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
     enum_: &'a Arc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
@@ -393,7 +393,7 @@ fn lookup_on_enum_instance_fallback<'a>(
 
 pub(crate) fn lookup_on_enum_member_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
     member: &'a EnumMember,
     name: &str,
 ) -> LookupDetails<'a> {

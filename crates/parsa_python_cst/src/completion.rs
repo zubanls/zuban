@@ -5,6 +5,7 @@ use parsa_python::{
     PyNodeType::{self, ErrorNonterminal, Nonterminal},
     TerminalType,
 };
+use utils::FastHashSet;
 
 use crate::{
     Atom, ClassDef, Decorators, DottedImportName, FunctionDef, Lambda, NameDef, Primary,
@@ -105,10 +106,10 @@ impl Tree {
                                 rest,
                             );
                         } else if before_dot.is_type(Nonterminal(name_def))
-                            && matches!(
-                                before_dot.parent().unwrap().type_(),
-                                Nonterminal(dotted_as_name) | ErrorNonterminal(dotted_as_name)
-                            )
+                            && before_dot
+                                .parent()
+                                .unwrap()
+                                .is_type_or_error_thereof(Nonterminal(dotted_as_name))
                         {
                             return (
                                 scope,
@@ -117,10 +118,11 @@ impl Tree {
                                 },
                                 rest,
                             );
-                        } else if matches!(
-                            previous.parent().unwrap().type_(),
-                            Nonterminal(import_from) | ErrorNonterminal(import_from)
-                        ) {
+                        } else if previous
+                            .parent()
+                            .unwrap()
+                            .is_type_or_error_thereof(Nonterminal(import_from))
+                        {
                             return (
                                 scope,
                                 CompletionNode::ImportFromFirstPart {
@@ -136,10 +138,11 @@ impl Tree {
                     }
                 }
                 "from" | "..." => {
-                    if matches!(
-                        previous.parent().unwrap().type_(),
-                        Nonterminal(import_from) | ErrorNonterminal(import_from)
-                    ) {
+                    if previous
+                        .parent()
+                        .unwrap()
+                        .is_type_or_error_thereof(Nonterminal(import_from))
+                    {
                         return (
                             scope,
                             CompletionNode::ImportFromFirstPart {
@@ -311,13 +314,12 @@ fn context(node: PyNode) -> Option<CompletionContext> {
         "(" => node.parent()?,
         "," => {
             let parent = node.parent()?;
-            if parent.is_type(Nonterminal(arguments)) {
+            if parent.is_type_or_error_thereof(Nonterminal(arguments)) {
                 parent.parent()?
-            } else if node.is_type(Nonterminal(kwargs)) {
-                parent
-                //node.parent()?.parent()?
+            } else if parent.is_type_or_error_thereof(Nonterminal(kwargs)) {
+                parent.parent()?.parent()?
             } else {
-                parent
+                return None;
             }
         }
         _ => return None,
@@ -325,14 +327,20 @@ fn context(node: PyNode) -> Option<CompletionContext> {
     if parent.is_type(Nonterminal(primary)) {
         let prim = Primary::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
-            Some(CompletionContext::PrimaryCall(prim.first()))
+            Some(CompletionContext::PrimaryCall {
+                base: prim.first(),
+                args: call_args(node),
+            })
         } else {
             None
         }
     } else if parent.is_type(Nonterminal(t_primary)) {
         let prim = PrimaryTarget::new(parent);
         if matches!(prim.second(), PrimaryContent::Execution(_)) {
-            Some(CompletionContext::PrimaryTargetCall(prim.first()))
+            Some(CompletionContext::PrimaryTargetCall {
+                base: prim.first(),
+                args: call_args(node),
+            })
         } else {
             None
         }
@@ -347,13 +355,64 @@ fn context(node: PyNode) -> Option<CompletionContext> {
                 assert_eq!(first.type_(), Nonterminal(primary));
                 PrimaryOrAtom::Primary(Primary::new(first))
             };
-            Some(CompletionContext::PrimaryCall(call))
+            Some(CompletionContext::PrimaryCall {
+                base: call,
+                args: call_args(node),
+            })
         } else {
             None
         }
     } else {
         None
     }
+}
+
+fn call_args(node: PyNode) -> Option<CallArgs> {
+    let args = node.parent_until(&[
+        Nonterminal(arguments),
+        ErrorNonterminal(arguments),
+        Nonterminal(stmt),
+        ErrorNonterminal(stmt),
+    ])?;
+    args.is_type_or_error_thereof(Nonterminal(arguments))
+        .then_some(CallArgs(args))
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct CallArgs<'db>(PyNode<'db>);
+
+impl<'db> CallArgs<'db> {
+    pub fn used_args_until(&self, until: &RestNode) -> UsedArgs<'db> {
+        let mut positional_args = 0;
+        let mut keyword_args = FastHashSet::default();
+        'outer: for child in self.0.iter_children() {
+            if child.start() >= until.node.start() {
+                break 'outer;
+            }
+            if child.is_type(Nonterminal(named_expression)) {
+                positional_args += 1;
+            } else if child.is_type_or_error_thereof(Nonterminal(kwargs)) {
+                for in_kwargs in child.iter_children() {
+                    if in_kwargs.start() >= until.node.start() {
+                        break 'outer;
+                    }
+                    if in_kwargs.is_type(Nonterminal(kwarg)) {
+                        keyword_args.insert(in_kwargs.nth_child(0).as_code());
+                    }
+                }
+            }
+        }
+        UsedArgs {
+            positional_args,
+            keyword_args,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct UsedArgs<'db> {
+    pub keyword_args: FastHashSet<&'db str>,
+    pub positional_args: usize,
 }
 
 fn from_import_dots_before_node(leaf: PyNode) -> usize {
@@ -368,10 +427,7 @@ fn from_import_dots_before_node(leaf: PyNode) -> usize {
 
 fn import_from_target_node(node: PyNode) -> CompletionNode {
     debug_assert!(
-        matches!(
-            node.type_(),
-            Nonterminal(import_from) | ErrorNonterminal(import_from),
-        ),
+        node.is_type_or_error_thereof(Nonterminal(import_from)),
         "{:?}",
         node.type_()
     );
@@ -481,8 +537,14 @@ pub enum CompletionNode<'db> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum CompletionContext<'db> {
-    PrimaryCall(PrimaryOrAtom<'db>),
-    PrimaryTargetCall(PrimaryTargetOrAtom<'db>),
+    PrimaryCall {
+        base: PrimaryOrAtom<'db>,
+        args: Option<CallArgs<'db>>,
+    },
+    PrimaryTargetCall {
+        base: PrimaryTargetOrAtom<'db>,
+        args: Option<CallArgs<'db>>,
+    },
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.

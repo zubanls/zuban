@@ -261,23 +261,6 @@ pub fn dedent_cow(s: Cow<str>) -> Cow<str> {
     Cow::Owned(new_lines.join("\n"))
 }
 
-pub struct VecRwLockWrapper<'a, U, T: 'a>(pub(crate) MappedReadGuard<'a, U, Vec<T>>);
-
-impl<'a, U, T: 'a> VecRwLockWrapper<'a, U, T> {
-    pub fn new(mapped: MappedReadGuard<'a, U, Vec<T>>) -> Self {
-        Self(mapped)
-    }
-}
-
-impl<'a, 'b: 'a, U, T: 'a> IntoIterator for &'b VecRwLockWrapper<'a, U, T> {
-    type IntoIter = std::slice::Iter<'a, T>;
-    type Item = &'a T;
-
-    fn into_iter(self) -> std::slice::Iter<'a, T> {
-        self.0.iter()
-    }
-}
-
 // TODO we want mapped_lock_guards from https://github.com/rust-lang/rust/issues/117108
 // this is just an ugly workaround and I'm not even sure it is safe.
 /// A "mapped" read guard, holding the original guard
@@ -291,6 +274,14 @@ impl<'a, T: ?Sized, U: ?Sized> MappedReadGuard<'a, T, U> {
     pub fn map(_guard: RwLockReadGuard<'a, T>, f: impl FnOnce(&T) -> &U) -> Self {
         let value = f(&*_guard) as *const U;
         Self { _guard, value }
+    }
+
+    pub fn map_optional(
+        _guard: RwLockReadGuard<'a, T>,
+        f: impl FnOnce(&T) -> Option<&U>,
+    ) -> Option<Self> {
+        let value = f(&*_guard)? as *const U;
+        Some(Self { _guard, value })
     }
 }
 
@@ -321,6 +312,14 @@ impl<'a, T: ?Sized, U: ?Sized> MappedWriteGuard<'a, T, U> {
     pub fn map(mut _guard: RwLockWriteGuard<'a, T>, f: impl FnOnce(&mut T) -> &mut U) -> Self {
         let value = f(&mut *_guard) as *mut U;
         Self { _guard, value }
+    }
+
+    pub fn map_optional(
+        mut _guard: RwLockWriteGuard<'a, T>,
+        f: impl FnOnce(&mut T) -> Option<&mut U>,
+    ) -> Option<Self> {
+        let value = f(&mut *_guard)? as *mut U;
+        Some(Self { _guard, value })
     }
 }
 

@@ -356,7 +356,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                         );
                         if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
                             annotation_ref
-                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass)
+                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass);
                         }
                     }
                 }
@@ -556,7 +556,7 @@ fn set_descriptor_update_for_init(i_s: &InferenceState, t: &mut Type) {
         return;
     };
     let lookup = cls
-        .lookup(i_s, "__set__", ClassLookupOptions::new(&|_| ()))
+        .lookup(i_s, "__set__", ClassLookupOptions::new(&|_| false))
         .lookup;
     let Some(inf) = lookup.maybe_inferred() else {
         return;
@@ -694,7 +694,7 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
-                        )
+                        );
                     }
                 }
                 "init" => {
@@ -705,7 +705,7 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() },
-                        )
+                        );
                     }
                 }
                 "alias" if in_dataclass_transform => {
@@ -716,19 +716,19 @@ fn field_options_from_args(
                         arg.add_issue(
                             i_s,
                             IssueKind::DataclassTransformFieldAliasParamMustBeString,
-                        )
+                        );
                     }
                 }
                 "factory" if in_dataclass_transform => options.has_default = true,
                 "converter" => {
                     let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     let mut converter = match result.as_cow_type(i_s).maybe_callable(i_s) {
-                        Some(CallableLike::Callable(c)) => c.first_positional_type(),
+                        Some(CallableLike::Callable(c)) => c.first_positional_type().cloned(),
                         Some(CallableLike::Overload(overload)) => {
                             Some(Type::simplified_union_from_iterators(
                                 i_s,
                                 overload.iter_functions().map(|func| {
-                                    func.first_positional_type().unwrap_or(Type::ERROR)
+                                    func.first_positional_type().unwrap_or(&Type::ERROR)
                                 }),
                             ))
                         }
@@ -892,7 +892,7 @@ pub(crate) fn dataclasses_replace<'db>(
 
 fn run_on_dataclass_for_replace(
     i_s: &InferenceState,
-    add_issue: Option<&dyn Fn(IssueKind)>,
+    add_issue: Option<&dyn Fn(IssueKind) -> bool>,
     t: &Type,
     callback: &mut impl FnMut(&Arc<Dataclass>),
 ) -> bool {
@@ -1064,7 +1064,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     in_type: &Arc<Type>,
     dataclass: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -1099,6 +1099,20 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             slots_as_lookup_result(dataclass, i_s.db),
             AttributeKind::Attribute,
         )
+    } else if name == "__hash__"
+        && !dataclass.options.unsafe_hash
+        && !dataclass.options.frozen.unwrap_or_default()
+        && dataclass.options.eq
+        && !dataclass
+            .class(i_s.db)
+            .lookup_symbol(i_s, "__hash__")
+            .is_some()
+    {
+        return LookupDetails::new(
+            Type::Dataclass(dataclass.clone()),
+            LookupResult::UnknownName(Inferred::new_none()),
+            AttributeKind::Attribute,
+        );
     } else if name == "__match_args__" && dataclass.options.match_args {
         let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
         LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
@@ -1194,7 +1208,7 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
 pub(crate) fn lookup_on_dataclass<'a>(
     self_: &'a Arc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
 ) -> LookupDetails<'a> {
     if self_.options.frozen == Some(true)
@@ -1217,10 +1231,18 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if result.is_some() && !class.lookup_symbol(i_s, name).is_some() {
         return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
-    let mut lookup_options = InstanceLookupOptions::new(&add_issue);
-    if name == "__hash__" && !self_.options.unsafe_hash && !self_.options.frozen.unwrap_or_default()
+    let lookup_options = InstanceLookupOptions::new(&add_issue);
+    if name == "__hash__"
+        && !self_.options.unsafe_hash
+        && !self_.options.frozen.unwrap_or_default()
+        && self_.options.eq
+        && !class.lookup_symbol(i_s, "__hash__").is_some()
     {
-        lookup_options = lookup_options.without_object();
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            LookupResult::UnknownName(Inferred::new_none()),
+            AttributeKind::Attribute,
+        );
     }
     let mut lookup_details = class.instance().lookup(
         i_s,

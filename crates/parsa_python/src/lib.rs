@@ -265,7 +265,7 @@ create_grammar!(
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression:? "*" disjunction | named_expression
 
-    named_expression: walrus | expression
+    named_expression: expression !":=" | walrus
     walrus: name_def ":=" expression
 
     disjunction:? [disjunction "or"] conjunction
@@ -300,10 +300,10 @@ create_grammar!(
     await_primary:? ["await"] primary
     primary:?
           primary "." Name
-        | primary "(" [comprehension | arguments] ")"
+        | primary "(" [arguments | comprehension] ")"
         | primary "[" slices "]"
         | atom
-    slices:? ",".(slice | named_expression | starred_expression)+ [","]
+    slices:? ",".(named_expression !":" | slice | starred_expression)+ [","]
     slice: expression? ":" expression? [":" expression?]
     atom:
           "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
@@ -414,15 +414,15 @@ create_grammar!(
     // ---------------
 
     star_targets: ",".star_target+ [","]
-    star_target:? "*"? (t_primary | star_target_brackets | name_def)
+    star_target:? "*"? (name_def !("."|"["|"(") | t_primary | star_target_brackets)
     star_target_brackets: "(" [star_targets] ")" | "[" [star_targets] "]"
 
-    single_target: t_primary | name_def | "(" single_target ")"
+    single_target: name_def !("."|"["|"(") | t_primary | "(" single_target ")"
 
     t_primary:?
           (
               t_primary "." Name
-            | t_primary "(" [comprehension | arguments] ")"
+            | t_primary "(" [arguments | comprehension] ")"
             | atom
         ) &("."|"["|"(")
         | t_primary "[" slices "]"

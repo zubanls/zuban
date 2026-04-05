@@ -27,6 +27,7 @@ TMP=~/<path-with-link> cargo test -p zubanls
 
 Releasing is typically done by GitHub actions, which invokes `deploy/pypi/zuban/build.sh`.
 For a patch release, simply run `./release.sh`, for a minor release `./release.sh minor` (`minor` here comes from `cargo release`).
+
 ## Running primer
 
 Mypy uses mypy-primer to test for changes. We can simply check if we panic on
@@ -46,11 +47,17 @@ some of these projects with:
     sudo sysctl -w kernel.perf_event_paranoid=-1
     sudo sysctl -w kernel.kptr_restrict=0
 
-    flamegraph -- cargo test jedilike --release
-    # Sometimes [Unknown] appears, because only part of the stack is copied, use the command below.
-    # see also https://github.com/flamegraph-rs/flamegraph/issues/193#issuecomment-2119274041
-    flamegraph -c 'record -F 100 --call-graph dwarf,50000 -g' -- cargo test mypy --release
+    # We need to force-frame-pointers otherwise there are a lot of Unknown frames
+    RUSTFLAGS="-C force-frame-pointers=yes" flamegraph -- cargo test jedilike --release
+    # Sometimes the flamegraph lacks some base frames, because only part of the
+    # stack is copied, use the command below.
+    # See also https://github.com/flamegraph-rs/flamegraph/issues/193#issuecomment-2119274041
+    RAYON_NUM_THREADS=1 flamegraph -c 'record -F 100 --call-graph dwarf,50000 -g' -- /some-binary --release
     firefox flamegraph.svg
+
+    perf report --stdio --call-graph none | less
+    # Sort by the Self column, because I haven't found out how to do this with perf report
+    perf report --stdio  --call-graph none | sort -nr -k2 | less
 
 ## Progress History
 
@@ -94,7 +101,7 @@ some of these projects with:
 
 ## Unsound?
 
-- Chosing `__new__` or `__init__` via heuristic
+- Choosing `__new__` or `__init__` via heuristic
 - Initializing casting `Type[Class]` to `Type[object]` and then `Type[object]()` is ok?
 - Ignoring positional arg names when assigning functions in:
   - Override checks (including multiple inheritance checks)
@@ -108,7 +115,7 @@ some of these projects with:
   - foo: str
   - dataclasses `__init__` is overwritten and therefore members are not necessarily initialized.
 - hasattr narrowing uses `Any` instead of `object`
-- `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any paramaters
+- `a: int; callable(a)` will narrow a to be a callable that returns Any and takes any parameters
 - Enum value when a = 1 and b = '' will be Any for no reason
 - total_ordering fills functions with an Any return type if the other functions return not None
 

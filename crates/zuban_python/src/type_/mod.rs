@@ -35,7 +35,6 @@ pub(crate) use self::{
         CallableContent, CallableParam, CallableParams, ParamType, ParamTypeDetails, StarParamType,
         StarStarParamType, TypeGuardInfo, WrongPositionalCount, add_any_params_to_params,
         add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
-        merge_class_type_vars,
     },
     custom_behavior::CustomBehavior,
     dataclass::{
@@ -82,6 +81,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     recoverable_error,
+    type_::union::IntoUnionEntry,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::{arc_slice_into_vec, bytes_repr, join_with_commas, str_repr},
 };
@@ -407,14 +407,14 @@ impl GenericClass {
     }
 }
 
-enum TypeIterator<Iter> {
-    Single(Type),
+enum TypeIterator<'x, Iter> {
+    Single(&'x Type),
     Union(Iter),
     Finished,
 }
 
-impl<Iter: Iterator<Item = UnionEntry>> Iterator for TypeIterator<Iter> {
-    type Item = UnionEntry;
+impl<'x, Iter: Iterator<Item = IntoUnionEntry<'x>>> Iterator for TypeIterator<'x, Iter> {
+    type Item = IntoUnionEntry<'x>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -422,7 +422,7 @@ impl<Iter: Iterator<Item = UnionEntry>> Iterator for TypeIterator<Iter> {
                 let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
                     unreachable!();
                 };
-                Some(UnionEntry {
+                Some(IntoUnionEntry {
                     format_index: 0,
                     type_,
                 })
@@ -532,6 +532,7 @@ pub(crate) enum Type {
     LiteralString {
         implicit: bool,
     },
+    TypeForm(Arc<Type>),
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -712,9 +713,9 @@ impl Type {
                 _ => true,
             };
             Some(Type::from_union_entries(
-                self.clone()
-                    .into_iter_with_unpacked_unions(db, true)
-                    .filter(|union_entry| !matches!(&union_entry.type_, Type::None))
+                self.iter_with_unpacked_union_entries(db, true)
+                    .filter(|e| !matches!(e.type_, Type::None))
+                    .map(|e| e.into())
                     .collect(),
                 might_have_defined_type_vars,
             ))
@@ -729,20 +730,29 @@ impl Type {
             .unwrap_or(Cow::Borrowed(self))
     }
 
-    pub fn into_iter_with_unpacked_unions(
-        self,
-        db: &Database,
+    pub fn iter_with_unpacked_union_entries<'x>(
+        &'x self,
+        db: &'x Database,
         unpack_recursive_type: bool,
-    ) -> impl Iterator<Item = UnionEntry> {
+    ) -> impl Iterator<Item = IntoUnionEntry<'x>> {
         match self {
-            Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
+            Type::Union(items) => {
+                TypeIterator::Union(items.entries.iter().map(|e| IntoUnionEntry {
+                    type_: &e.type_,
+                    format_index: e.format_index,
+                }))
+            }
             Type::Never(_) => TypeIterator::Finished,
             Type::RecursiveType(rec) if unpack_recursive_type => rec
                 .calculated_type(db)
-                .clone()
-                .into_iter_with_unpacked_unions(db, unpack_recursive_type),
+                .iter_with_unpacked_union_entries(db, unpack_recursive_type),
             t => TypeIterator::Single(t),
         }
+    }
+
+    pub fn valid_in_type_form_assignment(&self, db: &Database) -> bool {
+        self.iter_with_unpacked_unions(db)
+            .all(|t| matches!(t, Type::TypeForm(_) | Type::Type(_) | Type::None))
     }
 
     pub fn iter_with_unpacked_unions_without_unpacking_recursive_types(
@@ -907,6 +917,7 @@ impl Type {
                         |issue| {
                             debug!("Caught issue: {issue:?}");
                             had_issue.set(true);
+                            false
                         },
                         "__call__",
                     )
@@ -927,7 +938,10 @@ impl Type {
         let cls_callable = |cls: Class| {
             let error = Cell::new(false);
             let result = cls
-                .find_relevant_constructor(i_s, &|_| error.set(true))
+                .find_relevant_constructor(i_s, &|_| {
+                    error.set(true);
+                    false
+                })
                 .maybe_callable(i_s, cls);
             if error.get() {
                 return None;
@@ -1181,6 +1195,7 @@ impl Type {
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
             Self::LiteralString { .. } => "LiteralString".into(),
+            Self::TypeForm(t) => format!("typing.TypeForm({})", t.format(format_data)).into(),
         }
     }
 
@@ -1244,6 +1259,7 @@ impl Type {
                     t.search_type_vars(found_type_var)
                 }
             }
+            Self::TypeForm(tf) => tf.search_type_vars(found_type_var),
         }
     }
 
@@ -1325,6 +1341,7 @@ impl Type {
             Self::Intersection(intersection) => intersection
                 .iter_entries()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
+            Self::TypeForm(tf) => tf.has_any_internal(i_s, already_checked),
         }
     }
 
@@ -1580,7 +1597,7 @@ impl Type {
         &self,
         i_s: &InferenceState,
         value: &Inferred,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         mut on_error: impl FnMut(&ErrorTypes) -> Option<IssueKind>,
     ) {
         self.error_if_not_matches_with_matcher(
@@ -1597,15 +1614,26 @@ impl Type {
         i_s: &InferenceState,
         matcher: &mut Matcher,
         value: &Inferred,
-        add_issue: impl Fn(IssueKind),
-        mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
+        add_issue: impl Fn(IssueKind) -> bool,
+        on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
-        let matches = self.is_super_type_of(i_s, matcher, &value_type);
+        self.error_if_t_not_matches_with_matcher(i_s, matcher, &value_type, add_issue, on_error);
+    }
+
+    pub(crate) fn error_if_t_not_matches_with_matcher(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+        add_issue: impl Fn(IssueKind) -> bool,
+        mut on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
+    ) -> Match {
+        let matches = self.is_super_type_of(i_s, matcher, value_type);
         if let Match::False { ref reason, .. } = matches {
             let error_types = ErrorTypes {
                 expected: self,
-                got: GotType::Type(&value_type),
+                got: GotType::Type(value_type),
                 matcher: Some(matcher),
                 reason,
             };
@@ -1617,10 +1645,14 @@ impl Type {
                 );
             }
             if let Some(error) = on_error(&error_types, reason) {
-                add_issue(error);
-                error_types.add_mismatch_notes(add_issue)
+                if add_issue(error) {
+                    error_types.add_mismatch_notes(|kind| {
+                        add_issue(kind);
+                    })
+                }
             }
         }
+        matches
     }
 
     pub fn on_any_typed_dict(
@@ -1873,9 +1905,11 @@ impl Type {
     }
 
     pub fn is_singleton(&self, db: &Database) -> bool {
-        self.for_all_in_union(db, &|t| {
-            matches!(t, Type::Literal(_) | Type::None | Type::EnumMember(_))
-        })
+        self.for_all_in_union(db, &|t| t.is_non_union_singleton())
+    }
+
+    pub fn is_non_union_singleton(&self) -> bool {
+        matches!(self, Type::Literal(_) | Type::None | Type::EnumMember(_))
     }
 }
 
@@ -2068,7 +2102,7 @@ pub(crate) enum DbBytes {
     Arc(Arc<[u8]>),
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 pub(crate) enum LiteralValue<'db> {
     String(&'db str),
     Int(&'db num_bigint::BigInt),

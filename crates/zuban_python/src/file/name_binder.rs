@@ -249,6 +249,10 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_issue(&self, node_index: NodeIndex, kind: IssueKind) {
+        if kind.is_disabled(self.db_infos.flags) {
+            debug!("New disabled name binder issue: {:?}", kind);
+            return;
+        }
         let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind, true);
         let maybe_ignored = self
             .db_infos
@@ -2126,7 +2130,7 @@ fn maybe_sys_platform_startswith(
         && let PrimaryOrAtom::Primary(prim) = before.first()
         && attr.as_code() == "startswith"
         && maybe_sys_name(prim, "platform")
-        && let Some(named_expr) = arguments.maybe_single_named_expr()
+        && let Some(named_expr) = arguments.maybe_single_positional()
         && let Some(s) = named_expr.maybe_single_string_literal()
         && let Some(to_compare) = s.as_python_string().as_str()
     {

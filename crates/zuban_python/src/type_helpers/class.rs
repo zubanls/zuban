@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         IssueKind::CannotInstantiateProtocol {
                             name: self.name().into(),
                         },
-                    )
+                    );
                 }
             } else {
                 debug_assert!(self.incomplete_mro(i_s.db));
@@ -361,6 +361,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     let issue_str = self.node_ref.issue_to_str(i_s, issue);
                                     debug!("Issue in protocol __call__: {issue_str}");
                                     *had_error.borrow_mut() = Some(issue_str);
+                                    false
                                 },
                                 name,
                             )
@@ -385,9 +386,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 let protocol_lookup_details = Instance::new(c, None).lookup(
                     i_s,
                     name,
-                    InstanceLookupOptions::new(&|_| had_binding_error.set(true))
-                        .with_as_self_instance(&|| other.clone())
-                        .with_avoid_inferring_return_types(),
+                    InstanceLookupOptions::new(&|_| {
+                        had_binding_error.set(true);
+                        false
+                    })
+                    .with_as_self_instance(&|| other.clone())
+                    .with_avoid_inferring_return_types(),
                 );
                 let protocol_inf = protocol_lookup_details.lookup.into_inferred();
 
@@ -418,11 +422,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     &|issue| {
                         // Deprecated should not affect matching
                         if let IssueKind::Deprecated { .. } = &issue {
-                            return;
+                            return false;
                         }
                         let issue_str = self.node_ref.issue_to_str(i_s, issue);
                         debug!("Issue in protocol: {}", issue_str);
                         *had_error.borrow_mut() = Some(issue_str);
+                        false
                     },
                     &mut |_, mut lookup_details| {
                         if name == "__hash__"
@@ -473,7 +478,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &protocol_t,
                                             &t2,
-                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| ())
+                                            &c.lookup(i_s, name, ClassLookupOptions::new(&|_| false)
                                                     .with_as_type_type(&|| if other.is_subclassable(i_s.db) {
                                                         Type::Type(Arc::new(other.clone()))
                                                     } else {
@@ -483,7 +488,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 .lookup
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
-                                            &cls.simple_lookup(i_s, |_| (), name)
+                                            &cls.simple_lookup(i_s, |_| false, name)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
                                         ),
@@ -496,7 +501,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                             cls.name(),
                                                             self.name()
                                                         ).into());
-                                                        cls.find_relevant_constructor(i_s, &|_| ())
+                                                        cls.find_relevant_constructor(i_s, &|_| false)
                                                             .into_type(i_s, cls)
                                                     })
                                                 }
@@ -908,7 +913,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         IssueKind::SlotsConflictWithClassVariableAccess {
                                             name: name.into(),
                                         },
-                                    )
+                                    );
                                 }
                                 if let Some(as_type_type) =
                                     options.as_type_type.filter(|_| mro_index.0 == 0)
@@ -1217,7 +1222,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn find_relevant_constructor(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> ClassConstructor<'_> {
         if !i_s.db.mypy_compatible()
             && let MetaclassState::Some(metaclass) = self.use_cached_class_infos(i_s.db).metaclass
@@ -1228,6 +1233,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 "__call__",
                 InstanceLookupOptions::new(&|issue| {
                     debug!("TODO issue when resolving __call__ to find constructor {issue:?}");
+                    false
                 })
                 .with_as_self_instance(&|| self.as_type_type(i_s.db)),
             );
@@ -1390,6 +1396,13 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    fn is_django_foreign_key_like_name(&self) -> bool {
+        matches!(
+            self.name(),
+            "ForeignKey" | "OneToOneField" | "ManyToManyField"
+        )
+    }
+
     fn fill_django_default_generics(
         &self,
         i_s: &InferenceState,
@@ -1401,10 +1414,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return;
         };
         let mut known_type = None;
-        if matches!(
-            self.name(),
-            "ForeignKey" | "OneToOneField" | "ManyToManyField"
-        ) {
+        if self.is_django_foreign_key_like_name() {
             known_type = args
                 .iter(i_s.mode)
                 .enumerate()
@@ -1429,7 +1439,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                         debug!(
                                             "Issue while looking up Django model \
                                             reference: {issue:?}"
-                                        )
+                                        );
+                                        false
                                     },
                                     name,
                                 )
@@ -1505,6 +1516,32 @@ impl<'db: 'a, 'a> Class<'a> {
         *generics = ClassGenerics::List(lst)
     }
 
+    pub(crate) fn is_django_foreign_key(&self, db: &Database, name: &str) -> bool {
+        debug_assert!(self.has_django_stubs_base_class(db));
+        let i_s = &InferenceState::new_in_unknown_file(db);
+        if let Some(inf) = self
+            .lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&|_| false)
+                    .with_origin(ApplyClassDescriptorsOrigin::InstanceSetattrAccess),
+            )
+            .lookup
+            .maybe_inferred()
+            && let Type::Class(c) = inf.as_cow_type(i_s).remove_none(i_s.db).as_ref()
+            && let c = c.class(db)
+            && c.has_django_stubs_base_class(db)
+            && c.mro_maybe_without_object(db, true).any(|(_, c)| match c {
+                TypeOrClass::Class(c) => c.is_django_foreign_key_like_name(),
+                TypeOrClass::Type(_) => false,
+            })
+        {
+            true
+        } else {
+            false
+        }
+    }
+
     fn find_django_default_generic_inner(&self, db: &Database, name: &str) -> Option<Type> {
         let found = self.class_storage.class_symbol_table.lookup_symbol(name)?;
         let annotation = NodeRef::new(self.file, found)
@@ -1539,7 +1576,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     name: self.name().into(),
                     abstract_attributes: class_infos.abstract_attributes.clone(),
                 },
-            )
+            );
         }
 
         match &class_infos.kind {
@@ -1727,6 +1764,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             "Issue while inferring variance on name {name}: {issue:?}. \
                             This should probably not be a problem."
                         );
+                        false
                     })
                     // object has no generics and is therefore not relevant.
                     .without_object(),
@@ -1902,7 +1940,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn simple_lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         name: &str,
     ) -> LookupResult {
         self.lookup(i_s, name, ClassLookupOptions::new(&add_issue))
@@ -1963,7 +2001,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn check_slots(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         name: &str,
     ) {
         for (_, type_or_class) in self.mro_maybe_without_object(i_s.db, true) {
@@ -2004,13 +2042,13 @@ impl<'db: 'a, 'a> Class<'a> {
         add_issue(IssueKind::AssigningToNameOutsideOfSlots {
             name: name.into(),
             class: self.qualified_name(i_s.db).into(),
-        })
+        });
     }
 
     pub(crate) fn check_self_definition(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         name: &str,
     ) {
         self.lookup_and_class_and_maybe_ignore_self_internal(
@@ -2026,7 +2064,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     {
                         add_issue(IssueKind::CannotAssignToClassVarViaInstance {
                             name: name.into(),
-                        })
+                        });
                     } else if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                         // See testSlotsAssignmentWithMethodReassign
                         //add_issue(IssueType::CannotAssignToAMethod);
@@ -2537,7 +2575,7 @@ fn init_as_callable(
             let self_ = if c.kind.had_first_self_or_class_annotation()
                 && let Some(first) = original.first_positional_type()
             {
-                first
+                first.clone()
             } else {
                 cls.as_type(i_s.db)
             };
@@ -2685,7 +2723,7 @@ impl ClassConstructor<'_> {
 }
 
 pub(crate) struct ClassLookupOptions<'x> {
-    add_issue: &'x dyn Fn(IssueKind),
+    add_issue: &'x dyn Fn(IssueKind) -> bool,
     kind: LookupKind,
     apply_descriptors_origin: ApplyClassDescriptorsOrigin,
     super_count: usize,
@@ -2694,7 +2732,7 @@ pub(crate) struct ClassLookupOptions<'x> {
 }
 
 impl<'x> ClassLookupOptions<'x> {
-    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind)) -> Self {
+    pub(crate) fn new(add_issue: &'x dyn Fn(IssueKind) -> bool) -> Self {
         Self {
             add_issue,
             kind: LookupKind::Normal,

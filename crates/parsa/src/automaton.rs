@@ -89,7 +89,7 @@ struct NFAState {
 
 // DFA = deterministic finite automaton
 #[derive(Debug)]
-pub struct DFAState {
+pub(crate) struct DFAState {
     transitions: Vec<DFATransition>,
     nfa_set: HashSet<NFAStateId>,
     pub is_final: bool,
@@ -101,6 +101,8 @@ pub struct DFAState {
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
     pub transition_to_plan: FastLookupTransitions,
+    pub transition_towards_error_recovery_node: Option<InternalNonterminalType>,
+
     pub from_rule: &'static str,
 }
 
@@ -130,17 +132,23 @@ struct DFATransition {
     to: *mut DFAState,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum StackMode {
-    Alternative(*const Plan),
+    Alternative {
+        fallback: *const Plan,
+        replay: *const Plan,
+        // This solves a big part of the problem of exponential reparsing of for example nested
+        // parentheses if there are fallbacks (like Python's tuple/expr with parens).
+        reusable_first_nonterminal: Option<ReusableFirstNonterminal>,
+    },
     LL,
 }
 
 impl std::fmt::Debug for StackMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Alternative(plan) => {
-                let dfa = unsafe { &(**plan) }.next_dfa();
+            Self::Alternative { fallback, .. } => {
+                let dfa = unsafe { &(**fallback) }.next_dfa();
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
             }
             Self::LL => write!(f, "LL"),
@@ -239,7 +247,7 @@ pub struct RuleAutomaton {
     pub type_: InternalNonterminalType,
     nfa_states: Vec<NFAState>,
     pub dfa_states: Vec<Pin<Box<DFAState>>>,
-    name: &'static str,
+    pub(crate) name: &'static str,
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
     no_transition_dfa_id: Option<DFAStateId>,
@@ -387,6 +395,10 @@ impl RuleAutomaton {
         set
     }
 
+    fn dfa_end_without_transitions(&mut self) -> *mut DFAState {
+        self.nfa_to_dfa(vec![self.nfa_end_id], self.nfa_end_id, None)
+    }
+
     fn nfa_to_dfa(
         &mut self,
         starts: Vec<NFAStateId>,
@@ -415,6 +427,7 @@ impl RuleAutomaton {
             from_rule: self.name,
             transition_to_plan: FastLookupTransitions::new_empty(),
             transitions: Default::default(),
+            transition_towards_error_recovery_node: None,
         })));
         self.dfa_states.last_mut().unwrap() as &mut DFAState
     }
@@ -502,6 +515,7 @@ impl RuleAutomaton {
                 from_rule: self.name,
                 transition_to_plan: FastLookupTransitions::new_empty(),
                 transitions: Default::default(),
+                transition_towards_error_recovery_node: None,
             }));
             self.no_transition_dfa_id = Some(list_index);
         }
@@ -648,14 +662,8 @@ impl DFAState {
             .any(|t| t.type_ == TransitionType::LookaheadEnd)
     }
 
-    pub fn nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
-        let mut transition_ids = vec![];
-        for transition in &self.transitions {
-            if let TransitionType::Nonterminal(id) = transition.type_ {
-                transition_ids.push(id);
-            }
-        }
-        transition_ids
+    pub fn is_negative_lookahead(&self) -> bool {
+        self.transitions.is_empty() && !self.is_final
     }
 }
 
@@ -679,6 +687,7 @@ impl DFATransition {
 }
 
 impl Plan {
+    #[inline]
     pub fn next_dfa(&self) -> &DFAState {
         unsafe { &*self.next_dfa }
     }
@@ -734,6 +743,18 @@ pub fn generate_automatons(
             *rule_label,
         );
 
+        let transition_towards_error_recovery_node = automatons[rule_label].dfa_states[0]
+            .transitions
+            .iter()
+            .find_map(|transition| {
+                if let TransitionType::Nonterminal(id) = transition.type_ {
+                    let automaton = &automatons[&id];
+                    if automaton.does_error_recovery {
+                        return Some(id);
+                    }
+                }
+                None
+            });
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
         let automaton = automatons.get_mut(rule_label).unwrap();
@@ -743,6 +764,8 @@ pub fn generate_automatons(
                 automaton.name
             );
         }
+        automaton.dfa_states[0].transition_towards_error_recovery_node =
+            transition_towards_error_recovery_node;
         automaton.dfa_states[0].transition_to_plan = match &first_plans[rule_label] {
             FirstPlan::Calculated(plans, _) => {
                 FastLookupTransitions::from_plans(terminal_count, plans.clone())
@@ -763,8 +786,21 @@ pub fn generate_automatons(
                 DFAStateId(i),
                 false,
             );
-            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan =
-                FastLookupTransitions::from_plans(terminal_count, plans);
+            let transition_towards_error_recovery_node = automatons[rule_label].dfa_states[i]
+                .transitions
+                .iter()
+                .find_map(|transition| {
+                    if let TransitionType::Nonterminal(id) = transition.type_ {
+                        let automaton = &automatons[&id];
+                        if automaton.does_error_recovery {
+                            return Some(id);
+                        }
+                    }
+                    None
+                });
+            let dfa_mut = &mut automatons.get_mut(rule_label).unwrap().dfa_states[i];
+            dfa_mut.transition_towards_error_recovery_node = transition_towards_error_recovery_node;
+            dfa_mut.transition_to_plan = FastLookupTransitions::from_plans(terminal_count, plans);
         }
 
         // Left recursion can be calculated here, because first nodes are not relevant, because
@@ -944,18 +980,19 @@ fn plans_for_dfa(
             TransitionType::PositiveLookaheadStart => {
                 let (next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 for t in peek_terminals {
-                    plans.insert(
+                    add_if_no_conflict(
+                        &mut plans,
+                        &mut conflict_transitions,
+                        &mut conflict_tokens,
+                        transition,
                         t,
-                        (
-                            transition,
-                            Plan {
-                                debug_text: "positive lookahead",
-                                mode: PlanMode::PositivePeek,
-                                next_dfa,
-                                pushes: vec![],
-                                type_: t,
-                            },
-                        ),
+                        || Plan {
+                            pushes: vec![],
+                            next_dfa,
+                            type_: t,
+                            debug_text: "positive lookahead",
+                            mode: PlanMode::PositivePeek,
+                        },
                     );
                 }
             }
@@ -1038,20 +1075,24 @@ fn plans_for_dfa(
             for (transition, mut new_plan) in new_plans.into_iter() {
                 if conflict_tokens.contains(&transition) {
                     if let Some(fallback_plan) = result.remove(&transition) {
+                        let reusable_first_nonterminal =
+                            maybe_reusable_first_nonterminal(automatons, &new_plan, &fallback_plan);
                         let automaton = automatons.get_mut(&automaton_key).unwrap();
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
                         automaton
                             .fallback_plans
+                            .push(Pin::new(Box::new(new_plan.clone())));
+                        automaton
+                            .fallback_plans
                             .push(Pin::new(Box::new(fallback_plan)));
-                        new_plan = nest_plan(
-                            &new_plan,
-                            t,
-                            end,
-                            StackMode::Alternative(
-                                automaton.fallback_plans.last().unwrap() as &Plan
-                            ),
-                        );
+                        let mut reversed = automaton.fallback_plans.iter().rev();
+                        let mode = StackMode::Alternative {
+                            fallback: reversed.next().unwrap() as &Plan,
+                            replay: reversed.next().unwrap() as &Plan,
+                            reusable_first_nonterminal,
+                        };
+                        new_plan = nest_plan(&new_plan, t, end, mode);
                     }
                     result.insert(transition, new_plan);
                 }
@@ -1085,6 +1126,58 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct ReusableFirstNonterminal {
+    pub pushes: Box<[Push]>,
+    // Some pushes might be alternatives that don't use up a tree node and we therefore have a
+    // different length.
+    pub tree_nodes_needed_for_pushes: usize,
+}
+
+fn maybe_reusable_first_nonterminal(
+    automatons: &mut Automatons,
+    plan: &Plan,
+    fallback: &Plan,
+) -> Option<ReusableFirstNonterminal> {
+    if plan.mode != PlanMode::LL || fallback.mode != PlanMode::LL {
+        return None;
+    }
+    for push1 in plan.pushes.iter() {
+        if !matches!(push1.stack_mode, StackMode::LL) {
+            // Nodes that may be omitted would mess with the offset of the expression.
+            return None;
+        }
+        for (k, push2) in fallback.pushes.iter().enumerate() {
+            // We have to make sure that the stack_mode is LL and not an alternative. Otherwise we
+            // could select an alternative of the current node.
+            if push1.node_type == push2.node_type && matches!(push2.stack_mode, StackMode::LL) {
+                let mut pushes: Vec<_> = fallback.pushes.iter().take(k + 1).cloned().collect();
+                // We have to ensure that the last dfa state is correct, since the first node was
+                // already parsed.
+                let last = pushes.last_mut().unwrap();
+                last.next_dfa = automatons
+                    .get_mut(&last.node_type)
+                    .unwrap()
+                    .dfa_end_without_transitions();
+                let tree_nodes_needed_for_pushes = pushes
+                    .iter()
+                    .rev()
+                    .skip(1)
+                    .filter(|p| {
+                        !matches!(p.stack_mode, StackMode::Alternative { .. })
+                            && !p.next_dfa().node_may_be_omitted
+                    })
+                    .count();
+                return Some(ReusableFirstNonterminal {
+                    tree_nodes_needed_for_pushes,
+                    pushes: pushes.into_boxed_slice(),
+                });
+            }
+        }
+    }
+    None
+}
+
 fn create_left_recursion_plans(
     automatons: &Automatons,
     automaton_key: InternalNonterminalType,
@@ -1107,7 +1200,7 @@ fn create_left_recursion_plans(
                             for (t, p) in transition.next_dfa().transition_to_plan.iter() {
                                 if plans.contains_key(&t) {
                                     panic!(
-                                        "ambigous: {} contains left recursion with alternatives!",
+                                        "ambiguous: {} contains left recursion with alternatives!",
                                         dfa_state.from_rule
                                     );
                                 }
@@ -1235,7 +1328,7 @@ fn split_tokens(
     }
 
     let mut generated_dfa_ids: Vec<DFAStateId> = vec![];
-    let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
+    let end_dfa = automaton.dfa_end_without_transitions();
 
     let mut as_list: Vec<_> = transition_to_nfas.values().cloned().collect();
     while !as_list.is_empty() {

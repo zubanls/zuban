@@ -336,7 +336,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             let old_index = self.infos.type_var_manager.add(tvl, None, Some(index));
             if let Some(force_index) = self.infos.current_generic_or_protocol_index {
                 if old_index < force_index {
-                    add_issue(IssueKind::DuplicateTypeVar)
+                    add_issue(IssueKind::DuplicateTypeVar);
                 } else if old_index != force_index {
                     self.infos
                         .type_var_manager
@@ -376,7 +376,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         if slice_type.iter().count() < self.infos.type_var_manager.len() {
             slice_type
                 .as_node_ref()
-                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars)
+                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars);
         }
     }
 }
@@ -493,7 +493,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                 .db
                                 .loaded_python_file(f)
                                 .name_resolution_for_types(self.i_s)
-                                .resolve_module_access(name.as_code(), |_| ())
+                                .resolve_module_access(name.as_code(), |_| false)
                             else {
                                 return BaseLookup::Other;
                             };

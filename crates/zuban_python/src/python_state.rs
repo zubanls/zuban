@@ -213,6 +213,7 @@ pub(crate) struct PythonState {
     types_none_type_index: Option<NodeIndex>,
     types_ellipsis_type_index: Option<NodeIndex>,
     types_union_type_index: Option<NodeIndex>,
+    types_generic_alias_index: NodeIndex,
     builtins_ellipsis_fallback_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
     collections_defaultdict_index: NodeIndex,
@@ -338,6 +339,7 @@ impl PythonState {
             typing_extensions_runtime_checkable_index: 0,
             typing_special_form_index: 0,
             typing_no_type_check_index: 0,
+            types_generic_alias_index: 0,
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
@@ -626,6 +628,7 @@ impl PythonState {
         // This first block
         cache_index!(typing_final_index, typing, "final", true);
         cache_index!(typing_no_type_check_index, typing, "no_type_check", true);
+
         cache_index!(
             typing_runtime_checkable_index,
             typing,
@@ -736,6 +739,7 @@ impl PythonState {
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
         cache_optional_index!(types_union_type_index, types, "UnionType");
+        cache_index!(types_generic_alias_index, types, "GenericAlias");
         if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis")
             && matches!(
                 ellipsis
@@ -1076,6 +1080,7 @@ impl PythonState {
     );
     optional_class_node_ref!(types, none_type_node_ref, types_none_type_index);
     class_node_ref!(types, module_node_ref, types_module_type_index);
+    class_node_ref!(types, pub generic_alias_node_ref, types_generic_alias_index);
     class_node_ref!(
         typeshed,
         pub supports_keys_and_get_item_node_ref,
@@ -1153,6 +1158,7 @@ impl PythonState {
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
+    node_ref_to_class!(pub generic_alias_class, generic_alias_node_ref);
 
     node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
     node_ref_to_type_class_without_generic!(pub str_type, str_node_ref);
@@ -1312,6 +1318,7 @@ fn typing_changes(
     set_typing_inference(typing, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(typing, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(typing, "TypeIs", Specific::TypingTypeIs);
+    set_typing_inference(typing, "TypeForm", Specific::TypingTypeForm);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(
@@ -1377,6 +1384,7 @@ fn typing_changes(
     set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(t, "Required", Specific::TypingRequired);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
+    set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
 
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);

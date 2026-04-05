@@ -154,7 +154,7 @@ impl Tuple {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         // Make sure the get_item part is inferred.
         slice_type.infer(i_s);
@@ -706,13 +706,13 @@ impl TupleArgs {
         // We avoid implicit literals, because it would otherwise be very slow to calculate the
         // generics of a tuple with entries 1-1000 (exponential blowup).
         match self {
-            TupleArgs::FixedLen(ts) => Type::simplified_union_from_iterators(
+            TupleArgs::FixedLen(ts) => Type::owned_simplified_union_from_iterators(
                 i_s,
                 ts.iter().map(|t| t.avoid_implicit_literal_cow(i_s.db)),
             ),
             TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
-                TupleUnpack::ArbitraryLen(t) => Type::simplified_union_from_iterators(
+                TupleUnpack::ArbitraryLen(t) => Type::owned_simplified_union_from_iterators(
                     i_s,
                     with_unpack
                         .before
@@ -767,7 +767,7 @@ fn merge_types(original: impl MergableTypes, new: impl MergableTypes) -> Arc<[Ty
 pub(crate) fn lookup_on_tuple<'x>(
     tuple: &'x Arc<Tuple>,
     i_s: &'x InferenceState,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     name: &str,
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {

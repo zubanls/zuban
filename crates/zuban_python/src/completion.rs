@@ -2,9 +2,9 @@ use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 pub use lsp_types::CompletionItemKind;
 use parsa_python_cst::{
-    ClassDef, CompletionContext, CompletionNode, FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NodeIndex, RestNode, Scope, is_identifier,
-    QuoteState
+    CallArgs, ClassDef, CompletionContext, CompletionNode, FunctionDef,
+    NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NodeIndex, RestNode, Scope, is_identifier,
+    QuoteState,
 };
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
@@ -130,12 +130,15 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::Global { context } => {
                 match context {
-                    Some(CompletionContext::PrimaryCall(call)) => {
-                        self.add_keyword_param_completions(self.infos.infer_primary_or_atom(*call));
+                    Some(CompletionContext::PrimaryCall { base, args }) => {
+                        self.add_keyword_param_completions(
+                            self.infos.infer_primary_or_atom(*base),
+                            *args,
+                        );
                     }
-                    Some(CompletionContext::PrimaryTargetCall(call)) => {
-                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*call) {
-                            self.add_keyword_param_completions(inf);
+                    Some(CompletionContext::PrimaryTargetCall { base, args }) => {
+                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
+                            self.add_keyword_param_completions(inf, *args);
                         }
                     }
                     None => (),
@@ -165,7 +168,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                                 i_s.db,
                                 *dots,
                                 *base,
-                                |_| (),
+                                |_| false,
                             )
                     }))
                 }
@@ -326,7 +329,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         }
     }
 
-    fn add_keyword_param_completions(&mut self, inf: Inferred) {
+    fn add_keyword_param_completions(&mut self, inf: Inferred, args: Option<CallArgs>) {
         with_i_s_non_self(self.infos.db, self.infos.file, self.infos.scope, |i_s| {
             let maybe_django_query_method = || {
                 let bound = inf.maybe_bound_method()?;
@@ -357,22 +360,40 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             if let Some(model) = maybe_django_query_method() {
                 self.add_keyword_params_for_callable_likes(
                     Type::Type(Arc::new(model)).maybe_callable(i_s),
+                    args,
                 )
             } else {
-                self.add_keyword_params_for_callable_likes(inf.as_cow_type(i_s).maybe_callable(i_s))
+                self.add_keyword_params_for_callable_likes(
+                    inf.as_cow_type(i_s).maybe_callable(i_s),
+                    args,
+                )
             }
         })
     }
 
-    fn add_keyword_params_for_callable_likes(&mut self, c: Option<CallableLike>) {
+    fn add_keyword_params_for_callable_likes(
+        &mut self,
+        c: Option<CallableLike>,
+        args: Option<CallArgs>,
+    ) {
+        let used = args
+            .map(|args| args.used_args_until(&self.infos.node.rest))
+            .unwrap_or_default();
+        debug!("Used params for keyword params {used:?}");
         let mut add = |c: &CallableContent| {
             if let CallableParams::Simple(params) = &c.params {
-                for param in params.iter() {
+                for (i, param) in params.iter().enumerate() {
                     if matches!(
                         param.type_,
                         ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
                     ) {
                         if let Some(name) = param.name(self.infos.db) {
+                            if used.keyword_args.contains(name)
+                                || used.positional_args > i
+                                    && matches!(param.type_, ParamType::PositionalOrKeyword(_))
+                            {
+                                continue;
+                            }
                             let keyword_argument = format!("{name}=");
                             if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
                                 continue;
@@ -492,7 +513,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     }
 
     fn add_global_import_completions(&mut self) {
-        for workspace in self.infos.db.vfs.workspaces.iter() {
+        for workspace in self.infos.db.vfs.workspaces.load().iter() {
             self.directory_entries_completions(&workspace.entries)
         }
     }
@@ -507,7 +528,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     }
 
     fn directory_entries_completions(&mut self, entries: &Entries) {
-        for entry in &entries.iter() {
+        for (_, entry) in entries.borrow().iter() {
             let name: &str = match entry {
                 DirectoryEntry::File(f) => {
                     if let Some(stripped_name) = f
@@ -662,12 +683,23 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         let file = c.node_ref.to_db_lifetime(self.infos.db).file;
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
         let class_node = c.node();
+        let is_django_base = c.has_django_stubs_base_class(self.infos.db);
         for (symbol, node_index) in storage.class_symbol_table.iter() {
             if is_private(symbol) || should_ignore(symbol) {
                 continue;
             }
             let name_def = NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true)
+            self.maybe_add_tree_name(file, Scope::Class(class_node), name_def, true);
+            if is_django_base && c.is_django_foreign_key(self.infos.db, symbol) {
+                let s = format!("{symbol}_id");
+                if !self.maybe_add_cow(Cow::Owned(s.clone())) {
+                    continue;
+                }
+                if let Some(result) = (self.on_result)(self.replace_range, &FixedStringField(s)) {
+                    self.items
+                        .push((CompletionSortPriority::new_symbol(symbol), result))
+                }
+            }
         }
         if is_instance {
             for (symbol, &node_index) in storage.self_symbol_table.iter() {
@@ -961,7 +993,7 @@ impl<'db> Completion for CompletionDirEntry<'db, '_> {
             DirectoryEntry::File(_) => CompletionItemKind::MODULE,
             DirectoryEntry::Directory(_) => CompletionItemKind::FOLDER,
             _ => {
-                recoverable_error!("Exptected no completion entry for {:?}", &self.entry);
+                recoverable_error!("Expected no completion entry for {:?}", &self.entry);
                 CompletionItemKind::MODULE
             }
         }
@@ -1085,6 +1117,22 @@ impl Completion for TypedDictMemberCompletion<'_> {
 
     fn file_path(&self) -> Option<&str> {
         Some(self.db.file_path(self.typed_dict.defined_at.file))
+    }
+}
+
+struct FixedStringField(String);
+
+impl Completion for FixedStringField {
+    fn label(&self) -> &str {
+        &self.0
+    }
+
+    fn kind(&self) -> CompletionItemKind {
+        CompletionItemKind::FIELD
+    }
+
+    fn file_path(&self) -> Option<&str> {
+        None
     }
 }
 

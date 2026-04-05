@@ -1087,7 +1087,9 @@ from typing import Hashable
 class DC1:
     a: int
 
-v1: Hashable = DC1(0)  # E: Incompatible types in assignment (expression has type "DC1", variable has type "Hashable")
+v1: Hashable = DC1(0)  # E: Incompatible types in assignment (expression has type "DC1", variable has type "Hashable") \
+                       # N: Following member(s) of "DC1" have conflicts: \
+                       # N:     __hash__: expected "Callable[[], int]", got "None"
 
 @dataclass(eq=True, frozen=True)
 class DC2:
@@ -1099,7 +1101,9 @@ v2: Hashable = DC2(0)
 class DC3:
     a: int
 
-v3: Hashable = DC3(0)  # E: Incompatible types in assignment (expression has type "DC3", variable has type "Hashable")
+v3: Hashable = DC3(0)  # E: Incompatible types in assignment (expression has type "DC3", variable has type "Hashable") \
+                       # N: Following member(s) of "DC3" have conflicts: \
+                       # N:     __hash__: expected "Callable[[], int]", got "None"
 @dataclass(frozen=True)
 class DC4:
     a: int
@@ -1270,3 +1274,39 @@ class Other:
             return replace(self, new_param=[])  # E: Unexpected keyword argument "new_param" for "replace" of "Other"
         else:
             return replace(self, x=5)
+
+[case dataclass_hash_attribute]
+from typing import assert_type, Callable, Any
+from dataclasses import dataclass
+
+@dataclass
+class D1:
+    a: int
+
+@dataclass(eq=True)
+class D2:
+    a: int
+
+@dataclass(unsafe_hash=False)
+class D3:
+    a: int
+
+@dataclass(unsafe_hash=True)
+class D4:
+    a: int
+
+@dataclass(eq=False)
+class D5:
+    a: int
+
+assert_type(D1.__hash__, None)
+assert_type(D2.__hash__, None)
+assert_type(D3.__hash__, None)
+assert callable(D4.__hash__)
+assert callable(D5.__hash__)
+
+assert_type(D1(1).__hash__, None)
+assert_type(D2(1).__hash__, None)
+assert_type(D3(1).__hash__, None)
+assert_type(D4(1).__hash__, Callable[[object], int])
+assert_type(D5(1).__hash__, Callable[[object], int])

@@ -638,6 +638,7 @@ reveal_type(super)  # N: Revealed type is "super"
 # Some types are handled in a special way, check however that normal
 # reveal_type does not crash.
 import typing
+import typing_extensions
 reveal_type(typing.TypeVar)  # N: Revealed type is "type[typing.TypeVar]"
 reveal_type(typing.TypeVarTuple)  # N: Revealed type is "type[typing.TypeVarTuple]"
 reveal_type(typing.ParamSpec)  # N: Revealed type is "type[typing.ParamSpec]"
@@ -647,6 +648,7 @@ reveal_type(typing.reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
 reveal_type(typing.NewType)  # N: Revealed type is "type[typing.NewType]"
 reveal_type(typing.TypeGuard)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.TypeIs)  # N: Revealed type is "typing._SpecialForm"
+reveal_type(typing_extensions.TypeForm)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.Concatenate)  # N: Revealed type is "typing._SpecialForm"
 reveal_type(typing.assert_type)  # N: Revealed type is "object"
 reveal_type(typing.Required)  # N: Revealed type is "typing._SpecialForm"
@@ -991,8 +993,23 @@ def err()(value: str) -> str  # E: Invalid syntax
     return value  # E: "return" outside function  # E: Invalid syntax
 x = 1
 
-[case avoid_bracket_slowdown]
-(
+[case avoid_parenthesis_slowdown]
+a = 1
+x = (
+    ((((( ((((( ((((( (((((
+    ((((( ((((( ((((( (((((
+    ((((( ((((( ((((( (((((
+    ((((( ((((( ((((( (((((
+    a
+    ))))) ))))) ))))) )))))
+    ))))) ))))) ))))) )))))
+    ))))) ))))) ))))) )))))
+    ))))) ))))) ))))) )))))
+)
+reveal_type(x)  # N: Revealed type is "int"
+
+[case avoid_unfinished_parenthesis_slowdown]
+(  # E: Invalid syntax
     ((((( ((((( ((((( (((((
     ((((( ((((( ((((( (((((
     ((((( ((((( ((((( (((((
@@ -1001,10 +1018,28 @@ x = 1
     1
     ))))) ))))) ))))) )))))
     ))))) ))))) ))))) )))))
-    ))))) ))))) ))))) )))))
-    ))))) ))))) ))))) )))))
-    ))))) ))))) ))))) )))))
+    ))))) )))))
+    ))))) )))))
+    ))))) )))))
 )
+
+[case avoid_curly_bracket_slowdown]
+# flags: --no-windows
+# This test can cause a stack overflow on windows, because of the many function
+# calls internally. Skip this test for now.
+{
+    {{{{{ {{{{{ {{{{{ {{{{{
+    {{{{{ {{{{{ {{{{{ {{{{{
+    {{{{{ {{{{{ {{{{{ {{{{{
+    {{{{{ {{{{{ {{{{{ {{{{{
+    {{{{{ {{{{{ {{{{{ {{{{{
+    1
+    }}}}} }}}}} }}}}} }}}}}
+    }}}}} }}}}} }}}}} }}}}}
+    }}}}} }}}}} }}}}} }}}}}
+    }}}}} }}}}} }}}}} }}}}}
+    }}}}} }}}}} }}}}} }}}}}
+}
 
 [case unicode_escaped_literal_should_not_crash]
 def f(char: str) -> None:
@@ -1169,10 +1204,10 @@ def func13(t1: type[T]) -> T:
     return t1()
 
 [case assert_type_equals_implicit_literals]
-from typing import assert_type
+from typing import assert_type, Literal
 def func3[*Ts, T](*args: * tuple[int, *Ts, T]) -> tuple[T, *Ts]: ...
 
-assert_type(func3(1, "", 3j, 3.4), tuple[float, str, complex])
+assert_type(func3(1, "", 3j, 3.4), tuple[float, Literal[''], complex])
 
 [case assert_type_for_enum_literals]
 from typing import Literal, assert_type
@@ -1583,9 +1618,9 @@ reveal_type(z)  # N: Revealed type is "Any"
 
 try:  # E: Invalid syntax
     ...
-except Exception as e  # E: Name "e" is not defined
-a4: e  # E: Name "e" is not defined
-reveal_type(e)  # E: Name "e" is not defined  # N: Revealed type is "Any"
+except Exception as e
+a4: e
+reveal_type(e)  # N: Revealed type is "Any"
 
 type t = b+  # E: Invalid syntax
 a5: t  # E: Name "t" is not defined
@@ -1766,3 +1801,62 @@ def asdf(x: str) -> None:
     reveal_type(x)  # N: Revealed type is "str"
 
 glob = 1
+
+[case assert_type_for_implicit_literals_in_default_mode]
+# flags: --mode default
+from typing import assert_type, Literal
+def f[T](x: T) -> T: ...
+
+assert_type(f(1), Literal[1])
+assert_type(f(1), int)  # E: Expression is of type "Literal[1]", not "int"
+
+assert_type(f(""), Literal[''])
+assert_type(f(""), str)  # E: Expression is of type "Literal['']", not "str"
+
+[case no_parser_crash_for_annotation]
+# From GH #324
+from typing import Any
+None.__hash__: Any  # E: Type cannot be declared in assignment to non-self attribute
+
+[case type_ignore_method_assign]
+# flags: --show-error-codes
+# From GH #331
+
+def dec[T](x: T) -> T:
+    return x
+
+class Foo:
+    def f(self) -> None: ...
+    @dec
+    def g(self) -> None: ...
+class Bar:
+    def f(self) -> None: ...
+    @dec
+    def g(self) -> None: ...
+
+def f(x: Foo, y: Bar):
+    if bool():
+        x.f = y.f  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.f = y.g  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.g = y.f  # E: Cannot assign to a method  [method-assign]
+    if bool():
+        x.g = y.g  # E: Cannot assign to a method  [method-assign]
+
+[case type_ignore_multiple_ignores]
+# From GH #331
+str.x + undefined  # type: ignore[attr-defined]  # zuban: ignore[name-defined]
+str.x + undefined  # zuban: ignore[name-defined]  # type: ignore[attr-defined]
+
+str.x + undefined  # type: ignore  # zuban: ignore[whatever]
+str.x + undefined  # type: ignore[whatever]  # zuban: ignore
+str.x + undefined  # type: ignore  # zuban: ignore[whatever]
+str.x + undefined  # type: ignore[whatever]  # zuban: ignore
+
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore[attr-defined]
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore[attr-defined, name-defined]
+str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore
+[out]
+__main__:10: error: Name "undefined" is not defined
+__main__:10: note: Error code "name-defined" not covered by "type: ignore" comment

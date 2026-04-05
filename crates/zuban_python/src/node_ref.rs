@@ -314,14 +314,19 @@ impl<'file> NodeRef<'file> {
         self.file.tree.code_of_index(self.node_index)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
+    /// Returns false if the issue was not added
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
         self.file.add_issue(i_s, issue)
     }
 
-    pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) {
+    pub(crate) fn add_type_issue(&self, db: &Database, kind: IssueKind) -> bool {
+        if kind.is_disabled(self.file.flags(db)) {
+            return false;
+        }
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_type_issue(db, issue)
+        self.file
+            .add_issue_without_checking_for_disabled_error_codes(db, issue)
     }
 
     pub(crate) fn issue_to_str(&self, i_s: &InferenceState, kind: IssueKind) -> String {
@@ -359,7 +364,7 @@ impl<'file> NodeRef<'file> {
                 }
             }
         }
-        self.add_issue(i_s, kind)
+        self.add_issue(i_s, kind);
     }
 
     pub(crate) fn add_issue_onto_start_including_decorator(
@@ -369,9 +374,9 @@ impl<'file> NodeRef<'file> {
     ) {
         let func_node_ref = self.add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64));
         if func_node_ref.maybe_function().is_some() {
-            Function::new(func_node_ref, None).add_issue_onto_start_including_decorator(i_s, kind)
+            Function::new(func_node_ref, None).add_issue_onto_start_including_decorator(i_s, kind);
         } else {
-            self.add_issue(i_s, kind)
+            self.add_issue(i_s, kind);
         }
     }
 

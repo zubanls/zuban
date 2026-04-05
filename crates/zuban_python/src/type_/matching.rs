@@ -131,41 +131,33 @@ impl Type {
                 Type::NewType(new_type2) => (new_type1 == new_type2).into(),
                 _ => Match::new_false(),
             },
-            t1 @ Type::RecursiveType(rec1) => {
-                match value_type {
-                    t2 @ Type::Class(_) => {
-                        // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
-                        matcher.avoid_recursion(t1, t2, |matcher| {
-                            if let Some(g) = rec1.calculated_type_if_ready(i_s.db) {
-                                g.matches_internal(i_s, matcher, value_type, variance)
-                            } else {
-                                // Happens for example when creating the MRO of a class with a
-                                // tuple base class.
-                                return Match::new_false();
-                            }
-                        })
-                    }
-                    t2 @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t2, |matcher| {
-                        if let Some((t1, t2)) = rec1
-                            .calculated_type_if_ready(i_s.db)
-                            .zip(rec2.calculated_type_if_ready(i_s.db))
-                        {
-                            t1.matches_internal(i_s, matcher, t2, variance)
-                        } else {
-                            // Happens for example when creating the MRO of a class with a
-                            // tuple base class.
-                            (rec1.link == rec2.link).into()
+            original_t1 @ Type::RecursiveType(rec1) => {
+                if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
+                    match value_type {
+                        Type::Class(_) | Type::RecursiveType(_) => {
+                            // Classes like aliases can also be recursive in mypy, like
+                            // `class B(List[B])`.
+                            matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                                if let Type::RecursiveType(rec2) = value_type
+                                    && rec1.link == rec2.link
+                                    && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
+                                {
+                                    // Here we try to align the types. If they have the same link
+                                    // we should probably unpack them at the same time, because
+                                    // otherwise some TypeVars might match in weird ways and create
+                                    // weird unnecessary unions.
+                                    t1.matches(i_s, matcher, t2, variance)
+                                } else {
+                                    t1.matches(i_s, matcher, value_type, variance)
+                                }
+                            })
                         }
-                    }),
-                    _ => {
-                        if let Some(g) = rec1.calculated_type_if_ready(i_s.db) {
-                            g.matches_internal(i_s, matcher, value_type, variance)
-                        } else {
-                            // Happens for example when creating the MRO of a class with a
-                            // tuple base class.
-                            return Match::new_false();
-                        }
+                        _ => t1.matches(i_s, matcher, value_type, variance),
                     }
+                } else {
+                    // Happens for example when creating the MRO of a class with a
+                    // tuple base class.
+                    Match::new_false()
                 }
             }
             Type::Self_ => matcher.match_self(i_s, value_type, variance),
@@ -237,6 +229,13 @@ impl Type {
                 },
                 _ => Match::new_false(),
             },
+            Self::TypeForm(tf1) => match value_type {
+                Self::TypeForm(t2) | Self::Type(t2) => {
+                    tf1.matches_internal(i_s, matcher, t2, variance)
+                }
+                Self::None => tf1.matches_internal(i_s, matcher, &Self::None, variance),
+                _ => Match::new_false(),
+            },
         }
     }
 
@@ -270,19 +269,45 @@ impl Type {
                 debug!("Match covariant {got} :> {expected} -> {result:?}",)
             }
         };
+
+        if !matches!(
+            self,
+            Type::Class(_)
+                | Type::Tuple(_)
+                | Type::Dataclass(_)
+                | Type::TypedDict(_)
+                | Type::NamedTuple(_)
+        ) {
+            let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
+            if !matches!(
+                m,
+                Match::False {
+                    reason: MismatchReason::None,
+                    similar: false
+                }
+            ) {
+                debug_message_for_result(&m);
+                return m;
+            }
+            let result =
+                m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant));
+            debug_message_for_result(&result);
+            return result;
+        }
+
         let mut m = Match::new_false();
         let mut mro = value_type.mro(i_s.db);
         // Protocols contain no object in its MRO, therefore we add that here.
         mro.returned_object = false;
+
         for (i, t2) in mro {
             m = match t2 {
                 TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
                     Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
                     None => {
-                        // TODO performance: This might be slow, because it always
-                        // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
-                        // This is a bit unfortunate, especially because it loops over the
-                        // mro and allocates every time.
+                        // Performance might be slow here, since it allocates. However we have
+                        // already excluded literal/None matching above and this therefore doesn't
+                        // happen that often.
                         let t2 = c2.as_type(i_s.db);
                         self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }
@@ -315,8 +340,22 @@ impl Type {
         }
         let result = m
             .or(|| {
-                self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
+                // Check if it is a class with a protocol
+                if let Some(class1) = self.maybe_class(i_s.db)
+                    && class1.is_protocol(i_s.db)
+                {
+                    avoid_protocol_mismatch(
+                        i_s.db,
+                        self,
+                        value_type,
+                        matcher.has_type_var_matcher(),
+                        || class1.check_protocol_match(i_s, matcher, value_type),
+                    )
+                } else {
+                    Match::new_false()
+                }
             })
+            .or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant))
             .or(|| self.check_promotion(i_s, matcher, value_type));
         debug_message_for_result(&result);
         result
@@ -392,9 +431,7 @@ impl Type {
         value_type: &Self,
     ) -> Match {
         let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
-        let result = m.or(|| {
-            self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
-        });
+        let result = m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Invariant));
         if cfg!(feature = "zuban_debug") {
             let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
             debug!("Match invariant {got} ≡ {expected} -> {result:?}");
@@ -425,40 +462,22 @@ impl Type {
         }
     }
 
-    fn check_protocol_and_other_side(
+    fn check_other_side(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let mut m = Match::new_false();
-        // 2. Check if it is a class with a protocol
-        if let Some(class1) = self.maybe_class(i_s.db)
-            && class1.is_protocol(i_s.db)
-            && variance == Variance::Covariant
-        {
-            m = avoid_protocol_mismatch(
-                i_s.db,
-                self,
-                value_type,
-                matcher.has_type_var_matcher(),
-                || class1.check_protocol_match(i_s, matcher, value_type),
-            );
-            if m.bool() {
-                return m;
-            }
-        }
-        // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
-        //    again.
+        // Check if the value_type is special like Any or a Typevar and needs to be checked again.
         match value_type {
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(self, *cause);
-                return Match::True {
+                Match::True {
                     with_any: !matcher.is_matching_reverse(),
-                };
+                }
             }
-            Type::None if !i_s.flags().strict_optional => return Match::new_true(),
+            Type::None if !i_s.flags().strict_optional => Match::new_true(),
             Type::TypeVar(t2) => {
                 if let Some(match_) =
                     matcher.match_or_add_type_var_reverse_if_responsible(i_s, t2, self, variance)
@@ -467,21 +486,18 @@ impl Type {
                 }
                 if variance == Variance::Covariant {
                     match t2.type_var.kind(i_s.db) {
-                        TypeVarKind::Unrestricted => (),
+                        TypeVarKind::Unrestricted => Match::new_false(),
                         TypeVarKind::Bound(bound) => {
-                            let m = self.matches(i_s, matcher, bound, variance);
-                            if m.bool() {
-                                return m;
-                            }
+                            self.matches(i_s, matcher, bound, variance)
                         }
                         TypeVarKind::Constraints(mut constraints) => {
                             let m = constraints
                                 .all(|r| self.simple_matches(i_s, r, variance).bool());
-                            if m {
-                                return Match::new_true();
-                            }
+                            m.into()
                         }
                     }
+                } else {
+                    Match::new_false()
                 }
             }
             // Necessary to e.g. match int to Literal[1, 2]
@@ -489,24 +505,24 @@ impl Type {
                 // Union matching was already done.
                 if !self.is_union_like(i_s.db) =>
             {
-                return Match::all(u2.iter(), |t| {
+                Match::all(u2.iter(), |t| {
                     if matches!(t, Type::None)  && i_s.should_ignore_none_in_untyped_context() {
                         Match::new_true()
                     } else {
                         self.matches(i_s, matcher, t, variance)
                     }
-                });
+                })
             }
             Type::Intersection(intersection2) => {
-                return Match::any(intersection2.iter_entries(), |t| {
+                Match::any(intersection2.iter_entries(), |t| {
                     self.matches(i_s, matcher, t, variance)
                 })
             }
             Type::NewType(n2) if variance == Variance::Covariant => {
-                return self.matches(i_s, matcher, &n2.type_, variance);
+                self.matches(i_s, matcher, &n2.type_, variance)
             }
             // Never is assignable to anything
-            Type::Never(_) if variance == Variance::Covariant => return Match::new_true(),
+            Type::Never(_) if variance == Variance::Covariant => Match::new_true(),
             Type::Self_ if variance == Variance::Covariant => {
                 if matches!(self, Type::Self_) {
                     // This matching did already happen.
@@ -517,38 +533,41 @@ impl Type {
                 {
                     let replaced = replace_self();
                     // We already matched Self
-                    if replaced != Type::Self_ {
-                        return self.matches(
+                    if replaced == Type::Self_ {
+                        Match::new_false()
+                    } else {
+                        self.matches(
                             i_s,
                             matcher,
                             &replaced,
                             variance,
-                        );
+                        )
                     }
                 } else if let Some(t) = i_s.current_type() {
-                    return self.matches(i_s, matcher, &t, variance);
+                    self.matches(i_s, matcher, &t, variance)
+                } else {
+                    Match::new_false()
                 }
             }
             Type::RecursiveType(rec2) => {
                 if let Some(t2) = rec2.calculated_type_if_ready(i_s.db) {
-                    return matcher.avoid_recursion(self, value_type, |matcher| {
+                    matcher.avoid_recursion(self, value_type, |matcher| {
                         self.matches(i_s, matcher, t2, variance)
-                    });
+                    })
+                } else {
+                    Match::new_false()
                 }
             }
             Type::Module(_) => {
-                m = m.or(|| {
-                    self.matches_internal(
-                        i_s,
-                        matcher,
-                        &i_s.db.python_state.module_type(),
-                        variance,
-                    )
-                })
+                self.matches_internal(
+                    i_s,
+                    matcher,
+                    &i_s.db.python_state.module_type(),
+                    variance,
+                )
             }
-            _ => (),
+            _ => Match::new_false()
         }
-        m
     }
 
     fn matches_union(
@@ -601,13 +620,21 @@ impl Type {
                 Match::new_true()
             }
             _ => {
-                if let Type::TypeVar(type_var2) = value_type
-                    && matcher.is_matching_reverse()
-                {
-                    if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
-                        i_s, type_var2, self, variance,
-                    ) {
-                        return matched;
+                if let Type::TypeVar(type_var2) = value_type {
+                    if matcher.is_matching_reverse() {
+                        if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
+                            i_s, type_var2, self, variance,
+                        ) {
+                            return matched;
+                        }
+                    }
+                    // It is possible for bounds to be unions and we therefore need to be able to
+                    // match int | str against a TypeVar with the same bound.
+                    if let TypeVarKind::Bound(bound) = type_var2.type_var.kind(i_s.db)
+                        && let m = self.matches_union(i_s, matcher, u1, bound, variance)
+                        && m.bool()
+                    {
+                        return m;
                     }
                 }
                 match variance {
@@ -738,6 +765,13 @@ impl Type {
                             .into(),
                             MetaclassState::None => Match::new_false(),
                         }
+                        .or(|| {
+                            // x: GenericAlias = list[int] is fine
+                            (class1.node_ref == i_s.db.python_state.generic_alias_node_ref()
+                                && matches!(c2.generics, ClassGenerics::List(_))
+                                && variance == Variance::Covariant)
+                                .into()
+                        })
                     }
                     _ => Match::new_false(),
                 };
@@ -873,7 +907,7 @@ impl Type {
                 Match::new_true()
             }
             Type::Any(_) => {
-                // Return false, because this case is handled in check_protocol_and_other_side.
+                // Return false, because this case is handled in check_other_side.
                 // We have to handle this to avoid expanding types below in maybe_callable and
                 // recursing, if the return value is a recursive type definition.
                 Match::new_false()
@@ -991,7 +1025,7 @@ fn match_tuple_type_arguments_internal(
             match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
         }
         (FixedLen(_), WithUnpack(_)) => Match::new_false(),
-        (FixedLen(_), ArbitraryLen(t2)) => t2.is_any().into(),
+        (FixedLen(_), ArbitraryLen(t2)) => Match::from_bool_into_any_match(t2.is_any()),
         (ArbitraryLen(t1), FixedLen(ts2)) => {
             if variance == Variance::Invariant {
                 return matches!(t1.as_ref(), Type::Any(_)).into();

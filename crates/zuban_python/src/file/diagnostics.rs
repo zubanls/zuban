@@ -37,7 +37,7 @@ use crate::{
         FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
         NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
         TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
-        ensure_calculated_dataclass, format_callable_params, merge_class_type_vars,
+        ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -183,7 +183,7 @@ impl Inference<'_, '_, '_> {
             }
 
             if let Some(name_ref) = self.file.lookup_symbol("__getattribute__") {
-                name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
+                name_ref.add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel);
             }
             if let Some(name_ref) = self.file.lookup_symbol("__getattr__") {
                 let actual = name_ref.infer_name_of_definition_by_index(self.i_s);
@@ -203,7 +203,7 @@ impl Inference<'_, '_, '_> {
                             type_: actual.format_short(self.i_s.db),
                             special_method: "__getattr__",
                         },
-                    )
+                    );
                 }
             }
         })
@@ -223,7 +223,7 @@ impl Inference<'_, '_, '_> {
                             self.add_issue(
                                 annotation.index(),
                                 IssueKind::ProtocolMemberCannotBeFinal,
-                            )
+                            );
                         }
                         false
                     }
@@ -348,7 +348,7 @@ impl Inference<'_, '_, '_> {
                             end_position,
                             IssueKind::UnreachableStatement,
                         ),
-                    )
+                    );
                 })
             });
         }
@@ -446,7 +446,7 @@ impl Inference<'_, '_, '_> {
                             Point::new_specific(Specific::AnyDueToError, Locality::File),
                         );
                     }
-                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel)
+                    self.add_issue(global.index(), IssueKind::GlobalAtModuleLevel);
                 }
             }
             StmtLikeContent::NonlocalStmt(_) => {}
@@ -813,7 +813,7 @@ impl Inference<'_, '_, '_> {
                         IssueKind::AlreadyDefinedTypeParameter {
                             name: name_def.as_code().into(),
                         },
-                    )
+                    );
                 }
             }
         }
@@ -848,7 +848,7 @@ impl Inference<'_, '_, '_> {
                         IssueKind::AlreadyDefinedTypeParameter {
                             name: name_def.as_code().into(),
                         },
-                    )
+                    );
                 }
             }
         }
@@ -964,7 +964,9 @@ impl Inference<'_, '_, '_> {
         let class_infos = class_node_ref.use_cached_class_infos(db);
 
         let type_vars = class_node_ref.use_cached_type_vars(db);
-        type_vars.add_error_if_default_after_type_var_tuple(|issue| c.add_issue_on_name(db, issue));
+        type_vars.add_error_if_default_after_type_var_tuple(|issue| {
+            c.add_issue_on_name(db, issue);
+        });
 
         if let Some(t) = class_infos.undefined_generics_type.get() {
             match t.as_ref() {
@@ -976,7 +978,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::DataclassPlusExplicitSlots {
                                 class_name: c.name().into(),
                             },
-                        )
+                        );
                     }
                 }
                 Type::Enum(e) => {
@@ -1002,7 +1004,7 @@ impl Inference<'_, '_, '_> {
                                             actual: actual.format_short(self.i_s),
                                             expected: expected.format_short(self.i_s),
                                         },
-                                    )
+                                    );
                                 }
                             }
                         }
@@ -1068,6 +1070,11 @@ impl Inference<'_, '_, '_> {
         let add_issue_to_arguments =
             |issue| NodeRef::new(self.file, arguments.unwrap().index()).add_issue(self.i_s, issue);
         for base in class_infos.base_types() {
+            if matches!(base, Type::NamedTuple(_)) {
+                // NamedTuple class definitions are special and don't need to be checked, because
+                // they essentially inherit the TypeVars.
+                continue;
+            }
             check_type_var_variance_for_base(
                 self.i_s,
                 c.node_ref.as_link(),
@@ -1110,7 +1117,7 @@ impl Inference<'_, '_, '_> {
                     IssueKind::InvalidSlotsDefinition {
                         actual: t.format_short(i_s.db),
                     },
-                )
+                );
             }
         }
         if let Some(node_index) = c
@@ -1139,7 +1146,7 @@ impl Inference<'_, '_, '_> {
             };
             if !is_ok {
                 NodeRef::new(self.file, node_index)
-                    .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs)
+                    .add_issue(&i_s, IssueKind::InvalidDunderMatchArgs);
             }
         }
         match class_infos.kind {
@@ -1162,7 +1169,7 @@ impl Inference<'_, '_, '_> {
                                 object: format!("\"{}\"", c.name()).into(),
                                 name: name.into(),
                             },
-                        )
+                        );
                     }
                 }
                 if type_params.is_none() {
@@ -1182,7 +1189,7 @@ impl Inference<'_, '_, '_> {
                             NodeRef::new(self.file, in_class_same_name_index).add_type_issue(
                                 self.i_s.db,
                                 IssueKind::NamedTupleOverwriteInSubclass,
-                            )
+                            );
                         }
                     }
                 }
@@ -1196,7 +1203,8 @@ impl Inference<'_, '_, '_> {
             self.i_s,
             "__init_subclass__",
             ClassLookupOptions::new(&|issue| {
-                debug!("TODO __init_subclass__ error ignored: {issue:?}")
+                debug!("TODO __init_subclass__ error ignored: {issue:?}");
+                false
             })
             .with_ignore_self(),
         );
@@ -1337,7 +1345,7 @@ impl Inference<'_, '_, '_> {
             let original_details = c.lookup(
                 i_s,
                 name,
-                ClassLookupOptions::new(&|_| ()).with_ignore_self(),
+                ClassLookupOptions::new(&|_| false).with_ignore_self(),
             );
             add_error_if_final(i_s, from, name, &original_details);
             return;
@@ -1518,9 +1526,8 @@ impl Inference<'_, '_, '_> {
                         cls.generics = Generics::NotDefinedYet {
                             class_ref: class.node_ref,
                         };
-                        *c = Cow::Owned(merge_class_type_vars(
+                        *c = Cow::Owned(c.merge_class_type_vars(
                             i_s.db,
-                            c,
                             cls,
                             cls,
                             &TypeOrClass::Class(cls),
@@ -1627,7 +1634,7 @@ impl Inference<'_, '_, '_> {
             function.add_issue_onto_start_including_decorator(
                 i_s,
                 IssueKind::ProtocolMemberCannotBeFinal,
-            )
+            );
         }
 
         if NodeRef::new(self.file, body.index()).point().specific()
@@ -1641,27 +1648,21 @@ impl Inference<'_, '_, '_> {
         {
             let ret_type = function.expected_return_type_for_return_stmt(i_s);
             let has_trivial_body = function.has_trivial_body(i_s);
-            let maybe_add_async = || {
-                if has_trivial_body
+            let maybe_async_note = || {
+                (has_trivial_body
                     && function
                         .class
                         .and_then(|c| c.maybe_metaclass(i_s.db))
-                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link())
-                {
-                    self.add_issue(
-                        name_def.index(),
-                        IssueKind::Note(
-                            "If the method is meant to be abstract, use @abc.abstractmethod".into(),
-                        ),
-                    );
-                }
+                        .is_some_and(|metaclass| metaclass == i_s.db.python_state.abc_meta_link()))
+                .then_some("If the method is meant to be abstract, use @abc.abstractmethod")
             };
             if matches!(ret_type.as_ref(), Type::Never(_)) {
                 self.add_issue(
                     name_def.index(),
-                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
+                    IssueKind::ImplicitReturnInFunctionWithNeverReturn {
+                        note: maybe_async_note(),
+                    },
                 );
-                maybe_add_async()
             } else {
                 let is_valid = ret_type.is_simple_super_type_of(i_s, &Type::None).bool();
                 if self.flags().warn_no_return {
@@ -1678,9 +1679,9 @@ impl Inference<'_, '_, '_> {
                                 } else {
                                     "return"
                                 },
+                                note: maybe_async_note(),
                             },
                         );
-                        maybe_add_async()
                     }
                 } else if !is_valid {
                     if has_trivial_body {
@@ -1693,18 +1694,18 @@ impl Inference<'_, '_, '_> {
                                     } else {
                                         "return"
                                     },
+                                    note: maybe_async_note(),
                                 },
                             );
-                            maybe_add_async()
                         }
                     } else {
                         self.add_issue(
                             name_def.index(),
                             IssueKind::IncompatibleImplicitReturn {
                                 expected: ret_type.format_short(i_s.db),
+                                note: maybe_async_note(),
                             },
                         );
-                        maybe_add_async()
                     }
                 }
             }
@@ -1731,8 +1732,7 @@ impl Inference<'_, '_, '_> {
                 });
             if let Some(first_param) = first_param {
                 if let Some(annotation) = first_param.annotation() {
-                    let undefined_generics_class = Class::with_undefined_generics(class.node_ref);
-                    let mut class_t = undefined_generics_class.as_type(i_s.db);
+                    let mut class_t = class.as_type_with_erased_type_vars(i_s.db);
                     let original_self_t = self.use_cached_param_annotation_type(annotation);
                     let mut new = None;
                     let mut self_t = original_self_t.clone();
@@ -1812,7 +1812,7 @@ impl Inference<'_, '_, '_> {
                                                 type_var_like: type_var_like.clone(),
                                                 class_name: class.name().into(),
                                             },
-                                        )
+                                        );
                                     }
                                 }
                             }
@@ -1822,7 +1822,7 @@ impl Inference<'_, '_, '_> {
             } else if !was_star {
                 function
                     .node_ref
-                    .add_issue(i_s, IssueKind::MethodWithoutArguments)
+                    .add_issue(i_s, IssueKind::MethodWithoutArguments);
             }
         }
 
@@ -1963,24 +1963,30 @@ impl Inference<'_, '_, '_> {
                 match &callable.return_type {
                     Type::Class(_) => {
                         let t = &callable.return_type;
-                        if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
+                        if !class
+                            .as_type_with_erased_type_vars(i_s.db)
+                            .is_simple_super_type_of(i_s, t)
+                            .bool()
+                        {
                             self.add_issue(
                                 return_annotation.index(),
                                 IssueKind::NewIncompatibleReturnType {
                                     returns: t.format_short(i_s.db),
                                     must_return: class.format_short(i_s.db),
                                 },
-                            )
+                            );
                         }
                     }
                     Type::Type(_) | Type::Any(_) | Type::Never(_) => (),
                     Type::Enum(e) if e.class == class.node_ref.as_link() => (),
-                    t => self.add_issue(
-                        return_annotation.index(),
-                        IssueKind::NewMustReturnAnInstance {
-                            got: t.format_short(i_s.db),
-                        },
-                    ),
+                    t => {
+                        self.add_issue(
+                            return_annotation.index(),
+                            IssueKind::NewMustReturnAnInstance {
+                                got: t.format_short(i_s.db),
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -2005,7 +2011,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::MustReturnNone {
                                 function_name: function.name().into(),
                             },
-                        )
+                        );
                     }
                 }
                 "exit" => {
@@ -2029,7 +2035,7 @@ impl Inference<'_, '_, '_> {
                                 type_: func_type.format_short(self.i_s.db),
                                 special_method: "__getattr__",
                             },
-                        )
+                        );
                     }
                 }
                 _ => {
@@ -2124,7 +2130,7 @@ impl Inference<'_, '_, '_> {
                             IssueKind::ReturnedAnyWarning {
                                 expected: t.format_short(i_s.db),
                             },
-                        )
+                        );
                     }
 
                     t.error_if_not_matches(
@@ -2289,7 +2295,7 @@ impl Inference<'_, '_, '_> {
                         .as_type(i_s, FirstParamProperties::None)
                         .format_short(i_s.db),
                 },
-            )
+            );
         };
 
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
@@ -2322,7 +2328,7 @@ impl Inference<'_, '_, '_> {
             &mut ResultContext::ValueExpected,
             // Theoretically this should not be ignored, but for now I'm not sure if self types are
             // working anyway.
-            &|_| (),
+            &|_| false,
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
@@ -2373,7 +2379,7 @@ impl Inference<'_, '_, '_> {
                                 reverse_class: func.class.unwrap().format_short(i_s.db),
                                 forward_class: forward.format_short(i_s.db),
                             },
-                        )
+                        );
                     }
                 };
                 match lookup_details.lookup.into_inferred().as_type(i_s) {
@@ -2384,12 +2390,14 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                     Type::Any(_) | Type::CustomBehavior(_) => (),
-                    _ => from.add_issue(
-                        i_s,
-                        IssueKind::ForwardOperatorIsNotCallable {
-                            forward_name: normal_magic,
-                        },
-                    ),
+                    _ => {
+                        from.add_issue(
+                            i_s,
+                            IssueKind::ForwardOperatorIsNotCallable {
+                                forward_name: normal_magic,
+                            },
+                        );
+                    }
                 }
             },
         )
@@ -2401,22 +2409,30 @@ impl Inference<'_, '_, '_> {
             return;
         };
         let instance = func.class.unwrap().instance();
-        let options = InstanceLookupOptions::new(&|_| ()).with_avoid_inferring_return_types();
-        let normal_method = instance.lookup(i_s, normal_magic_name, options).lookup;
-        if let Some(normal_inf) = normal_method.into_maybe_inferred() {
+        let options = InstanceLookupOptions::new(&|_| false).with_avoid_inferring_return_types();
+        let normal_method = instance.lookup(i_s, normal_magic_name, options);
+        if let Some(normal_inf) = normal_method.lookup.into_maybe_inferred() {
             let inplace_method = instance.lookup(i_s, func.name(), options).lookup;
             if !normal_inf
                 .as_cow_type(i_s)
                 .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
                 .bool()
             {
+                // Make sure these signature mismatches have the same error codes as Mypy
                 func.add_issue_for_declaration(
                     self.i_s,
                     IssueKind::SignaturesAreIncompatible {
                         name1: func.name().into(),
                         name2: normal_magic_name,
+                        code: if let Some(mro_index) = normal_method.mro_index
+                            && mro_index.0 == 0
+                        {
+                            "misc"
+                        } else {
+                            "override"
+                        },
                     },
-                )
+                );
             }
         }
     }
@@ -2512,7 +2528,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
                     IssueKind::AsyncNotIterable {
                         type_: t.format_short(i_s.db),
                     },
-                )
+                );
             },
         )
         .type_lookup_and_execute_with_attribute_error(
@@ -2629,14 +2645,19 @@ fn find_and_check_override(
     let instance = Instance::new(override_class, None);
     let add_lookup_issue = |_issue| {
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
+        false
     };
+    let mut lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
+        .with_skip_first_of_mro(i_s.db, &override_class)
+        .with_avoid_inferring_return_types();
+    if instance.class.is_protocol(i_s.db) {
+        lookup_options = lookup_options.without_object();
+    }
     let mut original_details = instance.lookup(
         i_s,
         name,
         // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-        InstanceLookupOptions::new(&add_lookup_issue)
-            .with_skip_first_of_mro(i_s.db, &override_class)
-            .with_avoid_inferring_return_types(),
+        lookup_options,
     );
     add_error_if_final(i_s, from, name, &original_details);
 
@@ -2691,7 +2712,7 @@ fn find_and_check_override(
         let issue = IssueKind::MissingBaseForOverride { name: name.into() };
         // For whatever reason, this is how Mypy does it and we don't want to screw up the line
         // numbers
-        let lookup = override_class.simple_lookup(i_s, |_| (), name);
+        let lookup = override_class.simple_lookup(i_s, |_| false, name);
         if matches!(
             lookup.into_inferred().as_type(i_s),
             Type::FunctionOverload(_)
@@ -2784,7 +2805,7 @@ pub(super) fn check_override(
                     from.add_issue_onto_start_including_decorator(
                         i_s,
                         IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
-                    )
+                    );
                 }
             // TODO we should not need to check if we are in a frozen dataclass, the attr kind
             // should never be writable in the first place!
@@ -2792,7 +2813,7 @@ pub(super) fn check_override(
                 from.add_issue(
                     i_s,
                     IssueKind::ReadOnlyPropertyCannotOverwriteWritableAttribute,
-                )
+                );
             }
         }
         (Classmethod { .. } | Staticmethod { .. }, DefMethod { .. }) => {
@@ -2800,18 +2821,22 @@ pub(super) fn check_override(
             // and instance, others not.
             match_ = Match::new_false();
         }
-        (ClassVar, AnnotatedAttribute) => from.add_issue(
-            i_s,
-            IssueKind::CannotOverrideClassVariableWithInstanceVariable {
-                base_class: original_class_name(&original_class),
-            },
-        ),
-        (AnnotatedAttribute, ClassVar) => from.add_issue(
-            i_s,
-            IssueKind::CannotOverrideInstanceVariableWithClassVariable {
-                base_class: original_class_name(&original_class),
-            },
-        ),
+        (ClassVar, AnnotatedAttribute) => {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotOverrideClassVariableWithInstanceVariable {
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        }
+        (AnnotatedAttribute, ClassVar) => {
+            from.add_issue(
+                i_s,
+                IssueKind::CannotOverrideInstanceVariableWithClassVariable {
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        }
         _ => (),
     }
     let mut added_liskov_note = false;
@@ -2824,13 +2849,23 @@ pub(super) fn check_override(
         {
             let issue = IssueKind::CannotOverrideWritableWithFinalAttribute { name: name.into() };
             if let Some(func) = maybe_func() {
-                func.add_issue_onto_start_including_decorator(i_s, issue)
+                func.add_issue_onto_start_including_decorator(i_s, issue);
             } else {
                 from.add_issue(i_s, issue);
             }
         }
     } else {
         let db = i_s.db;
+        let incompatible_subclass_assignment = || {
+            from.add_issue(
+                i_s,
+                IssueKind::IncompatibleAssignmentInSubclass {
+                    got: override_t.format_short(i_s.db),
+                    expected: original_t.format_short(i_s.db),
+                    base_class: original_class_name(&original_class),
+                },
+            );
+        };
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
@@ -2891,7 +2926,9 @@ pub(super) fn check_override(
                                 from.file
                                     .add_issue(i_s, Issue::from_start_stop(s.start, s.end, issue));
                             }
-                            _ => from.add_issue(i_s, issue),
+                            _ => {
+                                from.add_issue(i_s, issue);
+                            }
                         }
                         emitted = true;
                     }
@@ -2921,14 +2958,13 @@ pub(super) fn check_override(
                         async_note,
                     };
                     if let Some(func) = maybe_func() {
-                        func.add_issue_for_declaration(i_s, issue)
+                        func.add_issue_for_declaration(i_s, issue);
                     } else {
                         from.add_issue(i_s, issue);
                     }
                     emitted = true
                 }
             }
-            Some(OverrideFuncInfos::Mixed) => (),
             Some(OverrideFuncInfos::BothOverloads(got, expected)) => {
                 let mut previous_match_right_index = 0;
                 'outer: for c1 in expected.iter_functions() {
@@ -2956,15 +2992,13 @@ pub(super) fn check_override(
             }
             None => {
                 emitted = true;
-                from.add_issue(
-                    i_s,
-                    IssueKind::IncompatibleAssignmentInSubclass {
-                        got: override_t.format_short(i_s.db),
-                        expected: original_t.format_short(i_s.db),
-                        base_class: original_class_name(&original_class),
-                    },
-                )
+                incompatible_subclass_assignment()
             }
+            Some(OverrideFuncInfos::Mixed) if override_lookup_details.attr_kind.is_attribute() => {
+                emitted = true;
+                incompatible_subclass_assignment()
+            }
+            Some(OverrideFuncInfos::Mixed) => (),
         }
         if !emitted {
             let mut notes = vec![];
@@ -2983,7 +3017,7 @@ pub(super) fn check_override(
                         .lookup(
                             i_s,
                             name,
-                            ClassLookupOptions::new(&|_| ()).with_super_count(
+                            ClassLookupOptions::new(&|_| false).with_super_count(
                                 original_lookup_details
                                     .mro_index
                                     .map(|m| m.0 as usize)
@@ -3006,7 +3040,7 @@ pub(super) fn check_override(
                     &mut notes,
                     &i_s.with_class_context(&override_class),
                     override_t,
-                    override_class.simple_lookup(i_s, |_| (), name),
+                    override_class.simple_lookup(i_s, |_| false, name),
                 );
             }
 
@@ -3023,7 +3057,7 @@ pub(super) fn check_override(
                 notes: notes.into(),
             };
             if let Some(func) = maybe_func() {
-                func.add_issue_for_declaration(i_s, issue)
+                func.add_issue_for_declaration(i_s, issue);
 
             // This condition is so weird, but we try to be close to Mypy
             } else if matches!(override_t, Type::FunctionOverload(_))
@@ -3037,7 +3071,7 @@ pub(super) fn check_override(
             {
                 from.add_issue_onto_start_including_decorator(i_s, issue)
             } else {
-                from.add_issue(i_s, issue)
+                from.add_issue(i_s, issue);
             }
         }
     }
@@ -3070,7 +3104,7 @@ fn check_property_setter_override(
         from.add_issue_and_prefer_on_setter_decorator(
             i_s,
             IssueKind::IncompatiblePropertySetterOverride { notes },
-        )
+        );
     }
 }
 
@@ -3209,7 +3243,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                     actual_variance: tv_variance,
                     expected_variance,
                 },
-            )
+            );
         }
     }
 }
@@ -3218,7 +3252,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
     i_s: &InferenceState,
     bases: impl Fn() -> BASES,
     should_check: impl Fn(&str) -> bool,
-    mut add_issue: impl FnMut(IssueKind),
+    mut add_issue: impl FnMut(IssueKind) -> bool,
 ) {
     let db = i_s.db;
     let should_infer_untyped_params = db.project.should_infer_untyped_params();
@@ -3259,7 +3293,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                     // it.
                     InstanceLookupOptions::new(&|issue| {
                         debug!("Multi inheritance bind issue(inst2) on name {name}: {issue:?}");
-                        had_lookup_issue.set(true)
+                        had_lookup_issue.set(true);
+                        false
                     })
                     .with_avoid_inferring_return_types()
                     .without_object(),
@@ -3269,7 +3304,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         name: name.into(),
                         class1: cls1.name().into(),
                         class2: instance2.class.name().into(),
-                    })
+                    });
                 };
                 if had_lookup_issue.get() {
                     add_multi_inheritance_issue();
@@ -3282,7 +3317,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         name,
                         InstanceLookupOptions::new(&|issue| {
                             debug!("Multi inheritance bind issue(inst1) on name {name}: {issue:?}");
-                            had_lookup_issue.set(true)
+                            had_lookup_issue.set(true);
+                            false
                         })
                         .with_avoid_inferring_return_types(),
                     );
@@ -3329,7 +3365,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                             )
                             .bool()
                         {
-                            add_multi_inheritance_issue()
+                            add_multi_inheritance_issue();
                         } else if !inst1_lookup.attr_kind.is_writable()
                             && inst2_lookup.attr_kind.is_writable()
                         {
@@ -3358,7 +3394,7 @@ fn check_type_var_variance_for_base(
     in_definition: PointLink,
     type_vars: &TypeVarLikes,
     base: &Type,
-    mut add_issue: impl FnMut(IssueKind),
+    mut add_issue: impl FnMut(IssueKind) -> bool,
 ) {
     for (i, check_type_var) in type_vars.iter().enumerate() {
         let TypeVarLike::TypeVar(tv) = check_type_var else {
@@ -3402,7 +3438,7 @@ fn check_for_missing_annotations(
     if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation {
         let has_args = || function.iter_non_self_args(i_s).next().is_some();
         if !has_return_type && !has_param_annotations && has_args() {
-            function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped)
+            function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped);
         } else {
             if !has_return_type || return_annotation.is_none() && !has_args() {
                 function.add_issue_for_declaration(

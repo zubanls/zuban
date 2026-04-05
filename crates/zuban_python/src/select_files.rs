@@ -122,7 +122,7 @@ impl<'db> FileSelector<'db> {
     }
 
     fn search_all_typechecked_files(&mut self) {
-        for entries in self.db.vfs.workspaces.entries_to_type_check() {
+        for entries in self.db.vfs.workspaces.load().entries_to_type_check() {
             self.handle_entries(entries)
         }
     }
@@ -156,7 +156,7 @@ impl<'db> FileSelector<'db> {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),
                             None => {
-                                for workspace in self.db.vfs.workspaces.iter() {
+                                for workspace in self.db.vfs.workspaces.load().iter() {
                                     if workspace.root_path_starts_with(&normalized) {
                                         self.handle_entries(&workspace.entries)
                                     }
@@ -178,7 +178,7 @@ impl<'db> FileSelector<'db> {
 
             if !not_yet_checked_globs.is_empty() {
                 self.added_file = false;
-                for entries in self.db.vfs.workspaces.entries_to_type_check() {
+                for entries in self.db.vfs.workspaces.load().entries_to_type_check() {
                     entries.walk_entries(&self.db.vfs, &mut |in_dir, entry| {
                         let path = match entry {
                             DirectoryEntry::File(file) => file.absolute_path(vfs_handler),
@@ -261,7 +261,7 @@ impl<'db> FileSelector<'db> {
     fn handle_entries(&mut self, entries: &Entries) {
         let mut need_to_drop_gitignore = false;
         if self.db.project.settings.exclude_gitignore
-            && let Some(gitignore) = entries.iter().into_iter().find_map(|e| match e {
+            && let Some(gitignore) = entries.borrow().iter().find_map(|(_, e)| match e {
                 DirectoryEntry::Gitignore(gitignore) => Some(gitignore.clone()),
                 _ => None,
             })
@@ -270,7 +270,7 @@ impl<'db> FileSelector<'db> {
             need_to_drop_gitignore = true
         }
 
-        for entry in &entries.iter() {
+        for (_, entry) in entries.borrow().iter() {
             self.handle_entry(entries, entry)
         }
 

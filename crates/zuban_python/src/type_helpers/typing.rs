@@ -454,7 +454,9 @@ impl Type {
                 )
             }
             (Type::Literal(l1), Type::Literal(l2)) => l1.value(db) == l2.value(db),
-            (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l)) => {
+            (Type::Literal(l), Type::Class(c)) | (Type::Class(c), Type::Literal(l))
+                if db.mypy_compatible() =>
+            {
                 l.implicit && l.fallback_node_ref(db).as_link() == c.link
             }
             (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,
@@ -480,6 +482,7 @@ impl Type {
                 m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
             }
             (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
+            (Type::TypeForm(t1), Type::TypeForm(t2)) => eq(t1, t2),
             _ => self == other,
         }
     }

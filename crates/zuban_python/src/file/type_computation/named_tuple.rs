@@ -76,7 +76,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
             let StarLikeExpression::NamedExpression(type_expr) = second else {
                 self.name_resolution.add_issue(
                     name_expr.index(),
-                    IssueKind::InvalidType("Star args are not supported".into()),
+                    IssueKind::new_invalid_type("Star args are not supported"),
                 );
                 return None;
             };
@@ -332,10 +332,12 @@ pub(crate) fn new_collections_named_tuple<'db>(
                     },
                 );
             }
-            _ => arg.add_issue(
-                i_s,
-                IssueKind::TooManyArguments(r#" for "namedtuple""#.into()),
-            ),
+            _ => {
+                arg.add_issue(
+                    i_s,
+                    IssueKind::TooManyArguments(r#" for "namedtuple""#.into()),
+                );
+            }
         }
     }
 
@@ -449,21 +451,21 @@ fn is_identifier(s: &str) -> bool {
     chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
-pub fn add_named_tuple_param(
+fn add_named_tuple_param(
     named_tuple: &'static str,
     db: &Database,
     params: &mut Vec<CallableParam>,
     field_name: StringSlice,
     t: Type,
     rename: bool,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
 ) {
     let name_str = field_name.as_str(db);
     let mut field_name = field_name.into();
     let mut add_and_change = |issue| {
         field_name = DbString::ArcStr(Arc::from(format!("_{}", params.len() - 1)));
         if !rename {
-            add_issue(issue)
+            add_issue(issue);
         }
     };
     if params.iter().any(|param| {

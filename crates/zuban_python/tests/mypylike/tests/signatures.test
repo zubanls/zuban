@@ -114,3 +114,20 @@ __main__.py:8:call signatures:
 - "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(0); param offsets: ["(1, 9)", "(16, 18)"]
 __main__.py:10:call signatures:
 - "(ä𐍈ä: int, yz: int) -> None", valid with params: true, on nth param: Some(1); param offsets: ["(1, 9)", "(16, 18)"]
+
+[case signatures_for_invalid_code]
+# flags: --no-typecheck
+import sys
+
+def foo(xyz) -> None: ...
+
+#? signatures
+foo(sys.path
+def breaker(): ...
+#? signatures
+foo(xyz=
+[out]
+__main__.py:7:call signatures:
+- "(xyz: Any) -> None", valid with params: true, on nth param: Some(0)
+__main__.py:10:call signatures:
+- "(xyz: Any) -> None", valid with params: true, on nth param: Some(0)

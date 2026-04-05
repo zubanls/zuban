@@ -20,3 +20,39 @@ def f(x: Foo):
 
     x.not_nullable = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str | int | Combinable")
     x.nullable = None
+
+[case django_id_attributes]
+# From GH #332
+from django.db import models
+class Musician(models.Model):
+    name = models.CharField(max_length=100)
+
+class Composer(models.Model):
+    name = models.CharField(max_length=100)
+
+class Album(models.Model):
+    artist = models.ForeignKey(Musician, on_delete=models.CASCADE, null=True)
+    composer = models.ForeignKey(Composer, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+
+def f(album: Album):
+    reveal_type(album.artist.pk) if album.artist else None  # N: Revealed type is "Any"
+    reveal_type(album.artist_id)  # N: Revealed type is "Any"
+    reveal_type(album.composer_id)  # N: Revealed type is "Any"
+    reveal_type(album.composer.pk)  # N: Revealed type is "Any"
+    reveal_type(album.artist.id) if album.artist else None  # N: Revealed type is "Any"
+    reveal_type(album.composer.id)  # N: Revealed type is "Any"
+
+    album.name_id  # E: "Album" has no attribute "name_id"
+
+    #? complete
+    album.artist
+    #? complete
+    album.composer
+    #? complete
+    album.name
+
+[out]
+__main__.py:25:complete -> [artist, artist_id]
+__main__.py:27:complete -> [composer, composer_id]
+__main__.py:29:complete -> [name]

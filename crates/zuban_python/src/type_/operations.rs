@@ -26,8 +26,8 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue, NamedTuple,
-        TupleUnpack,
+        ClassGenerics, DbBytes, DbString, Intersection, Literal, LiteralKind, LiteralValue,
+        NamedTuple, TupleUnpack,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, Function, Instance, InstanceLookupOptions,
@@ -43,7 +43,7 @@ impl Type {
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
         self.lookup_with_first_attr_kind(
@@ -65,7 +65,7 @@ impl Type {
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         on_lookup_error: OnLookupError,
     ) -> (LookupResult, AttributeKind) {
         let mut result: Option<(LookupResult, AttributeKind)> = None;
@@ -129,7 +129,7 @@ impl Type {
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let options = || {
@@ -481,7 +481,7 @@ impl Type {
                     i: &Intersection,
                     i_s: &InferenceState,
                     from_file: &PythonFile,
-                    add_issue: &dyn Fn(IssueKind),
+                    add_issue: &dyn Fn(IssueKind) -> bool,
                     name: &str,
                     kind: LookupKind,
                     result_context: &mut ResultContext,
@@ -524,6 +524,10 @@ impl Type {
                 );
                 callable(self, l)
             }
+            Type::TypeForm(_) => {
+                let inst = i_s.db.python_state.object_class().instance();
+                callable(self, inst.lookup(i_s, name, options()))
+            }
         }
     }
 
@@ -545,7 +549,7 @@ impl Type {
         from_inferred: Option<&Inferred>,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Inferred {
         let not_possible = |is_class_like| {
             if is_class_like {
@@ -695,7 +699,7 @@ impl Type {
             None,
             slice_type,
             &mut ResultContext::ValueExpected,
-            &|_| (),
+            &|_| false,
         )
     }
 
@@ -732,6 +736,7 @@ impl Type {
                         // not complain with the lint that a None return does not make sense,
                         // because it can be some other type.
                         Type::Callable(c) => c.return_type != Type::None,
+                        Type::Any(_) => true,
                         _ => false,
                     }) {
                     &mut ResultContext::Unknown
@@ -792,6 +797,14 @@ impl Type {
             }
             Type::DataclassTransformObj(d) => {
                 Inferred::from_type(Type::DataclassTransformObj(d.clone()))
+            }
+            Type::Self_ => {
+                if let Some(current_type) = i_s.current_type() {
+                    current_type.execute(i_s, None, args, result_context, on_type_error)
+                } else {
+                    recoverable_error!("Had no context self for execute");
+                    Inferred::new_any_from_error()
+                }
             }
             _ => not_callable(),
         }
@@ -859,7 +872,7 @@ impl Type {
         db: &Database,
         operand: &str,
         right: &Literal,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Option<Type> {
         match self {
             Type::Literal(left) => {
@@ -920,7 +933,7 @@ impl LiteralValue<'_> {
         db: &Database,
         operand: &str,
         right: Self,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Option<Type> {
         const MAX_STR_BYTES_SIZE_FOR_MULTIPLICATION: usize = 1024 * 16;
         match (self, right) {
@@ -990,7 +1003,7 @@ fn int_operations(
     left: i64,
     operand: &str,
     right: i64,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
 ) -> Option<Type> {
     let result = match operand {
         "+" => left.checked_add(right),
@@ -1102,7 +1115,7 @@ fn bool_operations(
     left: bool,
     operand: &str,
     right: bool,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
 ) -> Option<Type> {
     let result = match operand {
         "|" => left | right,
@@ -1127,14 +1140,14 @@ pub(crate) struct IterInfos<'x> {
     from: NodeRef<'x>,
     cause: IterCause,
     in_union: Option<&'x Type>,
-    pub add_issue: &'x dyn Fn(IssueKind),
+    pub add_issue: &'x dyn Fn(IssueKind) -> bool,
 }
 
 impl<'x> IterInfos<'x> {
     pub(crate) fn new(
         from: NodeRef<'x>,
         cause: IterCause,
-        add_issue: &'x dyn Fn(IssueKind),
+        add_issue: &'x dyn Fn(IssueKind) -> bool,
     ) -> IterInfos<'x> {
         Self {
             from,
@@ -1161,12 +1174,12 @@ impl<'x> IterInfos<'x> {
                 }
             }
             IterCause::VariadicUnpack => IssueKind::IterableExpectedAsVariadicArgs,
-        })
+        });
     }
 
     pub(crate) fn with_different_add_issue<'y: 'x>(
         &'y self,
-        add_issue: &'y dyn Fn(IssueKind),
+        add_issue: &'y dyn Fn(IssueKind) -> bool,
     ) -> IterInfos<'y> {
         Self { add_issue, ..*self }
     }
@@ -1186,14 +1199,14 @@ impl<'x> IterInfos<'x> {
         NoArgs::new_with_custom_add_issue(self.from, self.add_issue)
     }
 
-    pub fn add_issue(&self, issue: IssueKind) {
+    pub fn add_issue(&self, issue: IssueKind) -> bool {
         (self.add_issue)(issue)
     }
 }
 
 fn attribute_access_of_type(
     i_s: &InferenceState,
-    add_issue: &dyn Fn(IssueKind),
+    add_issue: &dyn Fn(IssueKind) -> bool,
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,
@@ -1246,11 +1259,23 @@ fn attribute_access_of_type(
             },
             _ => LookupDetails::none(),
         },
-        Type::Class(g) => g.class(i_s.db).lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&add_issue).with_kind(kind),
-        ),
+        Type::Class(g) => g
+            .class(i_s.db)
+            .lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&add_issue).with_kind(kind),
+            )
+            .or_else(|| {
+                if matches!(g.generics, ClassGenerics::List(_)) {
+                    return i_s.db.python_state.generic_alias_class().lookup(
+                        i_s,
+                        name,
+                        ClassLookupOptions::new(&add_issue).with_kind(kind),
+                    );
+                }
+                LookupDetails::none()
+            }),
         Type::Literal(l) => l.as_instance(i_s.db).class.lookup(
             i_s,
             name,
@@ -1314,7 +1339,7 @@ fn attribute_access_of_type(
             fn on_intersection(
                 i: &Intersection,
                 i_s: &InferenceState,
-                add_issue: &dyn Fn(IssueKind),
+                add_issue: &dyn Fn(IssueKind) -> bool,
                 name: &str,
                 kind: LookupKind,
                 result_context: &mut ResultContext,

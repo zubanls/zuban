@@ -30,6 +30,7 @@ use crate::{
         },
     },
     getitem::{SliceOrSimple, SliceType},
+    imports::ImportResult,
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -132,7 +133,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         // testDisallowAnyExplicitAlias
                         if self.flags().disallow_any_explicit {
                             NodeRef::new(file, name_or_prim.index())
-                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit)
+                                .add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
                         }
                     }
                     // It seems like Mypy is handling these differently?
@@ -446,14 +447,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     SpecialAssignmentKind::Enum(class, ArgsContent::new(primary.index(), details))
                 })
             }
-            Some(Lookup::T(TypeContent::Class { node_ref, .. }))
-                if node_ref.as_link() == self.i_s.db.python_state.type_alias_type_link =>
-            {
-                Err(CalculatingAliasType::TypeAliasType(ArgsContent::new(
-                    primary.index(),
-                    details,
-                )))
-            }
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypeAliasType))) => Err(
+                CalculatingAliasType::TypeAliasType(ArgsContent::new(primary.index(), details)),
+            ),
             Some(Lookup::T(TypeContent::Class { node_ref, .. }))
                 if node_ref.as_link() == self.i_s.db.python_state.defaultdict_link() =>
             {
@@ -540,7 +536,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                         IssueKind::DuplicateTypeVarInTypeAliasType {
                                                             name: tvl.name(self.i_s.db).into()
                                                         }
-                                                    )
+                                                    );
                                                 } else if matches!(
                                                     tvl,
                                                     TypeVarLike::TypeVarTuple(_)
@@ -553,7 +549,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                         IssueKind::MultipleTypeVarTupleDisallowedInTypeParams {
                                                             in_type_alias_type: true,
                                                         }
-                                                    )
+                                                    );
                                                 } else {
                                                     type_var_manager.add(
                                                         tvl,
@@ -570,16 +566,18 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                                                     // TODO this is very imprecise
                                                     is_unpack: c.starts_with("Unpack[")
                                                     || c.starts_with("typing.Unpack[")
-                                                })
+                                                });
                                             }
                                         };
                                     }
                                     parsa_python_cst::StarLikeExpression::StarNamedExpression(
                                         s,
-                                    ) => self.add_type_issue(
-                                        s.index(),
-                                        IssueKind::StarredExpressionOnlyNoTarget,
-                                    ),
+                                    ) => {
+                                        self.add_type_issue(
+                                            s.index(),
+                                            IssueKind::StarredExpressionOnlyNoTarget,
+                                        );
+                                    }
                                     _ => unreachable!(),
                                 }
                             }
@@ -907,7 +905,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         type_alias: parsa_python_cst::TypeAlias,
     ) -> Lookup<'file, 'file> {
         if self.i_s.current_function().is_some() && !self.i_s.db.mypy_compatible() {
-            self.add_issue(type_alias.index(), IssueKind::TypeAliasSyntaxInFunction)
+            self.add_issue(type_alias.index(), IssueKind::TypeAliasSyntaxInFunction);
         }
         let (name_def, type_params, expr) = type_alias.unpack();
         let alias_type_ref = type_alias_type_node_ref(self.file, type_alias);
@@ -958,6 +956,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         &self,
         pr: PointResolution<'file>,
     ) -> PreClassCalculationLookup<'file> {
+        let db = self.i_s.db;
         match pr {
             PointResolution::NameDef { node_ref, .. } => {
                 let name_def = node_ref.expect_name_def();
@@ -965,15 +964,19 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     TypeLike::ClassDef(class_def) => {
                         let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
                         cache_class_name(node_ref, class_def);
-                        class_node_ref.ensure_cached_class_infos(&InferenceState::new(
-                            self.i_s.db,
-                            node_ref.file,
-                        ));
+                        class_node_ref
+                            .ensure_cached_class_infos(&InferenceState::new(db, node_ref.file));
                         return PreClassCalculationLookup::Class(class_node_ref);
                     }
-                    TypeLike::ImportFromAsName(_) => {
-                        // TODO this is probably not a good idea to match this by string
-                        if name_def.as_code() == "Literal" {
+                    TypeLike::ImportFromAsName(as_name) => {
+                        if let Some(import_from) = as_name.import_from()
+                            && let Some(ImportResult::File(imp)) = node_ref
+                                .file
+                                .import_from_first_part_without_loading_file(db, import_from)
+                            && (imp == db.python_state.typing().file_index
+                                || imp == db.python_state.typing_extensions().file_index)
+                            && as_name.unpack().0.as_code() == "Literal"
+                        {
                             return PreClassCalculationLookup::Literal;
                         }
                     }
@@ -981,18 +984,15 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
             }
             PointResolution::Inferred(inferred) => {
-                if let Some(Specific::TypingLiteral) = inferred.maybe_saved_specific(self.i_s.db) {
+                if let Some(Specific::TypingLiteral) = inferred.maybe_saved_specific(db) {
                     return PreClassCalculationLookup::Literal;
-                } else if let Some(ComplexPoint::Class(_)) =
-                    inferred.maybe_complex_point(self.i_s.db)
-                {
-                    let cls = ClassNodeRef::from_node_ref(
-                        inferred.maybe_saved_node_ref(self.i_s.db).unwrap(),
-                    );
+                } else if let Some(ComplexPoint::Class(_)) = inferred.maybe_complex_point(db) {
+                    let cls =
+                        ClassNodeRef::from_node_ref(inferred.maybe_saved_node_ref(db).unwrap());
                     return PreClassCalculationLookup::Class(cls);
                 }
-                if let Some(f) = inferred.maybe_file(self.i_s.db) {
-                    return PreClassCalculationLookup::Module(self.i_s.db.loaded_python_file(f));
+                if let Some(f) = inferred.maybe_file(db) {
+                    return PreClassCalculationLookup::Module(db.loaded_python_file(f));
                 }
             }
             _ => (),

@@ -38,7 +38,7 @@ pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
     class: &Class,
     mut callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
@@ -67,7 +67,7 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
     class: &'a Class,
     mut function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArgs {
@@ -223,7 +223,14 @@ impl CalculatedTypeArgs {
                     let had_error = Cell::new(false);
                     let inf = cls
                         .instance()
-                        .type_lookup(i_s, |_| had_error.set(true), "__call__")
+                        .type_lookup(
+                            i_s,
+                            |_| {
+                                had_error.set(true);
+                                false
+                            },
+                            "__call__",
+                        )
                         .into_inferred();
                     if !had_error.get() {
                         return self.into_return_type(
@@ -334,7 +341,7 @@ pub(crate) fn calc_func_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -361,7 +368,7 @@ pub(crate) fn calc_untyped_func_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: &Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     type_vars: &'a TypeVarLikes,
     match_in_definition: PointLink,
@@ -389,7 +396,7 @@ fn calc_untyped_func_type_vars_with_matcher<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: &Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     type_vars: &'a TypeVarLikes,
     match_in_definition: PointLink,
@@ -428,7 +435,7 @@ pub(crate) fn calc_callable_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     result_context: &mut ResultContext,
     replace_self: Option<ReplaceSelf>,
@@ -525,7 +532,7 @@ fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
     function: &Function<'a, '_>,
     return_class: Option<&Class>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
@@ -559,7 +566,7 @@ fn calc_type_vars_for_callable_internal<'db: 'a, 'a>(
     callable: &Callable<'a>,
     return_class: Option<&Class>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     skip_first_param: bool,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
@@ -597,7 +604,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     mut matcher: Matcher,
     func_like: &dyn FuncLike,
     return_class: Option<&Class>,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
@@ -628,7 +635,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
                 if !m.bool() {
                     had_wrong_init_type_var = true;
                     if on_type_error.is_some() {
-                        add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()))
+                        add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
                     }
                 }
                 if cfg!(debug_assertions) {
@@ -666,7 +673,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
     {
         had_wrong_init_type_var = true;
         if on_type_error.is_some() {
-            add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()))
+            add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
         }
     }
     let matches = check_params(&mut matcher);
@@ -683,7 +690,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         if on_type_error.is_some() {
             add_issue(IssueKind::ArgumentTypeIssue(
                 "Incompatible callable argument with type vars".into(),
-            ))
+            ));
         }
         result.matches = SignatureMatch::False { similar: false };
     } else {
@@ -716,7 +723,7 @@ pub(crate) fn match_arguments_against_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_like: &dyn FuncLike,
-    add_issue: &impl Fn(IssueKind),
+    add_issue: &impl Fn(IssueKind) -> bool,
     on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -904,7 +911,7 @@ pub(crate) fn match_arguments_against_params<
             if expected.type_of_protocol_to_type_of_protocol_assignment(i_s, &value) {
                 add_issue(IssueKind::OnlyConcreteClassAllowedWhereTypeExpected {
                     type_: expected.format_short(i_s.db),
-                })
+                });
             }
             if matches!(m, Match::True { with_any: true }) {
                 argument_indices_with_any.push(ArgumentIndexWithParam {

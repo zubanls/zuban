@@ -161,7 +161,7 @@ impl EnumMembers {
                     enum_name: enum_name.as_str(i_s.db).into(),
                     member_name: member_name.into(),
                 },
-            )
+            );
         } else {
             self.0.push(d)
         }

@@ -18,7 +18,7 @@ use crate::{
         ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
-    diagnostics::{Issue, IssueKind},
+    diagnostics::IssueKind,
     file::{
         OtherDefinitionIterator, PythonFile, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::{NameResolution, PointResolution},
@@ -154,9 +154,8 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         }
     }
 
-    pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind, false);
-        self.file.add_type_issue(db, issue)
+    pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) -> bool {
+        NodeRef::new(self.file, self.node_index).add_type_issue(db, kind)
     }
 
     #[inline]
@@ -285,11 +284,19 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         colon_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
     }
 
+    pub fn as_type_with_erased_type_vars(&self, db: &Database) -> Type {
+        let t = Class::with_self_generics(db, *self).as_type(db);
+        t.replace_type_var_likes(db, &mut |usage| {
+            (self.as_link() == usage.in_definition()).then(|| usage.as_any_generic_item())
+        })
+        .unwrap_or(t)
+    }
+
     pub fn add_issue_if_deprecated(
         self,
         db: &Database,
         on_name: Option<NodeRef>,
-        add_issue: impl FnOnce(IssueKind),
+        add_issue: impl FnOnce(IssueKind) -> bool,
     ) {
         let class = ClassInitializer::from_node_ref(self);
         class.ensure_calculated_class_infos(db);
@@ -304,7 +311,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             add_issue(IssueKind::Deprecated {
                 identifier: format!("class {}", class.qualified_name(db)).into(),
                 reason: reason.clone(),
-            })
+            });
         }
     }
 }
@@ -1267,7 +1274,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         .expect_name()
                         .is_assignment_annotation_without_definition()
                     {
-                        name_node_ref.add_type_issue(db, IssueKind::EnumMembersAttributeOverwritten)
+                        name_node_ref
+                            .add_type_issue(db, IssueKind::EnumMembersAttributeOverwritten);
                     }
                 }
                 continue;
@@ -1365,7 +1373,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         enum_name: self.name().into(),
                         member_name: name_node_ref.as_code().into(),
                     },
-                )
+                );
             }
 
             // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
@@ -1403,7 +1411,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 if node_ref == non_member_ref {
                                     return None;
                                 } else if Some(node_ref) == db.python_state.enum_member_node_ref() {
-                                    if let Some(named_expr) = args.maybe_single_named_expr() {
+                                    if let Some(named_expr) = args.maybe_single_positional() {
                                         return Some(ValidEnumMemberAssignment::SubExpression(
                                             named_expr.expression(),
                                         ));
@@ -1472,7 +1480,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 NodeRef::new(self.node_ref.file, *index).add_type_issue(
                     db,
                     IssueKind::NamedTupleInvalidAttributeOverride { name: name.into() },
-                )
+                );
             }
         }
         CallableContent::new_simple(
@@ -1658,7 +1666,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         class_name: self.qualified_name(db).into(),
                         attributes: join_abstract_attributes(db, &result),
                     },
-                )
+                );
             }
         }
         result.into()
@@ -1725,8 +1733,8 @@ fn initialize_typed_dict_members(db: &Database, cls: &Class, td_infos: DeferredT
                 add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassClosed)
             }
             Some(false) => add(IssueKind::TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems),
-            _ => (),
-        }
+            _ => false,
+        };
     }
     if let Some(new) = file
         .name_resolution_for_types(i_s)
@@ -1821,14 +1829,18 @@ fn find_stmt_typed_dict_types(
                         }
                     }
                 }
-                _ => NodeRef::new(file, assignment.index())
-                    .add_type_issue(db, IssueKind::TypedDictInvalidMember),
+                _ => {
+                    NodeRef::new(file, assignment.index())
+                        .add_type_issue(db, IssueKind::TypedDictInvalidMember);
+                }
             },
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
-            _ => NodeRef::new(file, stmt_like.parent_index)
-                .add_type_issue(db, IssueKind::TypedDictInvalidMember),
+            _ => {
+                NodeRef::new(file, stmt_like.parent_index)
+                    .add_type_issue(db, IssueKind::TypedDictInvalidMember);
+            }
         }
     }
 }
@@ -1858,7 +1870,7 @@ fn find_stmt_named_tuple_types(
                             IssueKind::NamedTupleNameCannotStartWithUnderscore {
                                 field_name: name.as_code().into(),
                             },
-                        )
+                        );
                     } else {
                         vec.push(CallableParam {
                             type_: ParamType::PositionalOrKeyword(t),
@@ -1872,7 +1884,7 @@ fn find_stmt_named_tuple_types(
                     // Mypy disallows this, but the conformance tests do not.
                     if db.mypy_compatible() {
                         NodeRef::new(file, assignment.index())
-                            .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple)
+                            .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
                     }
                 }
             },
@@ -1886,8 +1898,10 @@ fn find_stmt_named_tuple_types(
             StmtLikeContent::FunctionDef(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
-            _ => NodeRef::new(file, stmt_like.parent_index)
-                .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple),
+            _ => {
+                NodeRef::new(file, stmt_like.parent_index)
+                    .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
+            }
         }
     }
 }
@@ -2129,7 +2143,7 @@ fn check_dataclass_options(
             options.assign_keyword_arg_to_dataclass_options(db, file, kw);
         } else {
             NodeRef::new(file, details.index().unwrap())
-                .add_type_issue(db, IssueKind::UnexpectedArgumentTo { name: "dataclass" })
+                .add_type_issue(db, IssueKind::UnexpectedArgumentTo { name: "dataclass" });
         }
     }
     if !options.eq && options.order {
@@ -2154,7 +2168,7 @@ impl DataclassOptions {
                 *target = bool_;
             } else {
                 NodeRef::new(file, expr.index())
-                    .add_type_issue(db, IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() })
+                    .add_type_issue(db, IssueKind::ArgumentMustBeTrueOrFalse { key: key.into() });
             }
         };
         match key {
@@ -2257,10 +2271,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     "frozen_default" => assign_option(&mut d.frozen_default),
                     "field_specifiers" => self
                         .fill_dataclass_transform_field_specifiers(value, &mut d.field_specifiers),
-                    _ => self.add_issue(
-                        arg.index(),
-                        IssueKind::DataclassTransformUnknownParam { name: key.into() },
-                    ),
+                    _ => {
+                        self.add_issue(
+                            arg.index(),
+                            IssueKind::DataclassTransformUnknownParam { name: key.into() },
+                        );
+                    }
                 }
             } else {
                 self.add_type_issue(
@@ -2268,7 +2284,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     IssueKind::UnexpectedArgumentTo {
                         name: "dataclass_transform",
                     },
-                )
+                );
             }
         }
         let node_ref = NodeRef::new(self.file, primary.index());
@@ -2308,7 +2324,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         };
         match check() {
             Ok(new_specifiers) => *field_specifiers = new_specifiers,
-            Err(issue) => self.add_type_issue(value.index(), issue),
+            Err(issue) => {
+                self.add_type_issue(value.index(), issue);
+            }
         }
     }
 }

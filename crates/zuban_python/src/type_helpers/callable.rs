@@ -63,7 +63,7 @@ impl<'a> Callable<'a> {
                         .map(|c| c.as_str(i_s.db).into())
                         .unwrap_or_else(|| "<class>".into()),
                 },
-            )
+            );
         }
         let return_type = &self.content.return_type;
         if result_context.expect_not_none() && matches!(&return_type, Type::None) {
@@ -164,7 +164,7 @@ impl FuncLike for Callable<'_> {
         if !self.content.kind.had_first_self_or_class_annotation() {
             return None;
         }
-        Some(Cow::Owned(self.content.first_positional_type()?))
+        Some(Cow::Borrowed(self.content.first_positional_type()?))
     }
 
     fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {

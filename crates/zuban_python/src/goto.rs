@@ -96,7 +96,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             name,
             kind,
             &mut ResultContext::Unknown,
-            &|_issue| (),
+            &|_issue| false,
             &|_t_of_attr_error| (),
         )
     }
@@ -768,12 +768,12 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 self.find_references_in_file(self.infos.file, search_name)
             }
             ReferencesGoal::OnlyTypeCheckedWorkspaces => self.find_references_in_workspace_entries(
-                db.vfs.workspaces.entries_to_type_check(),
+                db.vfs.workspaces.load().entries_to_type_check(),
                 search_name,
             ),
             ReferencesGoal::AllFilesIncludingDependencies => self
                 .find_references_in_workspace_entries(
-                    db.vfs.workspaces.iter().map(|x| &x.entries),
+                    db.vfs.workspaces.load().iter().map(|x| &x.entries),
                     search_name,
                 ),
         }
@@ -1111,6 +1111,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             )))
         }
         Type::Never(_) => (),
+        Type::TypeForm(tf) => type_to_name(i_s, tf, add),
     }
 }
 

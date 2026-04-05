@@ -132,7 +132,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 } if !had_error => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
-                        debug!("Decided overload as not found, because of Any and non-any match");
+                        debug!(
+                            "Decided overload #{i} as not found, because of Any and non-any match"
+                        );
                         return OverloadResult::NotFound;
                     } else if !arbitrary_length_handled {
                         debug!("Overload #{i} matches, but arbitrary length not handled");
@@ -141,7 +143,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         }
                     } else {
                         debug!(
-                            "Decided overload for {} (called on #{}): {:?}",
+                            "Decided to use overload #{i} for {} (called on #{}): {:?}",
                             self.name(i_s.db),
                             args.starting_line(i_s.db),
                             callable.content.format(&FormatData::new_short(i_s.db))
@@ -167,7 +169,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 && callable.content.guard.is_none()
                                 && other_callable.content.guard.is_none())
                         {
-                            debug!("Decided overload as not found, because of 2+ Any matches");
+                            debug!("Decided overload #{i} as not found, because of 2+ Any matches");
                             args.reset_points_from_backup(&points_backup);
                             return OverloadResult::NotFound;
                         }
@@ -312,7 +314,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
-        add_issue: &impl Fn(IssueKind),
+        add_issue: &impl Fn(IssueKind) -> bool,
         search_init: bool,
         class: Option<&Class>,
         replace_self: Option<ReplaceSelf>,

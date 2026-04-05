@@ -5,6 +5,8 @@ use std::{
     sync::Arc,
 };
 
+use utils::FastHashMap;
+
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
     database::Database, format_data::FormatData, inference_state::InferenceState,
@@ -20,7 +22,7 @@ impl Type {
             .max(other.highest_union_format_index());
         simplified_union_from_iterators_with_format_index(
             i_s,
-            [(0, self.clone()), (1, other.clone())].into_iter(),
+            [(0, self), (1, other)].into_iter(),
             highest_union_format_index,
         )
     }
@@ -30,35 +32,43 @@ impl Type {
             std::mem::replace(self, Self::Never(NeverCause::Other)).simplified_union(i_s, other);
     }
 
-    pub fn simplified_union_from_iterators<T: Borrow<Self>>(
+    pub fn owned_simplified_union_from_iterators<T: Borrow<Self>>(
         i_s: &InferenceState,
-        types: impl Iterator<Item = T> + Clone,
+        types: impl IntoIterator<Item = T>,
+    ) -> Self {
+        let types: Vec<_> = types.into_iter().collect();
+        Self::simplified_union_from_iterators(i_s, types.iter().map(|t| t.borrow()))
+    }
+
+    pub fn simplified_union_from_iterators<'x>(
+        i_s: &InferenceState,
+        types: impl Iterator<Item = &'x Type> + Clone,
     ) -> Self {
         let highest_union_format_index = types
             .clone()
-            .map(|t| t.borrow().highest_union_format_index())
+            .map(|t| t.highest_union_format_index())
             .max()
             .unwrap_or(0);
         simplified_union_from_iterators_with_format_index(
             i_s,
-            types.map(|t| t.borrow().clone()).enumerate(),
+            types.enumerate(),
             highest_union_format_index,
         )
     }
 }
 
-pub fn simplified_union_from_iterators_with_format_index(
+pub fn simplified_union_from_iterators_with_format_index<'x>(
     i_s: &InferenceState,
-    types: impl Iterator<Item = (usize, Type)>,
+    types: impl Iterator<Item = (usize, &'x Type)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.
     highest_union_format_index: usize,
 ) -> Type {
     let multiply = highest_union_format_index + 1;
-    let mut result = merge_simplified_union_type(
+    merge_simplified_union_type(
         i_s,
-        types.into_iter().flat_map(|(format_index, t)| {
-            t.into_iter_with_unpacked_unions(i_s.db, false)
-                .map(move |entry| UnionEntry {
+        types.flat_map(|(format_index, t)| {
+            t.iter_with_unpacked_union_entries(i_s.db, false)
+                .map(move |entry| IntoUnionEntry {
                     // Ensure that this does not overflow, since it's purely visual it shouldn't
                     // matter that much. However it would probably be better to not get into this
                     // position in the first place.
@@ -69,39 +79,36 @@ pub fn simplified_union_from_iterators_with_format_index(
                     type_: entry.type_,
                 })
         }),
-    );
-    loop {
-        match result {
-            MergeSimplifiedUnionResult::Done(t) => return t,
-            MergeSimplifiedUnionResult::NotDone(items) => {
-                result = merge_simplified_union_type(i_s, items.into_iter())
-            }
-        }
-    }
+    )
 }
 
-enum MergeSimplifiedUnionResult {
-    NotDone(Vec<UnionEntry>),
-    Done(Type),
-}
-
-fn merge_simplified_union_type(
+fn merge_simplified_union_type<'x>(
     i_s: &InferenceState,
-    types: impl Iterator<Item = UnionEntry>,
-) -> MergeSimplifiedUnionResult {
+    types: impl Iterator<Item = IntoUnionEntry<'x>>,
+) -> Type {
     let mut new_types: Vec<UnionEntry> = vec![];
-    let mut finished = true;
+    let mut literal_values = FastHashMap::default();
     let mut had_enum_member = false;
     let mut had_true = false;
     let mut had_false = false;
     'outer: for additional in types {
-        if additional.type_.is_object(i_s.db) {
-            return MergeSimplifiedUnionResult::Done(additional.type_);
+        let additional_t = additional.type_;
+        if let Type::Literal(literal) = additional_t
+            && !matches!(&literal.kind, LiteralKind::Bool(_))
+        {
+            // Handle literals separately, because otherwise
+            literal_values
+                .entry(literal.value(i_s.db))
+                .or_insert(additional);
+            continue;
         }
-        if additional.type_.has_any(i_s) {
+        if additional_t.is_object(i_s.db) {
+            return additional_t.clone();
+        }
+        if additional_t.has_any(i_s) {
             // Generics with unknown type params can probably simply be merged with other objects
             // of the same type.
-            if let Type::Class(c1) = &additional.type_
+            if let Type::Class(c1) = &additional_t
                 && c1.generics.all_any_with_unknown_type_params()
                 && new_types
                     .iter()
@@ -114,85 +121,96 @@ fn merge_simplified_union_type(
                 // simplified unions again, due to unpacking of recursive types.
                 entry
                     .type_
-                    .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional.type_)
-            }) && !matches!(additional.type_, Type::Any(AnyCause::UnknownTypeParam))
+                    .is_equal_type_without_unpacking_recursive_types(i_s.db, &additional_t)
+            }) && !matches!(additional_t, Type::Any(AnyCause::UnknownTypeParam))
             {
-                new_types.push(additional)
+                new_types.push(additional.into())
             }
             continue;
         }
-        if new_types
-            .iter()
-            .any(|entry| entry.type_ == additional.type_)
-        {
+        if new_types.iter().any(|entry| entry.type_ == *additional_t) {
             // Just do a quick check if the types are exactly the same. This might happen quite
             // often in simple cases and will probably be a minor speed boost and catch some
             // recursive types that we don't handle otherwise.
             continue;
         }
-        match &additional.type_ {
-            Type::RecursiveType(r1) if r1.generics.is_some() => {
-                // Recursive aliases need special handling, because the normal subtype
-                // checking will call this function again if generics are available to
-                // cache the type.
+        let is_recursive_with_generics =
+            |t: &_| matches!(t, Type::RecursiveType(r1) if r1.generics.is_some());
+        // Recursive aliases need special handling, because the normal subtype
+        // checking will call this function again if generics are available to
+        // cache the type.
+        if is_recursive_with_generics(&additional_t) {
+            // Since we don't remove duplicate entries in the proper way we at least do a quick
+            // equals and remove simple duplicates.
+            if new_types.iter().any(|e| e.type_ == *additional_t) {
+                continue;
             }
-            additional_t => {
-                for current in new_types.iter_mut() {
-                    if current.type_.has_any(i_s) {
-                        if let Type::Class(c1) = &mut current.type_
-                            && c1.generics.all_any_with_unknown_type_params()
-                            && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
-                        {
-                            current.type_ = additional.type_;
-                            continue 'outer;
-                        }
-                        continue;
-                    } else if additional.type_.is_calculating(i_s.db) {
-                        break;
+        } else {
+            for (i, current) in new_types.iter_mut().enumerate() {
+                if current.type_.has_any(i_s) {
+                    if let Type::Class(c1) = &mut current.type_
+                        && c1.generics.all_any_with_unknown_type_params()
+                        && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
+                    {
+                        current.type_ = additional_t.clone();
+                        continue 'outer;
                     }
-                    match &mut current.type_ {
-                        Type::RecursiveType(r) if r.generics.is_some() => (),
-                        t => {
-                            if t.is_calculating(i_s.db) {
-                                if additional_t == t {
-                                    continue 'outer;
-                                } else {
-                                    continue;
-                                }
+                    continue;
+                } else if additional_t.is_calculating(i_s.db) {
+                    break;
+                }
+                let t = &mut current.type_;
+                if is_recursive_with_generics(t) {
+                    continue;
+                }
+                if t.is_calculating(i_s.db) {
+                    if additional_t == t {
+                        continue 'outer;
+                    } else {
+                        continue;
+                    }
+                }
+                if additional_t
+                    .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
+                    .bool()
+                {
+                    // After replacing the old entry we have to check all the following
+                    // ones if they also need to be removed.
+                    new_types
+                        .extract_if(i + 1.., |e| {
+                            let t = &e.type_;
+                            // These are essentially the conditions from above repeated
+                            if t.has_any(i_s)
+                                || t.is_calculating(i_s.db)
+                                || is_recursive_with_generics(t)
+                            {
+                                return false;
                             }
-                            if additional_t
+                            additional_t
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
-                            {
-                                *t = additional.type_;
-                                finished = false;
-                                continue 'outer;
-                            }
-                            if t.is_super_type_of(
-                                i_s,
-                                &mut Matcher::with_ignored_promotions(),
-                                additional_t,
-                            )
-                            .bool()
-                            {
-                                finished = false;
-                                continue 'outer;
-                            }
-                        }
-                    }
+                        })
+                        .for_each(drop);
+                    new_types[i].type_ = additional_t.clone();
+                    continue 'outer;
                 }
-                match additional_t {
-                    Type::EnumMember(_) => had_enum_member = true,
-                    Type::Literal(literal) => match &literal.kind {
-                        LiteralKind::Bool(true) => had_true = true,
-                        LiteralKind::Bool(false) => had_false = true,
-                        _ => (),
-                    },
-                    _ => (),
+                if t.is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), additional_t)
+                    .bool()
+                {
+                    continue 'outer;
                 }
             }
+            match additional_t {
+                Type::EnumMember(_) => had_enum_member = true,
+                Type::Literal(literal) => match &literal.kind {
+                    LiteralKind::Bool(true) => had_true = true,
+                    LiteralKind::Bool(false) => had_false = true,
+                    _ => (),
+                },
+                _ => (),
+            }
         }
-        new_types.push(additional);
+        new_types.push(additional.into());
     }
     if had_enum_member {
         // If all enum members are found in a union, just use an enum instance instead.
@@ -201,13 +219,22 @@ fn merge_simplified_union_type(
     if had_false && had_true {
         contract_bool_literals(i_s.db, &mut new_types)
     }
-    if finished {
-        MergeSimplifiedUnionResult::Done(Type::from_union_entries(
-            new_types, true, // TODO shouldn't this be calculated?
-        ))
-    } else {
-        MergeSimplifiedUnionResult::NotDone(new_types)
+    if !literal_values.is_empty() {
+        if !new_types.is_empty() {
+            literal_values.retain(|_, v| {
+                let Type::Literal(l) = v.type_ else {
+                    unreachable!()
+                };
+                !new_types.iter().any(|e| e.type_ == l.fallback_type(i_s.db))
+            });
+        }
+        let mut all: Vec<_> = literal_values.into_values().collect();
+        all.sort_by_key(|e| e.format_index);
+        new_types.splice(..0, all.into_iter().map(|v| v.into()));
     }
+    Type::from_union_entries(
+        new_types, true, // TODO shouldn't this be calculated?
+    )
 }
 
 fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
@@ -260,6 +287,21 @@ fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
 pub(crate) struct UnionEntry {
     pub type_: Type,
     pub format_index: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct IntoUnionEntry<'x> {
+    pub type_: &'x Type,
+    pub format_index: usize,
+}
+
+impl From<IntoUnionEntry<'_>> for UnionEntry {
+    fn from(value: IntoUnionEntry<'_>) -> Self {
+        Self {
+            type_: value.type_.clone(),
+            format_index: value.format_index,
+        }
+    }
 }
 
 impl PartialEq for UnionEntry {

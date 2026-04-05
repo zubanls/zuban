@@ -88,18 +88,20 @@ fn project_from_cli(
         options.settings.typeshed_path = Some(typeshed_path);
     }
 
-    options
-        .settings
-        .try_to_apply_environment_variables(&local_fs, &current_dir, lookup_env_var);
+    options.settings.try_to_apply_environment_variables(
+        &local_fs,
+        &found.most_probable_base,
+        lookup_env_var,
+    );
 
     cli_args::apply_flags(
         &local_fs,
         &mut options,
         &mut found.diagnostic_config,
-        cli,
         current_dir,
-        found.config_path.as_deref(),
+        cli,
         found.most_probable_base,
+        found.config_path.as_deref(),
     );
 
     (
@@ -337,10 +339,7 @@ mod tests {
         // No venv information should fail to import
         assert_eq!(
             d(&[""]),
-            [
-                format!("m.py:1: {err}"),
-                format!("test-dir{}n.py:1: {err}", std::path::MAIN_SEPARATOR),
-            ]
+            [format!("m.py:1: {err}"), format!("test-dir/n.py:1: {err}"),]
         );
         // venv information via --python-executable should work
         let empty: [&str; _] = [];
@@ -381,39 +380,33 @@ mod tests {
             expect_diagnostics_error(Cli::parse_from(cli_args), test_dir.path().into())
         };
 
-        let err1 = format!(
-            "foo{sep}bar{sep}mod1.py:1: error: \"int\" not callable  [operator]",
-            sep = std::path::MAIN_SEPARATOR
-        );
-        let err2 = format!(
-            "foo{}mod2.py:1: error: \"int\" not callable  [operator]",
-            std::path::MAIN_SEPARATOR
-        );
+        let err1 = "foo/bar/mod1.py:1: error: \"int\" not callable  [operator]";
+        let err2 = "foo/mod2.py:1: error: \"int\" not callable  [operator]";
         let err3 = "mod3.py:1: error: \"int\" not callable  [operator]";
 
-        assert_eq!(d(&[""]), [&*err2]);
+        assert_eq!(d(&[""]), [err2]);
 
-        assert_eq!(d(&["", "foo/**/mod[1-9].py"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "**/*.py"]), [&*err1, &*err2, err3]);
-        assert_eq!(d(&["", "**/mod2.py"]), [&*err2]);
-        assert_eq!(d(&["", "**/"]), [&*err1, &*err2, err3]);
-        assert_eq!(d(&["", "**/mod?.py"]), [&*err1, &*err2, err3]);
+        assert_eq!(d(&["", "foo/**/mod[1-9].py"]), [err1, err2]);
+        assert_eq!(d(&["", "**/*.py"]), [err1, err2, err3]);
+        assert_eq!(d(&["", "**/mod2.py"]), [err2]);
+        assert_eq!(d(&["", "**/"]), [err1, err2, err3]);
+        assert_eq!(d(&["", "**/mod?.py"]), [err1, err2, err3]);
         assert_eq!(d(&["", "*.py"]), [err3]);
-        assert_eq!(d(&["", "foo"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "./foo"]), [&*err1, &*err2]);
-        assert_eq!(d(&["", "does-not-exist/../foo"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "foo"]), [err1, err2]);
+        assert_eq!(d(&["", "./foo"]), [err1, err2]);
+        assert_eq!(d(&["", "does-not-exist/../foo"]), [err1, err2]);
         // Same file twice
-        assert_eq!(d(&["", "foo", "foo/mod2.py"]), [&*err1, &*err2]);
+        assert_eq!(d(&["", "foo", "foo/mod2.py"]), [err1, err2]);
 
         expect_not_found(&["", "foo", "undefined-path"]);
         if cfg!(windows) {
             assert_eq!(
                 expect_not_found(&["", "/foo/zuban/undefined-path"]),
-                r"No Python files found to check for C:/foo/zuban/undefined-path"
+                r"No Python files found to check for C:\foo\zuban\undefined-path"
             );
             assert_eq!(
                 expect_not_found(&["", "/foo/zuban/undefined-path/*/baz/*"]),
-                r"No Python files found to check in C:/foo/zuban/undefined-path/*/baz/*"
+                r"No Python files found to check in C:\foo\zuban\undefined-path\*\baz\*"
             );
         } else {
             assert_eq!(
@@ -447,10 +440,10 @@ mod tests {
             &local_fs,
             &mut project_options,
             &mut DiagnosticConfig::default(),
+            current_dir.clone(),
             cli,
-            current_dir.clone(),
-            Some(current_dir.as_ref()),
-            current_dir.clone(),
+            current_dir,
+            None,
         );
         let files: Vec<&str> = project_options
             .settings
@@ -490,21 +483,33 @@ mod tests {
     #[test]
     fn test_relative_dirs_in_output() {
         logging_config::setup_logging_for_tests();
+        // Add files for both Windows and Unix
         let fixture = format!(
             r#"
+            [file venv/bin/python]
+
+            [file venv/pyvenv.cfg]
+            include-system-site-packages = false
+            version = 3.12.3
+
+            [file venv/Lib/site-packages/invenv.py]
+            [file venv/lib/python3.12/site-packages/invenv.py]
+
             [file pyproject.toml]
             [tool.zuban]
             [file folder1/m1.py]
             from folder2 import m2
+            import invenv
             1()
             [file folder2/m2.py]
             from folder1 import m1
+            import invenv
             ""()
             "#
         );
         let test_dir = test_utils::write_files_from_fixture(&fixture, false);
-        let m1 = r#"m1.py:2: error: "int" not callable  [operator]"#;
-        let m2 = r#"../folder2/m2.py:2: error: "str" not callable  [operator]"#;
+        let m1 = r#"m1.py:3: error: "int" not callable  [operator]"#;
+        let m2 = r#"../folder2/m2.py:3: error: "str" not callable  [operator]"#;
         let all_issues = [m2, m1];
 
         let dir = &format!("{}/folder1", test_dir.path());
@@ -524,6 +529,11 @@ mod tests {
         let ds = diagnostics(Cli::parse_from(["", "../folder2"]), dir);
         assert_eq!(ds, [m2]);
         let ds = diagnostics(Cli::parse_from(["", "../folder2/m2.py"]), dir);
+        assert_eq!(ds, [m2]);
+
+        test_dir.write_file("pyproject.toml", "");
+        // List only m2 diagnostics but with an empty pyproject.toml, see also #330
+        let ds = diagnostics(Cli::parse_from(["", "../folder2"]), dir);
         assert_eq!(ds, [m2]);
     }
 
@@ -571,10 +581,7 @@ mod tests {
 
         assert_eq!(
             d(&["", "foo/no_py_ending"]),
-            [format!(
-                "foo{}no_py_ending:1: error: \"int\" not callable  [operator]",
-                std::path::MAIN_SEPARATOR
-            )]
+            ["foo/no_py_ending:1: error: \"int\" not callable  [operator]",]
         );
         assert!(err(&["", "foo/"]).starts_with("No Python files found to check for"));
         assert_eq!(err(&[""]), "No Python files found to check");
@@ -598,17 +605,17 @@ mod tests {
             hello-zuban = "hello_zuban:entry_point"
 
             [tool.mypy]
-            mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
-            files = ["$MYPY_CONFIG_FILE_DIR/src"]
+            mypy_path = "$MYPY_CONFIG_FILE_DIR/source"
+            files = ["$MYPY_CONFIG_FILE_DIR/source"]
             strict = true
 
-            [file src/hello_zuban/__init__.py]
+            [file source/hello_zuban/__init__.py]
             from hello_zuban.hello import X
-            from src.hello_zuban.hello import Z
+            from source.hello_zuban.hello import Z
 
             x = X()
 
-            [file src/hello_zuban/hello.py]
+            [file source/hello_zuban/hello.py]
             Z = 1
             class X: pass
             1()
@@ -620,7 +627,7 @@ mod tests {
 
         assert_eq!(
             d(),
-            ["src/hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"]
+            ["source/hello_zuban/hello.py:3: error: \"int\" not callable  [operator]"]
         );
     }
 
@@ -638,7 +645,9 @@ mod tests {
                 version = 3.12.3
 
                 [file venv/Lib/site-packages/frompth.pth]
+                ../../..
                 ../../frompth
+                .
 
                 [file venv/frompth/my_frompth/__init__.py]
                 x = 1
@@ -670,11 +679,18 @@ mod tests {
                 version = 3.12.3
 
                 [file venv/lib/python3.12/site-packages/frompth.pth]
+                # This adds the base path again, which should not recurse
+                ../../../..
                 ../../../frompth
+                # This recurses with the same dir, should not cause a crash
+                .
 
                 [file venv/frompth/my_frompth/__init__.py]
                 x = 1
                 [file venv/frompth/my_frompth/py.typed]
+                [file venv/frompth/venv.pth]
+                # Introduce a recursion that should cause no problems
+                ../lib/python3.12/site-packages
 
                 [file venv/lib/python3.12/site-packages/foo.py]
 
@@ -798,30 +814,30 @@ mod tests {
     #[test]
     fn test_read_file_only_once() {
         logging_config::setup_logging_for_tests();
-        for mypy_path in ["['src/inner', 'src']", "['src', 'src/inner']"] {
+        for mypy_path in ["['source/inner', 'source']", "['source', 'source/inner']"] {
             let fixture = format!(
                 r#"
-            [file pyproject.toml]
-            [tool.zuban]
-            mypy_path = {mypy_path}
+                [file pyproject.toml]
+                [tool.zuban]
+                mypy_path = {mypy_path}
 
-            [file src/inner/m1.py]
-            import m2
-            from inner.m2 import C
-            import src
+                [file source/inner/m1.py]
+                import m2
+                from inner.m2 import C
+                import source
 
-            a: m2.C = C()
-            b: C = m2.C()
-            c: C = C()
-            d: m2.C = m2.C()
+                a: m2.C = C()
+                b: C = m2.C()
+                c: C = C()
+                d: m2.C = m2.C()
 
-            e: src.inner.m2.C = C()
+                e: source.inner.m2.C = C()
 
-            wrong1: src.inner.m2.C = 1
+                wrong1: source.inner.m2.C = 1
 
-            [file src/inner/m2.py]
-            class C: ...
-            "#
+                [file source/inner/m2.py]
+                class C: ...
+                "#
             );
             let test_dir = test_utils::write_files_from_fixture(&fixture, false);
             let diagnostics = diagnostics(Cli::parse_from([""]), test_dir.path());
@@ -829,10 +845,70 @@ mod tests {
             assert_eq!(
                 diagnostics,
                 [
-                    "src/inner/m1.py:12: error: Incompatible types in assignment (expression \
+                    "source/inner/m1.py:12: error: Incompatible types in assignment (expression \
                      has type \"int\", variable has type \"C\")  [assignment]"
                 ]
             );
         }
+    }
+
+    #[test]
+    fn test_recognize_src_folder() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file src/foo.py]
+            import bar
+            import other
+            import other2
+            [file src/bar.py]
+            [file hello/other.py]
+            import foo
+            [file other2.py]
+            import foo
+            ",
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                "src/foo.py:2: error: Cannot find implementation or library stub \
+                 for module named \"other\"  [import-not-found]"
+            ]
+        );
+
+        let ds = diagnostics(
+            Cli::parse_from(["", "--explicit-package-bases"]),
+            test_dir.path(),
+        );
+        assert_eq!(ds.len(), 4);
+    }
+
+    #[test]
+    fn test_src_folder_as_package() {
+        // Regression from GH #325
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file src/base.py]
+            class Base: ...
+            [file src/elems.py]
+            from src.base import Base
+            from .base import Base
+            from src.base import where
+            from src import which
+            [file src/__init__.py]
+            ",
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                r#"src/elems.py:3: error: Module "base" has no attribute "where"  [attr-defined]"#,
+                r#"src/elems.py:4: error: Module "__init__" has no attribute "which"  [attr-defined]"#
+            ]
+        );
     }
 }

@@ -1402,3 +1402,13 @@ def f():
                             # N: Consider using "Sequence" instead, which is covariant
     s1: Sequence[int] = y
     s2: Sequence[int | None] = x
+
+[case untyped_execute_on_union_no_does_not_return_a_value]
+# From GH #319
+from typing import Any
+def _get(items, *keys) -> Any:
+    for key in keys:
+        if not items:
+            items = {}
+        items = items.get(key)
+    return items

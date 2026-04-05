@@ -408,3 +408,67 @@ class Outer[T]:
 # From GH #256
 def a[T=T]() -> T:  # E: Missing return statement  # E: Type parameter "T" has a default type that refers to one or more type variables that are out of scope
     x: T = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "T = Any")
+
+[case type_var_default_does_not_influence_new_subtyping]
+# This was a problem in scipy-stubs
+from typing import Generic, TypeVar, Self
+
+T = TypeVar('T', default=int)
+
+class C(Generic[T]):
+    def __new__(cls) -> Self: ...
+
+[case namedtuple_type_var_with_bound_and_default_should_be_fine]
+# This was a problem in scipy-stubs
+from typing import Generic, TypeVar, NamedTuple
+
+T = TypeVar("T", bound=tuple[int, ...], covariant=True, default=tuple[int])
+
+class BinnedStatistic2dResult(NamedTuple, Generic[T]):
+    binnumber: T
+
+[case staticmethod_override_with_typevars1]
+# From scipy-stubs
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class C(Generic[T]):
+    @staticmethod
+    def f() -> T: ...
+
+class D(C[T]):
+    @staticmethod
+    def f() -> T: ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] () -> T"
+reveal_type(D().f)  # N: Revealed type is "def () -> Any"
+
+reveal_type(D.f())  # N: Revealed type is "Any"
+reveal_type(D().f())  # N: Revealed type is "Any"
+
+reveal_type(D[int].f())  # N: Revealed type is "int"
+reveal_type(D[int]().f())  # N: Revealed type is "int"
+
+[case staticmethod_override_with_typevars2]
+# From scipy-stubs
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class C(Generic[T]):
+    @staticmethod
+    def f(x: T) -> T: ...
+
+class D(C[T]):
+    @staticmethod
+    def f(x: T) -> T: ...
+
+reveal_type(D.f)  # N: Revealed type is "def [T] (x: T) -> T"
+reveal_type(D().f)  # N: Revealed type is "def (x: Any) -> Any"
+
+reveal_type(D.f(1))  # N: Revealed type is "Literal[1]?"
+reveal_type(D().f(1))  # N: Revealed type is "Any"
+
+reveal_type(D[int].f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
+reveal_type(D[int]().f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"

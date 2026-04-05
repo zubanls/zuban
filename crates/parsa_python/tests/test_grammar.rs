@@ -1,7 +1,7 @@
 use parsa_python::*;
 use utils::dedent;
 
-fn tree_to_string(tree: PyTree) -> String {
+fn tree_to_string(tree: &PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {
         *code += &" ".repeat(depth);
         *code += &format!(
@@ -16,7 +16,6 @@ fn tree_to_string(tree: PyTree) -> String {
             }
         );
         for c in node.iter_children() {
-            assert_eq!(node.index, c.parent().unwrap().index);
             recurse(code, &c, depth + 1);
         }
     }
@@ -28,12 +27,29 @@ fn tree_to_string(tree: PyTree) -> String {
     code
 }
 
+fn assert_valid_tree(tree: &PyTree) {
+    // Ensure that a tree has fully reachable nonterminals/leaves.
+    fn check(node: PyNode, expected_index: &mut NodeIndex) {
+        assert_eq!(node.index, *expected_index);
+        for child in node.iter_children() {
+            assert_eq!(node.index, child.parent().unwrap().index);
+            *expected_index += 1;
+            check(child, expected_index)
+        }
+    }
+    let root = tree.root_node();
+    let mut counter = 0;
+    check(root, &mut counter);
+    assert_eq!(tree.length(), counter as usize + 1);
+}
+
 macro_rules! parametrize_snapshots {
     ($($name:ident : $input:expr;)*) => {$(
         #[test]
         fn $name() {
             let tree = parse($input.into());
-            insta::assert_snapshot!(stringify!($name), tree_to_string(tree));
+            insta::assert_snapshot!(stringify!($name), tree_to_string(&tree));
+            assert_valid_tree(&tree);
         }
     )*}
 }
@@ -85,6 +101,9 @@ parametrize_snapshots!(
         foo().bar = 1
         foo(1,).bar[1] = 1
         foo(a for a in b).bar[1] = 1
+        ");
+    primary_target_none_annotation: dedent("
+        None.A:b
         ");
     for_stmt: dedent("
         for x in [1,2]:
@@ -209,6 +228,21 @@ parametrize_snapshots!(
             case B(a=1, b=2):
                 pass
         ");
+    match_negative_number: dedent(r#"
+        match a:
+            case -1:
+              pass
+        "#);
+    match_error_recovery: dedent(r#"
+        match True:
+            case {**x}:
+                if True:
+        "#);
+    match_error_recovery2: dedent("
+        match a:
+            case b:
+                <
+        ");
     dict_literal1: dedent("
         {1: 2}
         {**foo}
@@ -330,6 +364,20 @@ parametrize_snapshots!(
         "#);
     completion_on_func_call1: "f(3).\n";
     completion_on_func_call2: "f(1 for a in []).\n";
+    signature_recovery: dedent(r#"
+        foo(x, y=1, z)
+        foo(x, y=1, z
+        "#);
+    signature_recovery2: dedent(r#"
+        f(a,b,a=
+        "#);
+    nested_parens: dedent(r#"
+        (((1)))
+        "#);
+    dict_comprehension: dedent("
+        {1: 2 for x in [1]}
+        {a: bc for x in [1]}
+        ");
 );
 
 #[test]

@@ -30,14 +30,14 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     fn in_file(&self) -> Option<&PythonFile> {
         Some(self.as_node_ref_internal()?.file)
     }
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         self.as_node_ref_internal()
             .expect("Otherwise add_issue should be implemented")
             .add_issue(i_s, issue)
     }
     fn starting_line(&self, db: &Database) -> String {
         let Some(node_ref) = self.as_node_ref_internal() else {
-            return "<unkown line>".into();
+            return "<unknown line>".into();
         };
         node_ref.line_one_based(db).to_string()
     }
@@ -126,7 +126,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 pub(crate) struct SimpleArgs<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    file: &'a PythonFile,
+    pub file: &'a PythonFile,
     primary_node_index: NodeIndex,
     pub details: ArgumentsDetails<'a>,
     i_s: InferenceState<'db, 'a>,
@@ -279,7 +279,7 @@ impl<'a> KnownArgs<'a> {
 }
 
 impl<'a> KnownArgsWithCustomAddIssue<'a> {
-    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueKind)) -> Self {
+    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueKind) -> bool) -> Self {
         Self {
             inferred,
             add_issue: CustomAddIssue(add_issue),
@@ -302,7 +302,7 @@ impl<'db> Args<'db> for KnownArgsWithCustomAddIssue<'_> {
     }
     fn calculate_diagnostics_for_any_callable(&self) {}
 
-    fn add_issue(&self, _: &InferenceState, issue: IssueKind) {
+    fn add_issue(&self, _: &InferenceState, issue: IssueKind) -> bool {
         self.add_issue.0(issue)
     }
 
@@ -338,7 +338,7 @@ impl<'db> Args<'db> for CombinedArgs<'db, '_> {
         self.args2.starting_line(db)
     }
 
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         self.args2.add_issue(i_s, issue)
     }
 
@@ -394,7 +394,7 @@ impl KeywordArg<'_, '_> {
             .infer_expression_with_context(self.expression, result_context)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         self.node_ref.add_issue(i_s, issue)
     }
 }
@@ -566,7 +566,7 @@ impl<'db> Arg<'db, '_> {
         got: &str,
         expected: &str,
         error_text: &dyn Fn(&str) -> Option<Box<str>>,
-    ) {
+    ) -> bool {
         self.add_issue(
             i_s,
             IssueKind::ArgumentTypeIssue(
@@ -577,10 +577,10 @@ impl<'db> Arg<'db, '_> {
                 )
                 .into(),
             ),
-        );
+        )
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) -> bool {
         match self.as_node_ref() {
             Ok(node_ref) => node_ref.add_issue(i_s, issue),
             Err(add_issue) => add_issue.0(issue),
@@ -868,7 +868,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                             IssueKind::ParamSpecArgumentsNeedsBothStarAndStarStar {
                                                 name: u1.param_spec.name(i_s.db).into(),
                                             },
-                                        )
+                                        );
                                     }
                                     Some(BaseArgReturn::Arg(ArgKind::ParamSpec {
                                         usage: u1.clone(),
@@ -1276,7 +1276,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
 
 pub(crate) struct NoArgs<'a> {
     node_ref: NodeRef<'a>,
-    add_issue: Option<&'a dyn Fn(IssueKind)>,
+    add_issue: Option<&'a dyn Fn(IssueKind) -> bool>,
 }
 
 impl<'a> NoArgs<'a> {
@@ -1288,7 +1288,7 @@ impl<'a> NoArgs<'a> {
     }
     pub fn new_with_custom_add_issue(
         node_ref: NodeRef<'a>,
-        add_issue: &'a dyn Fn(IssueKind),
+        add_issue: &'a dyn Fn(IssueKind) -> bool,
     ) -> Self {
         Self {
             node_ref,
@@ -1363,7 +1363,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct CustomAddIssue<'a>(&'a dyn Fn(IssueKind));
+pub(crate) struct CustomAddIssue<'a>(&'a dyn Fn(IssueKind) -> bool);
 
 impl std::fmt::Debug for CustomAddIssue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

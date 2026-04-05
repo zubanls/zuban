@@ -202,6 +202,11 @@ impl<'a> ResultContext<'a, '_> {
             }
         ) && i_s.flags().allow_redefinition
     }
+
+    pub fn expects_type_form(&mut self) -> bool {
+        self.with_type_if_exists(|t, _| matches!(t, Type::TypeForm(_)))
+            .unwrap_or_default()
+    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {

@@ -678,3 +678,78 @@ class TT(Widget):
         self.bind(self._on_foo)  # E: Argument 1 to "bind" of "Widget" has incompatible type "Callable[[Widget], None]"; expected "Callable[[Self], object] | None"
 
     def _on_foo(self, junk_event: Widget) -> None: ...
+
+[case application_with_self_type]
+# From GH #306
+from typing import Self
+
+class Selection[ValueT]:
+    pass
+
+class ServerProfile:
+    def do_on_select(self) -> None:
+        x = Selection[Self]()
+
+[case final_dataclass_allows_passing_self]
+# From GH #312
+from dataclasses import dataclass
+from typing import Self, final
+
+@final
+@dataclass
+class Size:
+    value: int
+
+    def end(self) -> 'Size':
+        return self - Size(1)
+
+    def __sub__(self, other: Self) -> 'Size':
+        return self
+
+[case execute_self]
+# From GH #318
+class Call:
+    def __call__(self) -> None:
+        return None
+
+    def _execute(self) -> None:
+        self()
+
+call = Call()
+call()
+
+[case self_type_overloads_correct_subtyping]
+# This failed in scipy-stubs
+from typing import TypeVar, Generic, Self, overload, Any
+
+T = TypeVar("T", covariant=True, default=Any)
+U = TypeVar("U", covariant=True, default=Any)
+
+class C(Generic[T]):
+    @overload
+    def f(self: C[tuple[int, int]]) -> int: ...
+    @overload
+    def f(self: C[tuple[Any, ...]]) -> str: ...
+    def f(self): ...
+
+    @overload
+    def g(self: C) -> str: ...
+    @overload
+    def g(self: C[Any]) -> int: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+    def g(self): ...
+
+reveal_type(C[tuple[int, int]]().f())  # N: Revealed type is "int"
+reveal_type(C[tuple[int]]().f())  # N: Revealed type is "str"
+
+[case self_type_overloads_erasable_subtypes_with_defaults]
+# This failed in scipy-stubs
+from typing import TypeVar, Generic, Self, overload, Any
+
+T = TypeVar("T", covariant=True, bound=tuple[int, int] | tuple[int], default=tuple[int])
+
+class C(Generic[T]):
+    @overload
+    def f(self: C[tuple[int, int]]) -> int: ...
+    @overload
+    def f(self: C[tuple[int]]) -> int: ...
+    def f(self): ...

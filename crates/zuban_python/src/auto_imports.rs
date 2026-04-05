@@ -60,7 +60,7 @@ impl<'db> ImportFinder<'db> {
             name,
             found: Default::default(),
         };
-        for workspace in db.vfs.workspaces.iter() {
+        for workspace in db.vfs.workspaces.load().iter() {
             match &workspace.kind {
                 WorkspaceKind::TypeChecking => {
                     slf.find_importable_name_in_entries(&workspace.entries, false, true)
@@ -132,7 +132,7 @@ impl<'db> ImportFinder<'db> {
         let entries: Vec<_> = entries
             .borrow()
             .iter()
-            .filter_map(|dir_entry| match dir_entry {
+            .filter_map(|(_, dir_entry)| match dir_entry {
                 DirectoryEntry::File(_) | DirectoryEntry::Directory(_) => Some(dir_entry.clone()),
                 _ => None,
             })
@@ -218,7 +218,7 @@ fn all_recursive_public_typeshed_file_entries(
     entries: &Entries,
 ) -> Vec<Arc<FileEntry>> {
     fn recurse(db: &Database, found: &mut Vec<Arc<FileEntry>>, entries: &Entries) {
-        entries.borrow().iter().for_each(|entry| {
+        entries.borrow().iter().for_each(|(_, entry)| {
             match entry {
                 DirectoryEntry::File(entry) => {
                     // Underscored modules are private, while dunder modules are not like
@@ -451,7 +451,7 @@ impl TypeshedSymbols {
                         .typeshed_path
                         .clone()
                         .unwrap_or_else(|| {
-                            for workspace in db.vfs.workspaces.iter() {
+                            for workspace in db.vfs.workspaces.load().iter() {
                                 if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
                                     return workspace.root_path.clone();
                                 }
@@ -485,7 +485,7 @@ impl TypeshedSymbols {
 
     fn generate_typeshed_symbols(db: &Database) -> Self {
         let found: Mutex<Self> = Default::default();
-        for workspace in db.vfs.workspaces.iter() {
+        for workspace in db.vfs.workspaces.load().iter() {
             if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
                 all_recursive_public_typeshed_file_entries(db, &workspace.entries)
                     .par_iter()
@@ -513,7 +513,7 @@ impl TypeshedSymbols {
                                 let dir = dir.upgrade().unwrap();
                                 if entry.name.as_ref() == "__init__.pyi" {
                                     Directory::entries(&db.vfs, &dir).borrow().iter().for_each(
-                                        |dir_entry| {
+                                        |(_, dir_entry)| {
                                             let name = dir_entry.name();
                                             if name != "__init__.pyi" {
                                                 insert_symbol(

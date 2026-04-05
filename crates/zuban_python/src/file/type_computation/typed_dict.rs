@@ -253,7 +253,7 @@ impl TypedDictArgs {
                             false => "NotRequired",
                         },
                     },
-                )
+                );
             }
             result = Some(ExtraItemsType {
                 t: t.type_,
@@ -386,7 +386,7 @@ pub(super) fn check_typed_dict_arguments<'file>(
     file: &PythonFile,
     args: ArgsIterator<'file>,
     ignore_positional: bool,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
 ) -> TypedDictArgs {
     let mut result = TypedDictArgs::default();
 

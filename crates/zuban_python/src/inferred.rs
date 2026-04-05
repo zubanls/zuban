@@ -32,7 +32,7 @@ use crate::{
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
         IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
         PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, execute_tuple_class, execute_type_of_type, merge_class_type_vars,
+        TypeVarLikes, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
@@ -873,7 +873,7 @@ impl<'db: 'slf, 'slf> Inferred {
         for_name: &str,
         instance: Type,
         func_class: Class,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         mro_index: MroIndex,
         disallow_lazy_bound_method: bool,
         avoid_inferring_return_types: bool,
@@ -897,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
         for_name: &str,
         instance: Type,
         attribute_class: Class,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
         disallow_lazy_bound_method: bool,
@@ -926,7 +926,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         .as_callable(i_s, FirstParamProperties::None)
                                         .format(&FormatData::new_short(i_s.db))
                                         .into(),
-                                })
+                                });
                             }
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 Some((
@@ -1224,7 +1224,7 @@ impl<'db: 'slf, 'slf> Inferred {
         for_name: &str,
         instance: Type,
         attribute_class: Class,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
         avoid_inferring_return_types: bool,
@@ -1305,7 +1305,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             add_issue(IssueKind::NotAcceptingSelfArgument {
                                 function_name: Box::from(for_name),
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
-                            })
+                            });
                         }
                     }
                     FunctionKind::Function { .. } => (),
@@ -1390,6 +1390,18 @@ impl<'db: 'slf, 'slf> Inferred {
                             new_c.return_type = Type::Any(AnyCause::Unannotated);
                             t = Type::Callable(Arc::new(new_c));
                         }
+                        if t.has_type_vars() && !t.has_untyped_type_params(i_s.db) {
+                            t = Type::Callable(Arc::new(c.merge_class_type_vars_detailed(
+                                i_s.db,
+                                attribute_class,
+                                attribute_class,
+                                false,
+                                || {
+                                    recoverable_error!("staticmethod should never have Self");
+                                    Type::ERROR
+                                },
+                            )));
+                        }
                         return Some(Some((
                             Inferred::from_type(t),
                             AttributeKind::Staticmethod {
@@ -1426,7 +1438,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 Generics::from_class_generics(i_s.db, class_ref, &c.generics),
                 None,
             );
-            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, add_issue, instance) {
+            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, |i| add_issue(i), instance)
+            {
                 return Some(Some((inf, AttributeKind::Attribute)));
             }
         }
@@ -1446,7 +1459,7 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         func_class_type: &TypeOrClass,
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         apply_descriptors: ApplyClassDescriptorsOrigin,
         as_type_type: Option<&dyn Fn() -> Type>,
     ) -> Option<(Self, AttributeKind)> {
@@ -1460,9 +1473,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let c = func.as_callable(i_s, FirstParamProperties::None);
-                            let c = Arc::new(merge_class_type_vars(
+                            let c = Arc::new(c.merge_class_type_vars(
                                 i_s.db,
-                                &c,
                                 *class,
                                 attribute_class,
                                 func_class_type,
@@ -1516,9 +1528,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionOverload::new(
                                             o.iter_functions()
                                                 .map(|c| {
-                                                    Arc::new(merge_class_type_vars(
+                                                    Arc::new(c.merge_class_type_vars(
                                                         i_s.db,
-                                                        c,
                                                         *class,
                                                         attribute_class,
                                                         func_class_type,
@@ -1656,7 +1667,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        add_issue: impl Fn(IssueKind),
+        add_issue: impl Fn(IssueKind) -> bool,
         apply_descriptors: ApplyClassDescriptorsOrigin,
         t: &Type,
         as_type_type: Option<&dyn Fn() -> Type>,
@@ -1685,7 +1696,7 @@ impl<'db: 'slf, 'slf> Inferred {
             match c.kind {
                 FunctionKind::Function { .. } => {
                     return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
-                        merge_class_type_vars(i_s.db, c, *class, attribute_class, func_class_type),
+                        c.merge_class_type_vars(i_s.db, *class, attribute_class, func_class_type),
                     )))));
                 }
                 FunctionKind::Property { .. } => {
@@ -1708,7 +1719,24 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     return Some(result.map(callable_into_inferred));
                 }
-                FunctionKind::Staticmethod => (),
+                FunctionKind::Staticmethod => {
+                    if t.has_type_vars() {
+                        return Some(Some(Inferred::from_type(Type::Callable(Arc::new(
+                            c.merge_class_type_vars_detailed(
+                                i_s.db,
+                                attribute_class,
+                                attribute_class,
+                                false,
+                                || {
+                                    recoverable_error!(
+                                        "staticmethod should never have a Self annotation"
+                                    );
+                                    Type::ERROR
+                                },
+                            ),
+                        )))));
+                    }
+                }
             }
         }
         let mut new = None;
@@ -1768,7 +1796,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         class_of_attribute: Option<Class>,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Self {
         // This method exists for __new__
         let attribute_class = class_of_attribute.unwrap_or(*class);
@@ -1788,7 +1816,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     argument_type: class_t.format_short(i_s.db),
                     function_name: "__new__".into(),
                     callable: t.format_short(i_s.db),
-                })
+                });
             }
             result
         };
@@ -1959,7 +1987,7 @@ impl<'db: 'slf, 'slf> Inferred {
         in_file: &PythonFile,
         name: &str,
         kind: LookupKind,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
@@ -2051,7 +2079,7 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind),
+        add_issue: &dyn Fn(IssueKind) -> bool,
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError,
     ) -> Self {
@@ -2250,6 +2278,14 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingDataclassTransform => {
                                 return Inferred::new_object(i_s.db);
                             }
+                            Specific::TypingTypeForm => {
+                                debug!("Execute type definition with {}", stringify!($name));
+                                if let Some(file) = args.in_file() {
+                                    return file
+                                        .name_resolution_for_types(i_s)
+                                        .execute_type_form(args);
+                                }
+                            }
                             _ => (),
                         }
                     }
@@ -2426,7 +2462,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 slice_type.as_node_ref().add_issue(
                     i_s,
                     IssueKind::UnsupportedSetItemTarget(self.format_short(i_s)),
-                )
+                );
             },
             OnTypeError::new(&|i_s, _, arg, types| {
                 let ErrorStrs { got, expected } = types.as_boxed_strs(i_s.db);
@@ -2439,7 +2475,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 } else {
                     IssueKind::InvalidSetItemTarget { got, expected }
                 };
-                from.add_issue(i_s, type_)
+                from.add_issue(i_s, type_);
             }),
         );
     }
@@ -2526,7 +2562,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn add_issue_if_deprecated<AddIssue: FnOnce(IssueKind)>(
+    pub fn add_issue_if_deprecated<AddIssue: FnOnce(IssueKind) -> bool>(
         &self,
         db: &Database,
         on_name: Option<NodeRef>,
@@ -3033,6 +3069,7 @@ pub fn specific_to_type<'db>(
         | Specific::TypingLiteralString
         | Specific::TypingTypeGuard
         | Specific::TypingTypeIs
+        | Specific::TypingTypeForm
         | Specific::TypingConcatenateClass
         | Specific::TypingReadOnly
         | Specific::TypingTypeAlias
@@ -3075,7 +3112,7 @@ fn infer_callable_with_first_param_annotation(
     first_type: &Type,
     attribute_class: &Class,
     instance: Type,
-    add_issue: impl Fn(IssueKind),
+    add_issue: impl Fn(IssueKind) -> bool,
 ) -> Inferred {
     let as_instance = || instance.clone();
     let mut matcher = Matcher::new_function_matcher(&func, func.type_vars(i_s.db), &as_instance);
@@ -3270,6 +3307,13 @@ impl AttributeKind {
         } else {
             None
         }
+    }
+
+    pub fn is_attribute(&self) -> bool {
+        matches!(
+            self,
+            Self::AnnotatedAttribute | Self::Attribute | Self::ClassVar | Self::Final
+        )
     }
 
     pub fn is_cached_property(&self) -> bool {

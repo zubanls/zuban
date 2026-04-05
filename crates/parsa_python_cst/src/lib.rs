@@ -14,7 +14,7 @@ use std::{
 
 pub use bytes::parse_python_bytes_literal;
 use completion::scope_for_node;
-pub use completion::{CompletionContext, CompletionNode, RestNode, Scope, QuoteState};
+pub use completion::{CallArgs, CompletionContext, CompletionNode, RestNode, Scope, UsedArgs, QuoteState};
 pub use match_stmt::{
     CasePattern, KeyEntryInPattern, LiteralPatternContent, MappingPatternItem, ParamPattern,
     PatternKind, SequencePatternItem, StarPatternContent, SubjectExprContent,
@@ -118,6 +118,7 @@ impl Tree {
         mut start_at: CodeIndex,
         region: &str,
     ) -> Option<TypeIgnoreComment<'_>> {
+        let mut result = None;
         for line in region.split(['\n', '\r']) {
             let mut iterator = line.split('#');
             start_at += iterator.next().unwrap().len() as CodeIndex + 1;
@@ -129,22 +130,35 @@ impl Tree {
                     rest.strip_prefix("zuban:")
                 }) {
                     let ignore = ignore.trim_start_matches(' ');
-                    let r = maybe_type_ignore(
+                    let new = maybe_type_ignore(
                         kind,
                         start_at + (comment.len() - ignore.len()) as CodeIndex,
                         ignore,
                     );
-                    if r.is_some() {
-                        return r;
+                    if let Some(new) = new {
+                        if let Some(old) = &mut result {
+                            match (old, new) {
+                                (
+                                    TypeIgnoreComment::WithCodes {
+                                        codes_of_later_type_ignores,
+                                        ..
+                                    },
+                                    TypeIgnoreComment::WithCodes {
+                                        codes: new_codes, ..
+                                    },
+                                ) => codes_of_later_type_ignores.push(new_codes),
+                                (old, _) => *old = TypeIgnoreComment::WithoutCode,
+                            }
+                        } else {
+                            result = Some(new);
+                        }
                     }
-                } else {
-                    break;
                 }
                 start_at += comment.len() as CodeIndex + 1;
             }
             start_at += 1;
         }
-        None
+        result
     }
 
     pub fn has_type_ignore_at_start(&self) -> Result<bool, &str> {
@@ -451,6 +465,7 @@ pub enum TypeIgnoreComment<'db> {
         codes: &'db str,
         kind: &'static str,
         codes_start_at_index: CodeIndex,
+        codes_of_later_type_ignores: Vec<&'db str>,
     },
     WithoutCode,
 }
@@ -477,6 +492,7 @@ pub fn maybe_type_ignore<'db>(
                 kind,
                 codes: trimmed,
                 codes_start_at_index: start_at + 1,
+                codes_of_later_type_ignores: vec![],
             });
         }
 
@@ -2815,7 +2831,7 @@ impl<'db> ArgumentsDetails<'db> {
         }
     }
 
-    pub fn maybe_single_named_expr(&self) -> Option<NamedExpression<'db>> {
+    pub fn maybe_single_positional(&self) -> Option<NamedExpression<'db>> {
         match self {
             Self::Node(args) => {
                 let mut iterator = args.iter();
@@ -3049,7 +3065,7 @@ impl<'db> Iterator for SimpleNameIterator<'db> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AssignmentRightSide<'db> {
     YieldExpr(YieldExpr<'db>),
     StarExpressions(StarExpressions<'db>),
@@ -4391,7 +4407,7 @@ impl<'db> NameDef<'db> {
                 ErrorNonterminal(stmt),
             ])
             .unwrap();
-        if node.is_type(Nonterminal(stmt)) || node.is_type(ErrorNonterminal(stmt)) {
+        if node.is_type_or_error_thereof(Nonterminal(stmt)) {
             None
         } else if node.is_type(Nonterminal(import_from_as_name)) {
             Some(NameImportParent::ImportFromAsName(ImportFromAsName::new(
@@ -4499,9 +4515,8 @@ impl<'db> NameDef<'db> {
             TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function(FunctionDef::new(node))
-        } else if node.is_type(Nonterminal(stmt))
-            | node.is_type(Nonterminal(walrus))
-            | node.is_type(ErrorNonterminal(stmt))
+        } else if node.is_type_or_error_thereof(Nonterminal(stmt))
+            || node.is_type(Nonterminal(walrus))
         {
             TypeLike::Other
         } else if node.is_type(Nonterminal(import_from_as_name)) {

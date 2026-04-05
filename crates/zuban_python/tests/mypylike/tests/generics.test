@@ -1964,3 +1964,34 @@ class X(Generic[T]):
     def __init__(self, x: Callable[[], T]): ...
 
 X[SimpleGeneric[int]](SimpleGeneric)
+
+[case generic_context_avoid_multiplication_context_inference]
+# From GH #310
+x: str = "x" * max(1, 10)
+y: list[int] = [1] * max(1, 10)
+
+[case no_context_for_argument_in_possible_context]
+# flags: --no-use-joins
+# From GH #340
+from itertools import chain, repeat
+
+def f(*args: int, more: str) -> None:
+    for item in chain(args, repeat(more)):
+        reveal_type(item)  # N: Revealed type is "int | str"
+
+[case type_var_union_bound_checking]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar("T", bound=int | str)
+T_co = TypeVar("T_co", bound=int | str, covariant=True)
+
+class C(Generic[T_co]):
+    def f(self, y: T) -> C[T | T_co]: ...
+
+[case type_var_bound_with_self_is_valid]
+from typing import TypeVar, Generic, Self
+
+T = TypeVar("T", bound="C")
+
+class C(list[T], Generic[T]):
+    def f(self, y: T) -> C[Self]: ...

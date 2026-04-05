@@ -5,8 +5,9 @@ use utils::FastHashMap;
 use crate::{
     automaton::{
         Automatons, DFAState, InternalNonterminalType, InternalSquashedType, InternalStrToNode,
-        InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode, RuleMap, SoftKeywords,
-        Squashable, StackMode, generate_automatons,
+        InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode,
+        ReusableFirstNonterminal, RuleMap, SoftKeywords, Squashable, StackMode,
+        generate_automatons,
     },
     backtracking::BacktrackingTokenizer,
 };
@@ -93,7 +94,16 @@ pub struct Grammar<T> {
 
 #[derive(Debug, Clone, Copy)]
 enum ModeData<'a> {
-    Alternative(BacktrackingPoint<'a>),
+    Alternative {
+        backtracking: BacktrackingPoint<'a>,
+        fallback_plan: &'a Plan,
+        reusable_first_nonterminal: &'a Option<ReusableFirstNonterminal>,
+    },
+    LastAlternative {
+        backtracking: BacktrackingPoint<'a>,
+        first_plan_start_index: CodeIndex,
+        first_plan_had_valid_stack: bool,
+    },
     LL,
 }
 
@@ -102,7 +112,7 @@ struct BacktrackingPoint<'a> {
     tree_node_count: usize,
     token_index: usize,
     children_count: usize,
-    fallback_plan: &'a Plan,
+    replay_plan: &'a Plan,
 }
 
 struct StackNode<'a> {
@@ -250,7 +260,7 @@ impl<'a, T: Token> Grammar<T> {
             ModeData::LL => {
                 stack.pop_normal();
             }
-            ModeData::Alternative(_) => {
+            ModeData::Alternative { .. } | ModeData::LastAlternative { .. } => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
                 let tos = stack.tos_mut();
                 tos.children_count = old_tos.children_count;
@@ -270,62 +280,200 @@ impl<'a, T: Token> Grammar<T> {
         transition: Option<InternalSquashedType>,
         token: Option<&T>,
     ) {
-        // In case we have a token that is not allowed at this position, try alternatives.
-        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-            if let ModeData::Alternative(backtracking_point) = node.mode {
-                stack.stack_nodes.truncate(i);
-
-                stack
-                    .tree_nodes
-                    .truncate(backtracking_point.tree_node_count);
-                let tos = stack.tos_mut();
-                tos.children_count = backtracking_point.children_count;
-                backtracking_tokenizer.reset(backtracking_point.token_index);
-                let t = backtracking_tokenizer.next().unwrap();
-                self.apply_plan(
-                    stack,
-                    backtracking_point.fallback_plan,
-                    &t,
-                    backtracking_tokenizer,
-                );
-                if !stack.tos().enabled_token_recording {
-                    backtracking_tokenizer.stop();
-                }
-                // The token was not used, but the tokenizer backtracked.
-                return; // Error Recovery done.
-            }
+        // There are three potential steps for error recovery
+        //
+        // 1. Add an error token to a new error recovery node
+        // 2. Use alternatives and potentially replay a better previous alternative
+        // 3. Use the underlying error recovery node to add the node as a failed node to the stack
+        //
+        // This is (1)
+        if let Some(nonterminal_id) = stack.tos().dfa_state.transition_towards_error_recovery_node
+            && let Some(transition) = transition
+        {
+            stack.calculate_previous_next_node();
+            let token = token.unwrap();
+            // First add the nonterminal
+            stack.tree_nodes.push(InternalNode {
+                next_node_offset: 0,
+                type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
+                start_index: token.start_index(),
+                length: token.length(),
+            });
+            // And then add the terminal
+            stack.tree_nodes.push(InternalNode {
+                next_node_offset: 0,
+                type_: transition.set_error_recovery_bit(),
+                start_index: token.start_index(),
+                length: token.length(),
+            });
+            return;
         }
 
-        if let Some(transition) = transition {
-            // If the first step did not work, we try to add the token as an error terminal to
-            // the tree.
-            for nonterminal_id in stack.tos().dfa_state.nonterminal_transition_ids() {
-                let automaton = &self.automatons[&nonterminal_id];
-                if automaton.does_error_recovery {
-                    stack.calculate_previous_next_node();
-                    let token = token.unwrap();
-                    // First add the nonterminal
-                    stack.tree_nodes.push(InternalNode {
-                        next_node_offset: 0,
-                        type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
-                        start_index: token.start_index(),
-                        length: token.length(),
-                    });
-                    // And then add the terminal
-                    stack.tree_nodes.push(InternalNode {
-                        next_node_offset: 0,
-                        type_: transition.set_error_recovery_bit(),
-                        start_index: token.start_index(),
-                        length: token.length(),
-                    });
-                    return; // Error recovery is done.
-                }
-            }
-        }
-        // First step of error recovery is to mark tree nodes as failed and pop the
-        // stack nodes that are failed.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+            let reset =
+                |backtracking: BacktrackingPoint,
+                 stack: &mut Stack,
+                 backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>| {
+                    stack.stack_nodes.truncate(i + 1);
+                    stack.tree_nodes.truncate(backtracking.tree_node_count);
+                    let tos = stack.tos_mut();
+                    tos.children_count = backtracking.children_count;
+                    backtracking_tokenizer.reset(backtracking.token_index);
+                    backtracking_tokenizer.next().unwrap()
+                };
+            // (2)
+            match node.mode {
+                ModeData::Alternative {
+                    backtracking,
+                    fallback_plan,
+                    reusable_first_nonterminal,
+                } => {
+                    let first_plan_start_index = stack.tree_nodes.last().unwrap().start_index;
+                    let first_plan_had_valid_stack = stack.stack_nodes.len() == i + 1;
+                    let alternative = ModeData::LastAlternative {
+                        backtracking,
+                        first_plan_start_index,
+                        first_plan_had_valid_stack,
+                    };
+                    if let Some(reusable) = reusable_first_nonterminal
+                        && let last = reusable.pushes.last().unwrap()
+                        && let c = backtracking.tree_node_count
+                        && let Some(nth) =
+                            find_matching_node(&stack.tree_nodes[c..], last.node_type)
+                    {
+                        let reuse_node_index = c + nth;
+                        debug_assert_eq!(
+                            stack.tree_nodes[reuse_node_index].type_,
+                            last.node_type.to_squashed()
+                        );
+                        let Some((last_leaf_index, last_leaf)) =
+                            stack.last_leaf_if_proper_nonterminal(reuse_node_index)
+                        else {
+                            // Both alternatives need the same first non-terminal. If it's not
+                            // properly finished, we can abort.
+                            continue;
+                        };
+
+                        let start_index = stack.tree_nodes[reuse_node_index].start_index;
+                        backtracking_tokenizer.reset_to_last_leaf(last_leaf);
+                        stack.stack_nodes.truncate(i + 1);
+
+                        let tos_mut = stack.tos_mut();
+                        tos_mut.mode = alternative;
+                        tos_mut.dfa_state = fallback_plan.next_dfa();
+                        stack.tree_nodes.truncate(last_leaf_index + 1);
+                        // Make sure the tree nodes have the right size to overwrite them later.
+                        // It doesn't matter where we insert/remove, everything should be
+                        // overwritten.
+                        let other_push_len = reusable.tree_nodes_needed_for_pushes;
+                        stack.tree_nodes.splice(
+                            c..c + nth.saturating_sub(other_push_len),
+                            std::iter::repeat_n(
+                                InternalNode {
+                                    // These values should all not matter, since they are
+                                    // overwritten below.
+                                    next_node_offset: 0,
+                                    type_: InternalSquashedType(0),
+                                    start_index,
+                                    length: 0,
+                                },
+                                other_push_len.saturating_sub(nth),
+                            ),
+                        );
+                        let mut tree_node_index = c;
+                        for push in reusable.pushes.iter() {
+                            stack.stack_nodes.push(StackNode {
+                                node_id: push.node_type,
+                                tree_node_index,
+                                latest_child_node_index: match &push.stack_mode {
+                                    StackMode::LL => {
+                                        if !push.next_dfa().node_may_be_omitted {
+                                            stack.tree_nodes[tree_node_index] = InternalNode {
+                                                next_node_offset: 0,
+                                                type_: push.node_type.to_squashed(),
+                                                start_index,
+                                                length: 0,
+                                            };
+                                            tree_node_index += 1;
+                                        }
+                                        tree_node_index
+                                    }
+                                    StackMode::Alternative { .. } => tree_node_index,
+                                },
+                                dfa_state: push.next_dfa(),
+                                children_count: 1,
+                                mode: match &push.stack_mode {
+                                    StackMode::LL => ModeData::LL,
+                                    StackMode::Alternative {
+                                        fallback,
+                                        replay,
+                                        reusable_first_nonterminal,
+                                    } => ModeData::Alternative {
+                                        backtracking: BacktrackingPoint {
+                                            tree_node_count: tree_node_index,
+                                            token_index: backtracking.token_index,
+                                            replay_plan: unsafe { &**replay },
+                                            children_count: 1,
+                                        },
+                                        fallback_plan: unsafe { &**fallback },
+                                        reusable_first_nonterminal,
+                                    },
+                                },
+                                enabled_token_recording: true,
+                            });
+                        }
+                        debug_assert!(!reusable.pushes.is_empty());
+                        return;
+                    } else {
+                        let t = reset(backtracking, stack, backtracking_tokenizer);
+                        stack.tos_mut().mode = alternative;
+                        self.apply_plan(stack, fallback_plan, &t, backtracking_tokenizer);
+                        // The token was not used, but the tokenizer backtracked.
+                    }
+                    return; // Error Recovery done.
+                }
+                ModeData::LastAlternative {
+                    backtracking,
+                    first_plan_start_index,
+                    first_plan_had_valid_stack,
+                } => {
+                    // Since the alternative used more nodes than the original, simply replay the
+                    // original one that ate more code. This makes error recovery a bit nicer
+                    // and useful. Note that it might seem like we should just keep around the
+                    // previous parse results and not reparse again. This is probably not the way
+                    // to go, because this should never happen on valid code. So this only ever
+                    // needs to happen on broken code, which is definitely only a very small subset
+                    // that we have to parse.
+                    let start = stack.tree_nodes.last().unwrap().start_index;
+                    if first_plan_start_index > start
+                        // In case of equal length, we prefer the branch that is failing in the
+                        // current DFA and not somewhere inside the stack, which seems like a
+                        // less likely scenario.
+                        || first_plan_start_index == start
+                            && first_plan_had_valid_stack
+                            && !stack.stack_nodes.len() != i + 1
+                    {
+                        let t = reset(backtracking, stack, backtracking_tokenizer);
+                        // Pop the LastAlternative that is still on the stack.
+                        stack.stack_nodes.pop();
+                        stack.tos_mut().children_count = 0;
+                        self.apply_plan(
+                            stack,
+                            backtracking.replay_plan,
+                            &t,
+                            backtracking_tokenizer,
+                        );
+                        if !stack.tos().enabled_token_recording {
+                            backtracking_tokenizer.stop();
+                        }
+                        return;
+                    }
+                }
+                ModeData::LL => (),
+            }
+
             if self.automatons[&node.node_id].does_error_recovery {
+                // (3) Mark tree nodes as failed and pop the stack nodes that failed.
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
                     update_tree_node_position(&mut stack.tree_nodes, &stack_node);
@@ -346,6 +494,7 @@ impl<'a, T: Token> Grammar<T> {
                 return; // Error recovery is done.
             }
         }
+
         panic!(
             "No error recovery function found with stack {:?} and token {token:?}",
             stack
@@ -366,13 +515,35 @@ impl<'a, T: Token> Grammar<T> {
     ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = plan.next_dfa();
+        if tos_mut.dfa_state.is_negative_lookahead() {
+            return;
+        }
 
         let start_index = token.start_index();
+        if tos_mut.dfa_state.node_may_be_omitted
+            && plan.mode != PlanMode::LeftRecursive
+            && tos_mut.children_count == 1
+        {
+            tos_mut.children_count = 1;
+            tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+
+            let start_index = stack.tree_nodes[tos_mut.tree_node_index].start_index;
+            stack.tree_nodes.insert(
+                tos_mut.tree_node_index,
+                InternalNode {
+                    next_node_offset: 0,
+                    type_: tos_mut.node_id.to_squashed(),
+                    start_index,
+                    length: 0,
+                },
+            );
+        }
+
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
         // There's one exception: If the node can be omitted we don't even have to do it.
-        if plan.mode == PlanMode::LeftRecursive && !tos_mut.can_omit_children() {
+        if plan.mode == PlanMode::LeftRecursive {
             tos_mut.children_count = 1;
             tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
             // Backtracking should not be enabled for left recursion. It can be enabled again for
@@ -381,28 +552,28 @@ impl<'a, T: Token> Grammar<T> {
 
             update_tree_node_position(&mut stack.tree_nodes, tos_mut);
 
-            let old_node = stack.tree_nodes[tos_mut.tree_node_index];
+            let start_index = stack.tree_nodes[tos_mut.tree_node_index].start_index;
             stack.tree_nodes.insert(
                 tos_mut.tree_node_index,
                 InternalNode {
                     next_node_offset: 0,
-                    type_: old_node.type_,
-                    start_index: old_node.start_index,
+                    type_: tos_mut.node_id.to_squashed(),
+                    start_index,
                     length: 0,
                 },
             );
         }
 
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
+
         stack.calculate_previous_next_node();
 
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let tos = stack.tos_mut();
-            let children_count = tos.children_count;
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            match push.stack_mode {
+            match &push.stack_mode {
                 StackMode::LL => {
                     stack.push(
                         push.node_type,
@@ -414,22 +585,31 @@ impl<'a, T: Token> Grammar<T> {
                         enabled_token_recording,
                     );
                 }
-                StackMode::Alternative(alternative_plan) => {
+                StackMode::Alternative {
+                    fallback,
+                    replay,
+                    reusable_first_nonterminal,
+                } => {
+                    let children_count = tos.children_count - 1;
                     enabled_token_recording = true;
-                    stack.push(
-                        push.node_type,
-                        stack.tos().tree_node_index,
-                        push.next_dfa(),
-                        start_index,
-                        ModeData::Alternative(BacktrackingPoint {
-                            tree_node_count: stack.tree_nodes.len(),
-                            token_index: backtracking_tokenizer.start(token),
-                            fallback_plan: unsafe { &*alternative_plan },
-                            children_count,
-                        }),
+                    stack.stack_nodes.push(StackNode {
+                        node_id: push.node_type,
+                        tree_node_index: stack.tos().tree_node_index,
+                        latest_child_node_index: 0,
+                        dfa_state: push.next_dfa(),
                         children_count,
+                        mode: ModeData::Alternative {
+                            backtracking: BacktrackingPoint {
+                                tree_node_count: stack.tree_nodes.len(),
+                                token_index: backtracking_tokenizer.start(token),
+                                replay_plan: unsafe { &**replay },
+                                children_count,
+                            },
+                            fallback_plan: unsafe { &**fallback },
+                            reusable_first_nonterminal,
+                        },
                         enabled_token_recording,
-                    );
+                    });
                 }
             };
             stack.tos_mut().latest_child_node_index = stack.tree_nodes.len();
@@ -477,14 +657,10 @@ impl<'a> Stack<'a> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        if stack_node.can_omit_children() {
-            self.tree_nodes.remove(stack_node.tree_node_index);
-        } else {
-            // We can simply get the last token and check its end position to
-            // calculate how long a node is.
-            debug_assert!(stack_node.children_count >= 1);
-            update_tree_node_position(&mut self.tree_nodes, &stack_node);
-        }
+        // We can simply get the last token and check its end position to
+        // calculate how long a node is.
+        debug_assert!(stack_node.children_count >= 1);
+        update_tree_node_position(&mut self.tree_nodes, &stack_node);
     }
 
     #[inline]
@@ -508,9 +684,10 @@ impl<'a> Stack<'a> {
             mode,
             enabled_token_recording,
         });
-        // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
+        // ModeData::Alternative(_) cannot be called here, because the tree node is already
         // part of the parent stack node.
-        if matches!(mode, ModeData::LL) {
+        debug_assert!(matches!(mode, ModeData::LL));
+        if !dfa_state.node_may_be_omitted {
             self.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
                 type_: node_id.to_squashed(),
@@ -615,13 +792,47 @@ impl<'a> Stack<'a> {
         );
         code
     }
+
+    fn last_leaf_if_proper_nonterminal(
+        &self,
+        nth_tree_node: usize,
+    ) -> Option<(usize, &InternalNode)> {
+        if self.tree_nodes[nth_tree_node].length == 0 {
+            // If there is no length the node is not finished.
+            return None;
+        }
+        // Check the first child
+        let mut check = nth_tree_node + 1;
+        loop {
+            let node = &self.tree_nodes[check];
+            if node.next_node_offset > 0 {
+                check += node.next_node_offset as usize;
+            } else if node.type_.is_leaf() {
+                return Some((check, node));
+            } else {
+                // Check the first child
+                check += 1;
+            }
+        }
+    }
 }
 
-impl StackNode<'_> {
-    #[inline]
-    fn can_omit_children(&self) -> bool {
-        self.dfa_state.node_may_be_omitted && self.children_count == 1
+fn find_matching_node(
+    tree_nodes: &[InternalNode],
+    type_: InternalNonterminalType,
+) -> Option<usize> {
+    let type_ = type_.to_squashed();
+    let start_index = tree_nodes[0].start_index;
+    for (i, node) in tree_nodes.iter().enumerate() {
+        if node.start_index != start_index {
+            // This must be a a later node
+            return None;
+        }
+        if node.type_ == type_ {
+            return Some(i);
+        }
     }
+    None
 }
 
 #[inline]

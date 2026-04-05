@@ -10,7 +10,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, GitignoreFile,
-    NormalizedPath, Parent, VfsHandler, WorkspaceKind,
+    NormalizedPath, Parent, VfsHandler, WorkspaceKind, WorkspacesBuilder,
     tree::{AddedKind, InvalidationDetail, Invalidations},
     workspaces::Workspaces,
 };
@@ -21,7 +21,7 @@ thread_local! {
 
 pub(crate) type Scheme = Arc<Box<str>>;
 
-fn file_scheme() -> Scheme {
+pub(crate) fn file_scheme() -> Scheme {
     FILE_SCHEME.with(|f| f.clone())
 }
 
@@ -55,10 +55,10 @@ enum InMemoryKind {
 }
 
 impl<F: VfsFile> Vfs<F> {
-    pub fn new(handler: Box<dyn VfsHandler>) -> Self {
+    pub fn new(handler: Box<dyn VfsHandler>, workspaces: Workspaces) -> Self {
         Self {
             handler,
-            workspaces: Default::default(),
+            workspaces,
             files: Default::default(),
             in_memory_files: Default::default(),
         }
@@ -77,7 +77,7 @@ impl<F: VfsFile> Vfs<F> {
         for file_state in self.files.iter_mut() {
             fn search_parent(
                 vfs_handler: &dyn VfsHandler,
-                workspaces: &Workspaces,
+                workspaces: &WorkspacesBuilder,
                 parent: Parent,
                 name: &str,
             ) -> DirectoryEntry {
@@ -85,12 +85,17 @@ impl<F: VfsFile> Vfs<F> {
                 let parent_entries = match parent {
                     Parent::Directory(dir) => {
                         tmp = dir.upgrade().unwrap();
-                        Directory::entries_with_workspaces(vfs_handler, workspaces, &tmp)
+                        Directory::entries_with_workspace_likes(
+                            vfs_handler,
+                            || workspaces.items.as_slice(),
+                            &tmp,
+                        )
                     }
                     Parent::Workspace(w) => {
                         let w = w.upgrade().unwrap();
                         let n = w.root_path();
                         &workspaces
+                            .items
                             .iter()
                             .find(|workspace| *workspace.root_path() == *n)
                             .unwrap()
@@ -102,7 +107,7 @@ impl<F: VfsFile> Vfs<F> {
             }
             fn replace_from_new_workspace(
                 vfs_handler: &dyn VfsHandler,
-                workspaces: &Workspaces,
+                workspaces: &WorkspacesBuilder,
                 parent: &Parent,
             ) -> Parent {
                 match parent {
@@ -132,17 +137,12 @@ impl<F: VfsFile> Vfs<F> {
         }
 
         for p in type_checked_dirs.rev() {
-            workspaces.add_at_start(
-                &*self.handler,
-                file_scheme(),
-                p.to_owned(),
-                WorkspaceKind::TypeChecking,
-            )
+            workspaces.add_at_start(file_scheme(), p.to_owned(), WorkspaceKind::TypeChecking)
         }
 
         Self {
+            workspaces: workspaces.into(),
             handler,
-            workspaces,
             files: files.into(),
             in_memory_files: Default::default(),
         }
@@ -221,9 +221,13 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    pub fn add_workspace(&self, root_path: Arc<NormalizedPath>, kind: WorkspaceKind) {
+    pub fn add_workspace_without_full_access(
+        &self,
+        root_path: Arc<NormalizedPath>,
+        kind: WorkspaceKind,
+    ) -> bool {
         self.workspaces
-            .add(&*self.handler, file_scheme(), root_path, kind)
+            .push_without_full_access(&*self.handler, file_scheme(), root_path, kind)
     }
 
     pub fn search_path(&self, case_sensitive: bool, path: &PathWithScheme) -> Option<DirOrFile> {
@@ -267,8 +271,8 @@ impl<F: VfsFile> Vfs<F> {
         let new_invalidations = file.file_entry.invalidations.take();
         file.invalidate_references_to(original_file_index);
 
-        if let InvalidationDetail::Some(invs) = new_invalidations.iter() {
-            for invalidation in &invs {
+        if let InvalidationDetail::Some(invs) = &*new_invalidations.borrow() {
+            for invalidation in invs {
                 let p = &self.file_state(*invalidation).path.path;
                 tracing::debug!(
                     "Invalidate {p} because we have invalidated {}",
@@ -468,9 +472,9 @@ impl<F: VfsFile> Vfs<F> {
             file_index
         };
         if tracing::enabled!(Level::INFO)
-            && let InvalidationDetail::Some(invs) = ensured.invalidations.iter()
+            && let InvalidationDetail::Some(invs) = &*ensured.invalidations.borrow()
         {
-            for invalidation in &invs {
+            for invalidation in invs {
                 let p = &self.file_state(*invalidation).path.path;
                 let path = &self.file_state(file_index).path.path;
                 tracing::info!("Invalidate {p} because we're loading {path}");
@@ -653,11 +657,12 @@ impl<F: VfsFile> Vfs<F> {
                                 all_unloads.insert(file_index);
                             }
                         }
-                        DirectoryEntry::MissingEntry(missing) => match missing.invalidations.iter()
-                        {
-                            InvalidationDetail::InvalidatesDb => invalidates_db = true,
-                            InvalidationDetail::Some(invs) => all_invalidations.extend(&invs),
-                        },
+                        DirectoryEntry::MissingEntry(missing) => {
+                            match &*missing.invalidations.borrow() {
+                                InvalidationDetail::InvalidatesDb => invalidates_db = true,
+                                InvalidationDetail::Some(invs) => all_invalidations.extend(invs),
+                            }
+                        }
                         // TODO gitignore invalidation
                         DirectoryEntry::Directory(_) | DirectoryEntry::Gitignore(_) => (),
                     };
@@ -675,7 +680,7 @@ impl<F: VfsFile> Vfs<F> {
                     return;
                 }
                 let new_entry = self.handler.read_and_watch_entry(
-                    &*self.workspaces.items.read().unwrap(),
+                    &*self.workspaces.items.load(),
                     path,
                     parent.clone(),
                     replace_name,
@@ -697,7 +702,9 @@ impl<F: VfsFile> Vfs<F> {
                             }
                         } else {
                             tracing::debug!("Decided to add {replace_name} to VFS");
-                            in_dir.borrow_mut().push(new_entry);
+                            // TODO why do we create another Arc name here? It's already in
+                            // new_entry.
+                            in_dir.borrow_mut().insert(replace_name.into(), new_entry);
                         }
                     }
                     None => {
