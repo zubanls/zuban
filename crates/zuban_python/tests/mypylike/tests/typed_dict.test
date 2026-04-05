@@ -1145,3 +1145,32 @@ from typing import TypedDict
 
 class C(TypedDict):
     x: ReadOnly[int]
+
+[case avoid_nested_typed_dict_slowness]
+# From GH #327
+from typing import Literal, TypedDict, NotRequired
+
+class Work(TypedDict):
+    kind: Literal["a", "b", "c", "d", "e", "f", "g", "h", "i"] | None
+    w1: NotRequired[Work]
+    w2: Nested1
+    w3: NotRequired[Nested2]
+    w4: Nested1
+    w5: NotRequired[Nested2]
+
+class Nested1(TypedDict):
+    w1: NotRequired[Nested1]
+    w2: NotRequired[Nested1]
+    w3: NotRequired[Nested2]
+    w4: NotRequired[Nested2]
+    w5: NotRequired[Work]
+
+class Nested2(TypedDict):
+    w1: Work
+    w2: NotRequired[Nested1]
+    w3: NotRequired[Nested2]
+    w4: Work
+    w5: Work
+
+def f(w: Work) -> None:
+    w_other: Work = w

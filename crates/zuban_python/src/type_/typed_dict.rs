@@ -68,6 +68,12 @@ pub(crate) enum TypedDictGenerics {
     Generics(GenericsList),
 }
 
+impl TypedDictGenerics {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExtraItemsType {
     pub t: Type,

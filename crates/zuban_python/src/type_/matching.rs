@@ -184,6 +184,9 @@ impl Type {
             },
             Type::TypedDict(d1) => match value_type {
                 Type::TypedDict(d2) => {
+                    if d1.defined_at == d2.defined_at && d1.generics.is_empty() {
+                        return Match::new_true();
+                    }
                     let mut m = d1.is_super_type_of(i_s, matcher, d2);
                     if variance == Variance::Invariant {
                         m &= d2.is_super_type_of(i_s, matcher, d1);
