@@ -1146,7 +1146,7 @@ from typing import TypedDict
 class C(TypedDict):
     x: ReadOnly[int]
 
-[case avoid_nested_typed_dict_slowness]
+[case avoid_nested_typed_dict_slowness1]
 # From GH #327
 from typing import Literal, TypedDict, NotRequired
 
@@ -1174,3 +1174,35 @@ class Nested2(TypedDict):
 
 def f(w: Work) -> None:
     w_other: Work = w
+
+[case avoid_nested_typed_dict_slowness2]
+from typing import Literal, TypedDict, NotRequired, Generic, TypeVar
+
+T = TypeVar("T")
+
+class Work(TypedDict, Generic[T]):
+    kind: Literal["a", "b", "c", "d", "e", "f", "g", "h", "i"] | None
+    w1: NotRequired[Work[T]]
+    w2: Nested1[T]
+    w3: NotRequired[Nested2[T]]
+    w4: Nested1[T]
+    w5: NotRequired[Nested2[T]]
+
+class Nested1(TypedDict, Generic[T]):
+    w1: NotRequired[Nested1[T]]
+    w2: NotRequired[Nested1[T]]
+    w3: NotRequired[Nested2[T]]
+    w4: NotRequired[Nested2[T]]
+    w5: NotRequired[Work[T]]
+
+class Nested2(TypedDict, Generic[T]):
+    w1: Work[T]
+    w2: NotRequired[Nested1[T]]
+    w3: NotRequired[Nested2[T]]
+    w4: Work[T]
+    w5: Work[T]
+    t: T
+
+def f(w: Work[int]) -> None:
+    w1: Work[int] = w
+    w2: Work[str] = w  # E: Incompatible types in assignment (expression has type "__main__.Work[int]", variable has type "__main__.Work[str]")

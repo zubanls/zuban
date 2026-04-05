@@ -11,7 +11,8 @@ use crate::{
     inference_state::InferenceState,
     match_::{Match, MismatchReason},
     matching::{
-        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_protocol_recursion, format_got_expected,
+        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_structural_matching_recursion,
+        format_got_expected,
     },
     params::matches_params,
     recoverable_error,
@@ -185,11 +186,24 @@ impl Type {
             Type::TypedDict(d1) => match value_type {
                 Type::TypedDict(d2) => {
                     if d1.defined_at == d2.defined_at && d1.generics.is_empty() {
+                        // This is a shortcut that might happen pretty often
                         return Match::new_true();
                     }
-                    let mut m = d1.is_super_type_of(i_s, matcher, d2);
+                    let mut m = avoid_structural_matching_recursion(
+                        i_s.db,
+                        self,
+                        value_type,
+                        matcher.has_type_var_matcher(),
+                        || d1.is_super_type_of(i_s, matcher, d2),
+                    );
                     if variance == Variance::Invariant {
-                        m &= d2.is_super_type_of(i_s, matcher, d1);
+                        m &= avoid_structural_matching_recursion(
+                            i_s.db,
+                            value_type,
+                            self,
+                            matcher.has_type_var_matcher(),
+                            || d2.is_super_type_of(i_s, matcher, d1),
+                        )
                     }
                     m.similar_if_false()
                 }
@@ -354,7 +368,7 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
-                    avoid_protocol_recursion(
+                    avoid_structural_matching_recursion(
                         i_s.db,
                         self,
                         value_type,

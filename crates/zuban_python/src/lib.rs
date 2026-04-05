@@ -60,7 +60,7 @@ use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
-use matching::invalidate_protocol_cache;
+use matching::invalidate_structural_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
@@ -209,7 +209,7 @@ impl Project {
             issues
         })?;
         tracing::info!("Checked {checked_files} files ({files_with_errors} files had errors)");
-        invalidate_protocol_cache();
+        invalidate_structural_matching_cache();
         Ok(Diagnostics {
             checked_files,
             files_with_errors,
