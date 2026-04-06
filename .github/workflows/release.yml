@@ -41,6 +41,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
             packages-dir: "wheels/"
+      - uses: actions/checkout@v6
       - name: Publish GitHub Release
         env:
           TITLE: "${{ github.ref_name }}"
