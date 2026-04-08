@@ -61,6 +61,11 @@ pub fn avoid_structural_matching_recursion(
     STRUCTURAL_MATCHING_CACHE.with(|cache| {
         let mut current = cache.avoid_recursions.borrow_mut();
         if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
+            debug!(
+                r#"Avoided recursion for structural matching "{}" against "{}" -> return true"#,
+                t1.format_short(db),
+                t2.format_short(db),
+            );
             Match::new_true()
         } else {
             if !current.is_empty() {
