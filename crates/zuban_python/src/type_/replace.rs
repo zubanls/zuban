@@ -60,9 +60,8 @@ where
         self.replace_type_var_likes_and_self(db, callable, &|| None)
     }
 
-    fn replace_self_if_necessary(self, db: &Database, replace_self: ReplaceSelf) -> Self {
+    fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
         self.replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
-            .unwrap_or(self)
     }
 }
 
