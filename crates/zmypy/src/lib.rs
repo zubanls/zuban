@@ -994,4 +994,42 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn strict_order_should_not_matter() {
+        // From GH #371
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file m.py]
+            from typing import Any
+            def f(x): return x
+            class X(Any): ...
+
+            [file mypy.ini]
+            [mypy]
+            allow_untyped_defs = true
+            strict = true
+            "#,
+            false,
+        );
+        let check = || {
+            let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+            assert_eq!(
+                ds,
+                ["m.py:3: error: Class cannot subclass \"Any\" (has type \"Any\")  [misc]"]
+            );
+        };
+        check();
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\nallow_untyped_defs = true\nstrict = true",
+        );
+        check();
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.mypy]\nallow_untyped_defs = true\nstrict = true",
+        );
+        check();
+    }
 }

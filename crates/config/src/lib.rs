@@ -263,6 +263,11 @@ impl ProjectOptions {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 had_relevant_section = true;
+                if let Some(strict) = section.get("strict")
+                    && IniOrTomlValue::Ini(strict).as_bool(false)?
+                {
+                    result.flags.enable_all_strict_flags()
+                }
                 for (key, value) in section.iter() {
                     apply_from_base_config(
                         vfs,
@@ -373,6 +378,22 @@ impl ProjectOptions {
             );
         };
 
+        if let Some(value) = table.get("strict") {
+            if let Item::Value(value) = value {
+                if IniOrTomlValue::Toml(value).as_bool(false)? {
+                    self.flags.enable_all_strict_flags()
+                }
+            } else {
+                bail!(
+                    "Expected strict in tool.{} to be a value in pyproject.toml",
+                    match from_zuban {
+                        true => "zuban",
+                        false => "mypy",
+                    }
+                );
+            }
+        }
+
         for (key, item) in table.iter() {
             match item {
                 Item::Value(value) => {
@@ -411,7 +432,7 @@ impl ProjectOptions {
                 }
                 Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
                     bail!(
-                        "Expected tool.{} to be a simple table in pyproject.toml",
+                        "Expected tool.{} to only have values in pyproject.toml",
                         match from_zuban {
                             true => "zuban",
                             false => "mypy",
@@ -778,17 +799,18 @@ pub struct OverrideConfig {
 }
 
 impl OverrideConfig {
-    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) -> ConfigResult {
+    pub fn apply_to_flags<'slf>(&'slf self, flags: &mut TypeCheckerFlags) -> ConfigResult {
+        let to_value = |value: &'slf _| match value {
+            OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
+            OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
+        };
         for (key, value) in self.config.iter() {
-            apply_from_config_part(
-                flags,
-                key,
-                match value {
-                    OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
-                    OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
-                },
-                false,
-            )?;
+            if **key == *"strict" && to_value(value).as_bool(false)? {
+                flags.enable_all_strict_flags();
+            }
+        }
+        for (key, value) in self.config.iter() {
+            set_flag(flags, key, to_value(value), false)?;
         }
         Ok(())
     }
@@ -1112,31 +1134,16 @@ fn apply_from_base_config(
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         // Our own
-        "mode" => (), // Already checked earlier
+        "mode" | "strict" => (), // Already checked earlier
         "untyped_function_return_mode" => {
             settings.untyped_function_return_mode =
                 UntypedFunctionReturnMode::from_str(value.as_str()?, false)
                     .map_err(|err| map_clap_error("untyped_function_return_mode", err))?;
         }
-        _ => return apply_from_config_part(flags, key, value, from_zuban),
+
+        _ => return set_flag(flags, key, value, from_zuban),
     };
     Ok(())
-}
-
-fn apply_from_config_part(
-    flags: &mut TypeCheckerFlags,
-    key: &str,
-    value: IniOrTomlValue,
-    from_zuban: bool,
-) -> ConfigResult {
-    if key == "strict" {
-        if value.as_bool(false)? {
-            flags.enable_all_strict_flags();
-        }
-        Ok(())
-    } else {
-        set_flag(flags, key, value, from_zuban)
-    }
 }
 
 fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> ConfigResult {
@@ -1249,7 +1256,7 @@ mod tests {
         let err = project_options_err(code, false);
         assert_eq!(
             err.to_string(),
-            "Expected tool.mypy to be a simple table in pyproject.toml"
+            "Expected tool.mypy to only have values in pyproject.toml"
         );
     }
 
