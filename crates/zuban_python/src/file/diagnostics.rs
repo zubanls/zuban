@@ -2614,12 +2614,10 @@ fn create_matcher_with_independent_type_vars<T>(
 ) -> T {
     let c = Callable::new(c1, None);
     let matcher = Matcher::new_reverse_callable_matcher(&c, replace_self);
-    if c1.defined_at == c2.defined_at {
-        let c2 = c2.change_temporary_matcher_index(db, 1);
-        callback(matcher, c1, &c2)
-    } else {
-        callback(matcher, c1, c2)
-    }
+    // Use a temporary matcher index that will never be reached, because we want to ensure that
+    // no conflict is going to happen.
+    let c2 = c2.change_temporary_matcher_index(db, u32::MAX);
+    callback(matcher, c1, &c2)
 }
 
 fn add_error_if_final(

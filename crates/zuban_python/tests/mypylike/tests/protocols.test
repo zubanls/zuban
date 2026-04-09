@@ -734,7 +734,6 @@ h(C())  # E: Argument 1 to "h" has incompatible type "C"; expected "P2[Never]" \
         # N:         def x(self: C) -> int
 
 [case collection_should_be_an_iterator]
-# flags: --mode default
 # From GH #370
 from collections.abc import Collection, Iterable, Iterator
 from typing import Protocol, reveal_type
@@ -752,3 +751,22 @@ def takes_collection[T](elements: Collection[T]) -> T:
 
 c = Color()
 reveal_type(takes_collection(c))  # N: Revealed type is "__main__.Color"
+
+[case protocol_overload_matching]
+# From GH #373
+from typing import Protocol, Self, overload, Any, assert_type
+
+class PropertyLike(Protocol):
+    @overload
+    def __get__[T](self, instance: None, owner: type[T]) -> Self: ...
+
+    @overload
+    def __get__(self, instance: Any, owner: Any) -> int: ...
+
+    def __get__[T](self, instance, owner: type[T]):
+        return self
+
+class C:
+    p: PropertyLike
+assert_type(C.p, PropertyLike)
+assert_type(C().p, int)
