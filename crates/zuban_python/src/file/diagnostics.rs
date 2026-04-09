@@ -3470,11 +3470,16 @@ fn check_for_missing_annotations(
     return_annotation: Option<ReturnAnnotation>,
 ) {
     let has_param_annotations = function.has_param_annotations(i_s);
-    let has_return_type = return_annotation.is_some()
-        || function.class.is_some() && ["__init__", "__init_subclass__"].contains(&name.as_code());
-    let has_explicit_annotation = has_return_type || has_param_annotations;
-    if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation {
+    if flags.disallow_untyped_defs
+        || flags.disallow_incomplete_defs && {
+            // Check if it has an explicit annotation
+            return_annotation.is_some() || has_param_annotations
+        }
+    {
         let has_args = || function.iter_non_self_args(i_s).next().is_some();
+        let has_return_type = return_annotation.is_some()
+            || function.class.is_some()
+                && ["__init__", "__init_subclass__"].contains(&name.as_code());
         if !has_return_type && !has_param_annotations && has_args() {
             function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped);
         } else {

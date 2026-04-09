@@ -1063,3 +1063,17 @@ y: Iterator[int] = x  # type: ignore[assignment]
 f = frozenset((1, 2, 3))
 s = {1, 2, 3}
 print(f == s)
+
+[case disallow_incomplete_defs_in_classes]
+# flags: --disallow-incomplete-defs
+# From GH #368
+class X:
+    def __init__(self, x): ...
+    def f(self, x): ...
+    def g(self, x: int): ...  # E: Function is missing a return type annotation
+
+class Y:
+    def __init__(self, x) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+
+class Z:
+    def __init__(self, x: int, y): ...  # E: Function is missing a type annotation for one or more arguments
