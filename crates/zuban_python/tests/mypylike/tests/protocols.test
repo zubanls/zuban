@@ -700,3 +700,55 @@ class C:
 def f[S, R](x: Sequence[P[S, R]], y: S) -> R: ...
 
 reveal_type(f([C()], int()))  # N: Revealed type is "int"
+
+[case protocol_self_type_with_inheritance]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+class PBase(Protocol[T]):
+    def x(self: PBase[T]) -> T: ...
+
+class P(PBase[T], Protocol[T]): ...
+
+class P2(PBase[tuple[T]], Protocol[T]): ...
+
+class C:
+    def x(self) -> int: ...
+class D:
+    def x(self) -> tuple[int]: ...
+
+def f[U](elements: PBase[U]) -> U: ...
+def g[U](elements: P[U]) -> U: ...
+def h[U](elements: P2[U]) -> U: ...
+
+reveal_type(f(C()))  # N: Revealed type is "int"
+reveal_type(g(C()))  # N: Revealed type is "int"
+reveal_type(h(D()))  # N: Revealed type is "int"
+
+h(C())  # E: Argument 1 to "h" has incompatible type "C"; expected "P2[Never]" \
+        # N: Following member(s) of "C" have conflicts: \
+        # N:     Expected: \
+        # N:         def x(self: PBase[tuple[U]]) -> tuple[U] \
+        # N:     Got: \
+        # N:         def x(self: C) -> int
+
+[case collection_should_be_an_iterator]
+# flags: --mode default
+# From GH #370
+from collections.abc import Collection, Iterable, Iterator
+from typing import Protocol, reveal_type
+
+class Color:
+    def __iter__(self) -> Iterator["Color"]:
+        return iter([self])
+    def __contains__(self, x: object, /) -> bool:
+        return True
+    def __len__(self) -> int:
+        return 0
+
+def takes_collection[T](elements: Collection[T]) -> T:
+    return next(iter(elements))
+
+c = Color()
+reveal_type(takes_collection(c))  # N: Revealed type is "__main__.Color"

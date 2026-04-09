@@ -391,7 +391,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         had_binding_error.set(true);
                         false
                     })
-                    .with_as_self_instance(&|| other.clone())
+                    .with_as_self_instance(&|| Type::Self_)
                     .with_avoid_inferring_return_types(),
                 );
                 let protocol_inf = protocol_lookup_details.lookup.into_inferred();
@@ -442,7 +442,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_lookup_error = true;
                         } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
-                            let protocol_t = protocol_inf.as_cow_type(i_s);
+                            let mut protocol_t = protocol_inf.as_cow_type(i_s);
+                            if let Some(new) = protocol_t.replace_self(i_s.db, &|| Some(other.clone())) {
+                                protocol_t = Cow::Owned(new);
+                            }
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let other_setter_type = lookup_details.attr_kind.property_setter_type();
