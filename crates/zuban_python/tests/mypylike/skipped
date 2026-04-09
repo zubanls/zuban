@@ -13,6 +13,18 @@ pydantic_mre_fix_non_deterministic_errors
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
+# typeshed upgrade regressions
+testStrictEqualityContains
+testStrictEqualityUnions
+testStrictEqualityOkPromote
+testStrictEqualityTypeVsCallable
+testStrictEqualityMetaclass
+testRaiseNotImplementedFails
+testTypeVariableWithContainerAndTuple
+type_form_basic2_conformance_tests
+union_alias_attr_access
+testTypedDictGet
+
 # https://github.com/python/typing/discussions/2238
 testVariadicSubclassSame
 testVariadicSubclassExtra

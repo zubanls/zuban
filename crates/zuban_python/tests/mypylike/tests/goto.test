@@ -557,79 +557,79 @@ __main__.py:3:goto -> m.py:3:0:m.C
 m.py:2:goto -> x.py:1:0:x
 
 [case goto_stdlib]
-#? goto --prefer-stubs
+#? goto --prefer-stubs --no-positions
 str
-#? goto
+#? goto --no-positions
 str
 
 import token
 
-#? goto --prefer-stubs
+#? goto --prefer-stubs --no-positions
 token.ENDMARKER
 #? goto --no-positions
 token.ENDMARKER
 
 import os
-#? goto --prefer-stubs
+#? goto --prefer-stubs --no-positions
 os.getenv
 #? goto --no-positions
 os.getenv
 
 import importlib
-#? goto --prefer-stubs
+#? goto --prefer-stubs --no-positions
 importlib.import_module
 #? goto --no-positions
 importlib.import_module
 
 [out]
-__main__.py:2:goto -> builtins.pyi:476:6:builtins.str
-__main__.py:4:goto -> builtins.pyi:476:6:builtins.str
-__main__.py:9:goto -> token.pyi:85:0:token.ENDMARKER
+__main__.py:2:goto -> builtins.pyi:builtins.str
+__main__.py:4:goto -> builtins.pyi:builtins.str
+__main__.py:9:goto -> token.pyi:token.ENDMARKER
 __main__.py:11:goto -> token.py:token.ENDMARKER
-__main__.py:15:goto -> os/__init__.pyi:999:4:os.getenv
+__main__.py:15:goto -> os/__init__.pyi:os.getenv
 __main__.py:17:goto -> os.py:os.getenv
-__main__.py:21:goto -> importlib/__init__.pyi:10:4:importlib.import_module
+__main__.py:21:goto -> importlib/__init__.pyi:importlib.import_module
 __main__.py:23:goto -> importlib/__init__.py:importlib.import_module
 
 [case infer_stdlib]
-#? infer --prefer-stubs
+#? infer --prefer-stubs --no-positions
 str
-#? infer
+#? infer --no-positions
 str
 
 import token
 
-#? infer --prefer-stubs
+#? infer --prefer-stubs --no-positions
 token.ENDMARKER
-#? infer
+#? infer --no-positions
 token.ENDMARKER
-#? infer --prefer-stubs
+#? infer --prefer-stubs --no-positions
 token.ISTERMINAL
 #? infer --no-positions
 token.ISTERMINAL
 
 import os
-#? infer --prefer-stubs
+#? infer --prefer-stubs --no-positions
 os.getenv
 #? infer --no-positions
 os.getenv
 
 import importlib
-#? infer --prefer-stubs
+#? infer --prefer-stubs --no-positions
 importlib.import_module
 #? infer --no-positions
 importlib.import_module
 
 [out]
-__main__.py:2:infer -> builtins.pyi:476:6:builtins.str
-__main__.py:4:infer -> builtins.pyi:476:6:builtins.str
-__main__.py:9:infer -> builtins.pyi:251:6:builtins.int
-__main__.py:11:infer -> builtins.pyi:251:6:builtins.int
-__main__.py:13:infer -> token.pyi:167:4:token.ISTERMINAL
+__main__.py:2:infer -> builtins.pyi:builtins.str
+__main__.py:4:infer -> builtins.pyi:builtins.str
+__main__.py:9:infer -> builtins.pyi:builtins.int
+__main__.py:11:infer -> builtins.pyi:builtins.int
+__main__.py:13:infer -> token.pyi:token.ISTERMINAL
 __main__.py:15:infer -> token.py:token.ISTERMINAL
-__main__.py:19:infer -> os/__init__.pyi:999:4:os.getenv
+__main__.py:19:infer -> os/__init__.pyi:os.getenv
 __main__.py:21:infer -> os.py:os.getenv
-__main__.py:25:infer -> importlib/__init__.pyi:10:4:importlib.import_module
+__main__.py:25:infer -> importlib/__init__.pyi:importlib.import_module
 __main__.py:27:infer -> importlib/__init__.py:importlib.import_module
 
 [case goto_doc_contains_with_stubs]
@@ -699,13 +699,13 @@ __main__.py:10:infer -> Doc for token matched
 __main__.py:13:infer -> Doc for token matched
 
 [case goto_on_simple_generic]
-#? goto
+#? goto --no-positions
 def evaluate_file(document: str, analysis_config: dict[str, str]
 ) -> str:
     return ""
 
 [out]
-__main__.py:2:goto -> builtins.pyi:1157:6:builtins.dict
+__main__.py:2:goto -> builtins.pyi:builtins.dict
 
 [case infer_on_param_with_annotation_in_untyped_function]
 class A: ...

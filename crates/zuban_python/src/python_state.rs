@@ -173,11 +173,11 @@ pub(crate) struct PythonState {
     builtins_hasattr_index: NodeIndex,
     builtins_len_index: NodeIndex,
     builtins_notimplementederror: NodeIndex,
-    builtins_notimplemented_type: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
     pub builtins_bytes_mro: Box<[BaseClass]>,
+    pub notimplemented_type_link: PointLink,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_type_var_index: NodeIndex,
     type_var_tuple_link: PointLink,
@@ -302,7 +302,6 @@ impl PythonState {
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
             builtins_notimplementederror: 0,
-            builtins_notimplemented_type: 0,
             builtins_isinstance_index: 0,
             builtins_issubclass_index: 0,
             builtins_super_index: 0,
@@ -313,6 +312,7 @@ impl PythonState {
             builtins_bool_mro: Box::new([]),  // will be set later
             builtins_str_mro: Box::new([]),   // will be set later
             builtins_bytes_mro: Box::new([]), // will be set later
+            notimplemented_type_link: PointLink::new(FileIndex(0), 0),
             types_module_type_index: 0,
             types_none_type_index: None,
             types_ellipsis_type_index: None,
@@ -561,7 +561,20 @@ impl PythonState {
             };
         }
         macro_rules! cache_link_with_typing_extensions_fallback {
-            ($attr_name:ident, $name:literal, $original_module: ident, $is_func:expr) => {
+            ($attr_name:ident, $name:literal, $original_module:ident, $is_func:expr) => {
+                cache_link_with_fallback!(
+                    $attr_name,
+                    $name,
+                    $original_module,
+                    $is_func,
+                    typing_extensions,
+                    $name
+                )
+            };
+        }
+        macro_rules! cache_link_with_fallback {
+            ($attr_name:ident, $name:literal, $original_module:ident, $is_func:expr,
+             $fallback_module:ident, $fallback_name:literal) => {
                 // NewType is special, because the fallback is a function in current
                 // Typeshed, so use TypingExtensions for now...
                 let use_new_type_from_typing_extensions = $name == "NewType" && legacy_new_type(db);
@@ -578,16 +591,17 @@ impl PythonState {
                         let Some(new_index) = new_index else {
                             cache_index(
                                 db,
-                                |db| db.python_state.typing_extensions(),
-                                $name,
+                                |db| db.python_state.$fallback_module(),
+                                $fallback_name,
                                 |db, new_index| {
                                     db.python_state.$attr_name = PointLink::new(
-                                        db.python_state.typing_extensions().file_index,
+                                        db.python_state.$fallback_module().file_index,
                                         new_index.unwrap_or_else(|| {
                                             panic!(
                                                 "Expected a valid identifier {:?} \
-                                                 in typeshed module typing_extensions",
+                                                 in typeshed module {}",
                                                 $name,
+                                                stringify!($fallback),
                                             )
                                         }),
                                     );
@@ -692,11 +706,6 @@ impl PythonState {
             "NotImplementedError"
         );
         cache_index!(
-            builtins_notimplemented_type,
-            builtins,
-            "_NotImplementedType"
-        );
-        cache_index!(
             typeshed_supports_keys_and_get_item_index,
             typeshed,
             "SupportsKeysAndGetItem"
@@ -723,6 +732,14 @@ impl PythonState {
             false
         );
         cache_link_with_typing_extensions_fallback!(typing_override_link, "override", typing, true);
+        cache_link_with_fallback!(
+            notimplemented_type_link,
+            "NotImplementedType",
+            types,
+            false,
+            builtins,
+            "_NotImplementedType"
+        );
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
@@ -1042,7 +1059,6 @@ impl PythonState {
     attribute_node_ref!(builtins, pub hasattr_node_ref, builtins_hasattr_index);
     attribute_node_ref!(builtins, pub len_node_ref, builtins_len_index);
     class_node_ref!(builtins, pub function_node_ref, builtins_function_index);
-    attribute_node_ref!(builtins, pub notimplemented_type_node_ref, builtins_notimplemented_type);
     attribute_node_ref!(
         builtins,
         pub base_exception_node_ref,

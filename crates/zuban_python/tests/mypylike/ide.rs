@@ -90,6 +90,8 @@ pub struct ReferencesArgs {
     only_check_file: bool,
     #[arg(long)]
     no_include_declarations: bool,
+    #[arg(long)]
+    pub no_positions: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -304,7 +306,9 @@ pub(crate) fn find_and_check_ide_tests(
                             !references.no_include_declarations,
                             |name| {
                                 let start = name.name_range().0;
-                                if name.file_path() == base_path {
+                                if references.no_positions {
+                                    clean_path(name.path_relative_to_workspace())
+                                } else if name.file_path() == base_path {
                                     format!(
                                         "{}:{}",
                                         start.line_one_based(),

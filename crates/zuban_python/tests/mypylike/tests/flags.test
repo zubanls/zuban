@@ -1065,7 +1065,7 @@ s = {1, 2, 3}
 print(f == s)
 
 [case disallow_incomplete_defs_in_classes]
-# flags: --disallow-incomplete-defs
+# flags: --disallow-incomplete-defs --python-version 3.9
 # From GH #368
 class X:
     def __init__(self, x): ...
