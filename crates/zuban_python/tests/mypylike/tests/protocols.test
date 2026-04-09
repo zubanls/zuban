@@ -770,3 +770,19 @@ class C:
     p: PropertyLike
 assert_type(C.p, PropertyLike)
 assert_type(C().p, int)
+
+[case callable_protocol_dunder_add_is_callable]
+# From GH #375
+from typing import Any, Protocol, type_check_only
+
+@type_check_only
+class NumOp(Protocol):
+    def __call__(self, other: Any, /) -> Any: ...
+
+class Num:
+    __add__: NumOp
+    __radd__: NumOp
+
+class Repro:
+    def __add__(self, x: Num, /) -> Any: ...
+    def __radd__(self, x: Num, /) -> Any: ...

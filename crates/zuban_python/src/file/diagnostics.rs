@@ -33,10 +33,10 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
-        FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
-        NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbString,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
+        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
         ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
@@ -2386,22 +2386,29 @@ impl Inference<'_, '_, '_> {
                         );
                     }
                 };
-                match lookup_details.lookup.into_inferred().as_type(i_s) {
-                    Type::Callable(c) => check(&c),
-                    Type::FunctionOverload(overload) => {
-                        for c in overload.iter_functions() {
-                            check(c)
-                        }
-                    }
+                match lookup_details
+                    .lookup
+                    .into_inferred()
+                    .as_cow_type(i_s)
+                    .as_ref()
+                {
                     Type::Any(_) | Type::CustomBehavior(_) => (),
-                    _ => {
-                        from.add_issue(
-                            i_s,
-                            IssueKind::ForwardOperatorIsNotCallable {
-                                forward_name: normal_magic,
-                            },
-                        );
-                    }
+                    t => match t.maybe_callable(i_s) {
+                        Some(CallableLike::Callable(c)) => check(&c),
+                        Some(CallableLike::Overload(overload)) => {
+                            for c in overload.iter_functions() {
+                                check(c)
+                            }
+                        }
+                        None => {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::ForwardOperatorIsNotCallable {
+                                    forward_name: normal_magic,
+                                },
+                            );
+                        }
+                    },
                 }
             },
         )
