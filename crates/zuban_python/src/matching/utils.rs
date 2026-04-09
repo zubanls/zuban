@@ -42,7 +42,7 @@ pub fn replace_class_type_vars_in_callable(
     callable: &CallableContent,
     func_class: Option<&Class>,
     as_self_instance: ReplaceSelf,
-) -> CallableContent {
+) -> Option<CallableContent> {
     callable.replace_type_var_likes_and_self(
         db,
         &mut |usage| func_class.and_then(|c| maybe_class_usage(db, c, &usage)),
@@ -85,7 +85,8 @@ pub fn create_signature_without_self_for_callable(
         .expect("Signatures without any params should have been filtered before");
     let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| {
         Some(instance.clone())
-    });
+    })
+    .unwrap_or(c);
     Some(matcher.remove_self_from_callable(i_s, c))
 }
 

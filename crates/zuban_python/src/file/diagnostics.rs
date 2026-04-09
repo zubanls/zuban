@@ -2616,8 +2616,11 @@ fn create_matcher_with_independent_type_vars<T>(
     let matcher = Matcher::new_reverse_callable_matcher(&c, replace_self);
     // Use a temporary matcher index that will never be reached, because we want to ensure that
     // no conflict is going to happen.
-    let c2 = c2.change_temporary_matcher_index(db, u32::MAX);
-    callback(matcher, c1, &c2)
+    if let Some(c2) = c2.change_temporary_matcher_index(db, u32::MAX) {
+        callback(matcher, c1, &c2)
+    } else {
+        callback(matcher, c1, &c2)
+    }
 }
 
 fn add_error_if_final(

@@ -497,7 +497,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable,
                             Some(&class),
                             &|| None,
-                        );
+                        )
+                        .unwrap_or_else(|| (**callable).clone());
                         if let Some(init_cls) = init_cls {
                             c.return_type = init_cls.as_type(i_s.db)
                         }
@@ -533,7 +534,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 }),
                             self.class.as_ref(),
                             &|| Some(replace_self_type()),
-                        );
+                        )
+                        .unwrap_or_else(|| (**callable).clone());
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);

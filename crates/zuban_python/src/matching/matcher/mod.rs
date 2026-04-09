@@ -171,8 +171,9 @@ impl<'a> Matcher<'a> {
                 .type_var_matchers
                 .iter()
                 .any(|tvm| tvm.match_in_definition == c2.defined_at)
+                && let Some(new) = c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len)
             {
-                c2 = Cow::Owned(c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len));
+                c2 = Cow::Owned(new);
             }
             self.type_var_matchers
                 .push(TypeVarMatcher::new(c2.defined_at, c2.type_vars.clone()))

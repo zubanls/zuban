@@ -456,13 +456,11 @@ impl CallableContent {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> CallableContent {
+    ) -> Option<CallableContent> {
         let replacer = &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self);
-        if let Some(c) = replacer.replace_callable_without_rc(self) {
-            return c;
-        }
-        self.replace_internal(replacer)
-            .unwrap_or_else(|| self.clone())
+        replacer
+            .replace_callable_without_rc(self)
+            .or_else(|| self.replace_internal(replacer))
     }
 }
 

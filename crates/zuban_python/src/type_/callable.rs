@@ -763,7 +763,7 @@ impl CallableContent {
         &self,
         db: &Database,
         temporary_matcher_index: u32,
-    ) -> Self {
+    ) -> Option<Self> {
         self.replace_type_var_likes_and_self(
             db,
             &mut |mut usage| {
@@ -908,7 +908,7 @@ impl CallableContent {
                 None
             }
         };
-        let mut callable = self.replace_type_var_likes_and_self(
+        let Some(mut callable) = self.replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 // The ? can happen for example if the return value is a Callable with its
@@ -935,7 +935,9 @@ impl CallableContent {
                     }
                 })
             },
-        );
+        ) else {
+            return self.clone();
+        };
         callable.type_vars = type_vars;
         callable
     }
