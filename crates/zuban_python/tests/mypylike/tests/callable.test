@@ -287,8 +287,8 @@ def z(*args: int, **kwargs: int) -> Any: ...
 
 def foo(x: int) -> Any: ...
 
-foo = x # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), KwArg(object)], Any]", variable has type "Callable[[int], Any]")
-foo = y # E: Incompatible types in assignment (expression has type "Callable[[VarArg(object), KwArg(int)], Any]", variable has type "Callable[[int], Any]")
+foo = x # E: Incompatible types in assignment (expression has type "def x(*args: int, **kwargs: object) -> Any", variable has type "Callable[[int], Any]")
+foo = y # E: Incompatible types in assignment (expression has type "def y(*args: object, **kwargs: int) -> Any", variable has type "Callable[[int], Any]")
 foo = z
 
 [case multiple_lambda_mypy_issue_4226]
@@ -330,7 +330,7 @@ def bar(x: int = 0, *, y: str) -> None: ...
 if bool():
     foo = bar
 if bool():
-    bar = foo # E: Incompatible types in assignment (expression has type "Callable[[NamedArg(str, 'y')], None]", variable has type "Callable[[int, NamedArg(str, 'y')], None]")
+    bar = foo # E: Incompatible types in assignment (expression has type "def foo(*, y: str) -> None", variable has type "def bar(x: int = ..., *, y: str) -> None")
 
 [case callable_subtyping_keyword_only_default_params2]
 def foo(*, y: str) -> None: ...
@@ -339,7 +339,7 @@ def bar(x: int = 0, *bar: bytes, y: str) -> None: ...
 if bool():
     foo = bar
 if bool():
-    bar = foo # E: Incompatible types in assignment (expression has type "Callable[[NamedArg(str, 'y')], None]", variable has type "Callable[[int, VarArg(bytes), NamedArg(str, 'y')], None]")
+    bar = foo # E: Incompatible types in assignment (expression has type "def foo(*, y: str) -> None", variable has type "def bar(x: int = ..., *bar: bytes, y: str) -> None")
 
 [case function_subtyping_positional_or_keyword_vs_variadic_and_kw_only]
 def foo1(y: str) -> None: ...
@@ -351,11 +351,11 @@ def bar4(*z: str, y: str) -> None: ...
 if bool():
     foo1 = bar1
 if bool():
-    foo1 = bar2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), DefaultNamedArg(str, 'y')], None]", variable has type "Callable[[str], None]")
+    foo1 = bar2  # E: Incompatible types in assignment (expression has type "def bar2(*z: int, y: str = ...) -> None", variable has type "Callable[[str], None]")
 if bool():
-    foo1 = bar3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(int, 'y')], None]", variable has type "Callable[[str], None]")
+    foo1 = bar3  # E: Incompatible types in assignment (expression has type "def bar3(*z: str, y: int = ...) -> None", variable has type "Callable[[str], None]")
 if bool():
-    foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y')], None]", variable has type "Callable[[str], None]")
+    foo1 = bar4  # E: Incompatible types in assignment (expression has type "def bar4(*z: str, y: str) -> None", variable has type "Callable[[str], None]")
 
 def foo2(y: str, z: str) -> None: ...
 def baz1(*args: str, y: str = '', z: str = "") -> None: ...
@@ -365,9 +365,9 @@ def baz3(*args: str, y: str, z: int) -> None: ...
 if bool():
     foo2 = baz1
 if bool():
-    foo2 = baz2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'y'), NamedArg(str, 'z')], None]", variable has type "Callable[[str, str], None]")
+    foo2 = baz2  # E: Incompatible types in assignment (expression has type "def baz2(*args: str, y: str = ..., z: str) -> None", variable has type "Callable[[str, str], None]")
 if bool():
-    foo2 = baz3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y'), NamedArg(int, 'z')], None]", variable has type "Callable[[str, str], None]")
+    foo2 = baz3  # E: Incompatible types in assignment (expression has type "def baz3(*args: str, y: str, z: int) -> None", variable has type "Callable[[str, str], None]")
 
 [case function_subtyping_positional_or_keyword_vs_variadic_and_kwargs_after_kw_only]
 def foo1(y: str) -> None: ...
@@ -381,12 +381,12 @@ if bool():
     foo1 = bar1
     foo2 = bar1
 if bool():
-    foo1 = bar2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), NamedArg(str, 'y'), KwArg(str)], None]", variable has type "Callable[[str], None]")
+    foo1 = bar2  # E: Incompatible types in assignment (expression has type "def bar2(*args: str, y: str, **kwargs: str) -> None", variable has type "Callable[[str], None]")
 if bool():
     foo1 = bar3
-    foo2 = bar3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'y'), KwArg(int)], None]", variable has type "Callable[[str, str], None]")
+    foo2 = bar3  # E: Incompatible types in assignment (expression has type "def bar3(*args: str, y: str = ..., **kwargs: int) -> None", variable has type "Callable[[str, str], None]")
 if bool():
-    foo1 = bar4  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(str), DefaultNamedArg(str, 'z'), KwArg(int)], None]", variable has type "Callable[[str], None]")
+    foo1 = bar4  # E: Incompatible types in assignment (expression has type "def bar4(*args: str, z: str = ..., **kwargs: int) -> None", variable has type "Callable[[str], None]")
 
 [case func_subtyping_kw_against_normal_params]
 def x(x: int, y: int, z: int) -> str: ...
@@ -397,7 +397,7 @@ def foo(*, x: int, y: int, z: int) -> str: ...
 
 foo = x
 foo = y
-foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], str]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(int, 'y'), NamedArg(int, 'z')], str]")
+foo = z  # E: Incompatible types in assignment (expression has type "Callable[[str, int, int], str]", variable has type "def foo(*, x: int, y: int, z: int) -> str")
 
 [case callable_never_return]
 # flags: --warn-unreachable
@@ -457,7 +457,7 @@ def bar(**kwargs: int) -> None: ...
 if bool():
     foo = bar
 if bool():
-    bar = foo  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[Foo]], None]", variable has type "Callable[[KwArg(int)], None]")
+    bar = foo  # E: Incompatible types in assignment (expression has type "def foo(**kwargs: Unpack[Foo]) -> None", variable has type "def bar(**kwargs: int) -> None")
 
 [case unpacked_typeddict_compatible_with_broader_kwargs2]
 from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
@@ -471,14 +471,14 @@ def bar(*args: str, **kwargs: int) -> None: ...
 if bool():
     foo = bar
 if bool():
-    bar = foo  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[Foo]], None]", variable has type "Callable[[VarArg(str), KwArg(int)], None]")
+    bar = foo  # E: Incompatible types in assignment (expression has type "def foo(**kwargs: Unpack[Foo]) -> None", variable has type "def bar(*args: str, **kwargs: int) -> None")
 
 [case kwargs_subtyping]
 def foo(*args: int, **kwargs: str) -> None: ...
 def bar(**kwargs: str) -> None: ...
 
 if bool():
-    foo = bar  # E: Incompatible types in assignment (expression has type "Callable[[KwArg(str)], None]", variable has type "Callable[[VarArg(int), KwArg(str)], None]")
+    foo = bar  # E: Incompatible types in assignment (expression has type "def bar(**kwargs: str) -> None", variable has type "def foo(*args: int, **kwargs: str) -> None")
 if bool():
     bar = foo
 
@@ -551,15 +551,15 @@ class C:
 
 c: C
 c.a
-c.b  # E: Invalid self argument "C" to attribute function "b" with type "Callable[[VarArg(str)], None]"
+c.b  # E: Invalid self argument "C" to attribute function "b" with type "def b(*args: str) -> None"
 c.c
-c.d  # E: Invalid self argument "C" to attribute function "d" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]"
-c.e  # E: Invalid self argument "C" to attribute function "e" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[C, ...]], str]])], None]"
+c.d  # E: Invalid self argument "C" to attribute function "d" with type "def d(*args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+c.e  # E: Invalid self argument "C" to attribute function "e" with type "def e(*args: Unpack[tuple[Unpack[Tuple[C, ...]], str]]) -> None"
 c.f
 c.g  # E: Invalid self argument "C" to attribute function "g" with type "Callable[[str, int], None]"
 
-c.h  # E: Invalid self argument "C" to attribute function "h" with type "Callable[[VarArg(int)], None]"
-c.i  # E: Invalid self argument "C" to attribute function "i" with type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[C, ...]], str]])], None]"
+c.h  # E: Invalid self argument "C" to attribute function "h" with type "def (*int) -> None"
+c.i  # E: Invalid self argument "C" to attribute function "i" with type "def (*Unpack[tuple[Unpack[Tuple[C, ...]], str]]) -> None"
 c.j
 c.k
 
@@ -599,7 +599,7 @@ Callback2: TypeAlias = Callable[Concatenate[int, P], str]
 
 def func6(cb1: Callable[[], str], cb2: Callable[[int], str]) -> None:
     f1: Callback1[...] = cb1  # OK
-    f2: Callback2[...] = cb1  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "Callable[[int, VarArg(Any), KwArg(Any)], str]")
+    f2: Callback2[...] = cb1  # E: Incompatible types in assignment (expression has type "Callable[[], str]", variable has type "def (int, /, *Any, **Any) -> str")
 
     f3: Callback1[...] = cb2  # OK
     f4: Callback2[...] = cb2  # OK
@@ -619,7 +619,7 @@ def a2(**kwargs: Unpack[TD]) -> None: ...
 if bool():
     a1 = a2
 else:
-    a2 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TDBase]], None]", variable has type "Callable[[**Unpack[TD]], None]")
+    a2 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TDBase]) -> None", variable has type "def a2(**kwargs: Unpack[TD]) -> None")
 
 [case callable_override_of_typeddict_unpacks2]
 from typing import Never, Unpack, TypedDict, ReadOnly
@@ -645,7 +645,7 @@ else:
 if bool():
     a1 = a3
 else:
-    a3 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD1]], None]", variable has type "Callable[[**Unpack[TD3]], None]")
+    a3 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TD1]) -> None", variable has type "def a3(**kwargs: Unpack[TD3]) -> None")
 
 [case callable_override_of_typeddict_unpacks_with_extra_items]
 from typing import Never, Unpack, TypedDict, ReadOnly
@@ -666,9 +666,9 @@ def a3(**kwargs: Unpack[TD3]) -> None: ...
 if bool():
     a1 = a2
 else:
-    a2 = a1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD1]], None]", variable has type "Callable[[**Unpack[TD2]], None]")
+    a2 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TD1]) -> None", variable has type "def a2(**kwargs: Unpack[TD2]) -> None")
 
 if bool():
-    a1 = a3  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD3]], None]", variable has type "Callable[[**Unpack[TD1]], None]")
+    a1 = a3  # E: Incompatible types in assignment (expression has type "def a3(**kwargs: Unpack[TD3]) -> None", variable has type "def a1(**kwargs: Unpack[TD1]) -> None")
 else:
     a3 = a1

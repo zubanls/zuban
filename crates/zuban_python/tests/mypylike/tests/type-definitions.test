@@ -236,7 +236,7 @@ x1: Callable[[NamedArg()], int]
 x2: Callable[[DefaultNamedArg()], int]
 
 z: int = x1  # E: Incompatible types in assignment (expression has type "Callable[[Any], int]", variable has type "int")
-z = x2  # E: Incompatible types in assignment (expression has type "Callable[[Any], int]", variable has type "int")
+z = x2  # E: Incompatible types in assignment (expression has type "def (Any = ..., /) -> int", variable has type "int")
 
 [case invalid_type_comment_with_star]
 foo = 1  # type: *foo  # E: Star expressions are not allowed within a type comment

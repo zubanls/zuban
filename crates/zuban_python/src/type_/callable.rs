@@ -683,6 +683,18 @@ impl CallableContent {
         if format_data.style == FormatStyle::MypyRevealType {
             return self.format_pretty(format_data).into();
         }
+        if let CallableParams::Simple(simple) = &self.params
+            && simple.iter().any(|p| match &p.type_ {
+                ParamType::PositionalOnly(_) => p.has_default(),
+                ParamType::PositionalOrKeyword(_) => format_data.verbose,
+                ParamType::Star(StarParamType::ParamSpecArgs(_))
+                | ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                _ => true,
+            })
+        {
+            // Needs more advanced formatting, because the Callable is more complicated
+            return self.format_pretty(format_data).into();
+        }
         let result = if let Some(guard) = self.guard.as_ref() {
             guard.format(format_data).into()
         } else {
@@ -1024,7 +1036,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
             p.name(db).unwrap_or("self").to_owned()
         } else {
-            let mut out = if current_kind == ParamKind::PositionalOnly {
+            if current_kind == ParamKind::PositionalOnly {
                 annotation_str.unwrap_or_else(|| Box::from("Any")).into()
             } else if let Some(name) = p.name(db) {
                 format!(
@@ -1033,18 +1045,17 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 )
             } else {
                 format!("{stars}{}", annotation_str.as_deref().unwrap_or("Any"))
-            };
-            if previous_kind == Some(ParamKind::PositionalOnly)
-                && current_kind != ParamKind::PositionalOnly
-                && show_additional_information
-            {
-                out = format!("/, {out}")
             }
-            out
         };
         if matches!(&specific, WrappedParamType::KeywordOnly(_)) && !had_kwargs_separator {
             had_kwargs_separator = true;
             out = format!("*, {out}");
+        }
+        if previous_kind == Some(ParamKind::PositionalOnly)
+            && current_kind != ParamKind::PositionalOnly
+            && show_additional_information
+        {
+            out = format!("/, {out}")
         }
         had_kwargs_separator |= matches!(specific, WrappedParamType::Star(_));
         if p.has_default() {

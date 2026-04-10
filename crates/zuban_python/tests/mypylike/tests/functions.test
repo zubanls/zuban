@@ -7,7 +7,7 @@ def i(x: int, y: int = 3) -> None: pass
 def j(y: str, x: int = 3) -> None: pass
 f = g
 f = h
-f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(str, 'y')], None]")
+f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "def f(*, x: int, y: str) -> None")
 f = j
 
 [case subtyping_of_kwargs_with_defaults]
@@ -240,8 +240,8 @@ def b2(*args: *tuple[*tuple[str, ...], int]) -> None: ...
 def b3(*args: *tuple[*tuple[int, ...], str]) -> None: ...
 
 f = b1
-f = b2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[str, ...]], int]])], None]", variable has type "Callable[[VarArg(int)], None]")
-f = b3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
+f = b2  # E: Incompatible types in assignment (expression has type "def b2(*args: Unpack[tuple[Unpack[Tuple[str, ...]], int]]) -> None", variable has type "def f(*args: int) -> None")
+f = b3  # E: Incompatible types in assignment (expression has type "def b3(*args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None", variable has type "def f(*args: int) -> None")
 
 [case func_unpack_with_type_var_tuple_vs_arbitrary_len]
 from typing import TypeVarTuple, Callable
@@ -253,13 +253,13 @@ def b(*args: int) -> None: ...
 
 if bool():
     b = a1
-    b = a2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
-a1 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int)], None]", variable has type "Callable[[VarArg(Unpack[Tuple[Unpack[Ts], int]])], None]")
+    b = a2  # E: Incompatible types in assignment (expression has type "def [Ts] a2(*args: Unpack[tuple[Unpack[Ts], str]]) -> None", variable has type "def b(*args: int) -> None")
+a1 = b  # E: Incompatible types in assignment (expression has type "def b(*args: int) -> None", variable has type "def [Ts] a1(*args: Unpack[tuple[Unpack[Ts], int]]) -> None")
 
 def foo1(x: Callable[[*tuple[*Ts, int]], None]) -> tuple[*Ts]: ...
 def foo2(x: Callable[[*tuple[*Ts, str]], None]) -> tuple[*Ts]: ...
 reveal_type(foo1(b))  # N: Revealed type is "tuple[int, ...]"
-reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(Unpack[Tuple[Unpack[Tuple[int, ...]], str]])], None]" \
+reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "def b(*args: int) -> None"; expected "def (*Unpack[tuple[int, ..., str]]) -> None" \
                       # N: Revealed type is "tuple[int, ...]"
 
 [case any_call_with_invalid_args_kwargs_mypy_compatible]

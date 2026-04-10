@@ -681,7 +681,7 @@ def bad_converter2(*, x: int) -> int:
 
 class DC1(ModelBase):
     field1: int = model_field(converter=bad_converter1)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[], int]"; expected "Callable[[Never], int]"
-    field2: int = model_field(converter=bad_converter2)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[Never], int]"
+    field2: int = model_field(converter=bad_converter2)  # E: Argument "converter" to "model_field" has incompatible type "def bad_converter2(*, x: int) -> int"; expected "Callable[[Never], int]"
 
 [case dataclass_transform_converter_conformance]
 # Copied from conformance tests (dataclasses_transform_converter.py)

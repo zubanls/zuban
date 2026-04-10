@@ -77,7 +77,7 @@ def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
     if bool():
         w = x
     if bool():
-        w = y  # E: Incompatible types in assignment (expression has type "type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], __main__.TD[Any]]")
+        w = y  # E: Incompatible types in assignment (expression has type "type[__main__.TD[str]]", variable has type "def wanted(*, x: int) -> __main__.TD[Any]")
     w = TD
 
 [case invalid_typed_dict]
@@ -288,9 +288,9 @@ class TDProtocol6(Protocol):
 
 v1: TDProtocol1 = func1  # OK
 v2: TDProtocol2 = func1  # OK
-v3: TDProtocol3 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol3")
-v4: TDProtocol4 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol4")
-v5: TDProtocol5 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol5")
+v3: TDProtocol3 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol3")
+v4: TDProtocol4 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol4")
+v5: TDProtocol5 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol5")
 v6: TDProtocol6 = func1  # OK
 
 [case invalid_typed_dict_definitions_in_class_args]

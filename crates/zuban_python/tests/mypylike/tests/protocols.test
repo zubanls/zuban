@@ -539,9 +539,9 @@ def cb1_bad3(*vals: bytes, max_len: str | None) -> list[bytes]:
     return []
 
 cb1: Proto1 = cb1_good1  # OK
-cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(int | None, 'max_items')], list[bytes]]", variable has type "Proto1")
-cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes)], list[bytes]]", variable has type "Proto1")
-cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(str | None, 'max_len')], list[bytes]]", variable has type "Proto1")
+cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "def cb1_bad1(*vals: bytes, max_items: int | None) -> list[bytes]", variable has type "Proto1")
+cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "def cb1_bad2(*vals: bytes) -> list[bytes]", variable has type "Proto1")
+cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "def cb1_bad3(*vals: bytes, max_len: str | None) -> list[bytes]", variable has type "Proto1")
 
 [case protocol_callable_any_matching]
 # Copied from conformance tests (callables_annotation.py)

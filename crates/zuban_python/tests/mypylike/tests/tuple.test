@@ -451,7 +451,7 @@ def b(*args: *tuple[*Ts, int | str]) -> Any: ...
 
 f1 = b
 f2 = b
-f3 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], int | str]])], Any]", variable has type "Callable[[VarArg(int | str | bytes)], Any]")
+f3 = b  # E: Incompatible types in assignment (expression has type "def [Ts] b(*args: Unpack[tuple[Unpack[Ts], int | str]]) -> Any", variable has type "def f3(*args: int | str | bytes) -> Any")
 
 def g1(tup: tuple[int, int], *args: int) -> Any: ...
 def g2(tup: tuple[str, str], *args: int) -> Any: ...
@@ -460,10 +460,10 @@ def g4(tup: tuple[str, ...], *args: int) -> Any: ...
 
 def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]) -> Any: ...
 
-g1 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[int, int], VarArg(int)], Any]")
-g2 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, str], VarArg(int)], Any]")
+g1 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g1(tup: tuple[int, int], *args: int) -> Any")
+g2 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g2(tup: tuple[str, str], *args: int) -> Any")
 g3 = c
-g4 = c  # E: Incompatible types in assignment (expression has type "Callable[[tuple[Unpack[Ts]], VarArg(Unpack[tuple[Unpack[Ts], int]])], Any]", variable has type "Callable[[tuple[str, ...], VarArg(int)], Any]")
+g4 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g4(tup: tuple[str, ...], *args: int) -> Any")
 
 [case common_base_type_for_fixed_len_tuple]
 # flags: --use-joins

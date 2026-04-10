@@ -133,8 +133,8 @@ higher_order(good2)
 higher_order(ok1)
 higher_order(ok2)
 
-higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[NamedArg(str, 'd')], int]"; expected "Callable[[VarArg(Any)], Any]"
-higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "Callable[[KwArg(None)], None]"; expected "Callable[[VarArg(Any)], Any]"
+higher_order(bad1)  # E: Argument 1 to "higher_order" has incompatible type "def bad1(*, d: str) -> int"; expected "def (*Any) -> Any"
+higher_order(bad2)  # E: Argument 1 to "higher_order" has incompatible type "def bad2(**kwargs: None) -> None"; expected "def (*Any) -> Any"
 
 [case type_var_tuple_param_spec_interaction_should_not_crash]
 # From GH #265

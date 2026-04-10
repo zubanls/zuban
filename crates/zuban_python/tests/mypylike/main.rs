@@ -20,7 +20,7 @@ use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
-const SKIP_MYPY_TEST_FILES: [&str; 27] = [
+const SKIP_MYPY_TEST_FILES: [&str; 29] = [
     // --allow-redefinition tests
     "check-redefine.test",
     // Python special features
@@ -34,6 +34,7 @@ const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     "reports.test",
     // Unfortunately probably not possible
     "check-custom-plugin.test",
+    "check-plugin-error-codes.test",
     // Probably not relevant, because additional almost unrelated mypy features
     "stubgen.test",
     "typexport-basic.test",
@@ -55,6 +56,7 @@ const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     "deps-types.test",
     "diff.test",
     "outputjson.test",
+    "exportjson.test",
     "errorstream.test",
     "merge.test",
     "ref-info.test",
@@ -161,6 +163,8 @@ struct PerTestFlags {
     verbose: bool,
     #[arg(short)]
     package: Option<String>,
+    #[arg(long)]
+    debug_serialize: bool,
 
     // Our own
     #[arg(long)]
