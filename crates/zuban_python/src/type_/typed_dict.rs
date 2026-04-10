@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     hash::{Hash, Hasher},
     sync::{Arc, OnceLock},
 };
@@ -836,9 +837,11 @@ fn typed_dict_get_or_pop_internal<'db>(
     let inferred_name = first_arg
         .clone()
         .maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    let needs_default = Cell::new(false);
     let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
         Some(Inferred::from_type({
             if let Some(member) = td.find_entry(i_s.db, key) {
+                needs_default.set(needs_default.get() | !member.required);
                 if is_pop && (member.required || member.read_only) {
                     first_arg.add_issue(
                         i_s,
@@ -868,7 +871,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         let default = infer_default(&mut ResultContext::new_known(
             &maybe_had_literals.as_cow_type(i_s),
         ))?;
-        if is_pop && second_arg.is_none() {
+        if is_pop && second_arg.is_none() || !needs_default.get() {
             Some(maybe_had_literals)
         } else {
             Some(maybe_had_literals.simplified_union(i_s, default))

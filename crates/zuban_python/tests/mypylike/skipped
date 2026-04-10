@@ -48,20 +48,9 @@ testVariadicNamedTuple
 testVariadicTypedDict
 sub_type_of_type_var_tuples
 # typeddict
-testLiteralIntelligentIndexingTypedDictUnions
-testLiteralIntelligentIndexingMultiTypedDict
-testTypedDictGetMethodOverloads
-testTypedDictGetMethodTotalTrue
-testTypedDictGetMethodTotalMixed
 testTypedDictGetMethodTypeContext
-testTypedDictChainedGetWithEmptyDictDefault2
 testTypedDictChainedGetWithEmptyDictDefault3
 testTypedDictGetMethodChained
-testPluginUnionsOfTypedDicts
-testIncrementalTypedDictGetMethodTotalTrue
-testIncrementalTypedDictGetMethodTotalMixed
-testLiteralIntelligentIndexingTypedDict
-testLiteralIntelligentIndexingUsingFinal
 # typeform
 testInvalidEscapeSequenceWarningsSuppressed
 testRecognizesUnparameterizedTypeFormInAnnotation
@@ -745,6 +734,8 @@ testDistinctFormatting
 testDistinctFormattingUnion
 testSubtypingFunctionsTrivialSuffixRequired
 testSubtypingFunctionsTrivialSuffixOptional
+# Formatting for custombehavior
+testTypedDictGetMethodOverloads
 
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuperOverloads
