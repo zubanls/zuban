@@ -47,10 +47,6 @@ testTypeVarTuplePep646CallableWithPrefixSuffix
 testVariadicNamedTuple
 testVariadicTypedDict
 sub_type_of_type_var_tuples
-# typeddict
-testTypedDictGetMethodTypeContext
-testTypedDictChainedGetWithEmptyDictDefault3
-testTypedDictGetMethodChained
 # typeform
 testInvalidEscapeSequenceWarningsSuppressed
 testRecognizesUnparameterizedTypeFormInAnnotation
@@ -488,6 +484,9 @@ testSerializeTypedDictInMethod
 testTypedDictChainedGetWithEmptyDictDefault
 # TypedDict/Dict context
 testTypedDictAssignableToWiderContext
+# TypedDict get default= context
+testTypedDictGetMethodTypeContext
+testTypedDictGetMethodChained
 
 # InitVar set default
 testDataclassInitVarCannotBeSet

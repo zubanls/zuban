@@ -867,14 +867,19 @@ fn typed_dict_get_or_pop_internal<'db>(
         }))
     });
 
-    if let Some(maybe_had_literals) = maybe_had_literals {
-        let default = infer_default(&mut ResultContext::new_known(
-            &maybe_had_literals.as_cow_type(i_s),
-        ))?;
-        if is_pop && second_arg.is_none() || !needs_default.get() {
-            Some(maybe_had_literals)
+    Some(if let Some(maybe_had_literals) = maybe_had_literals {
+        if needs_default.get() {
+            let default = infer_default(&mut ResultContext::new_known(
+                &maybe_had_literals.as_cow_type(i_s),
+            ))?;
+            if is_pop && second_arg.is_none() {
+                maybe_had_literals
+            } else {
+                maybe_had_literals.simplified_union(i_s, default)
+            }
         } else {
-            Some(maybe_had_literals.simplified_union(i_s, default))
+            infer_default(&mut ResultContext::Unknown);
+            maybe_had_literals
         }
     } else {
         let default = infer_default(&mut ResultContext::Unknown)?;
@@ -892,19 +897,17 @@ fn typed_dict_get_or_pop_internal<'db>(
             return None;
         }
 
-        Some(
-            if td.has_extra_items(i_s.db)
-                && *inferred_name.as_cow_type(i_s) == i_s.db.python_state.str_type()
-            {
-                Inferred::from_type(
-                    td.union_of_all_types(i_s)
-                        .simplified_union(i_s, &default.as_cow_type(i_s)),
-                )
-            } else {
-                Inferred::new_object(i_s.db)
-            },
-        )
-    }
+        if td.has_extra_items(i_s.db)
+            && *inferred_name.as_cow_type(i_s) == i_s.db.python_state.str_type()
+        {
+            Inferred::from_type(
+                td.union_of_all_types(i_s)
+                    .simplified_union(i_s, &default.as_cow_type(i_s)),
+            )
+        } else {
+            Inferred::new_object(i_s.db)
+        }
+    })
 }
 
 fn typed_dict_pop_internal<'db>(
