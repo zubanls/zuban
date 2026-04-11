@@ -1195,7 +1195,7 @@ impl Type {
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
             Self::LiteralString { .. } => "LiteralString".into(),
-            Self::TypeForm(t) => format!("typing.TypeForm({})", t.format(format_data)).into(),
+            Self::TypeForm(t) => format!("TypeForm[{}]", t.format(format_data)).into(),
         }
     }
 

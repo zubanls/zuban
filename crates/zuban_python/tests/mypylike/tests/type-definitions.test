@@ -1007,7 +1007,7 @@ def g() -> "undefined_zuban  # type: ignore[name-defined]": ...  # E: Name "unde
 # flags: --disallow-any-generics
 from typing_extensions import TypeForm
 x: TypeForm = int  # E: Missing type parameters for generic type "TypeForm"
-reveal_type(x)  # N: Revealed type is "typing.TypeForm(Any)"
+reveal_type(x)  # N: Revealed type is "TypeForm[Any]"
 y: TypeForm[int, str] = int  # E: Invalid type comment or annotation
 
 [case type_form_basic1_conformance_tests]
@@ -1023,8 +1023,8 @@ ok5: TypeForm[str | None] = Optional[str]  # OK
 ok6: TypeForm[str | None] = "str | None"  # OK
 ok7: TypeForm[str | None] = Any  # OK
 
-err1: TypeForm[str | None] = str | int  # E: Incompatible types in assignment (expression has type "typing.TypeForm(str | int)", variable has type "typing.TypeForm(str | None)")
-err2: TypeForm[str | None] = list[str | None]  # E: Incompatible types in assignment (expression has type "type[list[str | None]]", variable has type "typing.TypeForm(str | None)")
+err1: TypeForm[str | None] = str | int  # E: Incompatible types in assignment (expression has type "TypeForm[str | int]", variable has type "TypeForm[str | None]")
+err2: TypeForm[str | None] = list[str | None]  # E: Incompatible types in assignment (expression has type "type[list[str | None]]", variable has type "TypeForm[str | None]")
 
 v_any: TypeForm[Any] = int | str
 v_str: TypeForm[str] = str
@@ -1087,13 +1087,13 @@ def get_type_form() -> TypeForm[int]:
     return int
 
 t1: TypeForm[int | str] = get_type_form()  # OK
-t2: TypeForm[str] = get_type_form()  # E: Incompatible types in assignment (expression has type "typing.TypeForm(int)", variable has type "typing.TypeForm(str)")
+t2: TypeForm[str] = get_type_form()  # E: Incompatible types in assignment (expression has type "TypeForm[int]", variable has type "TypeForm[str]")
 
 def get_type() -> type[int]:
     return int
 
 t3: TypeForm[int | str] = get_type()  # OK
-t4: TypeForm[str] = get_type()  # E: Incompatible types in assignment (expression has type "type[int]", variable has type "typing.TypeForm(str)")
+t4: TypeForm[str] = get_type()  # E: Incompatible types in assignment (expression has type "type[int]", variable has type "TypeForm[str]")
 
 [case type_form_executions_error_cases]
 from typing_extensions import TypeForm
@@ -1110,7 +1110,7 @@ def get_type_form() -> TypeForm[list]:
     return list
 
 x = get_type_form()
-x.index  # E: "typing.TypeForm(list[Any])" has no attribute "index"
+x.index  # E: "TypeForm[list[Any]]" has no attribute "index"
 x.__str__()
 
 [case type_form_assert_type]
