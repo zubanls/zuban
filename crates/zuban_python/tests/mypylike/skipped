@@ -41,12 +41,6 @@ testPEP695TypeAliasRecursiveInParameterBound
 testTypeVarDefaultToAnotherTypeVar
 testTypeVarDefaultToAnotherTypeVarWrong
 testNamedTupleUpdateNonRecursiveToRecursiveFine
-# callables
-testCallableArgKindSubtyping
-testTypeVarTuplePep646CallableWithPrefixSuffix
-testVariadicNamedTuple
-testVariadicTypedDict
-sub_type_of_type_var_tuples
 # typeform
 testInvalidEscapeSequenceWarningsSuppressed
 testRecognizesUnparameterizedTypeFormInAnnotation
@@ -718,6 +712,7 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 testCallableFastParseBadArgArgName
+testCallableArgKindSubtyping
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 # for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"

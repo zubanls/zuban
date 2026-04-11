@@ -139,16 +139,6 @@ impl Tuple {
         }
     }
 
-    pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
-        match &self.args {
-            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => w
-                .unpack
-                .format(format_data)
-                .unwrap_or("Unpack[Never]".into()),
-            _ => format!("Unpack[{}]", self.format(format_data)).into(),
-        }
-    }
-
     pub(crate) fn get_item(
         &self,
         i_s: &InferenceState,
@@ -509,7 +499,7 @@ impl TupleUnpack {
         }
     }
 
-    fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
+    pub(super) fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
             Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),
             Self::ArbitraryLen(t) => {

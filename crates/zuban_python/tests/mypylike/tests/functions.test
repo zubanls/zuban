@@ -259,7 +259,7 @@ a1 = b  # E: Incompatible types in assignment (expression has type "def b(*args:
 def foo1(x: Callable[[*tuple[*Ts, int]], None]) -> tuple[*Ts]: ...
 def foo2(x: Callable[[*tuple[*Ts, str]], None]) -> tuple[*Ts]: ...
 reveal_type(foo1(b))  # N: Revealed type is "tuple[int, ...]"
-reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "def b(*args: int) -> None"; expected "def (*Unpack[tuple[int, ..., str]]) -> None" \
+reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "def b(*args: int) -> None"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None" \
                       # N: Revealed type is "tuple[int, ...]"
 
 [case any_call_with_invalid_args_kwargs_mypy_compatible]

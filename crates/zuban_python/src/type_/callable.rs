@@ -184,23 +184,9 @@ impl CallableParam {
                     }
                     StarParamType::ParamSpecArgs(_) => unreachable!(),
                     StarParamType::UnpackedTuple(tup) => {
-                        if let Some(matcher) = format_data.matcher {
-                            let tup_t = Type::Tuple(tup.clone());
-                            let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(
-                                format_data.db,
-                                &tup_t,
-                            );
-                            let Type::Tuple(tup) = replaced.as_ref() else {
-                                unreachable!()
-                            };
-                            let result = tup.args.format(&format_data.remove_matcher());
-                            match &tup.args {
-                                TupleArgs::FixedLen(ts) if ts.is_empty() => "".to_owned(),
-                                TupleArgs::FixedLen(_) => result.into(),
-                                _ => format!("VarArg(Unpack[Tuple[{result}]])"),
-                            }
-                        } else {
-                            format!("VarArg({})", tup.format_with_simplified_unpack(format_data))
+                        match format_tuple_unpack(tup, format_data) {
+                            FormatTupleUnpackResult::FixedLen(s) => s,
+                            FormatTupleUnpackResult::Other(s) => format!("VarArg({s})"),
                         }
                     }
                 }
@@ -1006,6 +992,12 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     let mut had_kwargs_separator = false;
     let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
         let specific = p.specific(db);
+        let current_kind = p.kind(db);
+        let mut stars = match current_kind {
+            ParamKind::Star => "*",
+            ParamKind::StarStar => "**",
+            _ => "",
+        };
         let annotation_str = match &specific {
             WrappedParamType::PositionalOnly(t)
             | WrappedParamType::PositionalOrKeyword(t)
@@ -1018,7 +1010,13 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 Some(format!("{}.args", u.param_spec.name(db)).into())
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                Some(tup.format_with_simplified_unpack(format_data))
+                Some(match format_tuple_unpack(tup, format_data) {
+                    FormatTupleUnpackResult::FixedLen(s) => {
+                        stars = "";
+                        s.into_boxed_str()
+                    }
+                    FormatTupleUnpackResult::Other(s) => s.into_boxed_str(),
+                })
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())
@@ -1026,12 +1024,6 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
                 Some(format!("{}.kwargs", u.param_spec.name(db)).into())
             }
-        };
-        let current_kind = p.kind(db);
-        let stars = match current_kind {
-            ParamKind::Star => "*",
-            ParamKind::StarStar => "**",
-            _ => "",
         };
         let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
             p.name(db).unwrap_or("self").to_owned()
@@ -1113,4 +1105,35 @@ pub fn add_any_params_to_params(params: &mut Vec<CallableParam>) {
     params.push(CallableParam::new_anonymous(ParamType::StarStar(
         StarStarParamType::ValueType(Type::Any(AnyCause::Todo)),
     )));
+}
+
+enum FormatTupleUnpackResult {
+    FixedLen(String),
+    Other(String),
+}
+
+fn format_tuple_unpack(tup: &Arc<Tuple>, format_data: &FormatData) -> FormatTupleUnpackResult {
+    if let Some(matcher) = format_data.matcher {
+        let tup_t = Type::Tuple(tup.clone());
+        let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(format_data.db, &tup_t);
+        let Type::Tuple(tup) = replaced.as_ref() else {
+            unreachable!()
+        };
+        format_tuple_unpack(tup, &format_data.remove_matcher())
+    } else {
+        FormatTupleUnpackResult::Other(match &tup.args {
+            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => w
+                .unpack
+                .format(format_data)
+                .unwrap_or("Unpack[Never]".into())
+                .into_string(),
+            TupleArgs::WithUnpack(_) => format!("Unpack[{}]", tup.format(format_data)),
+            TupleArgs::FixedLen(ts) => {
+                return FormatTupleUnpackResult::FixedLen(join_with_commas(
+                    ts.iter().map(|t| t.format(&format_data.remove_matcher())),
+                ));
+            }
+            TupleArgs::ArbitraryLen(t) => t.format(format_data).into_string(),
+        })
+    }
 }

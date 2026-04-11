@@ -524,8 +524,8 @@ ca: Callable[[A], None]
 cb: Callable[[A, B], None]
 cc: Callable[[C, A], None]
 
-meet_test(ca, cb)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A, B], None]"; expected "Callable[[A], None]"
-meet_test(cb, ca)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A], None]"; expected "Callable[[A, B], None]"
+meet_test(ca, cb)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A, B], None]"; expected "def (A) -> None"
+meet_test(cb, ca)  # E: Argument 2 to "meet_test" has incompatible type "Callable[[A], None]"; expected "def (A, B) -> None"
 
 reveal_type(meet_test(cb, cc)) # N: Revealed type is "tuple[__main__.C, __main__.B]"
 reveal_type(meet_test(cc, cb)) # N: Revealed type is "tuple[__main__.C, __main__.B]"
