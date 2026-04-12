@@ -1181,3 +1181,11 @@ def f(x: m.X, y: m.Y): ...
 from typing_extensions import Literal as L, Literal
 X = L["a", 'b']
 Y = Literal["z", 'x']
+
+[case typing_extensions_ordered_dict]
+# From GH #385
+from typing import OrderedDict, reveal_type
+from typing_extensions import OrderedDict as TE_OrderedDict
+
+reveal_type(OrderedDict[str, str])     # N: Revealed type is "type[collections.OrderedDict[str, str]]"
+reveal_type(TE_OrderedDict[str, str])  # N: Revealed type is "type[collections.OrderedDict[str, str]]"

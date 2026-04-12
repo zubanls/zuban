@@ -1372,6 +1372,8 @@ fn typing_changes(
     setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
     setup_type_alias(typing, "Deque", collections, "deque");
     setup_type_alias(typing, "OrderedDict", collections, "OrderedDict");
+    // Somehow this is defined in typing_extensions as well
+    setup_type_alias(typing_extensions, "OrderedDict", collections, "OrderedDict");
 
     let t = typing_extensions;
     // TODO this is completely wrong, but for now it's good enough
