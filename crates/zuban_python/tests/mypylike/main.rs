@@ -844,7 +844,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
         return None;
     }
-    if s.contains("\" defined in ") && s.ends_with('"')
+    if s.contains("\" defined in ") && s.trim_end().ends_with('"')
         || s.contains("Flipping the order of overloads will fix this error")
         || s.contains("Maybe you forgot to use \"await\"?")
     {
