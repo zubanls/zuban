@@ -998,6 +998,21 @@ impl Type {
                     ),
                 )))
             }
+            Type::NewType(nt) => Some({
+                let mut result = nt.type_.type_type_maybe_callable(i_s)?;
+                let map_callable = |c: &Arc<CallableContent>| {
+                    let mut new = c.as_ref().clone();
+                    new.return_type = Type::NewType(nt.clone());
+                    Arc::new(new)
+                };
+                match &mut result {
+                    CallableLike::Callable(c) => *c = map_callable(c),
+                    CallableLike::Overload(o) => {
+                        *o = FunctionOverload::new(o.iter_functions().map(map_callable).collect())
+                    }
+                }
+                result
+            }),
             _ => None,
         }
     }

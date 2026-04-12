@@ -186,6 +186,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
                 )
                 .into();
             }
+            Type::NewType(_) => (), // No special formatting for NewTypes
             _ => {
                 if let Some(callable) = t.maybe_callable(i_s) {
                     return callable.format(&format_data).into();
