@@ -2081,7 +2081,7 @@ impl<'db> Diagnostic<'db> {
                 "Overloaded function implementation cannot produce return type of signature {signature_index}"
             ),
             OverloadImplementationParamsNotBroadEnough{signature_index} => format!(
-                "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
+                "Overloaded function implementation does not accept all possible parameters of signature {signature_index}"
             ),
             OverloadInconsistentKind { kind } => format!(
                 "Overload does not consistently use the \"@{kind}\" decorator on all function signatures.",

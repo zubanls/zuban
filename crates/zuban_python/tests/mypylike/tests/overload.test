@@ -264,7 +264,7 @@ def oof(fn: int) -> int: ...
 @overload
 def oof(fn2: bytes) -> bytes: ...
 
-def oof(fn: int | bytes | None = None, fn2: bytes | None = None) -> bytes | int: raise NotImplementedError # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def oof(fn: int | bytes | None = None, fn2: bytes | None = None) -> bytes | int: raise NotImplementedError # E: Overloaded function implementation does not accept all possible parameters of signature 2
 
 [case overload_check_defaults_for_implementation_only]
 from typing import overload
@@ -425,7 +425,7 @@ class MyClass(Generic[T1, T2]):
     @overload
     def __init__(self: MyClass[T1, T3], t: T1, u: T2) -> None: ...
 
-    def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 3
+    def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 3
         pass
 
 [case function_overlapping_kwonly_vs_normal]
