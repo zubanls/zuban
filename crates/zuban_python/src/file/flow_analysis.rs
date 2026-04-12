@@ -2816,7 +2816,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
-            let (mut truthy_frame, mut frames) = fa
+            let (mut truthy_frame, mut pattern_result) = fa
                 .with_frame_and_result(Frame::new_conditional(), || {
                     self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
                 });
@@ -2824,7 +2824,7 @@ impl<'file> Inference<'_, 'file, '_> {
             // calculated in normal ways
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
-            let falsey_t = frames.falsey_t.as_cow_type(self.i_s);
+            let falsey_t = pattern_result.falsey_t.as_cow_type(self.i_s);
             let mut falsey_frame = if let Some(SubjectKey::Expr { key, .. }) = subject_key {
                 Frame::from_type(key.clone(), falsey_t.into_owned())
             } else {
@@ -2833,7 +2833,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.narrow_subject(
                 subject_key,
                 &mut truthy_frame,
-                frames.truthy_t.as_cow_type(self.i_s),
+                pattern_result.truthy_t.as_cow_type(self.i_s),
             );
 
             if let Some(guard) = guard {
@@ -2852,7 +2852,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key)
                         && let EntryKind::Type(t) = &found.type_
                     {
-                        frames.falsey_t = Inferred::from_type(t.clone());
+                        pattern_result.falsey_t = Inferred::from_type(t.clone());
                         input_for_next_case_should_be_rewritten = false;
                     }
                     if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key)
@@ -2867,12 +2867,12 @@ impl<'file> Inference<'_, 'file, '_> {
 
                 falsey_frame = fa.merge_or(self.i_s, falsey_frame, guard_falsey, false);
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
-                    frames.falsey_t = subject;
+                    pattern_result.falsey_t = subject;
                 }
                 self.narrow_subject(
                     subject_key,
                     &mut falsey_frame,
-                    frames.falsey_t.as_cow_type(self.i_s),
+                    pattern_result.falsey_t.as_cow_type(self.i_s),
                 );
             }
             let true_frame = fa.with_frame(truthy_frame, || {
@@ -2880,7 +2880,7 @@ impl<'file> Inference<'_, 'file, '_> {
             });
             let (false_frame, result) = fa.with_frame_and_result(falsey_frame, || {
                 self.process_match_cases_and_return_rest(
-                    frames.falsey_t,
+                    pattern_result.falsey_t,
                     subject_key,
                     case_blocks,
                     class,
