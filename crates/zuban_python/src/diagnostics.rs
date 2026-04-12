@@ -834,7 +834,6 @@ impl<'db> Diagnostic<'db> {
                 "Missing the typing symbols for star exceptions".to_string()
             }
             TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => {
-                additional_notes.push(r#"Error code "syntax" not covered by "type: ignore" comment"#.to_string());
                 format!(
                     "type ignore with error code is not supported for modules; \
                      use `# mypy: disable-error-code=\"{ignore_code}\"`"

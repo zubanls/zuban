@@ -1131,9 +1131,6 @@ testErrorCodeSyntaxErrorIgnoreNote
 testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
 # Error code "literal-required" not covered by "type: ignore" comment
 testNoteAboutChangedTypedDictErrorCode
-# Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
-testRecommendErrorCode
-testRecommendErrorCode2
 
 # unused section
 testConfigWarnUnusedSectionIncremental
