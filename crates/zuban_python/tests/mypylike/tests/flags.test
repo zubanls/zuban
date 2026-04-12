@@ -411,7 +411,7 @@ class D:
     def __init__(self, x: int): ...
 
 class E:
-    def __init__(self, x): ...  # E: Function is missing a type annotation for one or more arguments
+    def __init__(self, x): ...  # E: Function is missing a type annotation for one or more parameters
 
 [case allow_untyped_globals_default_mypy_compatible]
 # flags: --mode mypy
@@ -1073,7 +1073,7 @@ class X:
     def g(self, x: int): ...  # E: Function is missing a return type annotation
 
 class Y:
-    def __init__(self, x) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+    def __init__(self, x) -> None: ...  # E: Function is missing a type annotation for one or more parameters
 
 class Z:
-    def __init__(self, x: int, y): ...  # E: Function is missing a type annotation for one or more arguments
+    def __init__(self, x: int, y): ...  # E: Function is missing a type annotation for one or more parameters

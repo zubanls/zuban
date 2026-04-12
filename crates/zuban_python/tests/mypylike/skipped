@@ -134,24 +134,15 @@ testErrorCodeIgnoreMultiple1
 testErrorCodeIgnoreMultiple2
 testErrorCodeWarnUnusedIgnores10_SloppyFormattingEmptyBrackets
 testErrorCodeIgnoreWithExtraSpace
-testErrorCodeFunctionHasNoAnnotation
 testRedundantExpressionsUnionWithAny
-testRecommendErrorCode
-testRecommendErrorCode2
 testReverseBinaryOperator4
 testNoneReturnTypeWithExpressions
 testStrictEqualityWithAnySentinel
 testStringLiteralUnpacking
-testUnannotatedArgument
-testAsyncUnannotatedArgument
 testAltConfigFile
 testConfigMypyPath
 testFollowImportStubs1
 testFollowImportStubs2
-testPerFileIncompleteDefsBasic
-testPerFileIncompleteDefsBasicPyProjectTOML
-testDisallowIncompleteDefs
-testDisallowIncompleteDefsPartiallyAnnotatedParams
 testRevealSimpleTypes_no_verbose_reveal
 testCallableJoinWithDefaults
 testCallableJoinWithDefaultsMultiple
@@ -197,7 +188,6 @@ testInferEqualsStillOptionalWithNoOverlap
 testInferEqualsStillOptionalWithBothOptional
 testInferEqualsNotOptionalWithMultipleArgs
 testTypeCheckOverloadImplOverlapVarArgsAndKwargsNever
-testOverloadedInit
 testParamSpecInTypeAliasRecursive
 testForElseWithWalrusInBreakConditionalRaise
 testModuleAsProtocolImplementationClassObject
@@ -230,7 +220,6 @@ testMatchTypeObjectTypeVar
 testMatchTypeNarrowing
 testMatchFinalClass
 testPEP695MultipleTypeVarTuples
-testPEP570ParamTypesMissing
 testNewRedefineUninitializedCodePath2
 testNewRedefineHasAttr
 testNewRedefineNestedLoopInfiniteExpansion
@@ -272,6 +261,7 @@ testTypedDictUnionGetFull
 testStrictEqualityWithList
 testTypeVarTupleErrors
 # class callable formatting
+testOverloadedInit
 testProtocolClassObjectAttributeAndCall
 testProtocolClassObjectPureCallback
 testProtocolClassObjectCallableError
@@ -1147,6 +1137,9 @@ testErrorCodeSyntaxErrorIgnoreNote
 testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
 # Error code "literal-required" not covered by "type: ignore" comment
 testNoteAboutChangedTypedDictErrorCode
+# Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`  [syntax]
+testRecommendErrorCode
+testRecommendErrorCode2
 
 # unused section
 testConfigWarnUnusedSectionIncremental

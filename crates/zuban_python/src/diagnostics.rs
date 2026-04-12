@@ -1242,7 +1242,7 @@ impl<'db> Diagnostic<'db> {
                 "Function is missing a return type annotation".to_string()
             }
             FunctionMissingParamAnnotations =>
-                "Function is missing a type annotation for one or more arguments".to_string(),
+                "Function is missing a type annotation for one or more parameters".to_string(),
             CallToUntypedFunction{name} => format!(
                 "Call to untyped function \"{name}\" in typed context"
             ),
