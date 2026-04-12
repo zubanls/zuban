@@ -1729,7 +1729,7 @@ open([])  # zuban: ignore[call-overload]
 
 [out]
 __main__:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
-__main__:4: note: Error code "assignment" not covered by "type: ignore" comment
+__main__:4: note: Error code "assignment" not covered by "type: ignore[asdf]" comment
 
 [case try_except_attribute_error_non_lookups_allowed]
 # flags: --check-untyped-defs
@@ -1860,7 +1860,7 @@ str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore[attr-defined, nam
 str.x + undefined  # ty: ignore[name-defined]  # zuban: ignore
 [out]
 __main__:10: error: Name "undefined" is not defined
-__main__:10: note: Error code "name-defined" not covered by "type: ignore" comment
+__main__:10: note: Error code "name-defined" not covered by "type: ignore[attr-defined]" comment
 
 [case name_binder_keep_notes_during_invalidation]
 [file m.py]
@@ -1877,11 +1877,11 @@ x = ""
 
 [out]
 m.py:2: error: Name "x" is used before definition
-m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore[assignment]" comment
 m.py:5: note: Revealed type is "int"
 ==
 m.py:2: error: Name "x" is used before definition
-m.py:2: note: Error code "used-before-def" not covered by "type: ignore" comment
+m.py:2: note: Error code "used-before-def" not covered by "type: ignore[assignment]" comment
 m.py:5: note: Revealed type is "str"
 
 [case name_binder_unreachability_in_complex_case1]

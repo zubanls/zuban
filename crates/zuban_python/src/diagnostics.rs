@@ -2361,7 +2361,7 @@ impl Diagnostics {
         issue: Issue,
         maybe_ignored: Option<TypeIgnoreComment>,
     ) -> Result<&Issue, Issue> {
-        let (is_ignored, add_not_covered_note) =
+        let (is_ignored, add_not_covered_note, in_brackets) =
             self.is_ignored_and_return_non_covered_error_code(&issue.kind, maybe_ignored);
         if is_ignored {
             return Err(issue);
@@ -2369,11 +2369,17 @@ impl Diagnostics {
         let from_name_binder = issue.from_name_binder;
         let result = self.add(issue);
         if let Some(s) = add_not_covered_note {
+            let rest = if in_brackets.is_empty() {
+                "".into()
+            } else {
+                format!("[{in_brackets}]")
+            };
             self.0.push(Box::pin(Issue::from_start_stop(
                 result.start_position,
                 result.end_position,
                 IssueKind::Note(
-                    format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
+                    format!(r#"Error code "{s}" not covered by "type: ignore{rest}" comment"#)
+                        .into(),
                 ),
                 from_name_binder,
             )));
@@ -2381,12 +2387,13 @@ impl Diagnostics {
         Ok(result)
     }
 
-    pub fn is_ignored_and_return_non_covered_error_code(
+    pub fn is_ignored_and_return_non_covered_error_code<'type_ignore>(
         &self,
         issue: &IssueKind,
-        maybe_ignored: Option<TypeIgnoreComment>,
-    ) -> (bool, Option<&'static str>) {
+        maybe_ignored: Option<TypeIgnoreComment<'type_ignore>>,
+    ) -> (bool, Option<&'static str>, &'type_ignore str) {
         let mut add_not_covered_note = None;
+        let mut in_brackets = "";
         if let Some(specific) = maybe_ignored {
             if let TypeIgnoreComment::WithCodes {
                 codes,
@@ -2394,6 +2401,7 @@ impl Diagnostics {
                 ..
             } = specific
             {
+                in_brackets = codes;
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.mypy_error_code();
                 let super_ = issue.mypy_error_supercode();
@@ -2406,15 +2414,15 @@ impl Diagnostics {
                         e == Some(code) || super_ == Some(code) || e.is_none()
                     })
                 {
-                    return (true, None);
+                    return (true, None, in_brackets);
                 } else if e.is_some() {
                     add_not_covered_note = e;
                 }
             } else {
-                return (true, None);
+                return (true, None, in_brackets);
             }
         }
-        (false, add_not_covered_note)
+        (false, add_not_covered_note, in_brackets)
     }
 
     pub fn add(&self, issue: Issue) -> &Issue {

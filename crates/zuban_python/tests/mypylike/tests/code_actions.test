@@ -84,9 +84,9 @@ __main__.py:21: Code Actions:
 1()  # type: ignore [ undefined ]  
 [out]
 __main__:2: error: "int" not callable
-__main__:2: note: Error code "operator" not covered by "type: ignore" comment
+__main__:2: note: Error code "operator" not covered by "type: ignore[ undefined ]" comment
 __main__:4: error: "int" not callable
-__main__:4: note: Error code "operator" not covered by "type: ignore" comment
+__main__:4: note: Error code "operator" not covered by "type: ignore[ undefined ]" comment
 __main__.py:2: Code Actions:
 - Add "# type: ignore[operator]": 2:31-2:31 replaced with: ", operator"
 __main__.py:4: Code Actions:
