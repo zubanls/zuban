@@ -464,7 +464,7 @@ def func3() -> None:
 
     if issubclass(Concrete3A, (Proto3, NonDataProtocol)):  # E: Subclass of "Concrete3A" and "Proto3" cannot exist: would have incompatible method signatures \
                                                            # E: Subclass of "Concrete3A" and "NonDataProtocol" cannot exist: would have incompatible method signatures
-        pass
+        pass  # E: Statement is unreachable
 
 [case protocols_not_instantiated]
 # Copied from conformance tests (protocols_explicit.py)

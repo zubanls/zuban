@@ -533,7 +533,7 @@ impl Inference<'_, '_, '_> {
     fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {
         // In Mypy this is called is_noop_for_reachability
         match s {
-            StmtLikeContent::RaiseStmt(_) | StmtLikeContent::PassStmt(_) => true,
+            StmtLikeContent::RaiseStmt(_) => true,
             StmtLikeContent::AssertStmt(assert_stmt) => {
                 match assert_stmt.unpack().0.maybe_unpacked_atom() {
                     Some(AtomContent::Bool(b)) if b.as_code() == "False" => true,
