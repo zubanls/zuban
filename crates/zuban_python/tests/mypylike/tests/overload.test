@@ -273,7 +273,7 @@ from typing import overload
 def foo(x: int) -> int: ...
 @overload
 def foo(x: str = ...) -> str: ...
-def foo(x: int | str = b"") -> str | int: ... # E: Incompatible default for argument "x" (default has type "bytes", argument has type "int | str")
+def foo(x: int | str = b"") -> str | int: ... # E: Incompatible default for parameter "x" (default has type "bytes", parameter has type "int | str")
 
 [case overload_with_self_types_fallback]
 # Inspired by testOverloadAndSelfTypesGenericNoOverlap

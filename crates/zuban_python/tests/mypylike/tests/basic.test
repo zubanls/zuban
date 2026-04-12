@@ -717,7 +717,7 @@ reveal_type(z)  # N: Revealed type is "str"
 [case type_differences]
 # flags: --strict
 from typing import Type, Any
-x: Type  # E: Missing type parameters for generic type "Type"
+x: Type  # E: Missing type arguments for generic type "Type"
 y: type
 
 class Foo(Type): ...  # E: Invalid base class "Type"
@@ -839,7 +839,7 @@ y: dict[int, bytes] = {**x}  # E: Unpacked dict entry 0 has incompatible type "d
 e1: dict[int, str] = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[int, str]"
 
 a: dict[str, int] = dict(**{})
-b: dict[str, int] = dict(**x)  # E: Keywords must be strings
+b: dict[str, int] = dict(**x)  # E: Argument after ** must have string keys
 e2: dict[str, int] = dict(**1)  # E: Argument after ** must be a mapping, not "int"
 
 e3 = {**1}  # E: Unpacked dict entry 0 has incompatible type "int"; expected "SupportsKeysAndGetItem[Never, Never]"

@@ -2337,7 +2337,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     {
                                         node_ref.add_issue(
                                             i_s,
-                                            IssueKind::MissingTypeParameters {
+                                            IssueKind::MissingTypeArguments {
                                                 name: alias.name(i_s.db).into(),
                                             },
                                         );

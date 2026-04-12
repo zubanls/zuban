@@ -909,7 +909,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     node_ref.add_issue(
                                         i_s,
                                         IssueKind::ArgumentIssue(Box::from(
-                                            "Keywords must be strings",
+                                            "Argument after ** must have string keys",
                                         )),
                                     );
                                 }

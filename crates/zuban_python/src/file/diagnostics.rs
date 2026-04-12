@@ -1786,7 +1786,7 @@ impl Inference<'_, '_, '_> {
                                     class: class_t.format(format_data),
                                 }
                             } else {
-                                IssueKind::SelfArgumentMissing
+                                IssueKind::SelfParameterMissing
                             };
                             self.add_issue(annotation.index(), issue);
                         } else {

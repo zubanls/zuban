@@ -1006,7 +1006,7 @@ def g() -> "undefined_zuban  # type: ignore[name-defined]": ...  # E: Name "unde
 [case invalid_type_form]
 # flags: --disallow-any-generics
 from typing_extensions import TypeForm
-x: TypeForm = int  # E: Missing type parameters for generic type "TypeForm"
+x: TypeForm = int  # E: Missing type arguments for generic type "TypeForm"
 reveal_type(x)  # N: Revealed type is "TypeForm[Any]"
 y: TypeForm[int, str] = int  # E: Invalid type comment or annotation
 

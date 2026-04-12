@@ -447,7 +447,7 @@ pub(crate) enum IssueKind {
     MethodWithoutArguments,
     TypeOfSelfIsNotASupertypeOfItsClass { self_type: Box<str>, class: Box<str> },
     TypeOfSelfHasTypeVars { type_var_like: TypeVarLike, class_name: Box<str> },
-    SelfArgumentMissing,
+    SelfParameterMissing,
     SelfAlreadyBoundInFirstParam,
     MultipleStarredExpressionsInAssignment,
 
@@ -497,7 +497,7 @@ pub(crate) enum IssueKind {
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
     CoroutineValueMustBeUsed { type_: Box<str> },
     AwaitableValueMustBeUsed { type_: Box<str> }, // From --enable-error-code unused-awaitable
-    MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
+    MissingTypeArguments { name: Box<str> }, // From --disallow-any-generics
     UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
     UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
     DisallowedAnySubclass { class: Box<str> }, // From --disallow-subclassing-any
@@ -569,7 +569,7 @@ impl IssueKind {
             | UnsupportedOperandForUnary { .. }
             | NotCallable { .. }
             | UnknownFunctionNotCallable => "operator",
-            TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
+            TypeArgumentIssue { .. } | MissingTypeArguments { .. } => "type-arg",
             ModuleNotFound { module_name } => {
                 if has_known_types_package(module_name).is_some() {
                     "import-untyped"
@@ -817,7 +817,7 @@ impl<'db> Diagnostic<'db> {
                 | BaseExceptionExpected
                 | BaseExceptionExpectedForRaise { .. }
                 | TypeOfSelfIsNotASupertypeOfItsClass { .. }
-                | SelfArgumentMissing
+                | SelfParameterMissing
         )
     }
 
@@ -1008,8 +1008,8 @@ impl<'db> Diagnostic<'db> {
                     additional_notes.push("Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase".into());
                 }
                 format!(
-                    "Incompatible default for argument \"{argument_name}\" \
-                     (default has type \"{got}\", argument has type \"{expected}\")"
+                    "Incompatible default for parameter \"{argument_name}\" \
+                     (default has type \"{got}\", parameter has type \"{expected}\")"
                 )
             },
             TypeNotFound => format!("Name {:?} is not defined", self.code_under_issue()),
@@ -1138,8 +1138,8 @@ impl<'db> Diagnostic<'db> {
                 r#"The type of self "{}" has type vars in non standard positions for class "{class_name}""#,
                 type_var_like.name(self.db),
             ),
-            SelfArgumentMissing =>
-                "Self argument missing for a non-static method (or an invalid type for self)".to_string(),
+            SelfParameterMissing =>
+                "\"self\" parameter missing for a non-static method (or an invalid type for self)".to_string(),
             SelfAlreadyBoundInFirstParam =>
                 "Self is already bound in the first param, use that type instead".to_string(),
             MultipleStarredExpressionsInAssignment =>
@@ -1254,8 +1254,8 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("Are you missing an await?".to_string());
                 format!(r#"Value of type "{type_}" must be used"#)
             }
-            MissingTypeParameters { name } => format!(
-                r#"Missing type parameters for generic type "{name}""#
+            MissingTypeArguments { name } => format!(
+                r#"Missing type arguments for generic type "{name}""#
             ),
             UntypedDecorator { name } => format!(
                 r#"Untyped decorator makes function "{name}" untyped"#

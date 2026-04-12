@@ -20,7 +20,7 @@ use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
-const SKIP_MYPY_TEST_FILES: [&str; 29] = [
+const SKIP_MYPY_TEST_FILES: [&str; 31] = [
     // --allow-redefinition tests
     "check-redefine.test",
     // Python special features
@@ -44,6 +44,8 @@ const SKIP_MYPY_TEST_FILES: [&str; 29] = [
     // Inspect feature, see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
     "fine-grained-inspect.test",
     // Won't do, because they test mypy internals
+    "native-parser.test",
+    "native-parser-imports.test",
     "check-incomplete-fixture.test",
     "check-native-int.test",
     "semanal-symtable.test",
@@ -833,7 +835,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
         return None;
     }
-    if s.contains("\" defined here")
+    if s.contains("\" defined in ") && s.ends_with('"')
         || s.contains("Flipping the order of overloads will fix this error")
         || s.contains("Maybe you forgot to use \"await\"?")
     {

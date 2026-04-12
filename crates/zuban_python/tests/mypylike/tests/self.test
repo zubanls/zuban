@@ -623,7 +623,7 @@ from typing import TypeVar, Self
 TFoo2 = TypeVar("TFoo2", bound="Foo2")
 class Foo2:
     # Rejected (Self is treated as unknown).
-    def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+    def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
 [case self_return_of_overload_no_crash]
 # From GH #251

@@ -1004,7 +1004,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 {
                     self.add_issue(
                         node_ref,
-                        IssueKind::MissingTypeParameters {
+                        IssueKind::MissingTypeArguments {
                             name: cls.name().into(),
                         },
                     );
@@ -1050,7 +1050,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if self.flags().disallow_any_generics {
                             self.add_issue(
                                 node_ref,
-                                IssueKind::MissingTypeParameters {
+                                IssueKind::MissingTypeArguments {
                                     name: td.name.unwrap().as_str(db).into(),
                                 },
                             );
@@ -1070,7 +1070,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if self.flags().disallow_any_generics && a.type_vars.contains_non_default() {
                     self.add_issue(
                         node_ref,
-                        IssueKind::MissingTypeParameters {
+                        IssueKind::MissingTypeArguments {
                             name: a.name(db).into(),
                         },
                     );
@@ -1086,7 +1086,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Tuple".into(),
                             },
                         );
@@ -1097,7 +1097,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Callable".into(),
                             },
                         );
@@ -1112,7 +1112,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Type".into(),
                             },
                         );
@@ -1220,7 +1220,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "TypeForm".into(),
                             },
                         );
@@ -2424,7 +2424,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.add_issue_for_index(
                                 index,
                                 IssueKind::new_invalid_type(format!(
-                                    "Duplicate argument \"{param_name}\" in Callable",
+                                    "Duplicate param \"{param_name}\" in Callable",
                                 )),
                             );
                             return;

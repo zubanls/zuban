@@ -371,7 +371,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     .has_self_type(i_s.db)
             {
                 self.expect_return_annotation_node_ref()
-                    .add_type_issue(i_s.db, IssueKind::SelfArgumentMissing);
+                    .add_type_issue(i_s.db, IssueKind::SelfParameterMissing);
             }
             result
         });

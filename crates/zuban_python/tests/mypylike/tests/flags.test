@@ -642,7 +642,7 @@ def x(
 pretty = true
 
 [out]
-__main__:2: error: Incompatible default for argument "y" (default has type "int", argument has type "str")
+__main__:2: error: Incompatible default for parameter "y" (default has type "int", parameter has type "str")
   |
 1 | def x(
 2 |     y: str = 1

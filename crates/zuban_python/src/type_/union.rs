@@ -428,7 +428,15 @@ impl UnionType {
             }
         };
         let mut unsorted = iterator
-            .map(|e| (e.format_index, e.type_.format(format_data)))
+            .map(|e| {
+                let mut result = e.type_.format(format_data);
+                if matches!(e.type_, Type::Callable(_))
+                    && matches!(format_data.style, FormatStyle::MypyRevealType)
+                {
+                    result = format!("({result})").into();
+                }
+                (e.format_index, result)
+            })
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
         sorted += &unsorted

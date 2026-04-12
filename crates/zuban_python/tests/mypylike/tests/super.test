@@ -190,7 +190,7 @@ class C:
 # From GH #239
 from typing import Any
 class C:
-    def f(a: type[Any]):  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def f(a: type[Any]):  # E: "self" parameter missing for a non-static method (or an invalid type for self)
         super().__call__()
 
     @classmethod
