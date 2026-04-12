@@ -445,7 +445,7 @@ def get(fn: Callable[[], None] | Callable[[], str]) -> None:
 def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     ret = fn(1)  # E: Function does not return a value (it only ever returns None) \
                  # E: Function does not return a value (it only ever returns None)
-    reveal_type(ret)  # N: Revealed type is "Any"
+    reveal_type(ret)  # N: Revealed type is "None"
 
 [case function_does_not_return_value_no_mypy_compatible]
 # flags: --mode default

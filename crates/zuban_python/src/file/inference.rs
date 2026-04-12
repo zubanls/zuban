@@ -792,9 +792,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     } else {
                         if result_context.expect_not_none() {
                             from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-                            if i_s.db.mypy_compatible() {
-                                return Inferred::new_any_from_error();
-                            }
                         }
                         Inferred::new_none()
                     }
@@ -4967,9 +4964,6 @@ pub(crate) fn await_(
     }
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
-        if i_s.db.mypy_compatible() {
-            return Inferred::new_any_from_error();
-        }
     }
     Inferred::from_type(t)
 }
