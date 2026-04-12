@@ -168,6 +168,12 @@ struct PerTestFlags {
     #[arg(long)]
     debug_serialize: bool,
 
+    // Not public
+    #[arg(long)]
+    allow_redefinition_old: bool,
+    #[arg(long)]
+    disallow_redefinition_old: bool,
+
     // Our own
     #[arg(long)]
     no_typecheck: bool,
@@ -199,7 +205,7 @@ impl TestCase<'_, '_> {
         projects: &'p mut ProjectsCache,
         local_fs: &SimpleLocalFS,
         mode: Option<Mode>,
-        flags: PerTestFlags,
+        mut flags: PerTestFlags,
         steps: &[Step],
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
         let mut diagnostic_config = DiagnosticConfig {
@@ -297,6 +303,9 @@ impl TestCase<'_, '_> {
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
+
+        flags.cli.mypy_options.allow_redefinition |= flags.allow_redefinition_old;
+        flags.cli.mypy_options.allow_redefinition |= flags.allow_redefinition_old;
 
         BASE_PATH.with(|base_path| {
             let current_dir = NormalizedPath::arc_to_abs_path(base_path.clone());

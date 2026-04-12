@@ -210,7 +210,7 @@ pub struct MypyCli {
     disallow_untyped_globals: bool,
     /// Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
     #[arg(long)]
-    allow_redefinition: bool,
+    pub allow_redefinition: bool,
     #[arg(long)]
     disallow_redefinition: bool,
     /// For now --allow-redefinition and --allow-redefinition-new are the same (inverse: --disallow-redefinition-new)

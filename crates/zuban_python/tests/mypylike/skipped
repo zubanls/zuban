@@ -152,11 +152,7 @@ testPerFileIncompleteDefsBasic
 testPerFileIncompleteDefsBasicPyProjectTOML
 testDisallowIncompleteDefs
 testDisallowIncompleteDefsPartiallyAnnotatedParams
-testRedefineLocalWithDifferentTypeAlias
-testRedefineLocalWithDifferentTypeInverse
-testRedefineLocalWithDifferentTypeConfigOld
 testRevealSimpleTypes_no_verbose_reveal
-testOnlyOneRedefinitionModeAllowed
 testCallableJoinWithDefaults
 testCallableJoinWithDefaultsMultiple
 testCallableJoinWithType
@@ -1724,6 +1720,9 @@ testNewRedefinePartialGenericTypes
 # --alow-redefinition-new implementation details, that are probably not important
 testNewRedefineWithoutLocalPartialTypes
 testNewRedefineImportFrom-xfail
+# allow_redefinition_old / --allow-redefinition-old
+testRedefineLocalWithDifferentTypeConfigOld
+testOnlyOneRedefinitionModeAllowed
 # Multiple different flags in test
 testNewRedefineAffectsCache
 # module __getattr__ is considered a redefinition
