@@ -295,15 +295,33 @@ fn common_base_type_for_non_class(
                 return Some(Type::TypedDict(td1.intersection(i_s, td2)));
             }
         }
-        Type::Type(t1) => {
-            if let Type::Type(t2) = type2 {
+        Type::Type(t1) => match type2 {
+            Type::Type(t2) => {
                 return Some(Type::Type(Arc::new(t1.common_base_type_internal(
                     i_s,
                     t2,
                     Some(checked_recursions),
                 ))));
             }
-        }
+            Type::TypeForm(tf2) => {
+                return Some(Type::TypeForm(Arc::new(t1.common_base_type_internal(
+                    i_s,
+                    tf2,
+                    Some(checked_recursions),
+                ))));
+            }
+            _ => (),
+        },
+        Type::TypeForm(tf1) => match type2 {
+            Type::TypeForm(tf2) | Type::Type(tf2) => {
+                return Some(Type::TypeForm(Arc::new(tf1.common_base_type_internal(
+                    i_s,
+                    tf2,
+                    Some(checked_recursions),
+                ))));
+            }
+            _ => (),
+        },
         _ => {
             if type1.is_simple_same_type(i_s, type2).bool() {
                 return Some(type1.clone());

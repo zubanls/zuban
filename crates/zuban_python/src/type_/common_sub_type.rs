@@ -35,6 +35,9 @@ impl Type {
                     Some(Type::Type(Arc::new(new)))
                 }
             }
+            (Type::TypeForm(t1), Type::TypeForm(t2)) => {
+                Some(Type::TypeForm(Arc::new(t1.common_sub_type(i_s, t2)?)))
+            }
             _ => {
                 if self.is_simple_sub_type_of(i_s, other).bool() {
                     Some(self.clone())
