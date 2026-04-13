@@ -1,0 +1,15 @@
+[case template_string_concatenations]
+t"f" t"g"
+
+t"f" "g"  # E: Cannot mix t-string literals with string literals
+"f" t"g"  # E: Cannot mix t-string literals with string literals
+f"f" t"g"  # E: Cannot mix t-string literals with string literals
+t"f" f"g"  # E: Cannot mix t-string literals with string literals
+
+b"f" t"g"  # E: Invalid syntax
+t"f" b"g"  # E: Invalid syntax
+
+[case template_string_concatenations2]
+t"f" + t"g"
+t"f" + "g"  # E: Unsupported operand types for + ("Template" and "str")
+"f" + t"g"  # E: Unsupported operand types for + ("str" and "Template")

@@ -1200,7 +1200,6 @@ testSunderValueTypeEllipsisNonStub
 testNoneTypeWarning
 
 # Template strings inner expressions validation
-testTemplateString
 testTemplateStringExpressionsErrors
 testTemplateStringNestedExpressionsTypeChecked
 

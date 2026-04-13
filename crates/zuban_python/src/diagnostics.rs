@@ -28,6 +28,7 @@ pub(crate) enum IssueKind {
     StarExceptionWithoutTypingSupport,
     TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code: Box<str> },
     DirectiveSyntaxError(Box<str>),
+    TemplateStringConcatenatedWithString,
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -527,6 +528,7 @@ impl IssueKind {
             | InvalidSyntaxInTypeComment { .. }
             | InvalidSyntaxInTypeAnnotation
             | TypeIgnoreWithErrorCodeNotSupportedForModules { .. }
+            | TemplateStringConcatenatedWithString
             | DirectiveSyntaxError(..) => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
@@ -840,6 +842,8 @@ impl<'db> Diagnostic<'db> {
                      use `# mypy: disable-error-code=\"{ignore_code}\"`"
                 )
             }
+            TemplateStringConcatenatedWithString =>
+                "Cannot mix t-string literals with string literals".to_string(),
             DirectiveSyntaxError(s) => s.to_string(),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),

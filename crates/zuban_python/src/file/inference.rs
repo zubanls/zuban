@@ -3676,7 +3676,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
                 ProcessedStrings::WithFStringVariables => Specific::String,
                 ProcessedStrings::Inferred(inf) => {
-                    dbg!(inf.debug_info(self.i_s.db));
                     return inf;
                 }
             },
@@ -3756,7 +3755,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         if template_string_count > 0 {
             return ProcessedStrings::Inferred(if template_string_count != count {
-                // TODO add error
+                self.add_issue(
+                    strings.index(),
+                    IssueKind::TemplateStringConcatenatedWithString,
+                );
                 Inferred::new_any_from_error()
             } else if let Some(template) =
                 self.infer_import_by_strings(&["string", "templatelib", "Template"])
