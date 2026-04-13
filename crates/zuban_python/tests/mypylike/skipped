@@ -152,8 +152,6 @@ testMatchTypeObjectTypeVar
 testMatchTypeNarrowing
 testMatchFinalClass
 # Mypy 1.20.0 issues
-testAltConfigFile
-testConfigMypyPath
 testRevealSimpleTypes_no_verbose_reveal
 testMissingImportUnIgnoredInConfig
 testMissingImportUnIgnoredInConfig2
@@ -1850,6 +1848,8 @@ testFlagsFile
 testOutputFormatterIncremental
 # librt
 testVecBasics
+# --config-file in tests
+testAltConfigFile
 
 # won't implement --pretty
 testReprocessMethodShowSource

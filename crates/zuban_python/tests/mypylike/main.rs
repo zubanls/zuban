@@ -227,7 +227,7 @@ impl TestCase<'_, '_> {
                 ProjectOptions::from_mypy_ini(
                     local_fs,
                     base_path,
-                    base_path,
+                    &local_fs.join(&base_path, "mypy.ini"),
                     &ini,
                     &mut diagnostic_config,
                 )
@@ -248,7 +248,7 @@ impl TestCase<'_, '_> {
                 ProjectOptions::from_pyproject_toml_only(
                     local_fs,
                     base_path,
-                    base_path,
+                    &local_fs.join(&base_path, "pyproject.toml"),
                     &ini,
                     &mut diagnostic_config,
                     mode,
