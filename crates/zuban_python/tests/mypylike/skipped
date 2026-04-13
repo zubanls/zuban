@@ -186,15 +186,6 @@ testPEP695TypeAliasRecursiveInParameterBound
 testTypeVarDefaultToAnotherTypeVar
 testTypeVarDefaultToAnotherTypeVarWrong
 testNamedTupleUpdateNonRecursiveToRecursiveFine
-# template strings
-testTemplateStringBasics
-testTemplateStringWithoutExplicitImport
-testTemplateStringExpressionsOk
-testTemplateStringExpressionsErrors
-testTemplateStringParseFormatOptions
-testTemplateStringNestedExpressionsTypeChecked
-testIncrementalTemplateStringImplicitDependency
-testTemplateStringImplicitDependencyFineGrained
 # no_parallel a lot of duplicates
 testIncrementalWithSilentImportsAndIgnore_no_parallel
 testIncrementalFunctoolsPartial_no_parallel
@@ -1208,8 +1199,10 @@ testSunderValueTypeEllipsisNonStub
 # "NoneType should not be used as a type, please use None instead"
 testNoneTypeWarning
 
-# Template strings
+# Template strings inner expressions validation
 testTemplateString
+testTemplateStringExpressionsErrors
+testTemplateStringNestedExpressionsTypeChecked
 
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1

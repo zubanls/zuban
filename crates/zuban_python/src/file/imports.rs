@@ -8,9 +8,11 @@ use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
+    file::inference::Inference,
     imports::{
         ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
-        global_import, namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
+        global_import, import_module_by_strings, namespace_import_with_unloaded_file,
+        python_import_with_needs_exact_case,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -383,6 +385,32 @@ impl PythonFile {
                 }
             }
         }
+    }
+}
+
+impl<'db> Inference<'db, '_, '_> {
+    pub fn infer_import_by_strings(&self, names: &[&'db str]) -> Option<Inferred> {
+        let mut iterator = names.iter().copied();
+        let last = iterator.next_back()?;
+        // Implement essentially `from ... import <some-identifier>`
+        if iterator.len() > 0
+            && let ImportResult::File(file_index) =
+                import_module_by_strings(self.i_s.db, self.file, iterator)?
+        {
+            let import_on_file = self.i_s.db.ensure_file_for_file_index(file_index).ok()?;
+            return Some(
+                self.infer_point_resolution(
+                    self.with_new_file(import_on_file)
+                        .resolve_module_access(last, |_| false)?
+                        .0,
+                ),
+            );
+        }
+        // This is the rest where no files are involved
+        Some(
+            import_module_by_strings(self.i_s.db, self.file, names.iter().copied())?
+                .into_inferred(self.i_s.db),
+        )
     }
 }
 

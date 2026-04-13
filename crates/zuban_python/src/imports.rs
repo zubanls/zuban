@@ -206,6 +206,20 @@ pub fn global_import<'a>(
         })
 }
 
+pub fn import_module_by_strings<'a>(
+    db: &'a Database,
+    from_file: &PythonFile,
+    names: impl IntoIterator<Item = &'a str>,
+) -> Option<ImportResult> {
+    let mut name_iterator = names.into_iter();
+    let first = name_iterator.next()?;
+    let mut result = global_import(db, from_file, first)?;
+    for name in name_iterator {
+        result = result.import(db, from_file, name)?;
+    }
+    Some(result)
+}
+
 fn global_import_of_stubs_folders<'a>(
     db: &'a Database,
     from_file: &PythonFile,

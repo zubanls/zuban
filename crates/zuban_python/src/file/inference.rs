@@ -3675,6 +3675,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return Inferred::from_type(Type::LiteralString { implicit: true });
                 }
                 ProcessedStrings::WithFStringVariables => Specific::String,
+                ProcessedStrings::Inferred(inf) => {
+                    dbg!(inf.debug_info(self.i_s.db));
+                    return inf;
+                }
             },
             Bytes(b) => {
                 if let Some(b) = b.maybe_single_bytes_literal() {
@@ -3731,13 +3735,45 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    pub(super) fn process_str_literal<'x>(&self, strings: Strings<'x>) -> ProcessedStrings<'x> {
+    fn process_str_literal<'x>(&self, strings: Strings<'x>) -> ProcessedStrings<'x> {
         let mut is_string_literal = true;
+        let mut template_string_count = 0;
+        let mut count = 0;
         for string in strings.iter() {
-            if let StringType::FString(f) = string {
-                is_string_literal &= self
-                    .calc_fstring_content_diagnostics_and_return_is_string_literal(f.iter_content())
+            count += 1;
+            match string {
+                StringType::FString(f) => {
+                    is_string_literal &= self
+                        .calc_fstring_content_diagnostics_and_return_is_string_literal(
+                            f.iter_content(),
+                        );
+                }
+                StringType::TemplateString(_) => {
+                    template_string_count += 1;
+                }
+                StringType::String(_) => {}
             }
+        }
+        if template_string_count > 0 {
+            return ProcessedStrings::Inferred(if template_string_count != count {
+                // TODO add error
+                Inferred::new_any_from_error()
+            } else if let Some(template) =
+                self.infer_import_by_strings(&["string", "templatelib", "Template"])
+                && let Some(node_ref) = template.maybe_saved_node_ref(self.i_s.db)
+                && node_ref.maybe_class().is_some()
+            {
+                node_ref.ensure_cached_class_infos(self.i_s);
+                // At this point we have the class, but we need it's instance.
+                Inferred::from_type(
+                    Class::from_undefined_generics(self.i_s.db, node_ref.as_link())
+                        .as_type(self.i_s.db),
+                )
+            } else {
+                // TODO this is a special case where the string.template.Template is not found in
+                // typeshed.
+                Inferred::new_any_from_error()
+            });
         }
         if let Some(s) = strings.maybe_single_string_literal() {
             ProcessedStrings::Literal(s)
@@ -3761,6 +3797,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             ProcessedStrings::LiteralString => Type::LiteralString { implicit: true },
             ProcessedStrings::WithFStringVariables => self.i_s.db.python_state.str_type(),
+            ProcessedStrings::Inferred(inf) => inf.as_type(self.i_s),
         }
     }
 
@@ -3951,7 +3988,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.infer_point_resolution(resolved)
     }
 
-    fn infer_point_resolution(&self, pr: PointResolution) -> Inferred {
+    pub(super) fn infer_point_resolution(&self, pr: PointResolution) -> Inferred {
         match pr {
             PointResolution::NameDef {
                 node_ref,
@@ -4758,10 +4795,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 }
 
-pub(super) enum ProcessedStrings<'db> {
+enum ProcessedStrings<'db> {
     Literal(StringLiteral<'db>),
     LiteralString,
     WithFStringVariables,
+    Inferred(Inferred),
 }
 
 pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {

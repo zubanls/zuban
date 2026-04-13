@@ -4979,7 +4979,11 @@ impl<'db> Iterator for StringIterator<'db> {
             if n.is_type(Nonterminal(fstring)) {
                 StringType::FString(FString::new(n))
             } else {
-                StringType::String(StringLiteral::new(n))
+                if n.as_code().starts_with(['t', 'T']) {
+                    StringType::TemplateString(StringLiteral::new(n))
+                } else {
+                    StringType::String(StringLiteral::new(n))
+                }
             }
         })
     }
@@ -4987,6 +4991,7 @@ impl<'db> Iterator for StringIterator<'db> {
 
 pub enum StringType<'db> {
     String(StringLiteral<'db>),
+    TemplateString(StringLiteral<'db>),
     FString(FString<'db>),
 }
 

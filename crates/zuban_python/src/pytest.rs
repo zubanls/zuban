@@ -10,7 +10,7 @@ use crate::{
     database::{Database, ParentScope},
     debug,
     file::{ClassNodeRef, File as _, PythonFile, func_parent_scope},
-    imports::{ImportResult, global_import, python_import},
+    imports::{ImportResult, import_module_by_strings, python_import},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -328,13 +328,8 @@ fn import_dotted<'db>(
     from_file: &PythonFile,
     s: &str,
 ) -> Option<&'db PythonFile> {
-    debug!("Trying to import file {s:?}");
-    let mut iterator = s.split(".");
-    let mut result = global_import(db, from_file, iterator.next()?)?;
-    for module_name in iterator {
-        result = result.import(db, from_file, module_name)?;
-    }
-    match result {
+    debug!("Trying to import dotted file {s:?}");
+    match import_module_by_strings(db, from_file, s.split("."))? {
         ImportResult::File(file_index) => db.ensure_file_for_file_index(file_index).ok(),
         _ => None,
     }
