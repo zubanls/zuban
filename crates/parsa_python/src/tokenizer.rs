@@ -25,7 +25,7 @@ lazy_static::lazy_static! {
         "^".to_owned() + &or(&[&IMAG_NUMBER, &FLOAT_NUMBER, &INT_NUMBER])
     ));
 
-    static ref STRING: Regex = r(&all_string_regexes(&["", "[rR]", "[uU]"]));
+    static ref STRING: Regex = r(&all_string_regexes(&["", "[rR]", "[uU]", "[tT]"]));
     static ref BYTES: Regex = r(&all_string_regexes(&["[bB][rR]?", "[rR][bB]"]));
 
     // Because of leftmost-then-longest match semantics, be sure to put the
