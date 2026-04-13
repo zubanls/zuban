@@ -2016,10 +2016,10 @@ impl<'db> Diagnostic<'db> {
                 r#"Unsupported type "{type_}" for ** expansion in TypedDict"#
             ),
             TypedDictArgumentNameOverlapWithUnpack { names } => format!(
-                r#"Overlap between argument names and ** TypedDict items: {names}"#
+                r#"Overlap between parameter names and ** TypedDict items: {names}"#
             ),
             UnpackItemInStarStarMustBeTypedDict =>
-                "Unpack item in ** argument must be a TypedDict".to_string(),
+                "Unpack item in ** parameter must be a TypedDict".to_string(),
             TypedDictSetdefaultWrongDefaultType { got, expected } => format!(
                 r#"Argument 2 to "setdefault" of "TypedDict" has incompatible type "{got}"; expected "{expected}""#,
             ),

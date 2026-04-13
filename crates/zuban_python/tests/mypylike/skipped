@@ -5,6 +5,7 @@ testPostInitIsNotAFunction
 testOverloadPossibleOverlapWithArgsAndKwargs
 testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
+testDefaultsMustBeInScope
 goto_doc_contains_stdlib_compiled
 
 narrow_literals_locally_for_assignments
@@ -20,6 +21,13 @@ testStrictEqualityOkPromote
 testStrictEqualityTypeVsCallable
 testStrictEqualityMetaclass
 testTypeVariableWithContainerAndTuple
+# more contains narrowing failing test from Mypy 1.20.0
+testNarrowTypeAfterInListNonOverlapping
+testNarrowTypeAfterInListNested
+testStrictEqualityWithList
+# equality
+testNoneReturnTypeWithExpressions
+testStrictEqualityWithAnySentinel
 # typeshed upgrade regressions
 union_alias_attr_access
 type_form_basic2_conformance_tests
@@ -27,9 +35,7 @@ testTypedDictGet
 # Mypy 1.19.0 upgrade issues
 testOverride__new__WithLiteralReturnPassing
 testOverride__new__WithLiteralReturnFailing
-testOverrideWithDecoratorReturningCallable2
 testRecursiveAliasInstanceOverlapCheck
-testMatchLiteralPatternNarrows2
 testMatchClassPatternCallable
 testIgnoreReturningNotImplemented
 testErrorCodeUntypedDecorator
@@ -123,58 +129,8 @@ testEnumReachabilityNarrowingForUnionMessiness
 testStrEnumEqualityNarrowing
 testStrEnumEqualityAlias
 testEnumEqualityNarrowing
-# Mypy 1.20.0 regressions
-testUsingNumbersType
-testImplicitClassScopedNames
-testColumnsMissingPositionalArgShiftDetected
-testEnumAttributesInheritedFromMixin
-testValueTypeWithUserDataType
-testRedundantExpressionsUnionWithAny
-testReverseBinaryOperator4
-testNoneReturnTypeWithExpressions
-testStrictEqualityWithAnySentinel
-testStringLiteralUnpacking
-testAltConfigFile
-testConfigMypyPath
-testRevealSimpleTypes_no_verbose_reveal
-testCallableJoinWithDefaults
-testCallableJoinWithDefaultsMultiple
-testCallableJoinWithType
-testEmptyParamSpecConsistency
-testMissingTypeArgsInApplication
-testMissingTypeArgsInApplicationStrict
-testIncrementalWithSilentImportsReverse
-testStarImportCycleRedefinition
-testOutputFormatterIncremental
-testCyclicUndefinedImportWithStarIncremental
-testMissingImportUnIgnoredInConfig
-testMissingImportUnIgnoredInConfig2
-testMissingImportUnIgnoredInConfig3
-testMissingImportUnIgnoredInConfig4
-testMissingImportUnIgnoredInConfig5
-testMissingImportUnIgnoredInConfig6
-testIndirectDependencyReorderModulesNoCrash
-testIndirectDependencyReorderModulesNoCrash2
-testDeletedModuleFromImport
-testDeletedModuleFromImport3
-testIsInstanceThreeUnion3
-testNarrowTypeAfterInListNonOverlapping
-testNarrowTypeAfterInListNested
-testIsInstanceObject
-testIsInstanceOrExprInTuple
-testIsInstanceUnionOfTuples
-testIsInstanceTypeVarBoundToType
-testInvalidTypeForKeywordVarArg
-testListComprehensionTernary
-testLambdaTernaryIndirectAttribute
-testLambdaTernaryDoubleIndirectAttribute
-testNewTypeWithIsInstanceAndIsSubclass
-testNoneListTernary
-testTypeCheckOverloadImplOverlapVarArgsAndKwargsNever
-testParamSpecInTypeAliasRecursive
-testForElseWithWalrusInBreakConditionalRaise
-testModuleAsProtocolImplementationClassObject
-testModuleAsProtocolImplementationTypeAlias
+testReachableEqualityNarrowingAny
+# Mypy 1.20.0 match
 testMatchLiteralPatternBoolIntAlreadyNarrower
 testMatchValuePatternIntersect
 testMatchMappingPatternNarrowing
@@ -196,35 +152,35 @@ testMatchRebindsOuterFunctionName
 testMatchTypeObjectTypeVar
 testMatchTypeNarrowing
 testMatchFinalClass
-testPEP695MultipleTypeVarTuples
-testTuplePassedParameters
-testGenericTypedDictUpdate
+# Mypy 1.20.0 issues
+testStringLiteralUnpacking
+testAltConfigFile
+testConfigMypyPath
+testRevealSimpleTypes_no_verbose_reveal
+testMissingImportUnIgnoredInConfig
+testMissingImportUnIgnoredInConfig2
+testMissingImportUnIgnoredInConfig3
+testMissingImportUnIgnoredInConfig4
+testMissingImportUnIgnoredInConfig5
+testMissingImportUnIgnoredInConfig6
+testInvalidTypeForKeywordVarArg
 testTypeIsGeneric
-testDefaultsMustBeInScope
-testTypeVarTupleBothUnpacksSimple
-testHigherOrderFunctionUnpackTypeVarTupleViaParamSpec_no_verbose_reveal
-testTypeVarTuplePassedParameters
-testTypeVarTupleLiteralValueAsTypeArgument
-testIgnoreReturningNotImplementedSimple
-testReachableEqualityNarrowingAny
 testInvalidVarArg
-testUnpackWithoutTypedDict
-testUnpackWithDuplicateKeywords
-testVecBasics
-testTemplateStringImplicitDependencyFineGrained
-testOverloadedInitSupertype
-testInvalidConditionInConditionalExpression
-testInvalidConditionInConditionalExpression2
 testTypedDictMappingMethods
 testNewAnalyzerTypedDictInStub_newsemanal
 testTypedDictUnionGetFull
-testStrictEqualityWithList
-testTypeVarTupleErrors
+# empty tuple as generic paramspec input
+testEmptyParamSpecConsistency
+testMissingTypeArgsInApplication
+testMissingTypeArgsInApplicationStrict
 # class callable formatting
 testOverloadedInit
 testProtocolClassObjectAttributeAndCall
 testProtocolClassObjectPureCallback
 testProtocolClassObjectCallableError
+testModuleAsProtocolImplementationClassObject
+testModuleAsProtocolImplementationTypeAlias
+testOverloadedInitSupertype
 # recursive formatting
 testRecursiveAliasOnArgumentDetected
 testPEP695TypeAliasRecursiveInParameterBound
@@ -245,6 +201,7 @@ testTemplateStringExpressionsErrors
 testTemplateStringParseFormatOptions
 testTemplateStringNestedExpressionsTypeChecked
 testIncrementalTemplateStringImplicitDependency
+testTemplateStringImplicitDependencyFineGrained
 # no_parallel a lot of duplicates
 testIncrementalWithSilentImportsAndIgnore_no_parallel
 testIncrementalFunctoolsPartial_no_parallel
@@ -308,6 +265,9 @@ testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testUnpackInExpression2-only_when_nocache
 # Join issues
 testDeterminismFromJoinOrderingInSolver
+testCallableJoinWithDefaults
+testCallableJoinWithDefaultsMultiple
+testCallableJoinWithType
 # Self in multi inheritance matching needs intersection to satisfy if its fine
 testTypingSelfOverrideVarMulti
 testSelfInMultipleInheritance
@@ -413,6 +373,11 @@ testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+# isinstance improvements
+testIsInstanceOrExprInTuple
+testIsInstanceUnionOfTuples
+testIsInstanceTypeVarBoundToType
+testNewTypeWithIsInstanceAndIsSubclass
 # TypeIs tuple materializations
 testTypeIsTupleGeneric
 # "Function "property_decorator_missing" could always be true in boolean context"
@@ -552,6 +517,7 @@ testNewRedefineCorrectChangedOnPop
 testNewRedefineAnyOrEmptyUnpackInLoop
 testNewRedefineNestedLoopInfiniteExpansion
 testNewRedefineLoopProgressiveWidening
+testIsInstanceThreeUnion3
 # Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
@@ -674,10 +640,11 @@ testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 testTypedDictReadOnlyMutate__ior__Statements
 testTypedDictReadOnlyMutate__or__Statements
-# TypedDict update readonly
+# TypedDict update
 testTypedDictReadOnlyMutateMethods
 testTypedDictFromTypingExtensionsReadOnlyMutateMethods
 testTypedDictFromMypyExtensionsReadOnlyMutateMethods
+testGenericTypedDictUpdate
 # Functional TypedDict in class def
 testCanCreateClassWithFunctionBasedTypedDictBase
 # TypedDict Unpack
@@ -702,6 +669,23 @@ testTypedDictGetMethodTypeContext
 testTypedDictGetMethodChained
 # TypedDict meet
 testTypeToTypeMeet
+
+# "NamedTuple type as an attribute is not supported"
+testAssignNamedTupleAsAttribute
+testNoCrashUnsupportedNamedTuple
+testNamedTupleAsClassMemberNoCrash
+# "Enum type as attribute is not supported"
+testAssignEnumAsAttribute
+testEnumAsClassMemberNoCrash
+# Enum type attribute access on base class
+testEnumAttributesInheritedFromMixin
+# Enum  value
+testValueTypeWithUserDataType
+# "TypedDict type as attribute is not supported"
+testAssignTypedDictAsAttribute
+
+# class with tuple base reverse add
+testReverseBinaryOperator4
 
 # InitVar special cases
 testDataclassInitVarCannotBeSet
@@ -742,6 +726,8 @@ testNewAnalyzerImportOverExistingInCycleStar1
 testNewAnalyzerImportOverExistingInCycleStar2
 testUnreachableAfterToplevelAssertImportThirdParty
 testUnreachableAfterToplevelAssertImportThirdParty2
+# Star import resolving
+testStarImportCycleRedefinition
 
 # lambda with generics
 testInferenceAgainstGenericLambdas
@@ -752,6 +738,13 @@ testUninferableLambdaWithTypeError
 testRejectCovariantArgumentInLambda
 # lambda override inference fails because of context given an instance callable
 testLambdaInOverrideInference
+# Lambda improvements
+testLambdaTernaryIndirectAttribute
+testLambdaTernaryDoubleIndirectAttribute
+
+# Ternary inference of containers
+testListComprehensionTernary
+testNoneListTernary
 
 # match statement different error
 testMatchSequencePatternWithInvalidClassPattern
@@ -845,16 +838,6 @@ mypy_ini_exclude_multi_line_verbose_regex
 
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
-
-# "NamedTuple type as an attribute is not supported"
-testAssignNamedTupleAsAttribute
-testNoCrashUnsupportedNamedTuple
-testNamedTupleAsClassMemberNoCrash
-# "Enum type as attribute is not supported"
-testAssignEnumAsAttribute
-testEnumAsClassMemberNoCrash
-# "TypedDict type as attribute is not supported"
-testAssignTypedDictAsAttribute
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
@@ -954,6 +937,7 @@ testCallableTooManyVarArg
 testCallableKindsOrdering
 testCallableFastParseBadArgArgName
 testCallableArgKindSubtyping
+testColumnsMissingPositionalArgShiftDetected
 testMissingPositionalArgShiftDetectedMiddle
 testMissingPositionalArgShiftDetectedFirst
 testMissingPositionalArgShiftDetectedManyArgs
@@ -1100,6 +1084,7 @@ testUnusedIgnoreCodeOrder
 testTypeIgnoredImportsWorkWithCacheIncremental2
 testTypeIgnoredImportsWorkWithCacheIncremental3
 testErrorCodeWarnUnusedIgnores10_SloppyFormattingEmptyBrackets
+testDeletedModuleFromImport3
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2
@@ -1321,6 +1306,9 @@ testVariadicTupleInTupleContext
 # mypy: enable-incomplete-feature=NewGenericSyntax
 testPEP695IncompleteFeatureIsAcceptedButHasNoEffect
 
+# "Types from "numbers" are not supported for static type checking" (numeric tower)
+testUsingNumbersType
+
 # Not all modules are checked in mypy: `# cmd: mypy -m m`
 testTypeCheckNamedModule4
 testTypeCheckNamedModule5
@@ -1358,6 +1346,7 @@ testFollowImportStubs1
 testIncrementalFollowImportsSilent
 testIncrementalWithSilentImports
 testFollowImportsSilent
+testIncrementalWithSilentImportsReverse
 # --follow-imports=skip
 testIncrementalUnsilencingModule
 testIncrementalWithSilentImportsAndIgnore
@@ -1411,6 +1400,7 @@ testTypingSelfRedundantWarning_pep585
 # "If condition is always false"
 testRedundantExpressions
 testGenericAliasRedundantExprCompoundIfExpr
+testRedundantExpressionsUnionWithAny
 # flags: --enable-error-code truthy-bool
 testTruthyBool
 testTruthyFunctions
@@ -1484,6 +1474,7 @@ check-possibly-undefined:testUntypedDef
 check-possibly-undefined:testNoReturn
 check-python310:testPossiblyUndefinedMatch
 check-python310:testPossiblyUndefinedMatchUnreachable
+testForElseWithWalrusInBreakConditionalRaise
 
 # Different but fine diagnostics
 testTypedDictFinalAndClassVar
@@ -1603,6 +1594,9 @@ testParseErrorMultipleTimes
 testBlockingErrorWithPreviousError
 # '(' was never closed
 testMissingBracket
+# "Expected 'else' after 'if' expression"
+testInvalidConditionInConditionalExpression
+testInvalidConditionInConditionalExpression2
 
 # Needs lib-stub/blocker.pyi
 testImportBringsAnotherFileWithBlockingError1
@@ -1864,8 +1858,13 @@ testFollowImportsNormalSearchPathUpdate2-only_when_cache
 testAddNonPackageSubdir
 testAddPackage5
 
+# mypy internals
 # Mypy flags: @tmp/flagsfile
 testFlagsFile
+# --output json
+testOutputFormatterIncremental
+# librt
+testVecBasics
 
 # won't implement --pretty
 testReprocessMethodShowSource
@@ -1876,6 +1875,7 @@ testDictExpressionErrorLocations
 testEndColumnsWithTooManyTypeVars
 testPropertyNameAndAttributeIsCheckedPretty
 testUnreachableStatementPrettyHighlighting
+testOverrideWithDecoratorReturningCallable2
 
 # Won't do Invalid Mypy TypeVars according to conformance tests:
 testDeterminismCommutativityWithJoinInvolvingProtocolBaseAndPromotableType
