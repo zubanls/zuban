@@ -363,3 +363,12 @@ queue.append((foo, bar))
 def f(x: int):
     l = list([(0, 0)])
     l.append((x, x))
+
+[case sum_should_not_cause_division_by_zero]
+# From GH #388
+x = [.1,.1]
+y = sum(x)
+reveal_type(y)  # N: Revealed type is "float | Literal[0]"
+reveal_type(1/y)  # N: Revealed type is "float"
+1 // y
+1 % y

@@ -3131,12 +3131,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
 
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
-                    for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                    let right_full_t = right.as_cow_type(i_s);
+                    for r_type in right_full_t.iter_with_unpacked_unions(i_s.db) {
                         match r_type {
                             Type::Any(cause) => {
                                 return add_to_union(Inferred::new_any(*cause));
                             }
-                            Type::Literal(literal) => {
+                            Type::Literal(literal)
+                                if !(right_full_t.is_union_like(i_s.db)
+                                    && matches!(op_infos.operand, "/" | "//" | "%")) =>
+                            {
                                 if let Some(result) = l_type.try_operation_against_literal(
                                     i_s.db,
                                     op_infos.operand,
