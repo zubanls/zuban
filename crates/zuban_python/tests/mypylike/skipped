@@ -38,7 +38,6 @@ testOverride__new__WithLiteralReturnFailing
 testRecursiveAliasInstanceOverlapCheck
 testMatchClassPatternCallable
 testIgnoreReturningNotImplemented
-testErrorCodeUntypedDecorator
 testProtocolWithMultiContravariantTypeVarOverloads
 testTypeAliasDict
 # Mypy 1.20.0 narrowing
@@ -1085,6 +1084,7 @@ testTypeIgnoredImportsWorkWithCacheIncremental2
 testTypeIgnoredImportsWorkWithCacheIncremental3
 testErrorCodeWarnUnusedIgnores10_SloppyFormattingEmptyBrackets
 testDeletedModuleFromImport3
+testErrorCodeUntypedDecorator
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2

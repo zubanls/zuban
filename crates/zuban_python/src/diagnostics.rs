@@ -614,6 +614,7 @@ impl IssueKind {
             | DisallowedAnyMetaclass { .. }
             | MetaclassMustInheritFromType
             | MetaclassConflict => "metaclass",
+            UntypedDecorator { .. } => "untyped-decorator",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
