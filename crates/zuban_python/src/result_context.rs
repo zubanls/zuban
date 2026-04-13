@@ -193,6 +193,13 @@ impl<'a> ResultContext<'a, '_> {
         )
     }
 
+    pub fn is_unused(&self) -> bool {
+        matches!(
+            self,
+            ResultContext::ExpectUnused | ResultContext::RevealType
+        )
+    }
+
     pub fn can_be_redefined(&self, i_s: &InferenceState) -> bool {
         matches!(
             self,

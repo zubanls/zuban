@@ -2021,7 +2021,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
                 );
             }
-        } else if self.is_async() {
+        } else if self.is_async() && result_context.is_unused() {
             let return_type = calculated_type_vars.into_return_type(
                 i_s,
                 &return_type,

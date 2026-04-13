@@ -33,3 +33,14 @@ async def main() -> None:
     task = asyncio.create_task(foo())
     bar = Bar()
     task.add_done_callback(bar.bar)
+
+[case async_await_no_unused_coroutine_in_lambda]
+# From GH #376
+class MenuItem:
+    def __init__(self, action):
+        self.action = action
+
+async def print_value() -> None:
+    pass
+
+MenuItem(lambda: print_value())
