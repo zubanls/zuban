@@ -2371,7 +2371,7 @@ impl Diagnostics {
             let rest = if in_brackets.is_empty() {
                 "".into()
             } else {
-                format!("[{in_brackets}]")
+                format!("[{}]", in_brackets.trim())
             };
             self.0.push(Box::pin(Issue::from_start_stop(
                 result.start_position,
