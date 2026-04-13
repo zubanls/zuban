@@ -180,7 +180,7 @@ mod tests {
             d(),
             vec![
                 NOT_CALLABLE.to_string(),
-                "foo.py:2: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"
+                "foo.py:2: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]"
                     .to_string()
             ]
         );
@@ -229,7 +229,7 @@ mod tests {
             "[tool.zuban]\ndisallow_untyped_defs = true",
         );
         const MISSING_ANNOTATION: &str = "bar.py:1: error: Function is missing a type \
-                                          annotation for one or more arguments  [no-untyped-def]";
+                                          annotation for one or more parameters  [no-untyped-def]";
         assert_eq!(d(), [MISSING_ANNOTATION]);
 
         // Using --config-file should disable all other config files and only use the one

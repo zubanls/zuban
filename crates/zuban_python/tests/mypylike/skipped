@@ -152,19 +152,7 @@ testMatchTypeObjectTypeVar
 testMatchTypeNarrowing
 testMatchFinalClass
 # Mypy 1.20.0 issues
-testRevealSimpleTypes_no_verbose_reveal
-testMissingImportUnIgnoredInConfig
-testMissingImportUnIgnoredInConfig2
-testMissingImportUnIgnoredInConfig3
-testMissingImportUnIgnoredInConfig4
-testMissingImportUnIgnoredInConfig5
-testMissingImportUnIgnoredInConfig6
-testInvalidTypeForKeywordVarArg
 testTypeIsGeneric
-testInvalidVarArg
-testTypedDictMappingMethods
-testNewAnalyzerTypedDictInStub_newsemanal
-testTypedDictUnionGetFull
 # empty tuple as generic paramspec input
 testEmptyParamSpecConsistency
 testMissingTypeArgsInApplication
@@ -216,6 +204,11 @@ testWithStmtTupleTypeComment_no_native_parse
 testWithStmtComplexTypeComment_no_native_parse
 testForwardRefsInWithStatement_no_native_parse
 testTypedDictWithClassLevelKeywords_no_native_parse
+# no_verbose_reveal
+testRevealSimpleTypes_no_verbose_reveal
+testTypedDictUnionGetFull
+testNewAnalyzerTypedDictInStub_newsemanal
+testTypedDictMappingMethods
 
 # https://github.com/python/typing/discussions/2238
 testVariadicSubclassSame
@@ -239,6 +232,9 @@ testOverloadingInferUnionReturnWithBadObjectTypevarReturn
 
 # callable matching regression
 testNoCrashOnNestedGenericCallable
+# Any callable does not type check everything
+testInvalidTypeForKeywordVarArg
+testInvalidVarArg
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
@@ -1850,6 +1846,12 @@ testOutputFormatterIncremental
 testVecBasics
 # --config-file in tests
 testAltConfigFile
+testMissingImportUnIgnoredInConfig
+testMissingImportUnIgnoredInConfig2
+testMissingImportUnIgnoredInConfig3
+testMissingImportUnIgnoredInConfig4
+testMissingImportUnIgnoredInConfig5
+testMissingImportUnIgnoredInConfig6
 
 # won't implement --pretty
 testReprocessMethodShowSource
