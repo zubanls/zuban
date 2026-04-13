@@ -38,9 +38,9 @@ use crate::{
     result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
-        Literal, LiteralKind, LookupResult, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
-        dataclass_converter_fields_lookup,
+        Literal, LiteralKind, LiteralValue, LookupResult, ParamType, StarParamType,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
+        Variance, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -2152,7 +2152,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     .as_cow_type(self.i_s)
                     .iter_with_unpacked_unions_and_maybe_include_never(self.i_s.db, true)
                 {
-                    if union_part == &self.i_s.db.python_state.str_type() {
+                    let is_unpacked_string = match union_part {
+                        Type::Class(c) => c.link == self.i_s.db.python_state.str_link(),
+                        Type::Literal(literal) => match literal.value(self.i_s.db) {
+                            LiteralValue::String(s) => s.len() != targets.clone().count(),
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    if is_unpacked_string {
                         value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed);
                     }
                     if matches!(union_part, Type::None)

@@ -152,7 +152,6 @@ testMatchTypeObjectTypeVar
 testMatchTypeNarrowing
 testMatchFinalClass
 # Mypy 1.20.0 issues
-testStringLiteralUnpacking
 testAltConfigFile
 testConfigMypyPath
 testRevealSimpleTypes_no_verbose_reveal
