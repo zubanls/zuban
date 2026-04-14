@@ -1206,3 +1206,19 @@ class Nested2(TypedDict, Generic[T]):
 def f(w: Work[int]) -> None:
     w1: Work[int] = w
     w2: Work[str] = w  # E: Incompatible types in assignment (expression has type "__main__.Work[int]", variable has type "__main__.Work[str]")
+
+[case typed_dict_expected_inferring_multi_dict_with_type_vars]
+# From GH #389
+from typing import TypedDict
+
+class A(TypedDict):
+    x: str
+
+class B(TypedDict):
+    x: int
+
+ys: list[A | B] = []
+ys.append({"x": 1})  # This should not error
+ys.append({"x": ''})
+ys.append({"x": b''})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
+                       # E: Argument 1 to "append" of "list" has incompatible type "dict[str, bytes]"; expected "A | B"

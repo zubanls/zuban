@@ -183,7 +183,8 @@ impl<'db> Inference<'db, '_, '_> {
                     Err(UniqueInUnpackedUnionError::None) => None,
                     Err(UniqueInUnpackedUnionError::Multiple) => {
                         let mut non_matches = vec![];
-                        for inner in t.iter_with_unpacked_unions(i_s.db) {
+                        let new_t = matcher.replace_type_var_likes_for_nested_context(i_s.db, t);
+                        for inner in new_t.iter_with_unpacked_unions(i_s.db) {
                             if let Type::TypedDict(td) = inner {
                                 let (result, has_error) = i_s.avoid_errors_within(|i_s| {
                                     self.file
