@@ -128,11 +128,6 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global { context } => {
-                let reachable_scopes = &mut ScopesIterator {
-                    file,
-                    only_reachable: true,
-                    current: Some(self.infos.scope),
-                };
                 match context {
                     Some(CompletionContext::PrimaryCall { base, args }) => {
                         self.add_keyword_param_completions(
@@ -147,46 +142,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     }
                     None => (),
                 }
-                for scope in reachable_scopes {
-                    match scope {
-                        Scope::Module => self.add_global_module_completions(file),
-                        Scope::Class(cls) => {
-                            let storage = ClassNodeRef::new(file, cls.index()).class_storage();
-                            for (_, node_index) in storage.class_symbol_table.iter() {
-                                self.maybe_add_tree_name(
-                                    file,
-                                    scope,
-                                    NameDef::by_index(
-                                        &file.tree,
-                                        node_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                    ),
-                                    true,
-                                )
-                            }
-                            self.add_star_imports_completions(
-                                file,
-                                cls.index(),
-                                &mut Default::default(),
-                            )
-                        }
-                        Scope::Function(func) => {
-                            func.on_name_def_in_scope(&mut |name_def| {
-                                self.maybe_add_tree_name(file, scope, name_def, false)
-                            });
-                            self.add_star_imports_completions(
-                                file,
-                                func.index(),
-                                &mut Default::default(),
-                            )
-                        }
-                        Scope::Lambda(lambda) => {
-                            for param in lambda.params() {
-                                self.maybe_add_tree_name(file, scope, param.name_def(), false)
-                            }
-                        }
-                    };
-                }
-                self.add_module_completions(db.python_state.builtins())
+                self.add_simple_name_completions()
             }
             CompletionNode::ImportName { path: None } => self.add_global_import_completions(),
             CompletionNode::ImportName {
@@ -266,6 +222,44 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             CompletionNode::AfterClassKeyword => (),
             CompletionNode::InsideString => (),
         }
+    }
+
+    fn add_simple_name_completions(&mut self) {
+        let file = self.infos.file;
+        let reachable_scopes = &mut ScopesIterator {
+            file,
+            only_reachable: true,
+            current: Some(self.infos.scope),
+        };
+        for scope in reachable_scopes {
+            match scope {
+                Scope::Module => self.add_global_module_completions(file),
+                Scope::Class(cls) => {
+                    let storage = ClassNodeRef::new(file, cls.index()).class_storage();
+                    for (_, node_index) in storage.class_symbol_table.iter() {
+                        self.maybe_add_tree_name(
+                            file,
+                            scope,
+                            NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE),
+                            true,
+                        )
+                    }
+                    self.add_star_imports_completions(file, cls.index(), &mut Default::default())
+                }
+                Scope::Function(func) => {
+                    func.on_name_def_in_scope(&mut |name_def| {
+                        self.maybe_add_tree_name(file, scope, name_def, false)
+                    });
+                    self.add_star_imports_completions(file, func.index(), &mut Default::default())
+                }
+                Scope::Lambda(lambda) => {
+                    for param in lambda.params() {
+                        self.maybe_add_tree_name(file, scope, param.name_def(), false)
+                    }
+                }
+            };
+        }
+        self.add_module_completions(self.infos.db.python_state.builtins())
     }
 
     fn add_keyword_param_completions(&mut self, inf: Inferred, args: Option<CallArgs>) {
