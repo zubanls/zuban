@@ -187,13 +187,11 @@ impl GlobalState<'_> {
         if let Some(last) = &self.last_completion_position {
             let (document, pos) = self.document_with_pos(&last.clone())?;
             let docs = document.complete(pos, false, |_, completion| {
-                (completion.label() == &item.label)
-                    .then(|| {
-                        completion
-                            .documentation()
-                            .and_then(|doc| (!doc.is_empty()).then(|| doc.into_owned()))
-                    })
-                    .flatten()
+                if completion.label() != &item.label {
+                    return None;
+                }
+                let doc = completion.documentation()?;
+                (!doc.is_empty()).then(|| doc.into_owned())
             })?;
             if let Some(first_doc) = docs.into_iter().next() {
                 item.documentation = Some(Documentation::MarkupContent(MarkupContent {
