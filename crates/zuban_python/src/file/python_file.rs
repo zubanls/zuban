@@ -914,7 +914,7 @@ impl<'db> PythonFile {
 
     pub fn is_part_of_super_file(&self) -> bool {
         self.super_file
-            .is_some_and(|super_file| super_file.offset.is_some())
+            .is_some_and(|super_file| super_file.is_part_of_parent())
     }
 }
 
