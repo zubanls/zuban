@@ -86,7 +86,7 @@ pub(crate) struct CompletionResolver<'db, C, T> {
     replace_range: Range<'db>,
 }
 
-impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db, C, T> {
+impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db, C, T> {
     pub fn complete(
         db: &'db Database,
         file: &'db PythonFile,
@@ -98,6 +98,19 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             "completions for {} position {position:?}",
             file.file_path(db)
         ));
+        let mut slf =
+            Self::complete_inner(db, file, position, filter_with_name_under_cursor, on_result)?;
+        slf.items.sort_by_key(|item| item.0);
+        Ok(slf.items.into_iter().map(|(_, item)| item).collect())
+    }
+
+    fn complete_inner(
+        db: &'db Database,
+        file: &'db PythonFile,
+        position: InputPosition,
+        filter_with_name_under_cursor: bool,
+        on_result: C,
+    ) -> anyhow::Result<Self> {
         let infos = PositionalDocument::for_completion(db, file, position)?;
         let replace_range = (
             file.byte_to_position_infos(db, infos.node.rest.start()),
@@ -115,8 +128,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             slf.should_start_with_lowercase = Some(slf.infos.node.rest.as_code().to_lowercase());
         }
         slf.fill_items();
-        slf.items.sort_by_key(|item| item.0);
-        Ok(slf.items.into_iter().map(|(_, item)| item).collect())
+        Ok(slf)
     }
 
     fn fill_items(&mut self) {
@@ -220,6 +232,25 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
+            CompletionNode::InsideComment {
+                comment_start,
+                comment,
+            } => {
+                let comment_start = *comment_start + 1; // Don't include the hashtag
+                let subfile = file.ensure_sub_file(db, comment_start, Cow::Borrowed(comment), true);
+                match CompletionResolver::complete_inner(
+                    db,
+                    subfile,
+                    InputPosition::NthUTF8Byte(
+                        (self.infos.node.cursor_position.byte - comment_start) as usize,
+                    ),
+                    self.should_start_with_lowercase.is_some(),
+                    &self.on_result as &dyn Fn(Range, &dyn Completion) -> Option<T>,
+                ) {
+                    Ok(slf) => self.items.extend(slf.items),
+                    Err(err) => debug!("Error for completions inside comment: {err}"),
+                }
+            }
             CompletionNode::InsideString => (),
         }
     }

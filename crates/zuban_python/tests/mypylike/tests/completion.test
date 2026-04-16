@@ -268,6 +268,50 @@ __main__.py:12:complete -> [object:(12, 0)-(12, 0)]
 __main__.py:16:complete -> [object:(16, 0)-(16, 0)]
 __main__.py:19:complete -> [object:(19, 0)-(19, 0)]
 
+[case completion_no_wrong_range_in_comments]
+# From GH #390
+#? --codepoint-column 2 complete --filter-starts-with object --show-range
+# 
+#? --codepoint-column 3 complete --filter-starts-with object --show-range
+# o
+#? --codepoint-column 4 complete --filter-starts-with object --show-range
+# ob
+#? --codepoint-column 4 complete --filter-starts-with ord --show-range
+# ob
+[out]
+__main__.py:3:complete -> [object:(3, 2)-(3, 2)]
+__main__.py:5:complete -> [object:(5, 2)-(5, 3)]
+__main__.py:7:complete -> [object:(7, 2)-(7, 4)]
+__main__.py:9:complete -> []
+
+[case completion_no_wrong_range_in_strings]
+'''
+#? --codepoint-column 0 complete --filter-starts-with object --show-range
+
+#? --codepoint-column 1 complete --filter-starts-with object --show-range
+o
+#? --codepoint-column 2 complete --filter-starts-with object --show-range
+# ob
+#? --codepoint-column 2 complete --filter-starts-with ord --show-range
+# ob
+'''
+
+def f():
+    '''
+    #? --codepoint-column 6 complete --filter-starts-with object --show-range
+    ob
+    #? --codepoint-column 10 complete --filter-starts-with object --show-range
+    >>> ob
+    #? --codepoint-column 10 complete --filter-starts-with object --show-range
+    >>> ob
+    '''
+
+[out]
+__main__.py:2:complete -> [object:(2, 2)-(2, 2)]
+__main__.py:4:complete -> [object:(4, 2)-(4, 3)]
+__main__.py:6:complete -> [object:(6, 2)-(6, 4)]
+__main__.py:8:complete -> []
+
 [case completions_without_type_checking]
 # flags: --no-typecheck
 #? complete

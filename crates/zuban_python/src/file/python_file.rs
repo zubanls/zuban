@@ -78,6 +78,7 @@ pub(crate) struct SuperFile {
     // This is is the offset where the sub file starts if it's in the same file
     // It might also be part of a notebook and therefore be different files with different URIs.
     pub offset: Option<CodeIndex>,
+    pub ignore_diagnostics: bool,
 }
 
 impl SuperFile {
@@ -211,6 +212,12 @@ impl File for PythonFile {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
+        if self
+            .super_file
+            .is_some_and(|super_file| super_file.ignore_diagnostics)
+        {
+            return Default::default();
+        }
         if self
             .super_file
             .is_none_or(|super_file| !super_file.is_part_of_parent())
@@ -467,7 +474,17 @@ impl<'db> PythonFile {
         &self,
         db: &'db Database,
         start: CodeIndex,
+        code: Cow<str>,
+    ) -> &'db Self {
+        self.ensure_sub_file(db, start, code, false)
+    }
+
+    pub fn ensure_sub_file(
+        &self,
+        db: &'db Database,
+        start: CodeIndex,
         mut code: Cow<str>,
+        ignore_diagnostics: bool,
     ) -> &'db Self {
         if let Some(sub_file_index) = self.sub_files.lookup_sub_file_at_position(start) {
             return db.loaded_python_file(sub_file_index);
@@ -493,6 +510,7 @@ impl<'db> PythonFile {
             file.super_file = Some(SuperFile {
                 file: self.file_index,
                 offset: Some(start),
+                ignore_diagnostics,
             });
             file
         });

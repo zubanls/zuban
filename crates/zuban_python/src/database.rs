@@ -1323,6 +1323,7 @@ impl Database {
                 file.super_file = Some(SuperFile {
                     file: parent,
                     offset: None,
+                    ignore_diagnostics: false,
                 });
                 file.invalidate_references_to(super_file)
             }
@@ -1338,7 +1339,11 @@ impl Database {
                     file_entry,
                     new_code,
                 );
-                file.super_file = parent.map(|file| SuperFile { file, offset: None });
+                file.super_file = parent.map(|file| SuperFile {
+                    file,
+                    offset: None,
+                    ignore_diagnostics: false,
+                });
                 file
             },
         );
