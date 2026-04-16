@@ -284,6 +284,49 @@ __main__.py:5:complete -> [object:(5, 2)-(5, 3)]
 __main__.py:7:complete -> [object:(7, 2)-(7, 4)]
 __main__.py:9:complete -> []
 
+[case completion_in_scoped_comments]
+class my_zuban:
+    attr = 1
+#? complete
+# my_zu
+
+def f():
+    other_attr = ""
+    #? complete
+    # asdf my_zu
+
+    #? complete
+    # asdf my_zuban.att
+
+    # TODO these should be different
+    #? complete
+    # other_attr
+    #? complete
+    # other_attr.upper
+    pass
+
+class X:
+    other_attr = ""
+    #? complete
+    # my_zu
+    #? complete
+    # my_zuban.att
+
+    #? complete
+    # other_attr
+    #? complete
+    # other_attr.upper
+[out]
+__main__.py:4:complete -> [my_zuban]
+__main__.py:9:complete -> [my_zuban]
+__main__.py:12:complete -> [attr]
+__main__.py:16:complete -> []
+__main__.py:18:complete -> []
+__main__.py:24:complete -> [my_zuban]
+__main__.py:26:complete -> [attr]
+__main__.py:29:complete -> []
+__main__.py:31:complete -> []
+
 [case completion_no_wrong_range_in_strings]
 '''
 #? --codepoint-column 0 complete --filter-starts-with object --show-range
