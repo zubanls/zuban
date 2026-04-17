@@ -3775,7 +3775,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 point
                     .maybe_calculated_and_specific()
                     .is_some_and(|s| s.is_annotation_or_type_comment()),
-                "Annotation {annotation:?} has unexpected point: {point:?}"
+                "Annotation {annotation:?} has unexpected point: {point:?}, tree node {annotation:?}",
             );
         }
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))

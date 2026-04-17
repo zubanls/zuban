@@ -613,3 +613,39 @@ _REGEX: Final = r''
 class MyModel(BaseModel):
     name: str = Field(_REGEX)
 
+[case lazy_defined_property_should_not_crash]
+# flags: --mode default
+# From GH #380
+class C:
+    def __init__(self, n: int | None = None):
+        self.a = 0 if n else 1
+
+    def m(self):
+        self.a = 2
+        return self.a
+
+    n = property(m)
+
+reveal_type(C().n)  # N: Revealed type is "Any"
+reveal_type(C().a)  # N: Revealed type is "int"
+
+[case lazy_defined_property_should_not_crash2]
+# flags: --mode default
+class C:
+    def __init__(self, n: int | None = None):
+        self.a = 0 if n else 1
+
+    def m(self) -> int:
+        self.a = 2
+        self.b = self.a
+        return self.a
+
+    def n(self):
+        self.b = 3
+        return self.b
+
+    n2 = property(n)
+
+reveal_type(C().n2)  # N: Revealed type is "Any"
+reveal_type(C().a)  # N: Revealed type is "int"
+reveal_type(C().b)  # N: Revealed type is "int"

@@ -1489,7 +1489,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
             }
-            if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
+            let original_inf = if let Some(lookup_in_bases) = lookup_self_attribute_in_bases {
                 let lookup_details = lookup_in_bases();
                 if let Some(inf) = lookup_details.lookup.into_maybe_inferred() {
                     if lookup_details.attr_kind == AttributeKind::Final
@@ -1508,8 +1508,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     }
                     return;
                 }
-            }
-            let original_inf = self.infer_name_of_definition_by_index(first_index);
+                let Some(class) = self.i_s.current_class() else {
+                    recoverable_error!("Expected there to be a class for self attr assignment");
+                    return;
+                };
+                // let func_def = func_of_self_symbol(self.file, self_symbol);
+                // TODO what about the error here?
+                match self.self_lookup_with_flow_analysis(class, first_index, &|_| false) {
+                    // This means it's not a lookup on self, but does this ever happen?
+                    Ok(None) => self.infer_name_of_definition_by_index(first_index),
+                    Ok(Some(inf)) => inf,
+                    Err(_) => return, // TODO?
+                }
+            } else {
+                self.infer_name_of_definition_by_index(first_index)
+            };
             // Walrus is special, because it relays values from the expression to the outer
             // expression.
             if self.i_s.db.run_cause == RunCause::LanguageServer

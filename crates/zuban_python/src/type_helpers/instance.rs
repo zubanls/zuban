@@ -416,8 +416,8 @@ impl<'a> Instance<'a> {
                 if let TypeOrClass::Class(c) = class
                     && let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                 {
-                    let i_s = i_s.with_class_context(&c);
-                    let inference = c.node_ref.file.inference(&i_s);
+                    let new_i_s = i_s.with_class_context(&c);
+                    let inference = c.node_ref.file.inference(&new_i_s);
                     let maybe_found = match inference.self_lookup_with_flow_analysis(
                         c,
                         self_symbol,
@@ -425,7 +425,11 @@ impl<'a> Instance<'a> {
                     ) {
                         Ok(maybe_found) => maybe_found,
                         Err(func) => {
-                            if func.is_typed() {
+                            // We only want to report that we cannot determine the type in typed
+                            // contexts. Otherwise Any are excepted anyways.
+                            if func.is_typed()
+                                && i_s.current_function().is_none_or(|f| f.is_typed())
+                            {
                                 (options.add_issue)(IssueKind::CannotDetermineType {
                                     for_: name.into(),
                                 });
@@ -434,7 +438,7 @@ impl<'a> Instance<'a> {
                         }
                     };
                     if let Some(inf) = maybe_found {
-                        if inf.maybe_saved_specific(i_s.db)
+                        if inf.maybe_saved_specific(new_i_s.db)
                             == Some(Specific::AnnotationOrTypeCommentFinal)
                         {
                             attr_kind = AttributeKind::Final
@@ -444,7 +448,7 @@ impl<'a> Instance<'a> {
                             attr_kind,
                             lookup: LookupResult::GotoName {
                                 name: PointLink::new(c.node_ref.file.file_index, self_symbol),
-                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
+                                inf: inf.resolve_class_type_vars(&new_i_s, &self.class, &c),
                             },
                             mro_index: Some(mro_index),
                         };

@@ -1708,7 +1708,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let result = self.file.ensure_module_symbols_flow_analysis(db);
             if result.is_err() {
                 debug!(
-                    "Wanted to calculate class {:?} diagnostics, but could not calculated file {}",
+                    "Wanted to calculate class {:?} diagnostics, but could not calculate file {}",
                     self.name(),
                     self.file.qualified_name(db)
                 );
@@ -1723,9 +1723,9 @@ impl<'db: 'a, 'a> Class<'a> {
             });
             if result.is_err() {
                 debug!(
-                    "Wanted to calculate class {:?} diagnostics, but could not calculate file {}",
+                    "Wanted to calculate class {:?} diagnostics, but could not calculate class {}",
                     self.name(),
-                    self.file.qualified_name(db)
+                    self.qualified_name(db)
                 );
             }
             // At this point we just lose reachability information for the class. This is
