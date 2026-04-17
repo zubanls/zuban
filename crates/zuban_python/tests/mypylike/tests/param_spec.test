@@ -226,3 +226,16 @@ class D[T]:
         pass
 
 D[int]()
+
+[case param_spec_remapping_should_not_cause_crashes]
+# From GH #383
+from typing import Any, Concatenate, Generic, ParamSpec, TypeVar, Callable
+
+T = TypeVar("T")
+_P = ParamSpec("_P")
+_Q = ParamSpec("_Q")
+
+def remap_function_arguments(fn: Callable[Concatenate[T, _P], object]) -> Callable[Concatenate[Any, _Q], object]:
+    def translated_func(self: Any, *args: _Q.args, **kwargs: _Q.kwargs) -> object:  # E: ParamSpec "_Q" is unbound
+        return fn(self, *args, **kwargs)  # E: Argument 2 has incompatible type "*_Q.args"; expected "_P.args"  # E: Argument 3 has incompatible type "**_Q.kwargs"; expected "_P.kwargs"
+    return translated_func

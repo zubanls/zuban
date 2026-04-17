@@ -384,11 +384,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         // This is part of the conformance tests and behaves there like normal late bound callables
         // do.
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
-            for param in func_node.params().iter() {
-                if let Some(annotation) = param.annotation() {
-                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
-                }
-            }
             if let Some(return_annot) = func_node.return_annotation() {
                 inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
             }
