@@ -14,7 +14,10 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
-    imports::{ImportResult, namespace_import},
+    imports::{
+        ImportResult, has_binary_extension_submodule, namespace_has_binary_extension_submodule,
+        namespace_import,
+    },
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     match_::Match,
@@ -288,10 +291,11 @@ impl Type {
                 ),
             ),
             Type::Module(file_index) => {
-                let lookup = i_s
-                    .db
-                    .loaded_python_file(*file_index)
-                    .lookup(i_s.db, add_issue, name);
+                let file = i_s.db.loaded_python_file(*file_index);
+                let mut lookup = file.lookup(i_s.db, add_issue, name);
+                if !lookup.is_some() && has_binary_extension_submodule(i_s.db, file, name) {
+                    lookup = LookupResult::any(AnyCause::ModuleNotFound);
+                }
                 let mut attr_kind = AttributeKind::Attribute;
                 if let Some(inf) = lookup.maybe_inferred()
                     && inf.maybe_saved_specific(i_s.db)
@@ -1606,6 +1610,9 @@ fn lookup_in_namespace(
     name: &str,
 ) -> LookupResult {
     let Some(import) = namespace_import(db, from_file, namespace, name) else {
+        if namespace_has_binary_extension_submodule(db, namespace, name) {
+            return LookupResult::any(AnyCause::FromError);
+        }
         return LookupResult::None;
     };
     match import.into_import_result() {

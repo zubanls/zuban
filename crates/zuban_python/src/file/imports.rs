@@ -11,8 +11,8 @@ use crate::{
     file::inference::Inference,
     imports::{
         ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
-        global_import, import_module_by_strings, namespace_import_with_unloaded_file,
-        python_import_with_needs_exact_case,
+        global_import, import_module_by_strings, is_binary_extension,
+        namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -102,7 +102,7 @@ impl PythonFile {
                 } else {
                     let result = self.global_import(db, name);
                     if result.is_none() {
-                        self.add_module_not_found(db, name)
+                        self.add_global_module_not_found(db, name)
                     }
                     result
                 }
@@ -141,7 +141,7 @@ impl PythonFile {
             DottedAsNameContent::Simple(name_def, rest) => {
                 let result = self.global_import(db, name_def.name());
                 if result.is_none() {
-                    self.add_module_not_found(db, name_def.name())
+                    self.add_global_module_not_found(db, name_def.name())
                 }
                 if let Some(rest) = rest
                     && result.is_some()
@@ -256,8 +256,8 @@ impl PythonFile {
         self.star_import_file(db, star_import)
     }
 
-    pub(super) fn add_module_not_found(&self, db: &Database, name: Name) {
-        if !self.flags(db).ignore_missing_imports {
+    fn add_global_module_not_found(&self, db: &Database, name: Name) {
+        if !self.flags(db).ignore_missing_imports && !is_global_binary_extension(db, name) {
             NodeRef::new(self, name.index()).add_type_issue(
                 db,
                 IssueKind::ModuleNotFound {
@@ -505,6 +505,13 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
             Locality::Complex,
         )),
     }
+}
+
+fn is_global_binary_extension(db: &Database, name: Name) -> bool {
+    is_binary_extension(
+        db.vfs.workspaces.load().iter().map(|w| &w.entries),
+        name.as_str(),
+    )
 }
 
 fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {

@@ -153,6 +153,19 @@ impl LoadedImportResult {
         }
     }
 
+    pub fn has_binary_extension_submodule(&self, db: &Database, name: &str) -> bool {
+        match &self.0 {
+            ImportResult::File(file_index) => {
+                let file = db.loaded_python_file(*file_index);
+                has_binary_extension_submodule(db, file, name)
+            }
+            ImportResult::Namespace(namespace) => {
+                namespace_has_binary_extension_submodule(db, namespace, name)
+            }
+            ImportResult::PyTypedMissing => false,
+        }
+    }
+
     pub fn into_import_result(self) -> ImportResult {
         self.0
     }
@@ -585,4 +598,45 @@ pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> I
             directories: [parent].into(),
         })),
     })
+}
+
+pub(crate) fn is_binary_extension<'x>(
+    mut entries: impl Iterator<Item = &'x Entries>,
+    name: &str,
+) -> bool {
+    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "windows")))]
+    const BINARY_EXTENSIONS: [&str; 1] = [".so"];
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    const BINARY_EXTENSIONS: [&str; 2] = [".so", ".dylib"];
+    #[cfg(target_os = "windows")]
+    const BINARY_EXTENSIONS: [&str; 1] = [".pyd"];
+    entries.any(|entries| {
+        entries.borrow().iter().any(|(key, _)| {
+            key.strip_prefix(name).is_some_and(|rest| {
+                rest.starts_with('.') && BINARY_EXTENSIONS.iter().any(|ext| rest.ends_with(ext))
+            })
+        })
+    })
+}
+
+pub(crate) fn has_binary_extension_submodule(db: &Database, file: &PythonFile, name: &str) -> bool {
+    let (entry, is_package) = file.file_entry_and_is_package(db);
+    is_package
+        && entry.parent.maybe_dir().is_ok_and(|dir| {
+            is_binary_extension(std::iter::once(Directory::entries(&db.vfs, &dir)), name)
+        })
+}
+
+pub(crate) fn namespace_has_binary_extension_submodule(
+    db: &Database,
+    namespace: &Namespace,
+    name: &str,
+) -> bool {
+    is_binary_extension(
+        namespace
+            .directories
+            .iter()
+            .map(|dir| Directory::entries(&db.vfs, dir)),
+        name,
+    )
 }

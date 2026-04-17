@@ -188,8 +188,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 let add_issue_if_not_ignored = || {
                     if !self.flags().ignore_missing_imports {
                         // If we don't assign we don't have to add an error
-                        if !self.stop_on_assignments
-                            || self.is_allowed_to_assign_on_import_without_narrowing(name_def)
+                        if (!self.stop_on_assignments
+                            || self.is_allowed_to_assign_on_import_without_narrowing(name_def))
+                            && !imp
+                                .has_binary_extension_submodule(self.i_s.db, import_name.as_str())
                         {
                             let index = if self.i_s.db.mypy_compatible() {
                                 import_from.index()

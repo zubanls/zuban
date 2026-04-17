@@ -1032,4 +1032,56 @@ mod tests {
         );
         check();
     }
+
+    #[test]
+    fn ignore_extensions() {
+        // From GH #392
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file file1.cpython-314-x86_64-linux-gnu.so]
+            [file file1.pypy311-pp73-win_amd64.pyd]
+            [file file1.pypy311-pp73-win_amd64.pyd]
+
+            [file dir/__init__.py]
+            [file dir/file2.pyd]
+            [file dir/file2.so]
+            [file dir/file2.dylib]
+
+            [file namespace/file3.pyd]
+            [file namespace/file3.so]
+            [file namespace/file3.dylib]
+
+            [file check.py]
+            import file1
+            from dir import file2
+            from namespace import file3
+            import dir
+            import namespace
+
+            import undefined1
+            from dir import undefined2
+            from namespace import undefined3
+
+            file1.something
+            file2.something
+            file3.something
+            dir.file2
+            namespace.file3
+            "#,
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from(["", "check.py"]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                "check.py:7: error: Cannot find implementation or library \
+                 stub for module named \"undefined1\"  [import-not-found]",
+                "check.py:8: error: Module \"dir\" has no attribute \
+                 \"undefined2\"  [attr-defined]",
+                "check.py:9: error: Module \"namespace\" has no attribute \
+                 \"undefined3\"  [attr-defined]",
+            ]
+        );
+    }
 }
