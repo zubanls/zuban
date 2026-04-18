@@ -31,6 +31,15 @@ impl PythonFile {
                 name.as_code(),
                 result.debug_info(db),
             );
+        } else if is_global_binary_extension(db, name) {
+            return Some(ImportResult::PyTypedMissing);
+        } else if !self.flags(db).ignore_missing_imports {
+            NodeRef::new(self, name.index()).add_type_issue(
+                db,
+                IssueKind::ModuleNotFound {
+                    module_name: Box::from(name.as_str()),
+                },
+            );
         }
         result
     }
@@ -100,11 +109,7 @@ impl PythonFile {
                 if let Some(base) = base {
                     infer_name(base, name)
                 } else {
-                    let result = self.global_import(db, name);
-                    if result.is_none() {
-                        self.add_global_module_not_found(db, name)
-                    }
-                    result
+                    self.global_import(db, name)
                 }
             }
             DottedImportNameContent::DottedName(dotted_name, name) => {
@@ -140,9 +145,6 @@ impl PythonFile {
         let result = match dotted_as_name.unpack() {
             DottedAsNameContent::Simple(name_def, rest) => {
                 let result = self.global_import(db, name_def.name());
-                if result.is_none() {
-                    self.add_global_module_not_found(db, name_def.name())
-                }
                 if let Some(rest) = rest
                     && result.is_some()
                 {
@@ -254,17 +256,6 @@ impl PythonFile {
         self.assign_star_import(db, import_from, star_import.star_node);
         debug_assert!(self.points.get(star_import.star_node).calculated());
         self.star_import_file(db, star_import)
-    }
-
-    fn add_global_module_not_found(&self, db: &Database, name: Name) {
-        if !self.flags(db).ignore_missing_imports && !is_global_binary_extension(db, name) {
-            NodeRef::new(self, name.index()).add_type_issue(
-                db,
-                IssueKind::ModuleNotFound {
-                    module_name: Box::from(name.as_str()),
-                },
-            );
-        }
     }
 
     pub fn sub_module(&self, db: &Database, name: &str) -> Option<LoadedImportResult> {
