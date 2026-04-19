@@ -16,8 +16,11 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        OtherDefinitionIterator, flow_analysis::RedefinitionResult,
-        name_resolution::PointResolution, type_computation::TypeCommentState, utils::TupleGatherer,
+        OtherDefinitionIterator,
+        flow_analysis::RedefinitionResult,
+        name_resolution::{PointResolution, StarImportResult},
+        type_computation::TypeCommentState,
+        utils::TupleGatherer,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -5068,31 +5071,6 @@ pub(crate) enum AssignKind {
 impl AssignKind {
     fn is_normal_assignment(self) -> bool {
         matches!(self, Self::Normal | Self::Walrus | Self::Pattern)
-    }
-}
-
-pub(crate) enum StarImportResult {
-    Link(PointLink),
-    AnyDueToError,
-}
-
-impl StarImportResult {
-    pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        match self {
-            Self::Link(link) => {
-                let node_ref = NodeRef::from_link(i_s.db, *link);
-                node_ref.infer_name_of_definition_by_index(i_s)
-            }
-            Self::AnyDueToError => Inferred::new_any_from_error(),
-        }
-    }
-
-    pub fn into_lookup_result(self, i_s: &InferenceState) -> LookupResult {
-        let inf = self.as_inferred(i_s);
-        match self {
-            StarImportResult::Link(link) => LookupResult::GotoName { name: link, inf },
-            StarImportResult::AnyDueToError => LookupResult::UnknownName(inf),
-        }
     }
 }
 

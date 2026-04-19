@@ -20,7 +20,7 @@ use crate::{
     utils::is_magic_method,
 };
 
-use super::{ClassInitializer, PythonFile, inference::StarImportResult, python_file::StarImport};
+use super::{ClassInitializer, PythonFile, python_file::StarImport};
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
@@ -982,4 +982,29 @@ fn is_private_import_with_ensurance(
     name_ref
         .maybe_import_of_name_in_symbol_table()
         .is_some_and(|i| !i.is_stub_reexport() && ensure_private(i))
+}
+
+pub(crate) enum StarImportResult {
+    Link(PointLink),
+    AnyDueToError,
+}
+
+impl StarImportResult {
+    pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
+        match self {
+            Self::Link(link) => {
+                let node_ref = NodeRef::from_link(i_s.db, *link);
+                node_ref.infer_name_of_definition_by_index(i_s)
+            }
+            Self::AnyDueToError => Inferred::new_any_from_error(),
+        }
+    }
+
+    pub fn into_lookup_result(self, i_s: &InferenceState) -> LookupResult {
+        let inf = self.as_inferred(i_s);
+        match self {
+            StarImportResult::Link(link) => LookupResult::GotoName { name: link, inf },
+            StarImportResult::AnyDueToError => LookupResult::UnknownName(inf),
+        }
+    }
 }
