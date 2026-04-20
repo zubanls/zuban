@@ -34,17 +34,17 @@ use crate::{
 };
 
 thread_local! {
-    static STRUCTURAL_MATCHING_CACHE: StructuralMatchingCache = StructuralMatchingCache::default();
+    static MATCHING_CACHE: MatchingCache = MatchingCache::default();
 }
 
 #[derive(Default)]
-struct StructuralMatchingCache {
+struct MatchingCache {
     avoid_recursions: RefCell<Vec<(Type, Type)>>,
     cached: RefCell<HashMap<(Type, Type), Match>>,
 }
 
-pub fn invalidate_structural_matching_cache() {
-    STRUCTURAL_MATCHING_CACHE.with(|cache| {
+pub fn invalidate_matching_cache() {
+    MATCHING_CACHE.with(|cache| {
         debug_assert!(cache.avoid_recursions.borrow().is_empty());
         cache.cached.borrow_mut().clear()
     })
@@ -58,7 +58,7 @@ pub fn avoid_structural_matching_recursion(
     had_type_var_matcher: bool,
     callable: impl FnOnce() -> Match,
 ) -> Match {
-    STRUCTURAL_MATCHING_CACHE.with(|cache| {
+    MATCHING_CACHE.with(|cache| {
         let mut current = cache.avoid_recursions.borrow_mut();
         if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
             debug!(

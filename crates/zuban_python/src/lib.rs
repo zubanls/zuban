@@ -60,7 +60,7 @@ use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
-use matching::invalidate_structural_matching_cache;
+use matching::invalidate_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
@@ -107,7 +107,7 @@ impl Project {
     }
 
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
         known_file_indexes
             .into_par_iter()
@@ -181,7 +181,7 @@ impl Project {
     }
 
     pub fn diagnostics(&mut self) -> anyhow::Result<Diagnostics<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -229,7 +229,7 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &PathWithScheme) -> Option<Document<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         let file_index = self.db.file_by_file_path(path)?;
         tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
         Some(Document {
