@@ -50,8 +50,38 @@ pub fn invalidate_matching_cache() {
     })
 }
 
+pub(crate) fn cache_match_result(
+    db: &Database,
+    t1: &Type,
+    t2: &Type,
+    had_type_var_matcher: bool,
+    callable: impl FnOnce() -> Match,
+) -> Match {
+    MATCHING_CACHE.with(|cache| {
+        let can_be_cached = (!had_type_var_matcher || !t1.has_type_vars() && !t2.has_type_vars())
+            && !t1.has_self_type(db)
+            && !t2.has_self_type(db);
+        if !can_be_cached {
+            return callable();
+        }
+        let key = (t1.clone(), t2.clone());
+        if let Some(already_known) = cache.cached.borrow().get(&key) {
+            debug!(
+                r#"Used matching cache "{}" against "{}": {:?}"#,
+                t1.format_short(db),
+                t2.format_short(db),
+                already_known,
+            );
+            return already_known.clone();
+        }
+        let result = callable();
+        cache.cached.borrow_mut().insert(key, result.clone());
+        result
+    })
+}
+
 // For both Protocols and TypedDict
-pub fn avoid_structural_matching_recursion(
+pub(crate) fn avoid_structural_matching_recursion(
     db: &Database,
     t1: &Type,
     t2: &Type,
@@ -109,38 +139,20 @@ pub fn avoid_structural_matching_recursion(
                     );
                 }
             }
-            let new_t = (t1.clone(), t2.clone());
-            let can_be_cached = (!had_type_var_matcher
-                || !t1.has_type_vars() && !t2.has_type_vars())
-                && !t1.has_self_type(db)
-                && !t2.has_self_type(db);
-            if can_be_cached && let Some(already_known) = cache.cached.borrow().get(&new_t) {
+            cache_match_result(db, t1, t2, had_type_var_matcher, || {
+                let new_t = (t1.clone(), t2.clone());
+                current.push(new_t);
+                drop(current);
                 debug!(
-                    r#"Used structural matching cache "{}" against "{}": {:?}"#,
+                    r#"Match protocol/TypedDict "{}" against "{}""#,
                     t1.format_short(db),
                     t2.format_short(db),
-                    already_known,
                 );
-                return already_known.clone();
-            }
-            current.push(new_t);
-            drop(current);
-            debug!(
-                r#"Match protocol/TypedDict "{}" against "{}" (can be cached: {:?})"#,
-                t1.format_short(db),
-                t2.format_short(db),
-                can_be_cached,
-            );
-            let _indent = debug_indent();
-            let result = callable();
-            if can_be_cached {
-                cache
-                    .cached
-                    .borrow_mut()
-                    .insert((t1.clone(), t2.clone()), result.clone());
-            }
-            cache.avoid_recursions.borrow_mut().pop();
-            result
+                let _indent = debug_indent();
+                let result = callable();
+                cache.avoid_recursions.borrow_mut().pop();
+                result
+            })
         }
     })
 }
