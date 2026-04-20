@@ -823,3 +823,43 @@ def lazy_apply(func: Callable[P, Array]): ...
 @overload
 def lazy_apply(func: Callable[P, Array | int]): ...
 def lazy_apply(func: Callable[P, Array | int]): ...
+
+[case protocol_self_matching_should_not_be_affected_by_cache1]
+from typing import Self, Protocol
+
+class P(Protocol):
+    x: int
+
+class X:
+    x: int
+
+    def check(self: Self):
+        a: P = self
+
+class Y:
+    x: str
+
+    def check(self: Self):
+        a: P = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "P") \
+                     # N: Following member(s) of "Self" have conflicts: \
+                     # N:     x: expected "int", got "str"
+
+[case protocol_self_matching_should_not_be_affected_by_cache2]
+from typing import Self, Protocol
+
+class P(Protocol):
+    x: int
+
+class X:
+    x: str
+
+    def check(self: Self):
+        a: P = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "P") \
+                     # N: Following member(s) of "Self" have conflicts: \
+                     # N:     x: expected "int", got "str"
+
+class Y:
+    x: int
+
+    def check(self: Self):
+        a: P = self
