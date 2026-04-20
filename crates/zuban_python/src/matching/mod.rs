@@ -110,8 +110,8 @@ pub fn avoid_structural_matching_recursion(
                 }
             }
             let new_t = (t1.clone(), t2.clone());
-            if !had_type_var_matcher && let Some(already_known) = cache.cached.borrow().get(&new_t)
-            {
+            let can_be_cached = !had_type_var_matcher || !t1.has_type_vars() && !t2.has_type_vars();
+            if can_be_cached && let Some(already_known) = cache.cached.borrow().get(&new_t) {
                 debug!(
                     r#"Used structural matching cache "{}" against "{}": {:?}"#,
                     t1.format_short(db),
@@ -122,15 +122,21 @@ pub fn avoid_structural_matching_recursion(
             }
             current.push(new_t);
             drop(current);
-            debug!(
-                r#"Match protocol/TypedDict "{}" against "{}" (TypeVarMatcher: {:?})"#,
+            println!(
+                r#"Match protocol/TypedDict "{}" against "{}" (can be cached: {:?})"#,
                 t1.format_short(db),
                 t2.format_short(db),
-                had_type_var_matcher,
+                can_be_cached,
+            );
+            debug!(
+                r#"Match protocol/TypedDict "{}" against "{}" (can be cached: {:?})"#,
+                t1.format_short(db),
+                t2.format_short(db),
+                can_be_cached,
             );
             let _indent = debug_indent();
             let result = callable();
-            if !had_type_var_matcher {
+            if can_be_cached {
                 cache
                     .cached
                     .borrow_mut()
