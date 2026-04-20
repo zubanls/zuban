@@ -10,7 +10,8 @@ description = "Zuban - The Zuban Language Server"
 authors = [{ name = "Dave Halter", email = "info@zubanls.com" }]
 readme = "README.rst"
 requires-python = ">=3.7"
-license = { file = "licenses.html" }
+license = "AGPL-3.0-only"
+license-files = ["licenses.html"]
 keywords = [
   "typechecking",
   "mypy",
@@ -32,6 +33,13 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: 3.16",
+  "Programming Language :: Python :: 3.17",
+  "Programming Language :: Python :: 3.18",
+  "Programming Language :: Python :: 3.19",
+  "Programming Language :: Python :: 3.20",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3",
   "Programming Language :: Rust",
