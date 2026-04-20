@@ -1052,6 +1052,18 @@ mod tests {
             [file namespace/file3.so]
             [file namespace/file3.dylib]
 
+            [file star_imp1.py]
+            from file1 import *
+
+            [file star_imp2.py]
+            from dir.file2 import *
+
+            [file star_imp3.py]
+            from namespace.file3 import *
+
+            [file star_imp.py]
+            from file1 import *
+
             [file check.py]
             import file1
             from dir import file2
@@ -1062,6 +1074,16 @@ mod tests {
             import undefined1
             from dir import undefined2
             from namespace import undefined3
+
+            from star_imp1 import something
+            import star_imp1
+            star_imp1.something
+            from star_imp2 import something
+            import star_imp2
+            star_imp2.something
+            from star_imp3 import something
+            import star_imp3
+            star_imp3.something
 
             file1.something
             file2.something
