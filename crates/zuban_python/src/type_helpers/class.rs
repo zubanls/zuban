@@ -17,8 +17,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, TypeVarCallbackReturn,
-        use_cached_return_annotation_type,
+        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, StarImportError,
+        TypeVarCallbackReturn, use_cached_return_annotation_type,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -748,21 +748,28 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {
         match self.class_storage.class_symbol_table.lookup_symbol(name) {
             None => {
+                let mut import_not_found = false;
                 for star_import in self.node_ref.file.star_imports.iter() {
                     if star_import.scope == self.node_ref.node_index {
                         let self_class = Class::with_self_generics(i_s.db, self.node_ref);
                         let i_s = &i_s.with_class_context(&self_class);
-                        if let Some(result) = self
+                        match self
                             .node_ref
                             .file
                             .name_resolution_for_inference(i_s)
                             .lookup_name_in_star_import(star_import, name, true, None)
                         {
-                            return result.into_lookup_result(i_s);
-                        }
+                            Ok(result) => return result.into_lookup_result(i_s),
+                            Err(StarImportError::NotFound) => {}
+                            Err(StarImportError::ImportNotResolvable) => import_not_found = true,
+                        };
                     }
                 }
-                LookupResult::None
+                if import_not_found {
+                    LookupResult::any(AnyCause::FromError)
+                } else {
+                    LookupResult::None
+                }
             }
             Some(node_index) => {
                 let self_class = Class::with_self_generics(i_s.db, self.node_ref);

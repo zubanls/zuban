@@ -8,7 +8,7 @@ use crate::{
     database::{Database, Locality, Point, PointKind, Specific},
     debug,
     diagnostics::IssueKind,
-    file::inference::Inference,
+    file::{inference::Inference, name_resolution::StarImportError},
     imports::{
         ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
         global_import, import_module_by_strings, is_binary_extension,
@@ -243,13 +243,13 @@ impl PythonFile {
         &self,
         db: &'db Database,
         star_import: &StarImport,
-    ) -> Option<&'db PythonFile> {
+    ) -> Result<&'db PythonFile, StarImportError> {
         let point = self.points.get(star_import.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
-                None
+                Err(StarImportError::ImportNotResolvable)
             } else {
-                Some(db.loaded_python_file(point.file_index()))
+                Ok(db.loaded_python_file(point.file_index()))
             };
         }
         let import_from = NodeRef::new(self, star_import.import_from_node).expect_import_from();

@@ -469,7 +469,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
     ) {
         for star_import in file.star_imports.iter() {
             if star_import.scope == scope
-                && let Some(f) = file.star_import_file(self.infos.db, star_import)
+                && let Ok(f) = file.star_import_file(self.infos.db, star_import)
             {
                 self.add_specific_module_completions(f, true, true, already_visited)
             }

@@ -927,7 +927,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 })
                 .or_else(|| {
                     Some(
-                        self.lookup_from_star_import(name_def.as_code(), true)?
+                        self.lookup_from_star_import(name_def.as_code(), true)
+                            .ok()?
                             .as_inferred(self.i_s),
                     )
                 })
@@ -1549,7 +1550,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         check_assign_including_partials,
                     );
                 }
-            } else if let Some(star_imp) = self.lookup_from_star_import_with_node_index(
+            } else if let Ok(star_imp) = self.lookup_from_star_import_with_node_index(
                 name_def.as_code(),
                 true,
                 Some(name_def.index()),

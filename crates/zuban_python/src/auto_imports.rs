@@ -200,7 +200,7 @@ impl<'db> ImportFinder<'db> {
             if file
                 .name_resolution_for_types(&InferenceState::new(self.db, file))
                 .lookup_from_star_import(self.name, false)
-                .is_some()
+                .is_ok()
             {
                 self.found.lock().unwrap().push(PotentialImport {
                     file,

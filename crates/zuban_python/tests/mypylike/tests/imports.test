@@ -303,13 +303,37 @@ reveal_type(typed_inline)  # N: Revealed type is "types.ModuleType"
 [tool.zuban]
 follow_untyped_imports = false
 
-[case namespace_star_attributes_should_not_error]
+[case namespace_star_attributes_should_not_error_mypy_compatible]
 # pkgs: modulefinder-site-packages
+# flags: --mode mypy
 
 def untyped() -> None:
     from ns_pkg_w_stubs.untyped import *
     ZubanCls  # E: Name "ZubanCls" is not defined
     z: ZubanCls  # E: Name "ZubanCls" is not defined
+
+def typed() -> None:
+    from ns_pkg_w_stubs.typed import *
+    ZubanCls
+    z: ZubanCls
+
+def typed_inline() -> None:
+    from ns_pkg_w_stubs.typed_inline import *
+    ZubanCls
+    z: ZubanCls
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[case namespace_star_attributes_should_not_error_no_mypy_compatible]
+# pkgs: modulefinder-site-packages
+# flags: --mode default
+
+def untyped() -> None:
+    from ns_pkg_w_stubs.untyped import *
+    ZubanCls
+    z: ZubanCls
 
 def typed() -> None:
     from ns_pkg_w_stubs.typed import *
@@ -879,3 +903,17 @@ from ns.pkg.v1.client import Client
 
 def get_name(client: Client) -> str:
     return client.name
+
+[case star_import_not_found]
+# flags: --mode default
+from star1 import not_defined_symbol1  # This should not cause an issue
+from dir.star2 import not_defined_symbol2
+from namespace.star3 import not_defined_symbol3
+
+[file star1.py]
+from not_defined import *  # E: Cannot find implementation or library stub for module named "not_defined"
+[file dir/__init__.py]
+[file dir/star2.py]
+from dir.not_defined import *  # E: Cannot find implementation or library stub for module named "dir.not_defined"
+[file namespace/star3.py]
+from namespace.not_defined import *  # E: Cannot find implementation or library stub for module named "namespace.not_defined"

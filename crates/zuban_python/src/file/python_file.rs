@@ -883,7 +883,7 @@ impl<'db> PythonFile {
             star_import.in_module_scope()
                 && self
                     .star_import_file(db, star_import)
-                    .is_some_and(|file| file.has_unsupported_class_scoped_import(db))
+                    .is_ok_and(|file| file.has_unsupported_class_scoped_import(db))
         })
     }
 

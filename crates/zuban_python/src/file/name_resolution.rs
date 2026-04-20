@@ -702,7 +702,16 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         save_to_index: Option<NodeIndex>,
         narrow_name: &dyn Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
     ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
-        let star_imp = self.lookup_from_star_import(name, true)?;
+        let star_imp = match self.lookup_from_star_import(name, true) {
+            Ok(star_imp) => star_imp,
+            Err(StarImportError::NotFound) => return None,
+            Err(StarImportError::ImportNotResolvable) => {
+                return Some((
+                    PointResolution::Inferred(Inferred::new_any_from_error()),
+                    None,
+                ));
+            }
+        };
         Some(match star_imp {
             StarImportResult::Link(link) => match save_to_index {
                 Some(save_to_index) => {
@@ -742,7 +751,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         &self,
         name: &str,
         check_local: bool,
-    ) -> Option<StarImportResult> {
+    ) -> Result<StarImportResult, StarImportError> {
         self.lookup_from_star_import_with_node_index(name, check_local, None, None)
     }
 
@@ -752,7 +761,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         check_local: bool,
         node_index: Option<NodeIndex>,
         star_imports_seen: Option<AlreadySeen<PointLink>>,
-    ) -> Option<StarImportResult> {
+    ) -> Result<StarImportResult, StarImportError> {
+        let mut import_not_resolvable = false;
         for star_import in self.file.star_imports.iter() {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
@@ -777,13 +787,15 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if in_same_scope && node_index.is_some_and(|n| n < star_import.star_node) {
                 continue;
             }
-            if let Some(result) = self.lookup_name_in_star_import(
+            match self.lookup_name_in_star_import(
                 star_import,
                 name,
                 is_class_star_import,
                 star_imports_seen,
             ) {
-                return Some(result);
+                Ok(result) => return Ok(result),
+                Err(StarImportError::ImportNotResolvable) => import_not_resolvable = true,
+                Err(StarImportError::NotFound) => {}
             }
         }
         if let Some(super_file) = &self.file.super_file {
@@ -794,14 +806,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 .file_entry(self.i_s.db)
                 .add_invalidation(self.file.file_index());
             if let Some(name_ref) = super_file.lookup_symbol(name) {
-                return Some(StarImportResult::Link(name_ref.as_link()));
+                return Ok(StarImportResult::Link(name_ref.as_link()));
             }
             if let Some(_func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file")
             } else if let Some(class) = self.i_s.current_class()
                 && let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name)
             {
-                return Some(StarImportResult::Link(PointLink::new(
+                return Ok(StarImportResult::Link(PointLink::new(
                     class.node_ref.file_index(),
                     index,
                 )));
@@ -809,7 +821,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
         } else {
-            None
+            Err(
+                match import_not_resolvable && !self.i_s.db.project.settings.mypy_compatible() {
+                    true => StarImportError::ImportNotResolvable,
+                    false => StarImportError::NotFound,
+                },
+            )
         }
     }
 
@@ -819,7 +836,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         name: &str,
         is_class_star_import: bool,
         star_imports_seen: Option<AlreadySeen<PointLink>>,
-    ) -> Option<StarImportResult> {
+    ) -> Result<StarImportResult, StarImportError> {
         let link = PointLink::new(self.file.file_index, star_import.star_node);
         let new_seen = if let Some(seen) = star_imports_seen.as_ref() {
             seen.append(link)
@@ -829,13 +846,13 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         if new_seen.is_cycle() {
             debug!("Aborting name import, because of a star import cycle");
             // TODO we might want to add an issue in the future (not high-prio however)
-            return None;
+            return Err(StarImportError::NotFound);
         }
         let other_file = self.file.star_import_file(self.i_s.db, star_import)?;
 
         if let Some(name_ref) = other_file.lookup_symbol(name) {
             if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
-                return None;
+                return Err(StarImportError::NotFound);
             }
             if !is_reexport_issue(self.i_s.db, name_ref) {
                 let mut result = StarImportResult::Link(name_ref.as_link());
@@ -847,24 +864,26 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 {
                     result = StarImportResult::AnyDueToError;
                 }
-                return Some(result);
+                return Ok(result);
             }
         }
-        if let Some(l) = self
+        let result = self
             .with_new_file(other_file)
-            .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen))
-        {
-            if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
-                return None;
+            .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen));
+        match &result {
+            Ok(_) => {
+                if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {
+                    return Err(StarImportError::NotFound);
+                }
             }
-            Some(l)
-        } else {
-            debug!(
-                "Name {name} not found in star import {}",
-                other_file.qualified_name(self.i_s.db)
-            );
-            None
+            Err(_) => {
+                debug!(
+                    "Name {name} not found in star import {}",
+                    other_file.qualified_name(self.i_s.db)
+                );
+            }
         }
+        result
     }
 
     pub(super) fn lookup_type_name_on_class(
@@ -982,6 +1001,11 @@ fn is_private_import_with_ensurance(
     name_ref
         .maybe_import_of_name_in_symbol_table()
         .is_some_and(|i| !i.is_stub_reexport() && ensure_private(i))
+}
+
+pub(crate) enum StarImportError {
+    ImportNotResolvable,
+    NotFound,
 }
 
 pub(crate) enum StarImportResult {
