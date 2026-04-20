@@ -21,6 +21,7 @@ use crate::{
         TupleUnpack, Variance,
     },
     type_helpers::{Class, TypeOrClass},
+    utils::debug_indent,
 };
 
 impl Type {
@@ -140,6 +141,12 @@ impl Type {
             original_t1 @ Type::RecursiveType(rec1) => {
                 if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
                     matcher.avoid_recursion(original_t1, value_type, |matcher| {
+                        let _indent = debug_indent();
+                        debug!(
+                            "Match recursive: {} against {}",
+                            original_t1.format_short(i_s.db),
+                            value_type.format_short(i_s.db)
+                        );
                         match value_type {
                             Type::Class(_) | Type::RecursiveType(_) => {
                                 // Classes like aliases can also be recursive in mypy, like
