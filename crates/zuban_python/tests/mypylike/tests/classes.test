@@ -2699,3 +2699,26 @@ class B(A):
     def f(  # type: ignore[override]
         self, x: str, y: str
     ): ...
+
+[case multi_inheritance_abstractmethods]
+# From GH #384
+from abc import ABC, abstractmethod
+
+class Base(ABC):
+    @abstractmethod
+    def f(self): ...
+
+    @abstractmethod
+    def g(self): ...
+
+class A(Base):
+    def f(self):
+        return None
+
+class B(Base):
+    def g(self):
+        return None
+
+class C(A, B): ...
+
+C()  # Cannot instantiate abstract class "C" with abstract attribute "g"
