@@ -414,10 +414,10 @@ impl CallableContent {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         let new_param_data = self.params.replace_internal(replacer, &mut None, None);
         let new_return_type = self.return_type.replace_internal(replacer);
-        let new_guard = match &self.guard {
-            None => Some(None),
-            Some(g) => g.replace_internal(replacer).map(Some),
-        };
+        let new_guard = self
+            .guard
+            .as_ref()
+            .and_then(|g| g.replace_internal(replacer));
         if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
             return None;
         }
@@ -428,7 +428,7 @@ impl CallableContent {
             defined_at: self.defined_at,
             kind: self.kind.clone(),
             type_vars: self.type_vars.clone(),
-            guard: new_guard.unwrap_or_else(|| self.guard.clone()),
+            guard: new_guard.or_else(|| self.guard.clone()),
             is_abstract: self.is_abstract,
             is_abstract_from_super: self.is_abstract_from_super,
             is_final: self.is_final,
@@ -851,10 +851,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
             .params
             .replace_internal(self, &mut type_vars, Some(c.defined_at));
         let new_return_type = c.return_type.replace_internal(self);
-        let new_guard = match &c.guard {
-            None => Some(None),
-            Some(g) => g.replace_internal(self).map(Some),
-        };
+        let new_guard = c.guard.as_ref().and_then(|g| g.replace_internal(self));
         let new_kind = c.kind.replace_internal(self);
         if new_param_data.is_none()
             && new_return_type.is_none()
@@ -884,7 +881,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
             type_vars: type_vars
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
-            guard: new_guard.unwrap_or_else(|| c.guard.clone()),
+            guard: new_guard.or_else(|| c.guard.clone()),
             is_abstract: c.is_abstract,
             is_abstract_from_super: c.is_abstract_from_super,
             is_final: c.is_final,
@@ -945,7 +942,10 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 GenericItem::TypeArgs(_) => unreachable!(),
                 GenericItem::ParamSpecArg(_) => unreachable!(),
             },
-            Type::Self_ => Some((self.replace_self)()),
+            Type::Self_ => {
+                let replaced = (self.replace_self)()?;
+                (replaced != Type::Self_).then_some(Some(replaced))
+            }
             _ => None,
         }
     }

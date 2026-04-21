@@ -521,21 +521,21 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 self.overload
                     .iter_functions()
                     .map(|callable| {
+                        let without_first_param = callable.remove_first_positional_param();
                         let mut callable = replace_class_type_vars_in_callable(
                             i_s.db,
-                            callable
-                                .remove_first_positional_param()
-                                .as_ref()
-                                .unwrap_or_else(|| {
-                                    // The callable did not have a first positional param. This
-                                    // should be flagged when generating diagnostics. here we just
-                                    // try to not crash.
-                                    callable
-                                }),
+                            without_first_param.as_ref().unwrap_or_else(|| {
+                                // The callable did not have a first positional param. This
+                                // should be flagged when generating diagnostics. here we just
+                                // try to not crash.
+                                callable
+                            }),
                             self.class.as_ref(),
                             &|| Some(replace_self_type()),
                         )
-                        .unwrap_or_else(|| (**callable).clone());
+                        .unwrap_or_else(|| {
+                            without_first_param.unwrap_or_else(|| (**callable).clone())
+                        });
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);
