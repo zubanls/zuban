@@ -305,9 +305,9 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         .parent()
         .expect(NEEDS_PARENTS);
 
-    let maybe_has_zuban = |lib_path: &Path| {
+    let maybe_has_zuban_detailed = |lib_path: &Path, site_packages_name: &str| {
         let typeshed_path = lib_path
-            .join("site-packages")
+            .join(site_packages_name)
             .join("zuban")
             .join("third_party")
             .join("typeshed");
@@ -319,6 +319,7 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
             )
         })
     };
+    let maybe_has_zuban = |lib_path: &Path| maybe_has_zuban_detailed(lib_path, "site-packages");
     if cfg!(windows) {
         // Windows has two different formats. The first one is the "normal" one that is typically
         // encountered in venvs and system packages. The second one is encountered for example in
@@ -351,6 +352,13 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
             if let Ok(Some(found)) =
                 search_typeshed_dir_in_unix(env_folder.join("lib64"), maybe_has_zuban)
             {
+                return found;
+            }
+            // Debian uses dist-packages for globally installed packages.
+            let result = search_typeshed_dir_in_unix(env_folder.join("lib"), |lib| {
+                maybe_has_zuban_detailed(lib, "dist-packages")
+            });
+            if let Ok(Some(found)) = result {
                 return found;
             }
         }
