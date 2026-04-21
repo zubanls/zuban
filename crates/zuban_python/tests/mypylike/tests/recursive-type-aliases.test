@@ -246,3 +246,35 @@ def _parse_marker() -> MarkerList:
 
 def _parse_marker_atom() -> MarkerAtom:
     pass
+
+[case recursive_type_matching_with_deeply_nested_list_should_not_be_slow]
+# flags: --mode default
+# From GH #379
+type dmp[T] = list[dmp[T]]
+
+class DMP:
+    def __new__(cls, rep: dmp):
+        pass
+
+f = [[[[[[[[[[[[[[[[[[[[[int(1)]], [[]]]]]]]]]]]]]]]]]]]]]  # E: Need type annotation for "f"
+DMP(f)  # E: Argument 1 to "DMP" has incompatible type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]] | list[list[Any]]]]]]]]]]]]]]]]]]]]]"; expected "dmp[Any]"
+
+type D2[T] = list[D2[T]] | T
+
+other1: D2 = f
+# TODO this is not correct for int
+other2: D2[int] = f  # E: Incompatible types in assignment (expression has type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]] | list[list[Any]]]]]]]]]]]]]]]]]]]]]", variable has type "D2[int]")
+other3: D2[str] = f  # E: Incompatible types in assignment (expression has type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]] | list[list[Any]]]]]]]]]]]]]]]]]]]]]", variable has type "D2[str]")
+
+[case recursive_type_matching_with_deeply_nested_list_should_not_be_slow2]
+f = [[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]
+
+from typing import Sequence
+type D[T] = list[D[T]] | T
+other1: D = f
+# TODO this is not correct for int
+other2: D[int] = f  # E: Incompatible types in assignment (expression has type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]]]]]]]]]]]]]]]]]]]]]", variable has type "D[int]") \
+                    # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+                    # N: Consider using "Sequence" instead, which is covariant
+
+other3: D[str] = f  # E: Incompatible types in assignment (expression has type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]]]]]]]]]]]]]]]]]]]]]", variable has type "D[str]")

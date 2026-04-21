@@ -12,7 +12,7 @@ use crate::{
     match_::{Match, MismatchReason},
     matching::{
         ErrorStrs, ErrorTypes, GotType, Matcher, avoid_structural_matching_recursion,
-        format_got_expected,
+        cache_match_result, format_got_expected,
     },
     params::matches_params,
     recoverable_error,
@@ -141,31 +141,40 @@ impl Type {
             original_t1 @ Type::RecursiveType(rec1) => {
                 if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
                     matcher.avoid_recursion(original_t1, value_type, |matcher| {
-                        let _indent = debug_indent();
-                        debug!(
-                            "Match recursive: {} against {}",
-                            original_t1.format_short(i_s.db),
-                            value_type.format_short(i_s.db)
-                        );
-                        match value_type {
-                            Type::Class(_) | Type::RecursiveType(_) => {
-                                // Classes like aliases can also be recursive in mypy, like
-                                // `class B(List[B])`.
-                                if let Type::RecursiveType(rec2) = value_type
-                                    && rec1.link == rec2.link
-                                    && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
-                                {
-                                    // Here we try to align the types. If they have the same link
-                                    // we should probably unpack them at the same time, because
-                                    // otherwise some TypeVars might match in weird ways and create
-                                    // weird unnecessary unions.
-                                    t1.matches(i_s, matcher, t2, variance)
-                                } else {
-                                    t1.matches(i_s, matcher, value_type, variance)
+                        cache_match_result(
+                            i_s.db,
+                            original_t1,
+                            value_type,
+                            variance,
+                            matcher.has_type_var_matcher(),
+                            || {
+                                let _indent = debug_indent();
+                                debug!(
+                                    "Match recursive: {} against {}",
+                                    original_t1.format_short(i_s.db),
+                                    value_type.format_short(i_s.db)
+                                );
+                                match value_type {
+                                    Type::Class(_) | Type::RecursiveType(_) => {
+                                        // Classes like aliases can also be recursive in mypy, like
+                                        // `class B(List[B])`.
+                                        if let Type::RecursiveType(rec2) = value_type
+                                            && rec1.link == rec2.link
+                                            && let Some(t2) = rec2.calculated_type_if_ready(i_s.db)
+                                        {
+                                            // Here we try to align the types. If they have the same link
+                                            // we should probably unpack them at the same time, because
+                                            // otherwise some TypeVars might match in weird ways and create
+                                            // weird unnecessary unions.
+                                            t1.matches(i_s, matcher, t2, variance)
+                                        } else {
+                                            t1.matches(i_s, matcher, value_type, variance)
+                                        }
+                                    }
+                                    _ => t1.matches(i_s, matcher, value_type, variance),
                                 }
-                            }
-                            _ => t1.matches(i_s, matcher, value_type, variance),
-                        }
+                            },
+                        )
                     })
                 } else {
                     // Happens for example when creating the MRO of a class with a

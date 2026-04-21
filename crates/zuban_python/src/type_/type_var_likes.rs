@@ -374,7 +374,7 @@ impl CallableId for Arc<CallableContent> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[repr(u32)]
 pub(crate) enum Variance {
     Invariant = 0,

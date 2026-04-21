@@ -28,7 +28,9 @@ use crate::{
     inferred::Inferred,
     match_::{Match, MismatchReason},
     recoverable_error,
-    type_::{AnyCause, NeverCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{
+        AnyCause, NeverCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, Variance, WithUnpack,
+    },
     type_helpers::FuncLike,
     utils::debug_indent,
 };
@@ -40,7 +42,7 @@ thread_local! {
 #[derive(Default)]
 struct MatchingCache {
     avoid_recursions: RefCell<Vec<(Type, Type)>>,
-    cached: RefCell<HashMap<(Type, Type), Match>>,
+    cached: RefCell<HashMap<(Type, Type, Variance), Match>>,
 }
 
 pub fn invalidate_matching_cache() {
@@ -54,6 +56,7 @@ pub(crate) fn cache_match_result(
     db: &Database,
     t1: &Type,
     t2: &Type,
+    variance: Variance,
     had_type_var_matcher: bool,
     callable: impl FnOnce() -> Match,
 ) -> Match {
@@ -64,7 +67,7 @@ pub(crate) fn cache_match_result(
         if !can_be_cached {
             return callable();
         }
-        let key = (t1.clone(), t2.clone());
+        let key = (t1.clone(), t2.clone(), variance);
         if let Some(already_known) = cache.cached.borrow().get(&key) {
             debug!(
                 r#"Used matching cache "{}" against "{}": {:?}"#,
@@ -139,20 +142,27 @@ pub(crate) fn avoid_structural_matching_recursion(
                     );
                 }
             }
-            cache_match_result(db, t1, t2, had_type_var_matcher, || {
-                let new_t = (t1.clone(), t2.clone());
-                current.push(new_t);
-                drop(current);
-                debug!(
-                    r#"Match protocol/TypedDict "{}" against "{}""#,
-                    t1.format_short(db),
-                    t2.format_short(db),
-                );
-                let _indent = debug_indent();
-                let result = callable();
-                cache.avoid_recursions.borrow_mut().pop();
-                result
-            })
+            cache_match_result(
+                db,
+                t1,
+                t2,
+                Variance::Covariant,
+                had_type_var_matcher,
+                || {
+                    let new_t = (t1.clone(), t2.clone());
+                    current.push(new_t);
+                    drop(current);
+                    debug!(
+                        r#"Match protocol/TypedDict "{}" against "{}""#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                    );
+                    let _indent = debug_indent();
+                    let result = callable();
+                    cache.avoid_recursions.borrow_mut().pop();
+                    result
+                },
+            )
         }
     })
 }
