@@ -27,7 +27,7 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::{Match, SignatureMatch},
-    matching::Generic,
+    matching::{Generic, MatchingTypesCacheType},
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -60,6 +60,7 @@ pub(crate) struct Matcher<'a> {
     pub replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
+    pub(super) type_var_specific_matching_cache: MatchingTypesCacheType,
 }
 
 impl<'a> Matcher<'a> {
@@ -1137,10 +1138,15 @@ impl<'a> Matcher<'a> {
             ignore_positional_param_names: self.ignore_positional_param_names,
             replace_self: self.replace_self,
             match_reverse: self.match_reverse,
+            type_var_specific_matching_cache: std::mem::take(
+                &mut self.type_var_specific_matching_cache,
+            ),
         };
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.
         self.type_var_matchers = std::mem::take(&mut inner_matcher.type_var_matchers);
+        self.type_var_specific_matching_cache =
+            std::mem::take(&mut inner_matcher.type_var_specific_matching_cache);
         result
     }
 

@@ -39,10 +39,12 @@ thread_local! {
     static MATCHING_CACHE: MatchingCache = MatchingCache::default();
 }
 
+type MatchingTypesCacheType = HashMap<(Type, Type, Variance), Match>;
+
 #[derive(Default)]
 struct MatchingCache {
     avoid_recursions: RefCell<Vec<(Type, Type)>>,
-    cached: RefCell<HashMap<(Type, Type, Variance), Match>>,
+    cached: RefCell<MatchingTypesCacheType>,
 }
 
 pub fn invalidate_matching_cache() {
@@ -62,13 +64,29 @@ pub(crate) fn cache_match_result(
 ) -> Match {
     MATCHING_CACHE.with(|cache| {
         let had_type_var_matcher = matcher.has_type_var_matcher();
+        let key = (t1.clone(), t2.clone(), variance);
         let can_be_cached = (!had_type_var_matcher || !t1.has_type_vars() && !t2.has_type_vars())
             && !t1.has_self_type(db)
             && !t2.has_self_type(db);
         if !can_be_cached {
-            return callable(matcher);
+            // We cache the results locally in the matcher if we cannot cache them in a more
+            // general way. This is necessary to avoid problems with recursive types or protocols
+            // if type vars are involved.
+            if let Some(already_known) = matcher.type_var_specific_matching_cache.get(&key) {
+                debug!(
+                    r#"Used matching cache "{}" against "{}": {:?}"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                    already_known,
+                );
+                return already_known.clone();
+            }
+            let result = callable(matcher);
+            matcher
+                .type_var_specific_matching_cache
+                .insert(key, result.clone());
+            return result;
         }
-        let key = (t1.clone(), t2.clone(), variance);
         if let Some(already_known) = cache.cached.borrow().get(&key) {
             debug!(
                 r#"Used matching cache "{}" against "{}": {:?}"#,

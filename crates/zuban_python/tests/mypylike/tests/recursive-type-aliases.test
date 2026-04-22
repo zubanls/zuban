@@ -280,15 +280,28 @@ other2: D[int] = f  # E: Incompatible types in assignment (expression has type "
 other3: D[str] = f  # E: Incompatible types in assignment (expression has type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]]]]]]]]]]]]]]]]]]]]]", variable has type "D[str]")
 
 [case recursive_type_matching_with_deeply_nested_list_should_not_be_slow3]
+# flags: --mode default
 # From GH #399
 from typing import TypeVar
 
 _T = TypeVar("_T")
 type dmp[_T] = list[dmp[_T]]
 
-_S = TypeVar("_S")
 class DMP:
-    def __new__(cls, rep: dmp[_S]): pass
+    def __new__(cls, rep: dmp[_T]): pass
 
-f = [[[[[[[[[[[[[[[[[[[[[int(1)]], [[]]]]]]]]]]]]]]]]]]]]]
+f = [[[[[[[[[[[[[[[[[[[[[int(1)]], [[]]]]]]]]]]]]]]]]]]]]]  # E: Need type annotation for "f"
+DMP(f)  # E: Argument 1 to "DMP" has incompatible type "list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[list[int]] | list[list[Any]]]]]]]]]]]]]]]]]]]]]"; expected "dmp[Any]"
+
+[case recursive_type_matching_with_deeply_nested_list_should_not_be_slow4]
+from typing import TypeVar
+
+type dmp[T] = list[dmp[T]] | T
+
+_S = TypeVar("_S")
+class DMP[S]:
+    def __init__(self, rep: dmp[S]):
+        self.rep = rep
+
+f = [[[[[[[[[[[[[[[[[[[[[int(1)]], [[]]]]]]]]]]]]]]]]]]]]]  # E: Need type annotation for "f"
 DMP(f)
