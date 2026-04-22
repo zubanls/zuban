@@ -3,7 +3,11 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet};
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+};
 use utils::AlreadySeen;
 
 use type_var_matcher::TypeVarMatcher;
@@ -27,7 +31,7 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::{Match, SignatureMatch},
-    matching::{Generic, MatchingTypesCacheType},
+    matching::Generic,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -49,6 +53,25 @@ use crate::{
 pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
 
+thread_local! {
+    static MATCHING_CACHE: MatchingCache = MatchingCache::default();
+}
+
+type MatchingTypesCacheType = HashMap<(Type, Type, Variance), Match>;
+
+#[derive(Default)]
+struct MatchingCache {
+    avoid_recursions: RefCell<Vec<(Type, Type)>>,
+    cached: RefCell<MatchingTypesCacheType>,
+}
+
+pub fn invalidate_matching_cache() {
+    MATCHING_CACHE.with(|cache| {
+        debug_assert!(cache.avoid_recursions.borrow().is_empty());
+        cache.cached.borrow_mut().clear()
+    })
+}
+
 #[derive(Default, Clone)]
 pub(crate) struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
@@ -60,7 +83,7 @@ pub(crate) struct Matcher<'a> {
     pub replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
-    pub(super) type_var_specific_matching_cache: MatchingTypesCacheType,
+    type_var_specific_matching_cache: MatchingTypesCacheType,
 }
 
 impl<'a> Matcher<'a> {
@@ -1635,6 +1658,119 @@ impl<'a> Matcher<'a> {
                 }
             }
         }
+    }
+
+    pub(crate) fn cache_match_result(
+        &mut self,
+        db: &Database,
+        t1: &Type,
+        t2: &Type,
+        variance: Variance,
+        callable: impl FnOnce(&mut Matcher) -> Match,
+    ) -> Match {
+        MATCHING_CACHE.with(|cache| {
+            let had_type_var_matcher = self.has_type_var_matcher();
+            let key = (t1.clone(), t2.clone(), variance);
+            let can_be_cached = (!had_type_var_matcher
+                || !t1.has_type_vars() && !t2.has_type_vars())
+                && !t1.has_self_type(db)
+                && !t2.has_self_type(db);
+            if !can_be_cached {
+                // We cache the results locally in the matcher if we cannot cache them in a more
+                // general way. This is necessary to avoid problems with recursive types or protocols
+                // if type vars are involved.
+                if let Some(already_known) = self.type_var_specific_matching_cache.get(&key) {
+                    debug!(
+                        r#"Used matching cache "{}" against "{}": {:?}"#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                        already_known,
+                    );
+                    return already_known.clone();
+                }
+                let result = callable(self);
+                self.type_var_specific_matching_cache
+                    .insert(key, result.clone());
+                return result;
+            }
+            if let Some(already_known) = cache.cached.borrow().get(&key) {
+                debug!(
+                    r#"Used matching cache "{}" against "{}": {:?}"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                    already_known,
+                );
+                return already_known.clone();
+            }
+            let result = callable(self);
+            cache.cached.borrow_mut().insert(key, result.clone());
+            result
+        })
+    }
+
+    // For both Protocols and TypedDict
+    pub(crate) fn avoid_structural_matching_recursion(
+        &mut self,
+        db: &Database,
+        t1: &Type,
+        t2: &Type,
+        callable: impl FnOnce(&mut Matcher) -> Match,
+    ) -> Match {
+        MATCHING_CACHE.with(|cache| {
+            let mut current = cache.avoid_recursions.borrow_mut();
+            if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
+                debug!(
+                    r#"Avoided recursion for structural matching "{}" against "{}" -> return true"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                );
+                Match::new_true()
+            } else {
+                if !current.is_empty() {
+                    let replace = move |t: &Type| {
+                        let mut had_temporary_matcher_id = false;
+                        t.search_type_vars(&mut |usage| {
+                            if usage.temporary_matcher_id() > 0 {
+                                had_temporary_matcher_id = true;
+                            }
+                        });
+                        if !had_temporary_matcher_id {
+                            return None;
+                        }
+                        t.replace_type_var_likes(db, &mut |mut usage| {
+                            usage.update_temporary_matcher_index(0);
+                            Some(usage.into_generic_item())
+                        })
+                    };
+                    if let Some(new_t1) = replace(t1) {
+                        // This case arose in
+                        // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
+                        // where it replace function type vars repeatedly with new generated type vars.
+                        // I'm not 100% sure this holds for all cases, but it feels like this is fine.
+                        drop(current);
+                        return self.avoid_structural_matching_recursion(db, &new_t1, t2, callable);
+                    }
+                    if let Some(new_t2) = replace(t2) {
+                        drop(current);
+                        return self.avoid_structural_matching_recursion(db, t1, &new_t2, callable);
+                    }
+                }
+                self.cache_match_result(db, t1, t2, Variance::Covariant, |matcher| {
+                    let new_t = (t1.clone(), t2.clone());
+                    current.push(new_t);
+                    drop(current);
+                    debug!(
+                        r#"Match protocol/TypedDict "{}" against "{}""#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                    );
+                    let _indent = debug_indent();
+                    let result = callable(matcher);
+                    cache.avoid_recursions.borrow_mut().pop();
+                    result
+                })
+            }
+        })
     }
 
     pub fn into_type_arg_iterator_or_any(self, db: &Database) -> impl Iterator<Item = Type> + '_ {

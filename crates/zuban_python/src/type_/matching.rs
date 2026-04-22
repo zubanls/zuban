@@ -10,10 +10,7 @@ use crate::{
     file::ClassNodeRef,
     inference_state::InferenceState,
     match_::{Match, MismatchReason},
-    matching::{
-        ErrorStrs, ErrorTypes, GotType, Matcher, avoid_structural_matching_recursion,
-        cache_match_result, format_got_expected,
-    },
+    matching::{ErrorStrs, ErrorTypes, GotType, Matcher, format_got_expected},
     params::matches_params,
     recoverable_error,
     type_::{
@@ -141,9 +138,8 @@ impl Type {
             original_t1 @ Type::RecursiveType(rec1) => {
                 if let Some(t1) = rec1.calculated_type_if_ready(i_s.db) {
                     matcher.avoid_recursion(original_t1, value_type, |matcher| {
-                        cache_match_result(
+                        matcher.cache_match_result(
                             i_s.db,
-                            matcher,
                             original_t1,
                             value_type,
                             variance,
@@ -205,17 +201,15 @@ impl Type {
                         // This is a shortcut that might happen pretty often
                         return Match::new_true();
                     }
-                    let mut m = avoid_structural_matching_recursion(
+                    let mut m = matcher.avoid_structural_matching_recursion(
                         i_s.db,
-                        matcher,
                         self,
                         value_type,
                         |matcher| d1.is_super_type_of(i_s, matcher, d2),
                     );
                     if variance == Variance::Invariant {
-                        m &= avoid_structural_matching_recursion(
+                        m &= matcher.avoid_structural_matching_recursion(
                             i_s.db,
-                            matcher,
                             value_type,
                             self,
                             |matcher| d2.is_super_type_of(i_s, matcher, d1),
@@ -382,9 +376,8 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
-                    avoid_structural_matching_recursion(
+                    matcher.avoid_structural_matching_recursion(
                         i_s.db,
-                        matcher,
                         self,
                         value_type,
                         |matcher| class1.check_protocol_match(i_s, matcher, value_type),
