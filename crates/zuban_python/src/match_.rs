@@ -65,6 +65,9 @@ pub(crate) enum MismatchReason {
     },
     SequenceInsteadOfListNeeded,
     MappingInsteadOfDictNeeded,
+    TypedDictAgainstDictMatching {
+        from: &'static str,
+    },
 }
 
 impl Match {

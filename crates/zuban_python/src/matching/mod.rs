@@ -193,6 +193,16 @@ impl ErrorTypes<'_> {
                     add_issue(IssueKind::Note(note.clone()));
                 }
             }
+            MismatchReason::TypedDictAgainstDictMatching { from } => {
+                add_issue(IssueKind::Note(
+                    format!(
+                        "TypedDicts can only be assigned to a {from} if the types \
+                             match, there's extra_items with the same type \
+                             and all keys are NotRequired"
+                    )
+                    .into(),
+                ));
+            }
             _ => (),
         }
     }

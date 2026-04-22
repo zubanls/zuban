@@ -316,9 +316,12 @@ b3: B3 = {"x": 0, "y": 0}
 
 # > A TypedDict isn’t consistent with any Dict[...] type.
 
-d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]")
-d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]")
-d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]")
+d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]") \
+                         # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]") \
+                            # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]") \
+                         # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
 
 # > A TypedDict with all int values is not consistent with Mapping[str, int].
 
@@ -694,16 +697,20 @@ class OnlyStrNonRequired(TypedDict, extra_items=str):
     name: NotRequired[str]
 
 def f(x: OnlyStr, y: OnlyStrNonRequired):
-    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]")
+    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]") \
+                                     # N: TypedDicts can only be assigned to a MutableMapping if the types match, there's extra_items with the same type and all keys are NotRequired
     a = y
     b: Mapping[str, str] = x
     b = y
-    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]")
+    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]") \
+                           # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
     c = y
 
-    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]")
+    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]") \
+                           # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
     e: Mapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "Mapping[str, int]")
-    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]")
+    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]") \
+                                     # N: TypedDicts can only be assigned to a MutableMapping if the types match, there's extra_items with the same type and all keys are NotRequired
 
 [case typed_dict_extra_items_methods]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -1222,3 +1229,30 @@ ys.append({"x": 1})  # This should not error
 ys.append({"x": ''})
 ys.append({"x": b''})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
                        # E: Argument 1 to "append" of "list" has incompatible type "dict[str, bytes]"; expected "A | B"
+
+[case dict_vs_typed_dict_note]
+from typing import TypedDict, Any, Never, NotRequired
+
+class D(TypedDict):
+    a: int
+
+def f(my_dict: D):
+    a: dict = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[Any, Any]") \
+                       # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+    c: dict[str, Any] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, Any]") \
+                                 # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+    d: dict[str, int] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, int]") \
+                                 # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+
+class E(TypedDict, extra_items=int):
+    a: NotRequired[int]
+    b: NotRequired[int]
+
+def g(my_dict: E):
+    a: dict = my_dict
+    b: dict[Any, Any] = my_dict
+    c: dict[str, Any] = my_dict
+    d: dict[Any, int] = my_dict
+
+    x: dict[Any, int | str] = my_dict  # E: Incompatible types in assignment (expression has type "E", variable has type "dict[Any, int | str]") \
+                                       # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired

@@ -836,19 +836,29 @@ impl Type {
                 if class1.node_ref == i_s.db.python_state.dict_node_ref()
                     || class1.node_ref == i_s.db.python_state.mutable_mapping_node_ref()
                 {
-                    if let Some(got_value) = td.can_be_overwritten_with(i_s) {
-                        return class1.nth_type_argument(i_s.db, 0).is_same_type(
+                    let mut match_ = if let Some(got_value) = td.can_be_overwritten_with(i_s) {
+                        class1.nth_type_argument(i_s.db, 0).is_same_type(
                             i_s,
                             matcher,
                             &i_s.db.python_state.str_type(),
                         ) & class1
                             .nth_type_argument(i_s.db, 1)
-                            .is_same_type(i_s, matcher, got_value);
+                            .is_same_type(i_s, matcher, got_value)
+                    } else {
+                        Match::new_false()
+                    };
+                    if let Match::False { reason, .. } = &mut match_ {
+                        let from = match class1.node_ref == i_s.db.python_state.dict_node_ref() {
+                            false => "MutableMapping",
+                            true => "dict",
+                        };
+                        *reason = MismatchReason::TypedDictAgainstDictMatching { from }
                     }
+                    match_
                 } else if class1.node_ref == i_s.db.python_state.mapping_node_ref()
                     && td.has_extra_items(i_s.db)
                 {
-                    return class1.nth_type_argument(i_s.db, 0).is_same_type(
+                    class1.nth_type_argument(i_s.db, 0).is_same_type(
                         i_s,
                         matcher,
                         &i_s.db.python_state.str_type(),
@@ -856,9 +866,10 @@ impl Type {
                         i_s,
                         matcher,
                         &td.union_of_all_types(i_s),
-                    );
+                    )
+                } else {
+                    Match::new_false()
                 }
-                Match::new_false()
             }
             _ => Match::new_false(),
         }

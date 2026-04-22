@@ -442,7 +442,7 @@ impl TestCase<'_, '_> {
                 default_panic(info);
             }));
 
-            let diagnostics: Vec<_> = if no_typecheck {
+            let mut diagnostics: Vec<_> = if no_typecheck {
                 vec![]
             } else {
                 project
@@ -478,6 +478,10 @@ impl TestCase<'_, '_> {
                     })
                     .collect()
             };
+            if self.from_mypy_test_suite {
+                // Remove notes that only exist in Zuban
+                diagnostics.retain(|x| !x.contains("note: TypedDicts can only be assigned to"))
+            }
 
             let _ = std::panic::take_hook();
 
