@@ -43,7 +43,7 @@ use crate::{
         match_tuple_type_arguments,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
@@ -162,9 +162,15 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &InferenceState,
         c1: &CallableContent,
-        c2_ref: &CallableContent,
+        c2: &CallableContent,
     ) -> Match {
-        let mut c2 = Cow::Borrowed(c2_ref);
+        let _indent = debug_indent();
+        debug!(
+            "Matching callable {} against {}",
+            c1.format(&FormatData::new_short(i_s.db)),
+            c2.format(&FormatData::new_short(i_s.db)),
+        );
+        let mut c2 = Cow::Borrowed(c2);
         let type_var_matchers_len = self.type_var_matchers.len() as u32;
         if !c2.type_vars.is_empty() {
             if self
