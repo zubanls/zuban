@@ -143,11 +143,11 @@ impl Type {
                     matcher.avoid_recursion(original_t1, value_type, |matcher| {
                         cache_match_result(
                             i_s.db,
+                            matcher,
                             original_t1,
                             value_type,
                             variance,
-                            matcher.has_type_var_matcher(),
-                            || {
+                            |matcher| {
                                 let _indent = debug_indent();
                                 debug!(
                                     "Match recursive: {} against {}",
@@ -207,18 +207,18 @@ impl Type {
                     }
                     let mut m = avoid_structural_matching_recursion(
                         i_s.db,
+                        matcher,
                         self,
                         value_type,
-                        matcher.has_type_var_matcher(),
-                        || d1.is_super_type_of(i_s, matcher, d2),
+                        |matcher| d1.is_super_type_of(i_s, matcher, d2),
                     );
                     if variance == Variance::Invariant {
                         m &= avoid_structural_matching_recursion(
                             i_s.db,
+                            matcher,
                             value_type,
                             self,
-                            matcher.has_type_var_matcher(),
-                            || d2.is_super_type_of(i_s, matcher, d1),
+                            |matcher| d2.is_super_type_of(i_s, matcher, d1),
                         )
                     }
                     m.similar_if_false()
@@ -384,10 +384,10 @@ impl Type {
                 {
                     avoid_structural_matching_recursion(
                         i_s.db,
+                        matcher,
                         self,
                         value_type,
-                        matcher.has_type_var_matcher(),
-                        || class1.check_protocol_match(i_s, matcher, value_type),
+                        |matcher| class1.check_protocol_match(i_s, matcher, value_type),
                     )
                 } else {
                     Match::new_false()

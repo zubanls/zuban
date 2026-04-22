@@ -54,18 +54,19 @@ pub fn invalidate_matching_cache() {
 
 pub(crate) fn cache_match_result(
     db: &Database,
+    matcher: &mut Matcher,
     t1: &Type,
     t2: &Type,
     variance: Variance,
-    had_type_var_matcher: bool,
-    callable: impl FnOnce() -> Match,
+    callable: impl FnOnce(&mut Matcher) -> Match,
 ) -> Match {
     MATCHING_CACHE.with(|cache| {
+        let had_type_var_matcher = matcher.has_type_var_matcher();
         let can_be_cached = (!had_type_var_matcher || !t1.has_type_vars() && !t2.has_type_vars())
             && !t1.has_self_type(db)
             && !t2.has_self_type(db);
         if !can_be_cached {
-            return callable();
+            return callable(matcher);
         }
         let key = (t1.clone(), t2.clone(), variance);
         if let Some(already_known) = cache.cached.borrow().get(&key) {
@@ -77,7 +78,7 @@ pub(crate) fn cache_match_result(
             );
             return already_known.clone();
         }
-        let result = callable();
+        let result = callable(matcher);
         cache.cached.borrow_mut().insert(key, result.clone());
         result
     })
@@ -86,10 +87,10 @@ pub(crate) fn cache_match_result(
 // For both Protocols and TypedDict
 pub(crate) fn avoid_structural_matching_recursion(
     db: &Database,
+    matcher: &mut Matcher,
     t1: &Type,
     t2: &Type,
-    had_type_var_matcher: bool,
-    callable: impl FnOnce() -> Match,
+    callable: impl FnOnce(&mut Matcher) -> Match,
 ) -> Match {
     MATCHING_CACHE.with(|cache| {
         let mut current = cache.avoid_recursions.borrow_mut();
@@ -123,46 +124,27 @@ pub(crate) fn avoid_structural_matching_recursion(
                     // where it replace function type vars repeatedly with new generated type vars.
                     // I'm not 100% sure this holds for all cases, but it feels like this is fine.
                     drop(current);
-                    return avoid_structural_matching_recursion(
-                        db,
-                        &new_t1,
-                        t2,
-                        had_type_var_matcher,
-                        callable,
-                    );
+                    return avoid_structural_matching_recursion(db, matcher, &new_t1, t2, callable);
                 }
                 if let Some(new_t2) = replace(t2) {
                     drop(current);
-                    return avoid_structural_matching_recursion(
-                        db,
-                        t1,
-                        &new_t2,
-                        had_type_var_matcher,
-                        callable,
-                    );
+                    return avoid_structural_matching_recursion(db, matcher, t1, &new_t2, callable);
                 }
             }
-            cache_match_result(
-                db,
-                t1,
-                t2,
-                Variance::Covariant,
-                had_type_var_matcher,
-                || {
-                    let new_t = (t1.clone(), t2.clone());
-                    current.push(new_t);
-                    drop(current);
-                    debug!(
-                        r#"Match protocol/TypedDict "{}" against "{}""#,
-                        t1.format_short(db),
-                        t2.format_short(db),
-                    );
-                    let _indent = debug_indent();
-                    let result = callable();
-                    cache.avoid_recursions.borrow_mut().pop();
-                    result
-                },
-            )
+            cache_match_result(db, matcher, t1, t2, Variance::Covariant, |matcher| {
+                let new_t = (t1.clone(), t2.clone());
+                current.push(new_t);
+                drop(current);
+                debug!(
+                    r#"Match protocol/TypedDict "{}" against "{}""#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                );
+                let _indent = debug_indent();
+                let result = callable(matcher);
+                cache.avoid_recursions.borrow_mut().pop();
+                result
+            })
         }
     })
 }
