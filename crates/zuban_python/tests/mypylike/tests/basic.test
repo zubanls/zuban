@@ -1959,3 +1959,9 @@ if not (not TYPE_CHECKING or bool()):
 else:
     z = int()
 assert_type(z, str | int)
+
+[case exception_intersection_should_be_raisable]
+# From GH #400
+def f[T](result: T | Exception) -> None:
+    if isinstance(result, Exception):
+        raise result  # error: Exception must be derived from BaseException  [misc]

@@ -2519,6 +2519,9 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
         Type::Union(union) => union
             .iter()
             .all(|t| valid_raise_type(i_s, from, t, allow_none)),
+        Type::Intersection(intersection) => intersection
+            .iter_entries()
+            .any(|t| valid_raise_type(i_s, from, t, allow_none)),
         Type::None if allow_none => true,
         _ => false,
     }
