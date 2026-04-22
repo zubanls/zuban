@@ -550,14 +550,13 @@ impl<'db> Inference<'db, '_, '_> {
 }
 
 fn is_any_dict(db: &Database, t: &Type) -> bool {
-    match t {
+    t.for_all_in_union(db, &|t| match t {
         Type::Any(_) => true,
         Type::Class(c) => {
             c.link == db.python_state.dict_node_ref().as_link() && c.generics.all_any()
         }
-        Type::Union(u) => u.iter().all(|t| is_any_dict(db, t)),
         _ => false,
-    }
+    })
 }
 
 fn check_elements_with_context<'db>(

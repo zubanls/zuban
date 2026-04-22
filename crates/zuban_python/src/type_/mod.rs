@@ -669,6 +669,7 @@ impl Type {
                 .calculated_type_if_ready(db)
                 .is_none_or(|t| t.is_calculating(db)),
             Type::Union(u) => u.iter().any(|t| t.is_calculating(db)),
+            Type::Intersection(i) => i.iter_entries().any(|t| t.is_calculating(db)),
             _ => false,
         }
     }

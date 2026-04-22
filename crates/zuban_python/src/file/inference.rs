@@ -3141,7 +3141,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         && l_type.is_allowed_as_literal_string(false)
                         && right
                             .as_cow_type(i_s)
-                            .is_literal_string_only_argument_for_string_percent_formatting()
+                            .is_literal_string_only_argument_for_string_percent_formatting(i_s.db)
                     {
                         add_to_union(Inferred::from_type(Type::LiteralString { implicit: true }));
                         return;

@@ -2487,7 +2487,7 @@ impl Inference<'_, '_, '_> {
 fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: bool) -> bool {
     let db = i_s.db;
     let check = |cls: Class| cls.incomplete_mro(db) || cls.is_base_exception(db);
-    match t {
+    t.for_all_in_union(db, &|t| match t {
         Type::Class(c) => check(c.class(db)),
         Type::Dataclass(dc) => check(dc.class(db)),
         Type::Type(inner_t) => {
@@ -2516,15 +2516,9 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             _ => false,
         },
         Type::Any(_) | Type::Never(_) => true,
-        Type::Union(union) => union
-            .iter()
-            .all(|t| valid_raise_type(i_s, from, t, allow_none)),
-        Type::Intersection(intersection) => intersection
-            .iter_entries()
-            .any(|t| valid_raise_type(i_s, from, t, allow_none)),
         Type::None if allow_none => true,
         _ => false,
-    }
+    })
 }
 
 pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {

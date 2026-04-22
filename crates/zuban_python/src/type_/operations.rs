@@ -899,28 +899,29 @@ impl Type {
         }
     }
 
-    pub fn is_literal_string_only_argument_for_string_percent_formatting(&self) -> bool {
-        fn check(t: &Type, allow_tuples: bool) -> bool {
-            let check_tup_items = |items: &Arc<[Type]>| items.iter().all(|t| check(t, false));
-            match t {
+    pub fn is_literal_string_only_argument_for_string_percent_formatting(
+        &self,
+        db: &Database,
+    ) -> bool {
+        fn check(db: &Database, t: &Type, allow_tuples: bool) -> bool {
+            let check_tup_items = |items: &Arc<[Type]>| items.iter().all(|t| check(db, t, false));
+            t.for_all_in_union(db, &|t| match t {
                 Type::Tuple(tup) if allow_tuples => match &tup.args {
                     TupleArgs::WithUnpack(w) => match &w.unpack {
                         TupleUnpack::TypeVarTuple(_) => false,
                         TupleUnpack::ArbitraryLen(t) => {
-                            check(t, false)
+                            check(db, t, false)
                                 && check_tup_items(&w.before)
                                 && check_tup_items(&w.after)
                         }
                     },
                     TupleArgs::FixedLen(items) => check_tup_items(items),
-                    TupleArgs::ArbitraryLen(t) => check(t, false),
+                    TupleArgs::ArbitraryLen(t) => check(db, t, false),
                 },
-                Type::Union(u) => u.iter().all(|t| check(t, allow_tuples)),
-                Type::Intersection(i) => i.iter_entries().any(|t| check(t, allow_tuples)),
                 _ => t.is_allowed_as_literal_string(true),
-            }
+            })
         }
-        check(self, true)
+        check(db, self, true)
     }
 
     pub fn try_operation_against_literal_string(&self, operand: &str) -> Option<Type> {
