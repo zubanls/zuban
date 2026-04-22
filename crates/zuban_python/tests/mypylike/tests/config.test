@@ -355,3 +355,12 @@ from typing_extensions import deprecated
 def foo(): ...
 
 foo()  # E: function __main__.foo is deprecated: Deprecated
+
+[case env_var_lookups]
+# From GH #404
+[file pyproject.toml]
+[tool.zuban]
+# Use the manifest dir here, since it is always set by cargo
+mypy_path = ["$CARGO_MANIFEST_DIR/tests/mypylike/packages/simple_with_error"]
+[out]
+x.py:1: error: "int" not callable

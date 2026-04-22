@@ -17,5 +17,6 @@ anyhow.workspace = true
 clap.workspace = true
 rust-ini = { version = "0.21.0", features = ["inline-comment"], git = "https://github.com/davidhalter-archive/rust-ini.git", branch="indented-multiline-values" }
 regex.workspace = true
+shellexpand.workspace = true
 tracing.workspace = true
 toml_edit.workspace = true

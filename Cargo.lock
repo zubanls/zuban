@@ -270,6 +270,7 @@ dependencies = [
  "clap",
  "regex",
  "rust-ini",
+ "shellexpand",
  "toml_edit",
  "tracing",
  "vfs",

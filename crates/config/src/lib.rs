@@ -1,7 +1,7 @@
 mod searcher;
 mod venv;
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, env::VarError, sync::Arc};
 
 use anyhow::{anyhow, bail};
 use clap::ValueEnum as _;
@@ -206,17 +206,34 @@ fn to_normalized_path(
 }
 
 fn replace_env_vars<'x>(config_file_path: Option<&AbsPath>, s: &'x str) -> Cow<'x, str> {
-    // Replace only $MYPY_CONFIG_FILE_DIR for now.
-    if s.contains('$')
-        && let Some(config_file_path) = config_file_path
-        && let Some(mypy_config_file_dir) = config_file_path.as_ref().parent()
-    {
-        return Cow::Owned(s.replace(
-            "$MYPY_CONFIG_FILE_DIR",
-            mypy_config_file_dir.to_str().unwrap(),
-        ));
-    }
-    Cow::Borrowed(s)
+    shellexpand::full_with_context_no_errors(
+        s,
+        || std::env::home_dir()?.into_os_string().into_string().ok(),
+        |name| {
+            if name == "MYPY_CONFIG_FILE_DIR" {
+                if let Some(config_file_path) = config_file_path
+                    && let Some(mypy_config_file_dir) = config_file_path.as_ref().parent()
+                {
+                    return Some(mypy_config_file_dir.to_str().unwrap().to_string());
+                } else {
+                    tracing::error!(
+                        "Could not resolve $MYPY_CONFIG_FILE_DIR, because \
+                         there is no valid config file path"
+                    )
+                }
+            }
+            match std::env::var(name) {
+                Ok(result) => Some(result),
+                Err(VarError::NotPresent) => None,
+                Err(err) => {
+                    tracing::error!(
+                        "Wanted to expand the shell variables in {s:?}, but got: {err:?}"
+                    );
+                    None
+                }
+            }
+        },
+    )
 }
 
 impl ProjectOptions {
