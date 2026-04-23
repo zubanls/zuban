@@ -196,9 +196,11 @@ impl ErrorTypes<'_> {
             MismatchReason::TypedDictAgainstDictMatching { from } => {
                 add_issue(IssueKind::Note(
                     format!(
-                        "TypedDicts can only be assigned to a {from} if the types \
-                             match, there's extra_items with the same type \
-                             and all keys are NotRequired"
+                        "TypedDicts cannot be assigned to {from}, callers could \
+                             delete or change keys to violate their type contract. \
+                             Use Mapping[...] for read-only access or make all \
+                             TypedDict keys NotRequired combined with a compatible \
+                             `extra_items` class parameter."
                     )
                     .into(),
                 ));

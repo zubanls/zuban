@@ -317,11 +317,11 @@ b3: B3 = {"x": 0, "y": 0}
 # > A TypedDict isn’t consistent with any Dict[...] type.
 
 d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]") \
-                         # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                         # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
 d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]") \
-                            # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                            # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
 d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]") \
-                         # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                         # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
 
 # > A TypedDict with all int values is not consistent with Mapping[str, int].
 
@@ -698,19 +698,19 @@ class OnlyStrNonRequired(TypedDict, extra_items=str):
 
 def f(x: OnlyStr, y: OnlyStrNonRequired):
     a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]") \
-                                     # N: TypedDicts can only be assigned to a MutableMapping if the types match, there's extra_items with the same type and all keys are NotRequired
+                                     # TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
     a = y
     b: Mapping[str, str] = x
     b = y
     c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]") \
-                           # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                           # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
     c = y
 
     d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]") \
-                           # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                           # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
     e: Mapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "Mapping[str, int]")
     f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]") \
-                                     # N: TypedDicts can only be assigned to a MutableMapping if the types match, there's extra_items with the same type and all keys are NotRequired
+                                     # TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
 
 [case typed_dict_extra_items_methods]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -1238,11 +1238,11 @@ class D(TypedDict):
 
 def f(my_dict: D):
     a: dict = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[Any, Any]") \
-                       # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                       # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
     c: dict[str, Any] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, Any]") \
-                                 # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                                 # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
     d: dict[str, int] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, int]") \
-                                 # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                                 # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
 
 class E(TypedDict, extra_items=int):
     a: NotRequired[int]
@@ -1255,4 +1255,4 @@ def g(my_dict: E):
     d: dict[Any, int] = my_dict
 
     x: dict[Any, int | str] = my_dict  # E: Incompatible types in assignment (expression has type "E", variable has type "dict[Any, int | str]") \
-                                       # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+                                       # N: TypedDicts cannot be assigned to {from}, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired combined with a compatible `extra_items` clas parameter.
