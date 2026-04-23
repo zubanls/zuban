@@ -2722,3 +2722,74 @@ class B(Base):
 class C(A, B): ...
 
 C()  # Cannot instantiate abstract class "C" with abstract attribute "g"
+
+[case disjoint_base_conformance_tests1]
+from typing import NamedTuple, Protocol, TypedDict, assert_never
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Left:
+    pass
+
+@disjoint_base
+class Right:
+    pass
+
+@disjoint_base
+class LeftChild(Left):
+    pass
+
+@disjoint_base
+class Record(NamedTuple):
+    value: int
+
+class OtherLeftChild(Left): pass
+class LeftAndPlain(Left, Plain): pass
+class LeftChildAndLeft(LeftChild, Left): pass
+class PlainRecord(Plain, Record): pass
+
+class LeftAndRight(Left, Right): pass  # E: incompatible disjoint bases
+class LeftChildAndRight(LeftChild, Right): pass  # E: incompatible disjoint bases
+class LeftAndRightViaChild(LeftAndPlain, Right): pass  # E: incompatible disjoint bases
+class LeftRecord(Left, Record): pass  # E: incompatible disjoint bases
+
+[case disjoint_base_conformance_tests2]
+from typing import NamedTuple, Protocol, TypedDict, assert_never
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Left:
+    pass
+
+@disjoint_base
+class Right:
+    pass
+
+class SlotBase1:
+    __slots__ = ("x",)
+
+class SlotBase2:
+    __slots__ = ("y",)
+
+class EmptySlots:
+    __slots__ = ()
+
+class SlotAndEmptySlots(SlotBase1, EmptySlots):
+    pass
+
+class IncompatibleSlots(SlotBase1, SlotBase2):  # E: incompatible disjoint bases
+    pass
+
+@disjoint_base  # E: disjoint_base cannot be applied to a function
+def func() -> None:
+    pass
+
+
+@disjoint_base  # E: disjoint_base cannot be applied to a TypedDict
+class Movie(TypedDict):
+    name: str
+
+
+@disjoint_base  # E: disjoint_base cannot be applied to a Protocol
+class SupportsClose(Protocol):
+    def close(self) -> None: ...

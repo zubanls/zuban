@@ -572,6 +572,8 @@ testIsInstanceAdHocIntersectionWithStrAndBytes
 testSlotsAssignmentWithMixin
 testTypedDictCannotBeDisjointBase
 testProtocolCannotBeDisjointBase
+disjoint_base_conformance_tests1
+disjoint_base_conformance_tests2
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
