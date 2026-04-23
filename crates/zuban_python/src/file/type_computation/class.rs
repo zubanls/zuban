@@ -1169,18 +1169,29 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.add_issue_on_args(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
-        let (mro, linearizable) = linearize_mro_and_return_linearizable(db, &bases);
-        if !linearizable {
-            self.add_issue_on_args(
-                i_s,
-                IssueKind::InconsistentMro {
-                    name: self.name().into(),
-                },
-            );
-        }
+        let linearized_mro = linearize_mro_and_return_validity_and_disjoint_base(
+            db,
+            &bases,
+            || {
+                self.add_issue_on_args(
+                    i_s,
+                    IssueKind::InconsistentMro {
+                        class_name: self.name().into(),
+                    },
+                );
+            },
+            || {
+                self.add_issue_on_args(
+                    i_s,
+                    IssueKind::IncompatibleDisjointBases {
+                        class_name: self.name().into(),
+                    },
+                );
+            },
+        );
 
         let mut found_tuple_like = None;
-        for base in mro.iter() {
+        for base in linearized_mro.mro.iter() {
             if matches!(base.type_, Type::Tuple(_) | Type::NamedTuple(_)) {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
@@ -1197,10 +1208,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             Default::default()
         };
         let abstract_attributes =
-            self.calculate_abstract_attributes(db, &metaclass, &class_kind, &mro);
+            self.calculate_abstract_attributes(db, &metaclass, &class_kind, &linearized_mro.mro);
         (
             Box::new(ClassInfos {
-                mro,
+                mro: linearized_mro.mro,
                 metaclass,
                 incomplete_mro,
                 kind: class_kind,
@@ -1224,6 +1235,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 deprecated_reason: None,
                 dataclass_transform,
                 undefined_generics_type,
+                disjoint_base: linearized_mro.disjoint_base,
             }),
             typed_dict_options,
         )
@@ -1974,6 +1986,45 @@ fn to_base_kind(t: &Type) -> BaseKind {
     }
 }
 
+pub struct LinearizedMro {
+    mro: Box<[BaseClass]>,
+    pub is_valid: bool,
+    disjoint_base: PointLink,
+}
+pub fn linearize_mro_and_return_validity_and_disjoint_base(
+    db: &Database,
+    bases: &[Type],
+    on_non_linearizable: impl FnOnce(),
+    on_disjoint_bases: impl FnOnce(),
+) -> LinearizedMro {
+    let (mro, linearizable) = linearize_mro_and_return_linearizable(db, bases);
+    if !linearizable {
+        on_non_linearizable()
+    }
+    let mut disjoint_base = None;
+    let mut has_disjoint_base = false;
+    for base in bases {
+        if let Some(cls) = base_class(db, base) {
+            let new = cls.use_cached_class_infos(db).disjoint_base;
+            if let Some(current) = disjoint_base {
+                if current != new {
+                    has_disjoint_base = true;
+                }
+            } else {
+                disjoint_base = Some(new);
+            }
+        }
+    }
+    if has_disjoint_base {
+        on_disjoint_bases();
+    }
+    LinearizedMro {
+        mro,
+        is_valid: linearizable && !has_disjoint_base,
+        disjoint_base: disjoint_base.unwrap_or_else(|| db.python_state.object_link()),
+    }
+}
+
 pub fn linearize_mro_and_return_linearizable(
     db: &Database,
     bases: &[Type],
@@ -2047,22 +2098,10 @@ pub fn linearize_mro_and_return_linearizable(
         .iter()
         .map(|t| {
             let mut additional_type = None;
-            let generic_class = match &t {
-                Type::Class(c) => Some(c.class(db)),
-                Type::Dataclass(d) => Some(d.class.class(db)),
-                Type::Tuple(tup) => {
-                    let cls = tup.class(db);
+            let super_classes = if let Some(cls) = base_class(db, t) {
+                if matches!(t, Type::Tuple(_) | Type::NamedTuple(_)) {
                     additional_type = Some(cls.as_type(db));
-                    Some(cls)
                 }
-                Type::NamedTuple(nt) => {
-                    let cls = nt.as_tuple_ref().class(db);
-                    additional_type = Some(cls.as_type(db));
-                    Some(cls)
-                }
-                _ => None,
-            };
-            let super_classes = if let Some(cls) = generic_class {
                 let cached_class_infos = cls.use_cached_class_infos(db);
                 cached_class_infos.mro.as_ref()
             } else {
@@ -2157,6 +2196,16 @@ pub fn linearize_mro_and_return_linearizable(
         unreachable!()
     }
     (mro.into_boxed_slice(), linearizable)
+}
+
+fn base_class<'x>(db: &'x Database, t: &'x Type) -> Option<Class<'x>> {
+    Some(match &t {
+        Type::Class(c) => c.class(db),
+        Type::Dataclass(d) => d.class.class(db),
+        Type::Tuple(tup) => tup.class(db),
+        Type::NamedTuple(nt) => nt.as_tuple_ref().class(db),
+        _ => return None,
+    })
 }
 
 fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) -> Box<str> {

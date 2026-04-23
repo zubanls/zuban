@@ -1770,6 +1770,7 @@ pub(crate) struct ClassInfos {
     pub abstract_attributes: Box<[PointLink]>,
     pub in_django_stubs: OnceLock<bool>,
     pub dataclass_transform: Option<Box<DataclassTransformObj>>,
+    pub disjoint_base: PointLink,
     pub promote_to: Mutex<Option<PointLink>>,
     pub deprecated_reason: Option<Arc<Box<str>>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
@@ -1793,6 +1794,7 @@ impl Clone for ClassInfos {
             abstract_attributes: self.abstract_attributes.clone(),
             in_django_stubs: self.in_django_stubs.clone(),
             dataclass_transform: self.dataclass_transform.clone(),
+            disjoint_base: self.disjoint_base,
             promote_to: Mutex::new(*self.promote_to.lock().unwrap()),
             deprecated_reason: self.deprecated_reason.clone(),
             variance_map: self.variance_map.clone(),
@@ -1814,6 +1816,7 @@ impl PartialEq for ClassInfos {
             && self.is_runtime_checkable == other.is_runtime_checkable
             && self.abstract_attributes == other.abstract_attributes
             && self.dataclass_transform == other.dataclass_transform
+            && self.disjoint_base == other.disjoint_base
             && *self.promote_to.lock().unwrap() == *other.promote_to.lock().unwrap()
             && self.deprecated_reason == other.deprecated_reason
             && self.variance_map == other.variance_map

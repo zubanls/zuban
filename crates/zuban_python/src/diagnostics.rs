@@ -149,7 +149,8 @@ pub(crate) enum IssueKind {
     MetaclassConflict,
     CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
-    InconsistentMro { name: Box<str> },
+    InconsistentMro { class_name: Box<str> },
+    IncompatibleDisjointBases { class_name: Box<str> },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
     CurrentlyUnsupportedBaseClassCycle,
@@ -345,6 +346,7 @@ pub(crate) enum IssueKind {
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
     IntersectionCannotExistDueToInconsistentMro { intersection: Box<str> },
+    IntersectionCannotExistDueToDisjointBases { intersection: Box<str> },
 
     TypeGuardFunctionsMustHaveArgument { name: &'static str },
     TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t: Box<str>, input_t: Box<str> },
@@ -634,7 +636,8 @@ impl IssueKind {
             | RightOperandIsNeverOperated { .. }
             | IntersectionCannotExistDueToFinalClass { .. }
             | IntersectionCannotExistDueToIncompatibleMethodSignatures { .. }
-            | IntersectionCannotExistDueToInconsistentMro { .. } => "unreachable",
+            | IntersectionCannotExistDueToInconsistentMro { .. }
+            | IntersectionCannotExistDueToDisjointBases { .. } => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
             NonOverlappingEqualityCheck { .. }
@@ -1382,8 +1385,11 @@ impl<'db> Diagnostic<'db> {
                  a (non-strict) subclass of the metaclasses of all its bases".to_string(),
             CannotSubclassNewType => "Cannot subclass \"NewType\"".to_string(),
             DuplicateBaseClass{name} => format!("Duplicate base class \"{name}\""),
-            InconsistentMro{name} => format!(
-                "Cannot determine consistent method resolution order (MRO) for \"{name}\""
+            InconsistentMro { class_name } => format!(
+                "Cannot determine consistent method resolution order (MRO) for \"{class_name}\""
+            ),
+            IncompatibleDisjointBases { class_name } => format!(
+                "Class \"{class_name}\" has incompatible disjoint bases"
             ),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
@@ -1877,6 +1883,9 @@ impl<'db> Diagnostic<'db> {
             ),
             IntersectionCannotExistDueToInconsistentMro { intersection } => format!(
                 r#"Subclass of {intersection} cannot exist: would have inconsistent method resolution order"#
+            ),
+            IntersectionCannotExistDueToDisjointBases { intersection } => format!(
+                r#"Subclass of {intersection} cannot exist: have distinct disjoint bases"#
             ),
 
             TypeGuardFunctionsMustHaveArgument { name } => format!(
