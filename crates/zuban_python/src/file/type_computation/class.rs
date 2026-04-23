@@ -24,7 +24,7 @@ use crate::{
         name_resolution::{NameResolution, PointResolution},
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
-        utils::should_add_deprecated,
+        utils::{for_each_reachable_if_stmt_block, should_add_deprecated},
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -1903,6 +1903,17 @@ fn find_stmt_named_tuple_types(
             StmtLikeContent::FunctionDef(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
+            StmtLikeContent::IfStmt(if_stmt) => {
+                let mut reachability_unknown = false;
+                for_each_reachable_if_stmt_block(file, if_stmt, |block, always_reachable| {
+                    reachability_unknown |= !always_reachable;
+                    find_stmt_named_tuple_types(i_s, file, vec, block.iter_stmt_likes())
+                });
+                if reachability_unknown {
+                    NodeRef::new(file, stmt_like.parent_index)
+                        .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
+                }
+            }
             _ => {
                 NodeRef::new(file, stmt_like.parent_index)
                     .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);

@@ -202,3 +202,46 @@ N = NamedTuple("N", [(X, int), (Y, int)])
 N(x=3, y=4)  # OK
 N(a=1)  # E: Unexpected keyword argument "a" for "N"
 N(x="", y=1)  # E: Argument "x" to "N" has incompatible type "str"; expected "int"
+
+[case named_tuple_with_conditional_fields1]
+# Copied from conformance tests (namedtuples_define_class.py)
+from typing import NamedTuple
+import sys
+
+class ConditionalField(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: int
+    if sys.version_info >= (4, 0):
+        z: int
+
+ConditionalField(1, 2)
+ConditionalField(1, 2, 3)  # E: Too many arguments for "ConditionalField"
+
+[case named_tuple_with_conditional_fields2]
+from typing import NamedTuple
+import sys
+
+class ConditionalField(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: int
+    else:
+        z: int
+
+ConditionalField(1, 2)
+ConditionalField(1, 2, 3)  # E: Too many arguments for "ConditionalField"
+
+[case named_tuple_with_conditional_fields3]
+from typing import NamedTuple
+import sys
+
+class ConditionalField(NamedTuple):
+    x: int
+    if bool():  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+        y: int
+    else:
+        z: int
+
+ConditionalField(1, 2)  # E: Missing positional argument "z" in call to "ConditionalField"
+ConditionalField(1, 2, 3)

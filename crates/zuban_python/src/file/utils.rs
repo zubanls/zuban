@@ -548,35 +548,6 @@ impl<'db> Inference<'db, '_, '_> {
             value_t,
         ))
     }
-
-    pub(super) fn for_each_reachable_if_stmt_block(
-        &self,
-        if_stmt: IfStmt,
-        callback: impl Fn(Block),
-    ) {
-        for b in if_stmt.iter_blocks() {
-            let name_binder_check = self
-                .point(b.first_leaf_index())
-                .maybe_calculated_and_specific();
-            let block = match b {
-                IfBlockType::If(_, block) => block,
-                IfBlockType::Else(e) => e.block(),
-            };
-            match name_binder_check {
-                Some(
-                    Specific::IfBranchAlwaysReachableInTypeCheckingBlock
-                    | Specific::IfBranchAlwaysReachableInNameBinder,
-                ) => callback(block),
-                Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
-                    return;
-                }
-                Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
-                    return;
-                }
-                _ => callback(block),
-            }
-        }
-    }
 }
 
 fn is_any_dict(db: &Database, t: &Type) -> bool {
@@ -939,5 +910,35 @@ impl TupleGatherer {
             content.format(&FormatData::new_short(db))
         );
         Inferred::from_type(Type::Tuple(content))
+    }
+}
+
+pub(super) fn for_each_reachable_if_stmt_block(
+    file: &PythonFile,
+    if_stmt: IfStmt,
+    mut callback: impl FnMut(Block, /* always_reachable: */ bool),
+) {
+    for b in if_stmt.iter_blocks() {
+        let name_binder_check = file
+            .points
+            .get(b.first_leaf_index())
+            .maybe_calculated_and_specific();
+        let block = match b {
+            IfBlockType::If(_, block) => block,
+            IfBlockType::Else(e) => e.block(),
+        };
+        match name_binder_check {
+            Some(
+                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                | Specific::IfBranchAlwaysReachableInNameBinder,
+            ) => callback(block, true),
+            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                return;
+            }
+            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
+                return;
+            }
+            _ => callback(block, false),
+        }
     }
 }
