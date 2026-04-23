@@ -623,7 +623,7 @@ impl Inference<'_, '_, '_> {
         let check_with = |with_stmt: WithStmt| {
             self.calc_untyped_block_diagnostics(with_stmt.unpack().1, from_type_var_value)
         };
-        'outer: for stmt_like in block.iter_stmt_likes() {
+        for stmt_like in block.iter_stmt_likes() {
             match stmt_like.node {
                 StmtLikeContent::StarExpressions(star_exprs) => {
                     let Some(expr) = star_exprs.maybe_simple_expression() else {
@@ -730,30 +730,10 @@ impl Inference<'_, '_, '_> {
                     AsyncStmtContent::ForStmt(for_stmt) => check_for(for_stmt),
                     AsyncStmtContent::WithStmt(w) => check_with(w),
                 },
-                StmtLikeContent::IfStmt(if_stmt) => {
-                    for b in if_stmt.iter_blocks() {
-                        let name_binder_check = self
-                            .point(b.first_leaf_index())
-                            .maybe_calculated_and_specific();
-                        let block = match b {
-                            IfBlockType::If(_, block) => block,
-                            IfBlockType::Else(e) => e.block(),
-                        };
-                        match name_binder_check {
-                            Some(
-                                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
-                                | Specific::IfBranchAlwaysReachableInNameBinder,
-                            ) => self.calc_untyped_block_diagnostics(block, from_type_var_value),
-                            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
-                                continue 'outer;
-                            }
-                            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
-                                continue 'outer;
-                            }
-                            _ => self.calc_untyped_block_diagnostics(block, from_type_var_value),
-                        }
-                    }
-                }
+                StmtLikeContent::IfStmt(if_stmt) => self
+                    .for_each_reachable_if_stmt_block(if_stmt, |block| {
+                        self.calc_untyped_block_diagnostics(block, from_type_var_value)
+                    }),
                 StmtLikeContent::WhileStmt(while_stmt) => {
                     let (_, block, else_block) = while_stmt.unpack();
                     self.calc_untyped_block_diagnostics(block, from_type_var_value);

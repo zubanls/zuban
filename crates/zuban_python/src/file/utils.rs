@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use num_bigint::BigInt;
 use parsa_python_cst::{
-    DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
-    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    Block, DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression,
+    FunctionDef, IfBlockType, IfStmt, NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -546,6 +547,35 @@ impl<'db> Inference<'db, '_, '_> {
             key_t,
             value_t,
         ))
+    }
+
+    pub(super) fn for_each_reachable_if_stmt_block(
+        &self,
+        if_stmt: IfStmt,
+        callback: impl Fn(Block),
+    ) {
+        for b in if_stmt.iter_blocks() {
+            let name_binder_check = self
+                .point(b.first_leaf_index())
+                .maybe_calculated_and_specific();
+            let block = match b {
+                IfBlockType::If(_, block) => block,
+                IfBlockType::Else(e) => e.block(),
+            };
+            match name_binder_check {
+                Some(
+                    Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                    | Specific::IfBranchAlwaysReachableInNameBinder,
+                ) => callback(block),
+                Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                    return;
+                }
+                Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
+                    return;
+                }
+                _ => callback(block),
+            }
+        }
     }
 }
 
