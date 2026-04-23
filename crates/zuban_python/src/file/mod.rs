@@ -30,8 +30,8 @@ pub(crate) use type_computation::{
     ANNOTATION_TO_EXPR_DIFFERENCE, CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef,
     DecoratorState, FuncNodeRef, FuncParent, GenericCounts, ORDERING_METHODS, TypeDocs,
     TypeVarCallbackReturn, TypeVarTupleDefaultOrigin, assignment_type_node_ref,
-    expect_class_or_simple_generic, linearize_mro_and_return_validity_and_disjoint_base,
-    maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,
+    expect_class_or_simple_generic, linearize_mro, maybe_saved_annotation,
+    use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_param_annotation_type, use_cached_return_annotation_type,
     use_cached_simple_generic_type,
 };

@@ -185,6 +185,7 @@ pub(crate) struct PythonState {
     pub typinglike_namedtuple_link: PointLink,
     new_type_link: PointLink,
     reveal_type_link: PointLink,
+    pub disjoint_base_link: PointLink,
     typing_cast_index: NodeIndex,
     typing_coroutine_index: NodeIndex,
     typing_iterator_index: NodeIndex,
@@ -325,6 +326,7 @@ impl PythonState {
             typinglike_namedtuple_link: PointLink::new(FileIndex(0), 0),
             new_type_link: PointLink::new(FileIndex(0), 0),
             reveal_type_link: PointLink::new(FileIndex(0), 0),
+            disjoint_base_link: PointLink::new(FileIndex(0), 0),
             type_alias_type_link: PointLink::new(FileIndex(0), 0),
             typing_cast_index: 0,
             typing_overload_index: 0,
@@ -740,6 +742,12 @@ impl PythonState {
             builtins,
             "_NotImplementedType"
         );
+        cache_link_with_typing_extensions_fallback!(
+            disjoint_base_link,
+            "disjoint_base",
+            typing,
+            true
+        );
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");
         cache_index!(typing_iterator_index, typing, "Iterator");
@@ -1112,6 +1120,7 @@ impl PythonState {
     class_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
     attribute_node_ref!(functools, pub total_ordering_node_ref, functools_total_ordering_index);
     attribute_node_ref!(typing, pub runtime_checkable_node_ref, typing_runtime_checkable_index);
+
     attribute_node_ref!(typing_extensions, pub typing_extensions_runtime_checkable_node_ref, typing_extensions_runtime_checkable_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);

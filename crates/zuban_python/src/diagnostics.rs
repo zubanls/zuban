@@ -150,7 +150,7 @@ pub(crate) enum IssueKind {
     CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
     InconsistentMro { class_name: Box<str> },
-    IncompatibleDisjointBases { class_name: Box<str> },
+    DisjointBases { class_name: Box<str> },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
     CurrentlyUnsupportedBaseClassCycle,
@@ -1388,7 +1388,7 @@ impl<'db> Diagnostic<'db> {
             InconsistentMro { class_name } => format!(
                 "Cannot determine consistent method resolution order (MRO) for \"{class_name}\""
             ),
-            IncompatibleDisjointBases { class_name } => format!(
+            DisjointBases { class_name } => format!(
                 "Class \"{class_name}\" has incompatible disjoint bases"
             ),
             CyclicDefinition{name} =>

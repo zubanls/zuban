@@ -6,7 +6,7 @@ use std::{
 use crate::{
     arguments::Args,
     diagnostics::IssueKind,
-    file::{check_multiple_inheritance, linearize_mro_and_return_validity_and_disjoint_base},
+    file::{check_multiple_inheritance, linearize_mro},
     format_data::FormatData,
     getitem::SliceType,
     inference_state::InferenceState,
@@ -165,7 +165,7 @@ impl Intersection {
 
         let mut check = |entries| {
             let add_issue = RefCell::new(&mut add_issue);
-            linearize_mro_and_return_validity_and_disjoint_base(
+            linearize_mro(
                 i_s.db,
                 entries,
                 || {

@@ -211,7 +211,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn class_link_in_mro(&self, db: &Database, link: PointLink) -> bool {
-        if self.0.as_link() == link {
+        if self.0.as_link() == link || link == db.python_state.object_link() {
             return true;
         }
         let class_infos = self.use_cached_class_infos(db);
@@ -481,6 +481,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut is_final = false;
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
+        let mut is_disjoint_base = false;
         let mut dataclass_transform = None;
         let mut deprecated_reason = None;
         if let Some(decorated) = self.node().maybe_decorated() {
@@ -546,6 +547,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .typing_extensions_runtime_checkable_node_ref()
                     {
                         is_runtime_checkable = true;
+                    } else if node_ref.as_link() == db.python_state.disjoint_base_link {
+                        is_disjoint_base = true;
                     } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
                         dataclass_options = Some(d.as_dataclass_options());
                     }
@@ -690,6 +693,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                 }
             }
+        }
+
+        if is_disjoint_base {
+            class_infos.disjoint_base = self.node_ref.as_link();
         }
 
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
@@ -1169,7 +1176,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.add_issue_on_args(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
-        let linearized_mro = linearize_mro_and_return_validity_and_disjoint_base(
+        let linearized_mro = linearize_mro(
             db,
             &bases,
             || {
@@ -1183,7 +1190,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             || {
                 self.add_issue_on_args(
                     i_s,
-                    IssueKind::IncompatibleDisjointBases {
+                    IssueKind::DisjointBases {
                         class_name: self.name().into(),
                     },
                 );
@@ -1991,7 +1998,7 @@ pub struct LinearizedMro {
     pub is_valid: bool,
     disjoint_base: PointLink,
 }
-pub fn linearize_mro_and_return_validity_and_disjoint_base(
+pub fn linearize_mro(
     db: &Database,
     bases: &[Type],
     on_non_linearizable: impl FnOnce(),
@@ -2006,9 +2013,16 @@ pub fn linearize_mro_and_return_validity_and_disjoint_base(
     for base in bases {
         if let Some(cls) = base_class(db, base) {
             let new = cls.use_cached_class_infos(db).disjoint_base;
-            if let Some(current) = disjoint_base {
-                if current != new {
-                    has_disjoint_base = true;
+            if let Some(current) = &mut disjoint_base {
+                if *current != new {
+                    // Check whether any side is a subclass
+                    if cls.class_link_in_mro(db, *current) {
+                        *current = new;
+                    } else if !Class::from_undefined_generics(db, *current)
+                        .class_link_in_mro(db, new)
+                    {
+                        has_disjoint_base = true;
+                    }
                 }
             } else {
                 disjoint_base = Some(new);

@@ -2743,15 +2743,17 @@ class LeftChild(Left):
 class Record(NamedTuple):
     value: int
 
+class Plain: pass
+
 class OtherLeftChild(Left): pass
 class LeftAndPlain(Left, Plain): pass
 class LeftChildAndLeft(LeftChild, Left): pass
 class PlainRecord(Plain, Record): pass
 
-class LeftAndRight(Left, Right): pass  # E: incompatible disjoint bases
-class LeftChildAndRight(LeftChild, Right): pass  # E: incompatible disjoint bases
-class LeftAndRightViaChild(LeftAndPlain, Right): pass  # E: incompatible disjoint bases
-class LeftRecord(Left, Record): pass  # E: incompatible disjoint bases
+class LeftAndRight(Left, Right): pass  # E: Class "LeftAndRight" has incompatible disjoint bases
+class LeftChildAndRight(LeftChild, Right): pass  # E: Class "LeftChildAndRight" has incompatible disjoint bases
+class LeftAndRightViaChild(LeftAndPlain, Right): pass  # E: Class "LeftAndRightViaChild" has incompatible disjoint bases
+class LeftRecord(Left, Record): pass  # E: Class "LeftRecord" has incompatible disjoint bases
 
 [case disjoint_base_conformance_tests2]
 from typing import NamedTuple, Protocol, TypedDict, assert_never

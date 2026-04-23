@@ -10,8 +10,7 @@ mod typed_dict;
 
 pub(crate) use alias::{TypeDocs, assignment_type_node_ref};
 pub(crate) use class::{
-    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS,
-    linearize_mro_and_return_validity_and_disjoint_base,
+    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS, linearize_mro,
 };
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
