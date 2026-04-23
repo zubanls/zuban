@@ -24,7 +24,10 @@ use crate::{
         name_resolution::{NameResolution, PointResolution},
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
-        utils::{for_each_reachable_if_stmt_block, should_add_deprecated},
+        utils::{
+            for_each_reachable_if_stmt_block_and_return_reachability_always_known,
+            should_add_deprecated,
+        },
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -1839,6 +1842,25 @@ fn find_stmt_typed_dict_types(
                         .add_type_issue(db, IssueKind::TypedDictInvalidMember);
                 }
             },
+            StmtLikeContent::IfStmt(if_stmt) => {
+                if !for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                    file,
+                    if_stmt,
+                    |block| {
+                        find_stmt_typed_dict_types(
+                            i_s,
+                            file,
+                            vec,
+                            block.iter_stmt_likes(),
+                            initialization_args,
+                            extra_items,
+                        )
+                    },
+                ) {
+                    NodeRef::new(file, stmt_like.parent_index)
+                        .add_type_issue(db, IssueKind::TypedDictInvalidMember);
+                }
+            }
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
@@ -1904,12 +1926,11 @@ fn find_stmt_named_tuple_types(
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
             StmtLikeContent::IfStmt(if_stmt) => {
-                let mut reachability_unknown = false;
-                for_each_reachable_if_stmt_block(file, if_stmt, |block, always_reachable| {
-                    reachability_unknown |= !always_reachable;
-                    find_stmt_named_tuple_types(i_s, file, vec, block.iter_stmt_likes())
-                });
-                if reachability_unknown {
+                if !for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                    file,
+                    if_stmt,
+                    |block| find_stmt_named_tuple_types(i_s, file, vec, block.iter_stmt_likes()),
+                ) {
                     NodeRef::new(file, stmt_like.parent_index)
                         .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
                 }

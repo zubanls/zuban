@@ -212,7 +212,7 @@ class ConditionalField(NamedTuple):
     x: int
     if sys.version_info >= (3, 12):
         y: int
-    if sys.version_info >= (4, 0):
+    if sys.version_info < (3, 0):
         z: int
 
 ConditionalField(1, 2)

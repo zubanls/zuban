@@ -913,11 +913,12 @@ impl TupleGatherer {
     }
 }
 
-pub(super) fn for_each_reachable_if_stmt_block(
+pub(super) fn for_each_reachable_if_stmt_block_and_return_reachability_always_known(
     file: &PythonFile,
     if_stmt: IfStmt,
-    mut callback: impl FnMut(Block, /* always_reachable: */ bool),
-) {
+    mut callback: impl FnMut(Block),
+) -> bool {
+    let mut reachability_always_known = true;
     for b in if_stmt.iter_blocks() {
         let name_binder_check = file
             .points
@@ -931,14 +932,18 @@ pub(super) fn for_each_reachable_if_stmt_block(
             Some(
                 Specific::IfBranchAlwaysReachableInTypeCheckingBlock
                 | Specific::IfBranchAlwaysReachableInNameBinder,
-            ) => callback(block, true),
+            ) => callback(block),
             Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
-                return;
+                return reachability_always_known;
             }
             Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
-                return;
+                return reachability_always_known;
             }
-            _ => callback(block, false),
+            _ => {
+                reachability_always_known = false;
+                callback(block)
+            }
         }
     }
+    reachability_always_known
 }

@@ -1256,3 +1256,32 @@ def g(my_dict: E):
 
     x: dict[Any, int | str] = my_dict  # E: Incompatible types in assignment (expression has type "E", variable has type "dict[Any, int | str]") \
                                        # N: TypedDicts can only be assigned to a dict if the types match, there's extra_items with the same type and all keys are NotRequired
+
+[case conditional_typed_dict_fields1]
+# Copied from conformance tests (typeddicts_class_syntax.py)
+from typing import TypedDict
+
+class ConditionalField(TypedDict):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: int
+    if sys.version_info < (3, 0):
+        z: int
+
+ConditionalField(x=1, y=2)
+ConditionalField(x=1, y=2, z=3)  # E: Extra key "z" for TypedDict "ConditionalField"
+
+[case conditional_typed_dict_fields2]
+from typing import TypedDict
+
+class ConditionalField(TypedDict):
+    x: int
+
+    if bool():  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        y: int
+    else:
+        z: int
+
+ConditionalField(x=1, y=2)  # E: Missing key "z" for TypedDict "ConditionalField"
+ConditionalField(x=1, y=2, z=3)

@@ -21,7 +21,10 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{File, Inference, inference::AssignKind, utils::for_each_reachable_if_stmt_block},
+    file::{
+        File, Inference, inference::AssignKind,
+        utils::for_each_reachable_if_stmt_block_and_return_reachability_always_known,
+    },
     format_data::FormatData,
     imports::ImportResult,
     inference_state::InferenceState,
@@ -731,9 +734,11 @@ impl Inference<'_, '_, '_> {
                     AsyncStmtContent::WithStmt(w) => check_with(w),
                 },
                 StmtLikeContent::IfStmt(if_stmt) => {
-                    for_each_reachable_if_stmt_block(self.file, if_stmt, |block, _| {
-                        self.calc_untyped_block_diagnostics(block, from_type_var_value)
-                    })
+                    for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                        self.file,
+                        if_stmt,
+                        |block| self.calc_untyped_block_diagnostics(block, from_type_var_value),
+                    );
                 }
                 StmtLikeContent::WhileStmt(while_stmt) => {
                     let (_, block, else_block) = while_stmt.unpack();
