@@ -1481,11 +1481,10 @@ fn narrow_is_or_eq(
         // Mypy does only want to narrow if there are explicit literals on one side. See also
         // comments around testNarrowingEqualityFlipFlop.
         Type::Literal(literal1)
-            if is_eq
-                && (!literal1.implicit
-                    || key.is_simple_name() && !i_s.db.mypy_compatible()
-                    || has_explicit_literal(i_s.db, checking_t))
-                || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
+            if !is_eq
+                || !literal1.implicit
+                || key.is_simple_name() && !i_s.db.mypy_compatible()
+                || has_explicit_literal(i_s.db, checking_t) =>
         {
             let (true_type, false_type) = split_off_singleton(i_s, checking_t, other_t, is_eq);
             Some((
