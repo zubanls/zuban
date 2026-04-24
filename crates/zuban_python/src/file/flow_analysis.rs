@@ -4333,11 +4333,19 @@ impl<'file> Inference<'_, 'file, '_> {
             &isinstance_type,
             |issue| self.flags().warn_unreachable && self.add_issue(args.index(), issue),
         );
-        let key = input.key?;
-        Some(FramesWithParentUnions {
-            truthy: Frame::from_type(key.clone(), truthy),
-            falsey: Frame::from_type(key, falsey),
-            parent_unions: input.parent_unions,
+        // dbg!(&truthy, &falsey);
+        Some(if let Some(key) = input.key {
+            FramesWithParentUnions {
+                truthy: Frame::from_type(key.clone(), truthy),
+                falsey: Frame::from_type(key, falsey),
+                parent_unions: input.parent_unions,
+            }
+        } else {
+            FramesWithParentUnions {
+                truthy: Frame::from_type_without_entry(&truthy),
+                falsey: Frame::from_type_without_entry(&falsey),
+                parent_unions: input.parent_unions,
+            }
         })
     }
 
@@ -5352,6 +5360,7 @@ struct ComparisonPartInfos {
     parent_unions: RefCell<ParentUnions>,
 }
 
+#[derive(Debug)]
 struct FramesWithParentUnions {
     truthy: Frame,
     falsey: Frame,

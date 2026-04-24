@@ -2307,3 +2307,11 @@ y = 'a'
 reveal_type(y)  # N: Revealed type is "Literal['a']?"
 z = 'a'
 reveal_type(z)  # N: Revealed type is "Literal['a']?"
+
+[case isinstance_with_and_without_something_narrowable]
+# flags: --warn-unreachable
+x = 1
+if isinstance(x, str):  # E: Subclass of "int" and "str" cannot exist: have distinct disjoint bases
+    print()  # E: Statement is unreachable
+if isinstance(int(), str):  # E: Subclass of "int" and "str" cannot exist: have distinct disjoint bases
+    print()  # E: Statement is unreachable

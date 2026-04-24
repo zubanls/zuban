@@ -529,8 +529,6 @@ testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2
 testNarrowingUsingTypeVar
 testNarrowTypeVarBoundType
 testNarrowTypeVarBoundUnion
-# Do not narrow to Never
-testDoNotNarrowToNever
 # Property setter narrowing?
 testCustomSetterNarrowingReWidened
 
