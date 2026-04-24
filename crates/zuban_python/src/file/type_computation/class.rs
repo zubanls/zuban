@@ -481,7 +481,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut is_final = false;
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
-        let mut is_disjoint_base = false;
+        let mut is_disjoint_base = None;
         let mut dataclass_transform = None;
         let mut deprecated_reason = None;
         if let Some(decorated) = self.node().maybe_decorated() {
@@ -548,7 +548,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     {
                         is_runtime_checkable = true;
                     } else if node_ref.as_link() == db.python_state.disjoint_base_link {
-                        is_disjoint_base = true;
+                        is_disjoint_base = Some(decorator);
                     } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
                         dataclass_options = Some(d.as_dataclass_options());
                     }
@@ -695,7 +695,28 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
 
-        if is_disjoint_base
+        if let Some(decorator) = is_disjoint_base {
+            match class_infos.kind {
+                ClassKind::Protocol => {
+                    is_disjoint_base = None;
+                    NodeRef::new(self.file, decorator.index()).add_type_issue(
+                        i_s.db,
+                        IssueKind::DisjointBaseCannotBeUsedWith {
+                            with: "protocol class",
+                        },
+                    );
+                }
+                ClassKind::TypedDict => {
+                    is_disjoint_base = None;
+                    NodeRef::new(self.file, decorator.index()).add_type_issue(
+                        i_s.db,
+                        IssueKind::DisjointBaseCannotBeUsedWith { with: "TypedDict" },
+                    );
+                }
+                _ => (),
+            }
+        }
+        if is_disjoint_base.is_some()
             || self
                 .class_storage
                 .slots

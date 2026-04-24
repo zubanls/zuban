@@ -151,6 +151,7 @@ pub(crate) enum IssueKind {
     DuplicateBaseClass { name: Box<str> },
     InconsistentMro { class_name: Box<str> },
     DisjointBases { class_name: Box<str> },
+    DisjointBaseCannotBeUsedWith { with: &'static str },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
     CurrentlyUnsupportedBaseClassCycle,
@@ -1390,6 +1391,9 @@ impl<'db> Diagnostic<'db> {
             ),
             DisjointBases { class_name } => format!(
                 "Class \"{class_name}\" has incompatible disjoint bases"
+            ),
+            DisjointBaseCannotBeUsedWith { with } => format!(
+                "@disjoint_base cannot be used with {with}"
             ),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),

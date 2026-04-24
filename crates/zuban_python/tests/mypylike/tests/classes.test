@@ -2787,11 +2787,11 @@ def func() -> None:
     pass
 
 
-@disjoint_base  # E: disjoint_base cannot be applied to a TypedDict
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
 class Movie(TypedDict):
     name: str
 
 
-@disjoint_base  # E: disjoint_base cannot be applied to a Protocol
+@disjoint_base  # E: @disjoint_base cannot be used with protocol class
 class SupportsClose(Protocol):
     def close(self) -> None: ...

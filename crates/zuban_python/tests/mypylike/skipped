@@ -565,9 +565,6 @@ testIgnoreTypeInferenceError2
 
 # Disjoint bases
 testIsInstanceAdHocIntersectionWithStrAndBytes
-testTypedDictCannotBeDisjointBase
-testProtocolCannotBeDisjointBase
-disjoint_base_conformance_tests2
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
