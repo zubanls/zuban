@@ -30,9 +30,6 @@ testStrictEqualityWithList
 # equality
 testNoneReturnTypeWithExpressions
 testStrictEqualityWithAnySentinel
-# typeshed upgrade regression -> __or__ changed for types
-union_alias_attr_access
-type_form_basic2_conformance_tests
 # Mypy 1.19.0 upgrade issues
 testOverride__new__WithLiteralReturnPassing
 testOverride__new__WithLiteralReturnFailing
