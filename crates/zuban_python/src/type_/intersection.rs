@@ -169,16 +169,16 @@ impl Intersection {
                 i_s.db,
                 entries,
                 || {
+                    add_issue.borrow_mut()(IssueKind::IntersectionCannotExistDueToDisjointBases {
+                        intersection: fmt_intersection(&intersection),
+                    });
+                },
+                || {
                     add_issue.borrow_mut()(
                         IssueKind::IntersectionCannotExistDueToInconsistentMro {
                             intersection: fmt_intersection(&intersection),
                         },
                     );
-                },
-                || {
-                    add_issue.borrow_mut()(IssueKind::IntersectionCannotExistDueToDisjointBases {
-                        intersection: fmt_intersection(&intersection),
-                    });
                 },
             )
             .is_valid

@@ -663,6 +663,12 @@ impl PythonState {
             "total_ordering",
             true
         );
+        cache_link_with_typing_extensions_fallback!(
+            disjoint_base_link,
+            "disjoint_base",
+            typing,
+            true
+        );
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
@@ -741,12 +747,6 @@ impl PythonState {
             false,
             builtins,
             "_NotImplementedType"
-        );
-        cache_link_with_typing_extensions_fallback!(
-            disjoint_base_link,
-            "disjoint_base",
-            typing,
-            true
         );
         cache_index!(typing_cast_index, typing, "cast", true);
         cache_index!(typing_coroutine_index, typing, "Coroutine");

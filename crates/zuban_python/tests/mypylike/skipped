@@ -563,9 +563,6 @@ final_with_getitem_in_loop
 # Partial from function call
 testIgnoreTypeInferenceError2
 
-# Disjoint bases
-testIsInstanceAdHocIntersectionWithStrAndBytes
-
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
 

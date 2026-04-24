@@ -1209,7 +1209,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             || {
                 self.add_issue_on_args(
                     i_s,
-                    IssueKind::InconsistentMro {
+                    IssueKind::DisjointBases {
                         class_name: self.name().into(),
                     },
                 );
@@ -1217,7 +1217,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             || {
                 self.add_issue_on_args(
                     i_s,
-                    IssueKind::DisjointBases {
+                    IssueKind::InconsistentMro {
                         class_name: self.name().into(),
                     },
                 );
@@ -2028,13 +2028,10 @@ pub struct LinearizedMro {
 pub fn linearize_mro(
     db: &Database,
     bases: &[Type],
-    on_non_linearizable: impl FnOnce(),
     on_disjoint_bases: impl FnOnce(),
+    on_non_linearizable: impl FnOnce(),
 ) -> LinearizedMro {
     let (mro, linearizable) = linearize_mro_and_return_linearizable(db, bases);
-    if !linearizable {
-        on_non_linearizable()
-    }
     let mut disjoint_base = None;
     let mut has_disjoint_base = false;
     for base in bases {
@@ -2058,6 +2055,8 @@ pub fn linearize_mro(
     }
     if has_disjoint_base {
         on_disjoint_bases();
+    } else if !linearizable {
+        on_non_linearizable()
     }
     LinearizedMro {
         mro,
