@@ -695,7 +695,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         }
 
-        if is_disjoint_base {
+        if is_disjoint_base
+            || self
+                .class_storage
+                .slots
+                .as_ref()
+                .is_some_and(|x| !x.is_empty())
+        {
             class_infos.disjoint_base = self.node_ref.as_link();
         }
 

@@ -564,10 +564,7 @@ final_with_getitem_in_loop
 testIgnoreTypeInferenceError2
 
 # Disjoint bases
-testSlotsCompatibility
-testDisjointBaseSlots
 testIsInstanceAdHocIntersectionWithStrAndBytes
-testSlotsAssignmentWithMixin
 testTypedDictCannotBeDisjointBase
 testProtocolCannotBeDisjointBase
 disjoint_base_conformance_tests2

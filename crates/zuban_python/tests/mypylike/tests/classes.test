@@ -2779,10 +2779,10 @@ class EmptySlots:
 class SlotAndEmptySlots(SlotBase1, EmptySlots):
     pass
 
-class IncompatibleSlots(SlotBase1, SlotBase2):  # E: incompatible disjoint bases
+class IncompatibleSlots(SlotBase1, SlotBase2):  # E: Class "IncompatibleSlots" has incompatible disjoint bases
     pass
 
-@disjoint_base  # E: disjoint_base cannot be applied to a function
+@disjoint_base  # E: Value of type variable "_TC" of "disjoint_base" cannot be "Callable[[], None]"
 def func() -> None:
     pass
 
