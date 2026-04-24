@@ -22,7 +22,8 @@ use parsa_python_cst::{
 use crate::{
     arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, WidenedType,
+        ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
+        WidenedType,
     },
     debug,
     diagnostics::IssueKind,
@@ -5861,6 +5862,25 @@ fn split_and_intersect(
             for t in original_t.iter_with_unpacked_unions(i_s.db) {
                 if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
                     true_type.simplified_union_in_place(i_s, &new);
+                } else {
+                    // Avoid follow up errors for protocols that are runtime_checkable. Protocols
+                    // cannot be matched properly at runtime and therefore we should not assume
+                    // that a branch is unreachable even the type system theoretically does.
+                    let mut is_protocol = |check_t: &Type| {
+                        for isinstance_t in check_t.iter_with_unpacked_unions(i_s.db) {
+                            if let Some(class) = isinstance_t.maybe_class(i_s.db) {
+                                let class_infos = class.use_cached_class_infos(i_s.db);
+                                if matches!(class_infos.kind, ClassKind::Protocol) {
+                                    true_type.simplified_union_in_place(i_s, t);
+                                }
+                            }
+                        }
+                    };
+                    if let Type::Type(check) = isinstance_type {
+                        is_protocol(check)
+                    } else {
+                        is_protocol(isinstance_type)
+                    }
                 }
             }
         }
