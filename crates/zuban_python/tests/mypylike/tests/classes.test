@@ -2795,3 +2795,9 @@ class Movie(TypedDict):
 @disjoint_base  # E: @disjoint_base cannot be used with protocol class
 class SupportsClose(Protocol):
     def close(self) -> None: ...
+
+[case string_io_initialization]
+# From GH #408
+from io import StringIO
+
+StringIO()

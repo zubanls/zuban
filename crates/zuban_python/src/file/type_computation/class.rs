@@ -1651,8 +1651,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     .any(|&l| NodeRef::from_link(db, l).as_code() == name)
             {
                 for (i, base) in mro.iter().enumerate() {
-                    if base.is_direct_base
-                        && mro_index != i
+                    if mro_index != i
                         && let Type::Class(c) = &base.type_
                     {
                         let class = c.class(db);
