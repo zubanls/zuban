@@ -665,6 +665,41 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                 }
             }
         }
+        // Add related_name reverse FK completions for Django models.
+        // Only on user-defined models (not Django stubs), since related_names come from user code.
+        if is_instance && is_django_base && !file.is_from_django(self.infos.db) {
+            for (_, &name_index) in file.symbol_table.iter() {
+                let Some(class_def) =
+                    NodeRef::new(file, name_index).maybe_name_of_class()
+                else {
+                    continue;
+                };
+                let class_node_ref = ClassNodeRef::new(file, class_def.index());
+                let other_class = Class::with_undefined_generics(class_node_ref);
+                if other_class.has_django_stubs_base_class(self.infos.db) {
+                    for (field_name, _) in other_class.class_storage.class_symbol_table.iter() {
+                        // Use get_django_foreign_key_related_name (CST-only, no type inference)
+                        // to avoid generating delayed diagnostics as a side effect.
+                        if let Some(rn) = other_class
+                            .get_django_foreign_key_related_name(self.infos.db, field_name)
+                            && rn != "+"
+                        {
+                            if !self.maybe_add_cow(Cow::Owned(rn.clone())) {
+                                continue;
+                            }
+                            if let Some(result) =
+                                (self.on_result)(self.replace_range, &FixedStringField(rn))
+                            {
+                                self.items.push((
+                                    CompletionSortPriority::new_symbol(field_name),
+                                    result,
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        }
         if is_instance {
             for (symbol, &node_index) in storage.self_symbol_table.iter() {
                 if !self.maybe_add(symbol) || is_private(symbol) || should_ignore(symbol) {

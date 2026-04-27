@@ -56,3 +56,43 @@ def f(album: Album):
 __main__.py:25:complete -> [artist, artist_id]
 __main__.py:27:complete -> [composer, composer_id]
 __main__.py:29:complete -> [name]
+
+[case django_related_name]
+from django.db import models
+
+class Author(models.Model):
+    name = models.CharField(max_length=100)
+
+class Book(models.Model):
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='books')
+
+class Magazine(models.Model):
+    editor = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='edited_magazines')
+
+class Newspaper(models.Model):
+    editor = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='+')
+ 
+class WikipediaArticle(models.Model):
+    authors = models.ManyToManyField(Author, through="WikipediaArticleAuthors", related_name="wikipedia_articles")  # E: Need type annotation for "authors"
+
+class WikipediaArticleAuthors(models.Model):
+    article = models.ForeignKey(WikipediaArticle, on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+
+def f(author: Author):
+    reveal_type(author.books)  # N: Revealed type is "django.db.models.fields.related_descriptors.RelatedManager[__main__.Book]"
+    reveal_type(author.book_set)  # N: Revealed type is "django.db.models.fields.related_descriptors.RelatedManager[__main__.Book]"
+    reveal_type(author.edited_magazines)  # N: Revealed type is "django.db.models.fields.related_descriptors.RelatedManager[__main__.Magazine]"
+    reveal_type(author.wikipedia_articles)  # N: Revealed type is "django.db.models.fields.related_descriptors.RelatedManager[__main__.WikipediaArticle]"
+    author.nonexistent_related  # E: "Author" has no attribute "nonexistent_related"
+    author.newspaper_set  # E: "Author" has no attribute "newspaper_set"
+
+
+    #? complete
+    author.books
+    #? complete
+    author.edited_magazines
+
+[out]
+__main__.py:32:complete -> [books]
+__main__.py:34:complete -> [edited_magazines]

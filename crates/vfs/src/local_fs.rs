@@ -90,9 +90,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                         continue;
                                     }
                                 }
-                            } else {
-                                debug_assert!(file_type.is_file());
+                            } else if file_type.is_file() {
                                 ResolvedFileType::File
+                            } else {
+                                continue;
                             };
                             let n: Arc<str> = name.into();
                             if &*n == ".gitignore" && matches!(new, ResolvedFileType::File) {
@@ -155,10 +156,11 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                     return None;
                 }
             }
-        } else {
-            debug_assert!(metadata.is_file());
+        } else if metadata.is_file() {
             self.watch(path);
             ResolvedFileType::File
+        } else {
+            return None;
         };
         resolved.into_dir_entry(workspaces, self, parent, replace_name.into())
     }
@@ -350,9 +352,10 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             Ok(ResolvedFileType::Directory)
         } else if file_type.is_symlink() {
             self.follow_symlink_internal(origin_path, &target_path)
-        } else {
-            debug_assert!(file_type.is_file());
+        } else if file_type.is_file() {
             Ok(ResolvedFileType::File)
+        } else {
+            Err(format!("Unsupported file type at {target_path:?}"))
         }
     }
 }

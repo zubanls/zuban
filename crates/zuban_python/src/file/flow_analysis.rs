@@ -492,12 +492,19 @@ impl FlowAnalysis {
             result: callable(),
             unfinished_partials: self.partials_in_module.take(),
         };
+        // Attribute lookup on newly-typed class values (e.g. RelatedManager[Book]) can trigger
+        // ensure_calculated_diagnostics_for_class → with_new_empty_and_delay_further, which
+        // legitimately adds delayed diagnostics. Propagate them to the outer context rather than
+        // asserting they're empty, so the outer with_new_empty_for_file can process them.
+        let inner_delayed = self.delayed_diagnostics.take();
         self.debug_assert_is_empty();
 
         *self.frames.borrow_mut() = old_frames;
         *self.try_frames.borrow_mut() = try_frames;
         *self.loop_details.borrow_mut() = loop_details;
-        *self.delayed_diagnostics.borrow_mut() = delayed;
+        let mut merged_delayed = delayed;
+        merged_delayed.extend(inner_delayed);
+        *self.delayed_diagnostics.borrow_mut() = merged_delayed;
         *self.partials_in_module.borrow_mut() = partials;
         self.in_type_checking_only_block
             .set(in_type_checking_only_block);

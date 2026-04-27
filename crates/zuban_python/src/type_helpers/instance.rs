@@ -2,14 +2,18 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::Name;
 
-use super::{Class, ClassLookupOptions, FirstParamKind, Function, MroIterator, class::TypeOrClass};
+use super::{
+    Class, ClassLookupOptions, FirstParamKind, Function, MroIterator, cache_class_name,
+    class::TypeOrClass,
+};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{ComplexPoint, Database, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
-    file::{ORDERING_METHODS, on_argument_type_error},
+    file::{ClassInitializer, ORDERING_METHODS, PythonFile, on_argument_type_error},
     getitem::SliceType,
+    imports::{ImportResult, import_module_by_strings},
     inference_state::InferenceState,
     inferred::{
         ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex, add_attribute_error,
@@ -18,10 +22,58 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
-        PropertySetterType, Type, TypeVarKind,
+        AnyCause, CallableLike, CallableParams, ClassGenerics, FunctionKind, GenericItem,
+        GenericsList, IterInfos, LookupResult, PropertySetterType, Type, TypeVarKind,
     },
 };
+
+/// Builds a `LookupResult` for a Django reverse FK `related_name` accessor.
+/// Returns `RelatedManager[source_class]` when the `RelatedManager` class can be found in the
+/// django stubs, otherwise falls back to `Any`.
+fn build_related_manager_lookup(
+    db: &Database,
+    from_file: &PythonFile,
+    source_class_link: PointLink,
+) -> LookupResult {
+    let manager_link = find_related_manager_link(db, from_file);
+    let source_type = Type::new_class(source_class_link, ClassGenerics::new_none());
+    match manager_link {
+        Some(link) => {
+            let manager_type = Type::new_class(
+                link,
+                ClassGenerics::List(GenericsList::new_generics(Arc::new([
+                    GenericItem::TypeArg(source_type),
+                ]))),
+            );
+            LookupResult::UnknownName(Inferred::from_type(manager_type))
+        }
+        None => LookupResult::any(AnyCause::Todo),
+    }
+}
+
+/// Looks up the `RelatedManager` class from the django stubs, returning its `PointLink`.
+fn find_related_manager_link(db: &Database, from_file: &PythonFile) -> Option<PointLink> {
+    let result = import_module_by_strings(
+        db,
+        from_file,
+        ["django", "db", "models", "fields", "related_descriptors"],
+    )?;
+    let ImportResult::File(file_index) = result else {
+        return None;
+    };
+    let file = db.vfs.file(file_index)?;
+    let name_index = file.symbol_table.lookup_symbol("RelatedManager")?;
+    let class_def = NodeRef::new(file, name_index).maybe_name_of_class()?;
+    let link = PointLink::new(file.file_index, class_def.index());
+    // Ensure class infos are computed: downstream operations (mro_without_remap,
+    // incomplete_mro, etc.) call use_cached_class_infos and will panic if skipped.
+    // cache_class_name satisfies the precondition that the NameDef point is set
+    // before ensure_calculated_class_infos is called (mirrors python_state.rs pattern).
+    let name_def_ref = NodeRef::new(file, class_def.name_def().index());
+    cache_class_name(name_def_ref, class_def);
+    ClassInitializer::from_link(db, link).ensure_calculated_class_infos(db);
+    Some(link)
+}
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Instance<'a> {
@@ -533,6 +585,23 @@ impl<'a> Instance<'a> {
                 return LookupDetails {
                     class: TypeOrClass::Class(self.class),
                     lookup: LookupResult::any(AnyCause::Todo),
+                    attr_kind: AttributeKind::Attribute,
+                    mro_index: None,
+                };
+            }
+        }
+        // Add access for Django's related_name reverse relations.
+        // Only check user-defined models (not Django stubs) to avoid triggering uncomputed class infos.
+        if self.class.has_django_stubs_base_class(i_s.db)
+            && !self.class.file.is_from_django(i_s.db)
+        {
+            if let Some(source_link) =
+                self.class.find_django_related_name_source_class(i_s.db, name)
+            {
+                let lookup = build_related_manager_lookup(i_s.db, self.class.file, source_link);
+                return LookupDetails {
+                    class: TypeOrClass::Class(self.class),
+                    lookup,
                     attr_kind: AttributeKind::Attribute,
                     mro_index: None,
                 };

@@ -5,7 +5,16 @@ use std::{
     sync::Arc,
 };
 
-use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Name, TypeLike};
+thread_local! {
+    // Prevents re-entrant calls to find_django_related_name_source_class, which can happen when
+    // type inference triggered inside loops back into attribute lookup.
+    static IS_DJANGO_RELATED_NAME_RUNNING: Cell<bool> = const { Cell::new(false) };
+}
+
+use parsa_python_cst::{
+    Argument, ArgumentsDetails, Assignment, AssignmentContent, AtomContent, ClassDef,
+    ExpressionContent, ExpressionPart, Name, PrimaryContent, PrimaryOrAtom, TypeLike,
+};
 
 use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
@@ -17,8 +26,8 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{
-        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, StarImportError,
-        TypeVarCallbackReturn, use_cached_return_annotation_type,
+        CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef,
+        StarImportError, TypeVarCallbackReturn, use_cached_return_annotation_type,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -313,7 +322,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
-        self.use_cached_class_infos(db).kind == ClassKind::Protocol
+        self.maybe_cached_class_infos(db)
+            .is_some_and(|ci| ci.kind == ClassKind::Protocol)
     }
 
     pub fn check_protocol_match(
@@ -2219,6 +2229,151 @@ impl<'db: 'a, 'a> Class<'a> {
                         && cls.file.name(db) == "fields"
                 })
             })
+    }
+
+    pub(crate) fn get_django_foreign_key_related_name(
+        &self,
+        db: &Database,
+        field_name: &str,
+    ) -> Option<String> {
+        debug_assert!(self.has_django_stubs_base_class(db));
+        let name_index = self.class_storage.class_symbol_table.lookup_symbol(field_name)?;
+        let name = NodeRef::new(self.file, name_index).expect_name();
+        let assignment = name.maybe_assignment_definition_name()?;
+        let right_side = match assignment.unpack() {
+            AssignmentContent::Normal(_, rhs) => rhs,
+            AssignmentContent::WithAnnotation(_, _, Some(rhs)) => rhs,
+            _ => return None,
+        };
+        let expr = right_side.maybe_simple_expression()?;
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack()
+            && let PrimaryContent::Execution(ArgumentsDetails::Node(args)) = p.second()
+        {
+            for arg in args.iter() {
+                if let Argument::Keyword(kwarg) = arg {
+                    let (kw_name, kw_value) = kwarg.unpack();
+                    if kw_name.as_code() == "related_name" {
+                        if let Some(str_lit) = kw_value.maybe_single_string_literal() {
+                            return Some(str_lit.content().to_owned());
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Returns the PointLink of the class (e.g. `Book`) that has a ForeignKey with
+    /// `related_name=name` pointing at `self` (e.g. `Author`).
+    pub(crate) fn find_django_related_name_source_class(
+        &self,
+        db: &Database,
+        name: &str,
+    ) -> Option<PointLink> {
+        if !self.has_django_stubs_base_class(db) {
+            return None;
+        }
+        // Guard against re-entrant calls: attribute lookup inside this method can loop back.
+        let already_running = IS_DJANGO_RELATED_NAME_RUNNING.with(|cell| cell.replace(true));
+        if already_running {
+            return None;
+        }
+        let result = self.find_django_related_name_source_class_inner(db, name);
+        IS_DJANGO_RELATED_NAME_RUNNING.with(|cell| cell.set(false));
+        result
+    }
+
+    fn find_django_related_name_source_class_inner(
+        &self,
+        db: &Database,
+        name: &str,
+    ) -> Option<PointLink> {
+        // Iterate file-level symbols to find class definitions with FK fields pointing back.
+        // Use only CST-level checks (no type inference) to avoid triggering side effects
+        // such as delayed diagnostics or recursive attribute lookups.
+        for (_, &name_index) in self.file.symbol_table.iter() {
+            let Some(class_def) = NodeRef::new(self.file, name_index).maybe_name_of_class() else {
+                continue;
+            };
+            let class_node_ref = ClassNodeRef::new(self.file, class_def.index());
+            // Only proceed if class infos have been computed (check avoids needing db lifetime).
+            let class_info_calculated = self
+                .file
+                .points
+                .get(class_def.index() + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
+                .calculated();
+            if !class_info_calculated {
+                continue;
+            }
+            let other_class = Class::with_undefined_generics(class_node_ref);
+            if !other_class.has_django_stubs_base_class(db) {
+                continue;
+            }
+            // Default reverse accessor: <lowercase_classname>_set
+            let default_accessor = format!("{}_set", other_class.name().to_lowercase());
+            for (field_name, _) in other_class.class_storage.class_symbol_table.iter() {
+                match other_class
+                    .get_django_foreign_key_related_name(db, field_name)
+                    .as_deref()
+                {
+                    Some("+") => {
+                        // related_name='+' disables the reverse accessor for this FK.
+                    }
+                    Some(explicit_rn) => {
+                        // Explicit related_name: match both it and the default _set.
+                        if explicit_rn == name || default_accessor == name {
+                            return Some(other_class.node_ref.as_link());
+                        }
+                    }
+                    None => {
+                        // No explicit related_name: use default _set if this is a FK-like field.
+                        if default_accessor == name
+                            && other_class.is_fk_like_field_cst(field_name)
+                        {
+                            return Some(other_class.node_ref.as_link());
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// CST-level check: is `field_name`'s assignment a ForeignKey/OneToOneField/ManyToManyField call?
+    fn is_fk_like_field_cst(&self, field_name: &str) -> bool {
+        let Some(name_index) = self.class_storage.class_symbol_table.lookup_symbol(field_name)
+        else {
+            return false;
+        };
+        let name_node = NodeRef::new(self.file, name_index).expect_name();
+        let Some(assignment) = name_node.maybe_assignment_definition_name() else {
+            return false;
+        };
+        let right_side = match assignment.unpack() {
+            AssignmentContent::Normal(_, rhs) => rhs,
+            AssignmentContent::WithAnnotation(_, _, Some(rhs)) => rhs,
+            _ => return false,
+        };
+        let Some(expr) = right_side.maybe_simple_expression() else {
+            return false;
+        };
+        let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack() else {
+            return false;
+        };
+        if !matches!(p.second(), PrimaryContent::Execution(_)) {
+            return false;
+        }
+        let call_name = match p.first() {
+            PrimaryOrAtom::Atom(a) => match a.unpack() {
+                AtomContent::Name(n) => n.as_code(),
+                _ => return false,
+            },
+            PrimaryOrAtom::Primary(inner) => match inner.second() {
+                PrimaryContent::Attribute(n) => n.as_code(),
+                _ => return false,
+            },
+        };
+        matches!(call_name, "ForeignKey" | "OneToOneField" | "ManyToManyField")
     }
 }
 
