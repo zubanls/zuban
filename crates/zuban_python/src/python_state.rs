@@ -182,6 +182,7 @@ pub(crate) struct PythonState {
     typing_type_var_index: NodeIndex,
     type_var_tuple_link: PointLink,
     param_spec_link: PointLink,
+    sentinel_link: PointLink,
     pub typinglike_namedtuple_link: PointLink,
     new_type_link: PointLink,
     reveal_type_link: PointLink,
@@ -323,6 +324,7 @@ impl PythonState {
             typing_type_var_index: 0,
             type_var_tuple_link: PointLink::new(FileIndex(0), 0),
             param_spec_link: PointLink::new(FileIndex(0), 0),
+            sentinel_link: PointLink::new(FileIndex(0), 0),
             typinglike_namedtuple_link: PointLink::new(FileIndex(0), 0),
             new_type_link: PointLink::new(FileIndex(0), 0),
             reveal_type_link: PointLink::new(FileIndex(0), 0),
@@ -725,6 +727,7 @@ impl PythonState {
             false
         );
         cache_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", typing, false);
+        cache_link_with_typing_extensions_fallback!(sentinel_link, "Sentinel", builtins, false);
         cache_link_with_typing_extensions_fallback!(
             typinglike_namedtuple_link,
             "NamedTuple",
@@ -1202,6 +1205,7 @@ impl PythonState {
 
     link_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_link);
     link_to_type_class_without_generic!(pub param_spec_type, param_spec_link);
+    link_to_type_class_without_generic!(pub sentinel_type, sentinel_link);
     link_to_type_class_without_generic!(pub new_type_type, new_type_link);
     link_to_type_class_without_generic!(pub typing_named_tuple_type, typinglike_namedtuple_link);
     link_to_type_class_without_generic!(pub type_alias_type_type, type_alias_type_link);
@@ -1411,7 +1415,6 @@ fn typing_changes(
     set_typing_inference(t, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
-    set_typing_inference(t, "sentinel", Specific::BuiltinsSentinel);
     set_typing_inference(t, "Sentinel", Specific::BuiltinsSentinel);
 
     for module in [typing, mypy_extensions, typing_extensions] {

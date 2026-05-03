@@ -1197,6 +1197,8 @@ x = "asdf"
 A = Sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
 B = Sentinel(1)  # E: Sentinel expects a single positional argument that is a string literal
 
+reveal_type(Sentinel(""))  # N: Revealed type is "typing_extensions.Sentinel"
+
 [case sentinels_from_acceptance_tests]
 # Copied from conformance tests (specialtypes_sentinels.py)
 from typing_extensions import Sentinel, assert_type

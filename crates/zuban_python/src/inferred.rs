@@ -3105,7 +3105,9 @@ pub fn specific_to_type<'db>(
         Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Arc::new(
             i_s.db.python_state.type_alias_type_type(),
         ))),
-        Specific::BuiltinsSentinel => todo!(),
+        Specific::BuiltinsSentinel => {
+            Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.sentinel_type())))
+        }
         actual => unreachable!("{actual:?}"),
     }
 }
