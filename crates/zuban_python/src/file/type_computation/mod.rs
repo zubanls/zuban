@@ -3741,10 +3741,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 .expect_named_expression()
                 .maybe_single_string_literal()
         {
-            return Inferred::from_type(Type::Sentinel(Sentinel::new(PointLink {
-                file: self.file.file_index,
-                node_index: string_literal.index(),
-            })));
+            return Inferred::from_type(Type::Sentinel(Sentinel {
+                name: PointLink {
+                    file: self.file.file_index,
+                    node_index: string_literal.index(),
+                },
+            }));
         }
         args.add_issue(
             self.i_s,

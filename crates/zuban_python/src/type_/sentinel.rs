@@ -6,15 +6,11 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Sentinel {
-    name: PointLink,
+    pub name: PointLink,
 }
 
 impl Sentinel {
-    pub(crate) fn new(name: PointLink) -> Self {
-        Self { name }
-    }
-
-    fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         NodeRef::from_link(db, self.name)
             .maybe_str()
             .unwrap()

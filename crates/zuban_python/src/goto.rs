@@ -1141,7 +1141,11 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
         }
         Type::Never(_) => (),
         Type::TypeForm(tf) => type_to_name(i_s, tf, add),
-        Type::Sentinel(s) => todo!(),
+        Type::Sentinel(s) => add(Name::NodeName(NodeName::new(
+            db,
+            NodeRef::from_link(db, s.name),
+            s.name(db),
+        ))),
     }
 }
 
