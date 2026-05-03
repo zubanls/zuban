@@ -316,6 +316,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 SpecialAssignmentKind::ParamSpec(a) => self.compute_param_spec_assignment(
                     &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
                 ),
+                SpecialAssignmentKind::Sentinel(a) => self.compute_sentinel_assignment(
+                    &SimpleArgs::new(*self.i_s, self.file, a.primary_index, a.details),
+                ),
                 SpecialAssignmentKind::TypeOf(args) => {
                     debug_assert!(cached_type_node_ref.point().calculating());
                     cached_type_node_ref.set_point(Point::new_uncalculated());
@@ -390,6 +393,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Type::None => TypeContent::Type(Type::None),
                 _ => return None,
             },
+            ComplexPoint::TypeInstance(t @ Type::Sentinel(_)) => TypeContent::Type(t.clone()),
             _ => return None,
         }))
     }
@@ -454,6 +458,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             ),
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingParamSpecClass))) => Ok(
                 SpecialAssignmentKind::ParamSpec(ArgsContent::new(primary.index(), details)),
+            ),
+            Some(Lookup::T(TypeContent::SpecialCase(Specific::BuiltinsSentinel))) => Ok(
+                SpecialAssignmentKind::Sentinel(ArgsContent::new(primary.index(), details)),
             ),
             Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingTypedDict))) => Err(
                 CalculatingAliasType::TypedDict(ArgsContent::new(primary.index(), details)),
@@ -1279,6 +1286,7 @@ enum SpecialAssignmentKind<'db, 'tree> {
     TypeVar(ArgsContent<'tree>),
     TypeVarTuple(ArgsContent<'tree>),
     ParamSpec(ArgsContent<'tree>),
+    Sentinel(ArgsContent<'tree>),
     TypeOf(ArgsContent<'tree>), // e.g. void = type(None)
     Defaultdict, // This is handled in inference but we need to make sure to not overwrite it
 }

@@ -535,7 +535,7 @@ impl Type {
                 );
                 callable(self, l)
             }
-            Type::TypeForm(_) => {
+            Type::TypeForm(_) | Type::Sentinel(_) => {
                 let inst = i_s.db.python_state.object_class().instance();
                 callable(self, inst.lookup(i_s, name, options()))
             }

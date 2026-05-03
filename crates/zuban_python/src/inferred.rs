@@ -2179,6 +2179,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     args.add_issue(i_s, IssueKind::UnexpectedTypeForTypeVar);
                                 }
                             }
+                            Specific::BuiltinsSentinel => {
+                                return_on_type_def!(compute_sentinel_assignment, args);
+                            }
                             Specific::TypingNewType
                                 if result_context.is_annotation_assignment() =>
                             {
@@ -2279,7 +2282,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return Inferred::new_object(i_s.db);
                             }
                             Specific::TypingTypeForm => {
-                                debug!("Execute type definition with {}", stringify!($name));
+                                debug!("Execute type definition with TypeForm");
                                 if let Some(file) = args.in_file() {
                                     return file
                                         .name_resolution_for_types(i_s)
@@ -3102,6 +3105,7 @@ pub fn specific_to_type<'db>(
         Specific::TypingTypeAliasType => Cow::Owned(Type::Type(Arc::new(
             i_s.db.python_state.type_alias_type_type(),
         ))),
+        Specific::BuiltinsSentinel => todo!(),
         actual => unreachable!("{actual:?}"),
     }
 }

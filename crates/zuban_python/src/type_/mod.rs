@@ -12,6 +12,7 @@ mod operations;
 mod overlaps;
 mod recursive_type;
 mod replace;
+mod sentinel;
 mod tuple;
 mod type_var_likes;
 mod typed_dict;
@@ -54,6 +55,7 @@ pub(crate) use self::{
     operations::{IterCause, IterInfos, execute_type_of_type},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::{ReplaceSelf, ReplaceTypeVarLikes, replace_param_spec},
+    sentinel::Sentinel,
     tuple::{MaybeUnpackGatherer, Tuple, TupleArgs, TupleUnpack, WithUnpack, execute_tuple_class},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage,
@@ -533,6 +535,7 @@ pub(crate) enum Type {
         implicit: bool,
     },
     TypeForm(Arc<Type>),
+    Sentinel(Sentinel),
     Any(AnyCause),
     Never(NeverCause),
 }
@@ -1212,6 +1215,7 @@ impl Type {
             Self::DataclassTransformObj(_) => "TODO dataclass_transform".into(),
             Self::LiteralString { .. } => "LiteralString".into(),
             Self::TypeForm(t) => format!("TypeForm[{}]", t.format(format_data)).into(),
+            Self::Sentinel(s) => s.format(format_data),
         }
     }
 
@@ -1249,6 +1253,7 @@ impl Type {
             | Self::Enum(_)
             | Self::EnumMember(_)
             | Self::NewType(_)
+            | Self::Sentinel(_)
             | Self::LiteralString { .. } => (),
             Self::RecursiveType(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1350,6 +1355,7 @@ impl Type {
             | Self::EnumMember(_)
             | Self::Super { .. }
             | Self::Namespace(_)
+            | Self::Sentinel(_)
             | Self::LiteralString { .. } => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),

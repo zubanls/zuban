@@ -25,7 +25,7 @@ use super::{
     utils::func_of_self_symbol,
 };
 use crate::{
-    arguments::{Args, SimpleArgs},
+    arguments::{ArgKind, Args, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, ParentScope, Point, PointKind, PointLink, Specific,
         TypeAlias,
@@ -51,12 +51,12 @@ use crate::{
         ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember, GenericClass, GenericItem,
         GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
         ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin,
-        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
-        TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict,
-        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_any_params_to_params,
-        add_param_spec_to_params,
+        ReplaceTypeVarLikes, Sentinel, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar,
+        TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
+        TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
+        add_any_params_to_params, add_param_spec_to_params,
     },
     type_helpers::{Class, Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
@@ -3729,6 +3729,30 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Inferred::new_any_from_error();
         };
         Inferred::from_type(Type::TypeForm(Arc::new(t)))
+    }
+
+    pub fn compute_sentinel_assignment(&self, args: &dyn Args) -> Inferred {
+        let mut iterator = args.iter(self.i_s.mode);
+        if let Some(first_arg) = iterator.next()
+            && iterator.next().is_none()
+            && let ArgKind::Positional(pos) = &first_arg.kind
+            && let Some(string_literal) = pos
+                .node_ref
+                .expect_named_expression()
+                .maybe_single_string_literal()
+        {
+            return Inferred::from_type(Type::Sentinel(Sentinel::new(PointLink {
+                file: self.file.file_index,
+                node_index: string_literal.index(),
+            })));
+        }
+        args.add_issue(
+            self.i_s,
+            IssueKind::new_invalid_type(
+                "Sentinel expects a single positional argument that is a string literal",
+            ),
+        );
+        Inferred::new_any_from_error()
     }
 
     fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {

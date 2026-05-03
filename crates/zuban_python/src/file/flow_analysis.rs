@@ -1502,6 +1502,7 @@ fn narrow_is_or_eq(
         Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => {
             Some(split_singleton(key))
         }
+        Type::Sentinel(_) => Some(split_singleton(key)),
         _ => match checking_t {
             Type::Union(_) => {
                 // Remove None from the checking side, if the other side matches everything except None.
