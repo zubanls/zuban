@@ -199,8 +199,8 @@ impl ErrorTypes<'_> {
                         "TypedDicts cannot be assigned to {from}, callers could \
                              delete or change keys to violate their type contract. \
                              Use Mapping[...] for read-only access or make all \
-                             TypedDict keys NotRequired combined with a compatible \
-                             `extra_items` class parameter."
+                             TypedDict keys NotRequired, with identical types, \
+                             combined with a compatible `extra_items` class parameter."
                     )
                     .into(),
                 ));
