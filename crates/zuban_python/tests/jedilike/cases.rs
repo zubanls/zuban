@@ -79,6 +79,9 @@ impl TestFile<'_> {
         let mut ran_count = 0;
         let mut errors = vec![];
         let file_name = self.path.file_name().unwrap().to_str().unwrap();
+        if self.filters.is_empty() || self.filters.iter().any(|f| f.file_is_relevant(file_name)) {
+            println!("Start to run tests for {file_name}");
+        }
         for case in cases {
             if self.filters.iter().any(|f| f.denied(file_name, case.line)) {
                 continue;

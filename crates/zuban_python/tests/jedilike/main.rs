@@ -72,6 +72,10 @@ impl Filter {
         }
     }
 
+    pub fn file_is_relevant(&self, file_name: &str) -> bool {
+        self.negative || file_name.contains(&self.name)
+    }
+
     pub fn allowed(&self, file_name: &str, line: usize) -> bool {
         if self.negative || !file_name.contains(&self.name) {
             return false;
@@ -149,7 +153,6 @@ fn main() -> ExitCode {
             code,
             filters: &filters,
         };
-        println!("Start to run tests for {file_name}");
         let (ran, full, errors) = f.test(&mut project);
         ran_count += ran;
         full_count += full;
