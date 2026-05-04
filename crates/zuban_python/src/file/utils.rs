@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use num_bigint::BigInt;
 use parsa_python_cst::{
-    DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
-    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    Block, DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression,
+    FunctionDef, IfBlockType, IfStmt, NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -910,4 +911,39 @@ impl TupleGatherer {
         );
         Inferred::from_type(Type::Tuple(content))
     }
+}
+
+pub(super) fn for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+    file: &PythonFile,
+    if_stmt: IfStmt,
+    mut callback: impl FnMut(Block),
+) -> bool {
+    let mut reachability_always_known = true;
+    for b in if_stmt.iter_blocks() {
+        let name_binder_check = file
+            .points
+            .get(b.first_leaf_index())
+            .maybe_calculated_and_specific();
+        let block = match b {
+            IfBlockType::If(_, block) => block,
+            IfBlockType::Else(e) => e.block(),
+        };
+        match name_binder_check {
+            Some(
+                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                | Specific::IfBranchAlwaysReachableInNameBinder,
+            ) => callback(block),
+            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                return reachability_always_known;
+            }
+            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
+                return reachability_always_known;
+            }
+            _ => {
+                reachability_always_known = false;
+                callback(block)
+            }
+        }
+    }
+    reachability_always_known
 }

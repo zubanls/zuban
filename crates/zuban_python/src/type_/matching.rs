@@ -268,6 +268,7 @@ impl Type {
                 Self::None => tf1.matches_internal(i_s, matcher, &Self::None, variance),
                 _ => Match::new_false(),
             },
+            Self::Sentinel(_) => (self == value_type).into(),
         }
     }
 

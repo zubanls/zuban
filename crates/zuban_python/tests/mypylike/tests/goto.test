@@ -1210,3 +1210,25 @@ __main__.py:16:infer -> __main__.py:4:6:__main__.F
 __main__.py:18:infer -> __main__.py:4:6:__main__.F
 __main__.py:20:infer -> __main__.py:4:6:__main__.F
 __main__.py:24:infer -> __main__.py:4:6:__main__.F
+
+[case sentinels_infer_goto]
+# flags: --mode default
+from typing_extensions import Sentinel, assert_type
+
+MISSING = Sentinel("<MISSING>")
+
+x = [MISSING, 1]
+#? infer --no-positions
+x[0]
+#? goto --no-positions
+x[0]
+#? goto
+MISSING
+#? infer
+MISSING
+
+[out]
+__main__.py:8:infer -> __main__.py:<MISSING>; builtins.pyi:builtins.int
+__main__.py:10:goto -> __main__.py:<MISSING>; builtins.pyi:builtins.int
+__main__.py:12:goto -> __main__.py:4:0:__main__.MISSING
+__main__.py:14:infer -> __main__.py:4:19:<MISSING>

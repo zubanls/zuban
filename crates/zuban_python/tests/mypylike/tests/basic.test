@@ -1264,11 +1264,10 @@ alias2 = str | tuple[T, ...] | list[T]
 alias3 = tuple[set[T], ...] | tuple[list[T]]
 
 non_alias1, non_alias2 = list[T] | str  # E: "UnionType" object is not iterable \
-                                        # E: "type[list[Any]]" object is not iterable \
                                         # E: Type variable "__main__.T" is unbound \
                                         # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                                         # N: (Hint: Use "T" in function signature to bind "T" inside a function)
-non_alias3: type = list[T] | str  # E: Incompatible types in assignment (expression has type "UnionType | type[list[Any]]", variable has type "type[Any]") \
+non_alias3: type = list[T] | str  # E: Incompatible types in assignment (expression has type "UnionType", variable has type "type[Any]") \
                                   # E: Type variable "__main__.T" is unbound \
                                   # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                                   # N: (Hint: Use "T" in function signature to bind "T" inside a function)
@@ -1965,3 +1964,20 @@ assert_type(z, str | int)
 def f[T](result: T | Exception) -> None:
     if isinstance(result, Exception):
         raise result  # error: Exception must be derived from BaseException  [misc]
+
+[case inferred_type_unions]
+from typing import Any
+
+class A: ...
+
+reveal_type(A | A)  # N: Revealed type is "def () -> __main__.A"
+reveal_type(A | str)  # N: Revealed type is "types.UnionType"
+
+reveal_type(list[int] | list[int])  # N: Revealed type is "type[list[int]]"
+reveal_type(list[int] | list[str])  # N: Revealed type is "types.UnionType"
+
+reveal_type(list[Any] | list[Any])  # N: Revealed type is "type[list[Any]]"
+reveal_type(list[Any] | list[str])  # N: Revealed type is "types.UnionType"
+
+reveal_type(Any | int)  # N: Revealed type is "types.UnionType"
+reveal_type(str | None)  # N: Revealed type is "types.UnionType"

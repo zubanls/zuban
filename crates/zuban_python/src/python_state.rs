@@ -182,9 +182,11 @@ pub(crate) struct PythonState {
     typing_type_var_index: NodeIndex,
     type_var_tuple_link: PointLink,
     param_spec_link: PointLink,
+    sentinel_link: PointLink,
     pub typinglike_namedtuple_link: PointLink,
     new_type_link: PointLink,
     reveal_type_link: PointLink,
+    pub disjoint_base_link: PointLink,
     typing_cast_index: NodeIndex,
     typing_coroutine_index: NodeIndex,
     typing_iterator_index: NodeIndex,
@@ -322,9 +324,11 @@ impl PythonState {
             typing_type_var_index: 0,
             type_var_tuple_link: PointLink::new(FileIndex(0), 0),
             param_spec_link: PointLink::new(FileIndex(0), 0),
+            sentinel_link: PointLink::new(FileIndex(0), 0),
             typinglike_namedtuple_link: PointLink::new(FileIndex(0), 0),
             new_type_link: PointLink::new(FileIndex(0), 0),
             reveal_type_link: PointLink::new(FileIndex(0), 0),
+            disjoint_base_link: PointLink::new(FileIndex(0), 0),
             type_alias_type_link: PointLink::new(FileIndex(0), 0),
             typing_cast_index: 0,
             typing_overload_index: 0,
@@ -661,6 +665,12 @@ impl PythonState {
             "total_ordering",
             true
         );
+        cache_link_with_typing_extensions_fallback!(
+            disjoint_base_link,
+            "disjoint_base",
+            typing,
+            true
+        );
         cache_index!(builtins_object_index, builtins, "object");
         cache_index!(builtins_type_index, builtins, "type");
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
@@ -717,6 +727,7 @@ impl PythonState {
             false
         );
         cache_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", typing, false);
+        cache_link_with_typing_extensions_fallback!(sentinel_link, "Sentinel", builtins, false);
         cache_link_with_typing_extensions_fallback!(
             typinglike_namedtuple_link,
             "NamedTuple",
@@ -1112,6 +1123,7 @@ impl PythonState {
     class_node_ref!(_collections_abc, pub _collections_abc_dict_keys_node_ref, _collections_abc_dict_keys_index);
     attribute_node_ref!(functools, pub total_ordering_node_ref, functools_total_ordering_index);
     attribute_node_ref!(typing, pub runtime_checkable_node_ref, typing_runtime_checkable_index);
+
     attribute_node_ref!(typing_extensions, pub typing_extensions_runtime_checkable_node_ref, typing_extensions_runtime_checkable_index);
 
     attribute_link!(builtins, pub object_link, builtins_object_index);
@@ -1193,6 +1205,7 @@ impl PythonState {
 
     link_to_type_class_without_generic!(pub type_var_tuple_type, type_var_tuple_link);
     link_to_type_class_without_generic!(pub param_spec_type, param_spec_link);
+    link_to_type_class_without_generic!(pub sentinel_type, sentinel_link);
     link_to_type_class_without_generic!(pub new_type_type, new_type_link);
     link_to_type_class_without_generic!(pub typing_named_tuple_type, typinglike_namedtuple_link);
     link_to_type_class_without_generic!(pub type_alias_type_type, type_alias_type_link);
@@ -1402,6 +1415,7 @@ fn typing_changes(
     set_typing_inference(t, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
+    set_typing_inference(t, "Sentinel", Specific::BuiltinsSentinel);
 
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);

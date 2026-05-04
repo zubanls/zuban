@@ -24,7 +24,10 @@ use crate::{
         name_resolution::{NameResolution, PointResolution},
         type_computation::{InvalidVariableType, TypeContent},
         use_cached_annotation_type,
-        utils::should_add_deprecated,
+        utils::{
+            for_each_reachable_if_stmt_block_and_return_reachability_always_known,
+            should_add_deprecated,
+        },
     },
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -208,7 +211,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn class_link_in_mro(&self, db: &Database, link: PointLink) -> bool {
-        if self.0.as_link() == link {
+        if self.0.as_link() == link || link == db.python_state.object_link() {
             return true;
         }
         let class_infos = self.use_cached_class_infos(db);
@@ -478,6 +481,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let mut is_final = false;
         let mut total_ordering = false;
         let mut is_runtime_checkable = false;
+        let mut is_disjoint_base = None;
         let mut dataclass_transform = None;
         let mut deprecated_reason = None;
         if let Some(decorated) = self.node().maybe_decorated() {
@@ -543,6 +547,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                                 .typing_extensions_runtime_checkable_node_ref()
                     {
                         is_runtime_checkable = true;
+                    } else if node_ref.as_link() == db.python_state.disjoint_base_link {
+                        is_disjoint_base = Some(decorator);
                     } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
                         dataclass_options = Some(d.as_dataclass_options());
                     }
@@ -687,6 +693,37 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                 }
             }
+        }
+
+        if let Some(decorator) = is_disjoint_base {
+            match class_infos.kind {
+                ClassKind::Protocol => {
+                    is_disjoint_base = None;
+                    NodeRef::new(self.file, decorator.index()).add_type_issue(
+                        i_s.db,
+                        IssueKind::DisjointBaseCannotBeUsedWith {
+                            with: "protocol class",
+                        },
+                    );
+                }
+                ClassKind::TypedDict => {
+                    is_disjoint_base = None;
+                    NodeRef::new(self.file, decorator.index()).add_type_issue(
+                        i_s.db,
+                        IssueKind::DisjointBaseCannotBeUsedWith { with: "TypedDict" },
+                    );
+                }
+                _ => (),
+            }
+        }
+        if is_disjoint_base.is_some()
+            || self
+                .class_storage
+                .slots
+                .as_ref()
+                .is_some_and(|x| !x.is_empty())
+        {
+            class_infos.disjoint_base = self.node_ref.as_link();
         }
 
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
@@ -1166,18 +1203,29 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.add_issue_on_args(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
-        let (mro, linearizable) = linearize_mro_and_return_linearizable(db, &bases);
-        if !linearizable {
-            self.add_issue_on_args(
-                i_s,
-                IssueKind::InconsistentMro {
-                    name: self.name().into(),
-                },
-            );
-        }
+        let linearized_mro = linearize_mro(
+            db,
+            &bases,
+            || {
+                self.add_issue_on_args(
+                    i_s,
+                    IssueKind::DisjointBases {
+                        class_name: self.name().into(),
+                    },
+                );
+            },
+            || {
+                self.add_issue_on_args(
+                    i_s,
+                    IssueKind::InconsistentMro {
+                        class_name: self.name().into(),
+                    },
+                );
+            },
+        );
 
         let mut found_tuple_like = None;
-        for base in mro.iter() {
+        for base in linearized_mro.mro.iter() {
             if matches!(base.type_, Type::Tuple(_) | Type::NamedTuple(_)) {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
@@ -1194,10 +1242,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             Default::default()
         };
         let abstract_attributes =
-            self.calculate_abstract_attributes(db, &metaclass, &class_kind, &mro);
+            self.calculate_abstract_attributes(db, &metaclass, &class_kind, &linearized_mro.mro);
         (
             Box::new(ClassInfos {
-                mro,
+                mro: linearized_mro.mro,
                 metaclass,
                 incomplete_mro,
                 kind: class_kind,
@@ -1221,6 +1269,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 deprecated_reason: None,
                 dataclass_transform,
                 undefined_generics_type,
+                disjoint_base: linearized_mro.disjoint_base,
             }),
             typed_dict_options,
         )
@@ -1602,8 +1651,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     .any(|&l| NodeRef::from_link(db, l).as_code() == name)
             {
                 for (i, base) in mro.iter().enumerate() {
-                    if base.is_direct_base
-                        && mro_index != i
+                    if mro_index != i
                         && let Type::Class(c) = &base.type_
                     {
                         let class = c.class(db);
@@ -1839,6 +1887,25 @@ fn find_stmt_typed_dict_types(
                         .add_type_issue(db, IssueKind::TypedDictInvalidMember);
                 }
             },
+            StmtLikeContent::IfStmt(if_stmt) => {
+                if !for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                    file,
+                    if_stmt,
+                    |block| {
+                        find_stmt_typed_dict_types(
+                            i_s,
+                            file,
+                            vec,
+                            block.iter_stmt_likes(),
+                            initialization_args,
+                            extra_items,
+                        )
+                    },
+                ) {
+                    NodeRef::new(file, stmt_like.parent_index)
+                        .add_type_issue(db, IssueKind::TypedDictInvalidMember);
+                }
+            }
             StmtLikeContent::Error(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
@@ -1903,6 +1970,16 @@ fn find_stmt_named_tuple_types(
             StmtLikeContent::FunctionDef(_)
             | StmtLikeContent::PassStmt(_)
             | StmtLikeContent::StarExpressions(_) => (),
+            StmtLikeContent::IfStmt(if_stmt) => {
+                if !for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                    file,
+                    if_stmt,
+                    |block| find_stmt_named_tuple_types(i_s, file, vec, block.iter_stmt_likes()),
+                ) {
+                    NodeRef::new(file, stmt_like.parent_index)
+                        .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
+                }
+            }
             _ => {
                 NodeRef::new(file, stmt_like.parent_index)
                     .add_type_issue(db, IssueKind::InvalidStmtInNamedTuple);
@@ -1939,6 +2016,51 @@ fn to_base_kind(t: &Type) -> BaseKind {
         Type::Enum(_) => BaseKind::Enum,
         Type::NewType(n) => to_base_kind(&n.type_),
         _ => unreachable!("{t:?}"),
+    }
+}
+
+pub struct LinearizedMro {
+    mro: Box<[BaseClass]>,
+    pub is_valid: bool,
+    disjoint_base: PointLink,
+}
+pub fn linearize_mro(
+    db: &Database,
+    bases: &[Type],
+    on_disjoint_bases: impl FnOnce(),
+    on_non_linearizable: impl FnOnce(),
+) -> LinearizedMro {
+    let (mro, linearizable) = linearize_mro_and_return_linearizable(db, bases);
+    let mut disjoint_base = None;
+    let mut has_disjoint_base = false;
+    for base in bases {
+        if let Some(cls) = base_class(db, base) {
+            let new = cls.use_cached_class_infos(db).disjoint_base;
+            if let Some(current) = &mut disjoint_base {
+                if *current != new {
+                    // Check whether any side is a subclass
+                    if cls.class_link_in_mro(db, *current) {
+                        *current = new;
+                    } else if !Class::from_undefined_generics(db, *current)
+                        .class_link_in_mro(db, new)
+                    {
+                        has_disjoint_base = true;
+                    }
+                }
+            } else {
+                disjoint_base = Some(new);
+            }
+        }
+    }
+    if has_disjoint_base {
+        on_disjoint_bases();
+    } else if !linearizable {
+        on_non_linearizable()
+    }
+    LinearizedMro {
+        mro,
+        is_valid: linearizable && !has_disjoint_base,
+        disjoint_base: disjoint_base.unwrap_or_else(|| db.python_state.object_link()),
     }
 }
 
@@ -2015,22 +2137,10 @@ pub fn linearize_mro_and_return_linearizable(
         .iter()
         .map(|t| {
             let mut additional_type = None;
-            let generic_class = match &t {
-                Type::Class(c) => Some(c.class(db)),
-                Type::Dataclass(d) => Some(d.class.class(db)),
-                Type::Tuple(tup) => {
-                    let cls = tup.class(db);
+            let super_classes = if let Some(cls) = base_class(db, t) {
+                if matches!(t, Type::Tuple(_) | Type::NamedTuple(_)) {
                     additional_type = Some(cls.as_type(db));
-                    Some(cls)
                 }
-                Type::NamedTuple(nt) => {
-                    let cls = nt.as_tuple_ref().class(db);
-                    additional_type = Some(cls.as_type(db));
-                    Some(cls)
-                }
-                _ => None,
-            };
-            let super_classes = if let Some(cls) = generic_class {
                 let cached_class_infos = cls.use_cached_class_infos(db);
                 cached_class_infos.mro.as_ref()
             } else {
@@ -2125,6 +2235,16 @@ pub fn linearize_mro_and_return_linearizable(
         unreachable!()
     }
     (mro.into_boxed_slice(), linearizable)
+}
+
+fn base_class<'x>(db: &'x Database, t: &'x Type) -> Option<Class<'x>> {
+    Some(match &t {
+        Type::Class(c) => c.class(db),
+        Type::Dataclass(d) => d.class.class(db),
+        Type::Tuple(tup) => tup.class(db),
+        Type::NamedTuple(nt) => nt.as_tuple_ref().class(db),
+        _ => return None,
+    })
 }
 
 fn join_abstract_attributes(db: &Database, abstract_attributes: &[PointLink]) -> Box<str> {

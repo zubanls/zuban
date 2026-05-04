@@ -3257,7 +3257,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             }
                         };
 
-                        let result = match strategy {
+                        let mut result = match strategy {
                             LookupStrategy::ShortCircuit => {
                                 left_op_method.as_ref().and_then(|left| run(left, r_type))
                             }
@@ -3276,6 +3276,26 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     left_op_method.as_ref().and_then(|left| run(left, r_type))
                                 }),
                         };
+                        if op_infos.operand == "|"
+                            && let Some(r) = &result
+                            && (matches!(l_type, Type::Type(_)) || matches!(r_type, Type::Type(_)))
+                            && let Type::Union(union) = r.as_cow_type(i_s).as_ref()
+                        {
+                            let union_type_link = i_s.db.python_state.union_type_link();
+                            // If there is a union link
+                            if union.iter().any(
+                                |t| matches!(t, Type::Class(c) if Some(c.link) == union_type_link),
+                            ) {
+                                result = Some(Inferred::from_type(
+                                    if l_type.is_equal_type(i_s.db, r_type) {
+                                        l_type.clone()
+                                    } else {
+                                        debug_assert!(union_type_link.is_some());
+                                        i_s.db.python_state.union_type().unwrap()
+                                    },
+                                ))
+                            }
+                        }
                         add_to_union(result.unwrap_or_else(|| {
                             let issue = if left_op_method.is_none()
                                 && (right_op_method.is_none()

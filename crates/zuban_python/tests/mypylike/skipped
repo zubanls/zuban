@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 testDefaultsMustBeInScope
 goto_doc_contains_stdlib_compiled
-recursive_type_matching_with_deeply_nested_list_should_not_be_slow3
 
 completion_no_wrong_range_in_strings
 
@@ -31,10 +30,6 @@ testStrictEqualityWithList
 # equality
 testNoneReturnTypeWithExpressions
 testStrictEqualityWithAnySentinel
-# typeshed upgrade regressions
-union_alias_attr_access
-type_form_basic2_conformance_tests
-testTypedDictGet
 # Mypy 1.19.0 upgrade issues
 testOverride__new__WithLiteralReturnPassing
 testOverride__new__WithLiteralReturnFailing
@@ -121,7 +116,6 @@ testPartialNoneTypeFineModuleGlobal
 testPartialNoneTypeFineModuleGlobalNested
 testGlobalVariableNoneInitMultipleFuncsRedefine
 testEnumLiteralIsNotIntLiteral
-testInferEqualsNotOptional
 testInferEqualsNotOptionalWithUnion
 testInferEqualsNotOptionalWithOverlap
 testInferEqualsStillOptionalWithNoOverlap
@@ -532,8 +526,6 @@ testIsinstanceAndNegativeNarrowTypeVariableWithUnionBound2
 testNarrowingUsingTypeVar
 testNarrowTypeVarBoundType
 testNarrowTypeVarBoundUnion
-# Do not narrow to Never
-testDoNotNarrowToNever
 # Property setter narrowing?
 testCustomSetterNarrowingReWidened
 
@@ -565,16 +557,6 @@ testFinalNotInLoops
 final_with_getitem_in_loop
 # Partial from function call
 testIgnoreTypeInferenceError2
-
-# Disjoint bases
-testSlotsCompatibility
-testDisjointBase
-testDisjointBaseSlots
-testIsInstanceDisjointBase
-testIsInstanceAdHocIntersectionWithStrAndBytes
-testSlotsAssignmentWithMixin
-testTypedDictCannotBeDisjointBase
-testProtocolCannotBeDisjointBase
 
 # Cannot assign to a method when assigning `self.method = lambda: None`
 testSlotsAssignmentWithMethodReassign
