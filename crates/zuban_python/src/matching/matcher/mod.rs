@@ -1717,7 +1717,7 @@ impl<'a> Matcher<'a> {
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
         MATCHING_CACHE.with(|cache| {
-            let mut current = cache.avoid_recursions.borrow_mut();
+            let current = cache.avoid_recursions.borrow_mut();
             if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
                 debug!(
                     r#"Avoided recursion for structural matching "{}" against "{}" -> return true"#,
@@ -1726,7 +1726,11 @@ impl<'a> Matcher<'a> {
                 );
                 Match::new_true()
             } else {
-                if !current.is_empty() {
+                let is_empty = current.is_empty();
+                // This needs to be dropped before replacing type vars since that potentially
+                // recurses.
+                drop(current);
+                if !is_empty {
                     let replace = move |t: &Type| {
                         let mut had_temporary_matcher_id = false;
                         t.search_type_vars(&mut |usage| {
@@ -1747,18 +1751,15 @@ impl<'a> Matcher<'a> {
                         // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
                         // where it replace function type vars repeatedly with new generated type vars.
                         // I'm not 100% sure this holds for all cases, but it feels like this is fine.
-                        drop(current);
                         return self.avoid_structural_matching_recursion(db, &new_t1, t2, callable);
                     }
                     if let Some(new_t2) = replace(t2) {
-                        drop(current);
                         return self.avoid_structural_matching_recursion(db, t1, &new_t2, callable);
                     }
                 }
                 self.cache_match_result(db, t1, t2, Variance::Covariant, |matcher| {
                     let new_t = (t1.clone(), t2.clone());
-                    current.push(new_t);
-                    drop(current);
+                    cache.avoid_recursions.borrow_mut().push(new_t);
                     debug!(
                         r#"Match protocol/TypedDict "{}" against "{}""#,
                         t1.format_short(db),
