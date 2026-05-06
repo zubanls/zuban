@@ -17,7 +17,7 @@ use crate::{
 const OPENED_FILE_LIMIT: usize = 200;
 const PARSED_FILE_LIMIT: usize = 10;
 const MAX_PARAM_SEARCHES: usize = 20;
-const PER_FILE_SEARCH_NAME_LIMIT: usize = 30;
+const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
 fn search_callable_arguments(
     i_s: &InferenceState,
@@ -39,13 +39,14 @@ fn search_callable_arguments(
 
 struct PotentialFileIterator<'db> {
     file: &'db PythonFile,
+    //already_checked: HashSet<Arc<FileEntry>>,
 }
 
 impl<'db> Iterator for PotentialFileIterator<'db> {
     type Item = &'db PythonFile;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        None
     }
 }
 
@@ -55,7 +56,8 @@ struct FileNameSearcher<'db, 'regex> {
     regex: &'regex Regex,
     current_file: &'db PythonFile,
     wanted: PointLink,
-    matches: Matches<'regex, 'db>,
+    matches: std::iter::Take<Matches<'regex, 'db>>,
+    found_in_current_file: bool,
 }
 
 impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
@@ -71,8 +73,10 @@ impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
             regex,
             current_file: file,
             wanted,
-            // .take(PER_FILE_SEARCH_NAME_LIMIT)
-            matches: regex.find_iter(file.tree.code()),
+            matches: regex
+                .find_iter(file.tree.code())
+                .take(PER_FILE_SEARCH_NAME_LIMIT),
+            found_in_current_file: false,
         }
     }
 }
@@ -100,7 +104,8 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                 if matches!(details, ArgumentsDetails::None) {
                     continue;
                 }
-                self.current_file.ensure_calculated_diagnostics(self.db);
+                let result = self.current_file.ensure_calculated_diagnostics(self.db);
+                debug_assert!(result.is_ok());
                 let point = self.current_file.points.get(name.index());
                 if point.calculated() && point.kind() == PointKind::Redirect {
                     let node_ref = point.as_redirected_node_ref(self.db);
@@ -109,6 +114,7 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                         && tree_name.file.file_index == self.wanted.file
                         && tree_name.cst_name.index() == self.wanted.node_index
                     {
+                        self.found_in_current_file = true;
                         return Some(FoundExecution {
                             file: self.current_file,
                             scope,
@@ -119,8 +125,16 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                 }
             }
         }
+        if self.found_in_current_file {
+            // If there are results after processing a module where we have found a result,
+            // we're probably good to abort. This is a speed optimization.
+            return None;
+        }
         self.current_file = self.potential_files.next()?;
-        self.matches = self.regex.find_iter(self.current_file.tree.code());
+        self.matches = self
+            .regex
+            .find_iter(self.current_file.tree.code())
+            .take(PER_FILE_SEARCH_NAME_LIMIT);
         self.next()
     }
 }
