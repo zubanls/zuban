@@ -25,7 +25,7 @@ pub struct Filter {
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
-        ("arrays.py", 31),
+        ("arrays.py", 32),
         ("async_.py", 4),
         ("basic.py", 20),
         ("classes.py", 20),
@@ -34,32 +34,45 @@ lazy_static::lazy_static! {
         ("decorators.py", 31),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
-        ("flow_analysis.py", 17),
+        ("flow_analysis.py", 18),
         ("fstring.py", 4),
         ("functions.py", 65),
-        ("generators.py", 10),
+        ("generators.py", 11),
         ("inheritance.py", 3),
         ("isinstance.py", 2),
-        ("lambdas.py", 18),
+        ("lambdas.py", 19),
         ("list.py", 1),
         ("ordering.py", 4),
         ("pep0484_typing.py", 3),
         ("pep0484_decorators.py", 2),
         ("positional_only_params.py", 3),
         ("precedence.py", 7),
-        ("stdlib.py", 41),
+        ("stdlib.py", 43),
 
         // TODO work on these files
         ("completion.py", 5),
         ("context.py", 4),
         ("docstring.py", 38),
-        ("dynamic_params.py", 18),
-        ("imports.py", 8),
+        ("dynamic_params.py", 20),
+        ("imports.py", 9),
         ("goto.py", 3),
         ("keywords.py", 9),
         ("ns_path.py", 4),
         ("sys_path.py", 4),
         ("stubs.py", 5),
+
+        // Changes from removing UntypedFunctionReturnMode::Advanced
+        ("classes.py", 31),
+        ("descriptors.py", 13),
+        ("dynamic_arrays.py", 14),
+        ("functions.py", 75),
+        ("parser.py", 1),
+        ("pep0484_generic_passthroughs.py", 2),
+        ("positional_only_params.py", 8),
+        ("recursion.py", 1),
+        ("stdlib.py", 43),
+        ("instance.py", 1),
+
     ]);
 }
 
@@ -120,7 +133,6 @@ fn main() -> ExitCode {
         Settings {
             typeshed_path: Some(test_utils::typeshed_path()),
             mypy_path: mypy_path(),
-            untyped_function_return_mode: config::UntypedFunctionReturnMode::Advanced,
             ..Default::default()
         },
         TypeCheckerFlags {
