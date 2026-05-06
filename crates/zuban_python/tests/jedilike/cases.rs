@@ -100,7 +100,7 @@ impl TestFile<'_> {
                 CaseType::Infer { expected, goal } => {
                     let actual: FastHashSet<_> = document
                         .get()
-                        .infer_definition(position, goal, |vn| {
+                        .infer_definition(position, goal, true, |vn| {
                             let mut n = if *vn.name.file_path() == *path {
                                 vn.name.name().to_owned()
                             } else {

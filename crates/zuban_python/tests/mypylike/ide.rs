@@ -277,7 +277,7 @@ pub(crate) fn find_and_check_ide_tests(
                     let goal = infer_args.common_args.goto_goal();
                     (
                         "infer",
-                        document.infer_definition(position, goal, |vn| {
+                        document.infer_definition(position, goal, true, |vn| {
                             check_infer_or_goto(&vn.name, &infer_args.common_args)
                         }),
                     )

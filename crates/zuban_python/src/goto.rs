@@ -101,7 +101,29 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         )
     }
 
-    fn infer_position(&self) -> Option<Inferred> {
+    fn infer_heuristics_if_necessary(
+        &self,
+        i_s: &InferenceState,
+        inferred: &Inferred,
+    ) -> Option<Inferred> {
+        let t = inferred.as_cow_type(i_s);
+        None
+    }
+
+    fn infer_position_maybe_with_heuristics(
+        &self,
+        i_s: &InferenceState,
+        use_heuristics: bool,
+    ) -> Option<Inferred> {
+        if !use_heuristics {
+            return self.infer_position(i_s);
+        }
+        let inferred = self.infer_position(i_s)?;
+        self.infer_heuristics_if_necessary(i_s, &inferred)
+            .or(Some(inferred))
+    }
+
+    fn infer_position(&self, i_s: &InferenceState) -> Option<Inferred> {
         let result = match &self.node {
             GotoNode::Name(name) => self.infer_name(*name),
             GotoNode::ImportFromAsName { import_as_name, .. } => {
@@ -131,7 +153,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 inplace_magic_method,
                 normal_magic_method,
                 ..
-            } => self.with_i_s(|i_s| {
+            } => {
                 let lookup = |method| {
                     self.lookup_without_errors(
                         i_s,
@@ -146,7 +168,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                     .into_maybe_inferred()
                 };
                 lookup(inplace_magic_method).or_else(|| lookup(normal_magic_method))
-            }),
+            }
             GotoNode::Atom(atom) => Some(self.infer_atom(*atom)),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 self.infer_name(name_def.name())
@@ -413,7 +435,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             goal: self.goal,
             on_result: &mut |n: ValueName<'db, '_>| callback(n.name),
         }
-        .infer_definition()
+        .infer_definition(false)
         .1
     }
 
@@ -649,7 +671,7 @@ fn try_to_follow<'db>(
     }
 }
 
-fn check_node_ref_and_maybe_follow_import<'db>(
+pub(crate) fn check_node_ref_and_maybe_follow_import<'db>(
     db: &'db Database,
     node_ref: NodeRef<'db>,
     follow_imports: bool,
@@ -940,15 +962,18 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
 }
 
 impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
-    pub fn infer_definition(&mut self) -> (Inferred, Vec<T>) {
+    pub fn infer_definition(&mut self, use_heuristics: bool) -> (Inferred, Vec<T>) {
         let mut result = vec![];
-        let Some(inf) = self.infos.infer_position() else {
-            return (Inferred::new_any_from_error(), result);
-        };
         let file = self.infos.file;
         let db = self.infos.db;
         let scope = self.infos.scope;
-        with_i_s_non_self(db, file, scope, |i_s| {
+        let inf = with_i_s_non_self(db, file, scope, |i_s| {
+            let Some(inf) = self
+                .infos
+                .infer_position_maybe_with_heuristics(i_s, use_heuristics)
+            else {
+                return Inferred::new_any_from_error();
+            };
             for type_ in inf.as_cow_type(i_s).iter_with_unpacked_unions(db) {
                 debug!(
                     "Part of inferring type definition: {:?}",
@@ -960,6 +985,7 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     result.push(callback(ValueName { name, type_ }))
                 })
             }
+            inf
         });
         (inf, result)
     }

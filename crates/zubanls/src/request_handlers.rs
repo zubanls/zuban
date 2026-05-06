@@ -303,10 +303,12 @@ impl GlobalState<'_> {
         self.run_goto_like(
             params,
             |document, pos, on_result| {
-                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+                document
+                    .infer_definition(pos, GotoGoal::PreferNonStubs, true, |vn| on_result(vn.name))
             },
             |document, pos, on_result| {
-                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+                document
+                    .infer_definition(pos, GotoGoal::PreferNonStubs, true, |vn| on_result(vn.name))
             },
         )
     }

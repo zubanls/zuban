@@ -61,7 +61,7 @@ impl<'project> Document<'project> {
                 _ => n.name.documentation().to_string(),
             }
         });
-        let (inf, mut results) = resolver.infer_definition();
+        let (inf, mut results) = resolver.infer_definition(false);
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return None;
