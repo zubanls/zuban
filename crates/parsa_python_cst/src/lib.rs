@@ -897,6 +897,17 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_left_of_primary(&self) -> Option<Primary<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) || parent.is_type(Nonterminal(primary)) {
+            let par_par = parent.parent().unwrap();
+            if par_par.is_type(Nonterminal(primary)) {
+                return Some(Primary::new(par_par));
+            }
+        }
+        None
+    }
+
     pub fn maybe_assignment_definition_name(&self) -> Option<Assignment<'db>> {
         self.name_def()?.maybe_assignment_definition()
     }

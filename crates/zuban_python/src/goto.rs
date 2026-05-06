@@ -23,6 +23,7 @@ use crate::{
         expect_class_or_simple_generic, first_defined_name,
     },
     format_data::FormatData,
+    heuristic_infer,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::LookupKind,
@@ -107,6 +108,13 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         inferred: &Inferred,
     ) -> Option<Inferred> {
         let t = inferred.as_cow_type(i_s);
+        if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
+            return self.with_calculated_heuristics(|| {
+                let found_new = self.infer_position(i_s)?;
+                without_any.union_in_place(found_new.as_type(i_s));
+                Some(Inferred::from_type(without_any))
+            });
+        }
         None
     }
 

@@ -690,6 +690,24 @@ impl Type {
             .any(|t| matches!(t, Type::Any(_)))
     }
 
+    pub fn maybe_remove_any(&self, db: &Database) -> Option<Self> {
+        if !self.is_any_or_any_in_union(db) {
+            return None;
+        }
+        let might_have_defined_type_vars = match self {
+            Type::Union(u) => u.might_have_type_vars,
+            Type::Any(_) => false,
+            _ => true,
+        };
+        Some(Type::from_union_entries(
+            self.iter_with_unpacked_union_entries(db, true)
+                .filter(|e| !matches!(e.type_, Type::Any(_)))
+                .map(|e| e.into())
+                .collect(),
+            might_have_defined_type_vars,
+        ))
+    }
+
     pub fn is_type_of_any(&self) -> bool {
         match self {
             Type::Type(t) => t.is_any(),
