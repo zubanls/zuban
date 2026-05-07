@@ -109,11 +109,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     ) -> Option<Inferred> {
         let t = inferred.as_cow_type(i_s);
         if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
-            return self.with_calculated_heuristics(|| {
-                let found_new = self.infer_position(i_s)?;
-                without_any.union_in_place(found_new.as_type(i_s));
-                Some(Inferred::from_type(without_any))
-            });
+            let found = self.infer_heuristics_if_possible()?;
+            without_any.union_in_place(found.as_type(i_s));
+            return Some(Inferred::from_type(without_any));
         }
         None
     }
@@ -659,7 +657,7 @@ pub(crate) fn try_to_follow_imports<'db>(
     None
 }
 
-fn try_to_follow<'db>(
+pub(crate) fn try_to_follow<'db>(
     db: &'db Database,
     n: NodeRef<'db>,
     follow_imports: bool,

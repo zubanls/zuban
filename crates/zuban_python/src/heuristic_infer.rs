@@ -1,15 +1,26 @@
+use std::rc::Rc;
+
 use parsa_python_cst::{
-    ArgumentsDetails, GotoNode, Name, NameParent, NodeIndex, Primary, PrimaryContent, Scope,
+    ArgumentsDetails, Expression, GotoNode, Name, NameParent, NodeIndex, Primary, PrimaryContent,
+    Scope, TypeLike,
 };
 use regex::{Matches, Regex};
+use utils::FastHashMap;
 
 use crate::{
-    arguments::SimpleArgs,
+    arguments::{ArgKind, Args as _, SimpleArgs},
     database::{Database, Point, PointKind, PointLink},
     debug,
     file::PythonFile,
-    goto::{FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import},
-    inference_state::InferenceState,
+    goto::{
+        FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
+        try_to_follow,
+    },
+    inference_state::{InferenceState, Mode},
+    inferred::Inferred,
+    node_ref::NodeRef,
+    params::{InferrableParam, ParamArgument},
+    type_helpers::{Function, FunctionParam},
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:
@@ -20,54 +31,181 @@ const PARSED_FILE_LIMIT: usize = 10;
 const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
-/*
-struct NeededHeuristics<'db> {
-    function: FunctionDef<'db>,
+struct HeuristicState<'db> {
+    db: &'db Database,
+    callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
 }
 
-impl<'db> NeededHeuristics<'db> {
-    fn from_goto_node(node: GotoNode<'db>) -> Option<Self> {
-        match node {}
-        Self { function }
+struct HeuristicInference<'db, 'state> {
+    state: &'state mut HeuristicState<'db>,
+    file: &'db PythonFile,
+}
+
+impl<'db, 'state> HeuristicInference<'db, 'state> {
+    fn with_different_file(&mut self, file: &'db PythonFile) -> HeuristicInference<'db, '_> {
+        HeuristicInference {
+            state: self.state,
+            file,
+        }
     }
-}
-*/
 
-impl<'db, T> PositionalDocument<'db, T> {
-    pub fn with_calculated_heuristics<X>(&self, callback: impl FnOnce() -> Option<X>) -> Option<X> {
-        debug!("Try to find heuristics");
-        match self.scope {
-            Scope::Function(function_def) => {
-                let body = function_def.body();
-                let range = body.index()..body.last_leaf_index();
-                let backup = self.file.points.backup(range.clone());
-                search_callable_arguments(self.db, self.file, function_def.name());
-
-                for i in range {
-                    self.file.points.set(i, Point::new_uncalculated())
-                }
-
-                let result = callback();
-                self.file.points.reset_from_backup(&backup);
-                result
-            }
+    fn infer_name(&mut self, name: Name<'db>) -> Option<Inferred> {
+        match name.parent() {
+            NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
+            NameParent::NameDef(name_def) => match name_def.expect_type() {
+                TypeLike::ParamName(_) => self.search_callable_arguments(name),
+                TypeLike::Assignment(_) => None, // TODO
+                _ => None,
+            },
+            /*
+            NameParent::Primary(primary) => todo!(),
+            NameParent::PrimaryTarget(primary_target) => todo!(),
+            NameParent::KeywordPattern(keyword_pattern) => todo!(),
+            NameParent::DottedPatternName(dotted_pattern_name) => todo!(),
+            NameParent::FStringConversion(fstring_conversion) => todo!(),
+            */
             _ => None,
         }
     }
+
+    fn infer_name_reference(&mut self, name: Name<'db>) -> Option<Inferred> {
+        match try_to_follow(self.state.db, NodeRef::new(self.file, name.index()), true)?? {
+            FollowImportResult::File(file_index) => Some(Inferred::new_file_reference(file_index)),
+            FollowImportResult::TreeName(tree_name) => self
+                .with_different_file(tree_name.file)
+                .infer_name(tree_name.cst_name),
+        }
+    }
+
+    fn search_callable_arguments(&mut self, param_name: Name) -> Option<Inferred> {
+        let func = param_name.expect_as_param_of_function();
+        let func_name = func.name();
+        let wanted_name = PointLink::new(self.file.file_index, func_name.index());
+        let entry = self.state.callable_search_cache.entry(wanted_name);
+        // Cache the executions
+        let db = self.state.db;
+        let executions = entry
+            .or_insert_with(|| {
+                let regex = Regex::new(&format!(r"\b{}\b\(", func_name.as_code())).unwrap();
+                FileNameSearcher::new(db, self.file, &regex, wanted_name).collect()
+            })
+            .clone();
+
+        let func = Function::new_with_unknown_parent(db, NodeRef::new(self.file, func.index()));
+        executions
+            .iter()
+            .filter_map(|execution| {
+                let args = SimpleArgs::new(
+                    InferenceState::new(db, execution.file),
+                    execution.file,
+                    execution.primary.index(),
+                    execution.details,
+                );
+                for param in func.iter_args_with_params(db, args.iter(Mode::Normal), false) {
+                    if param.param.name_def().name_index() == param_name.index() {
+                        if let Some(found) = self
+                            .with_different_file(execution.file)
+                            .infer_param(execution.file, param)
+                        {
+                            return Some(found);
+                        }
+                    }
+                }
+                /*
+                // The deeper we're in the recursion, the less code should be inferred.
+                if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
+                    found_arguments = True;
+                    yield arguments
+                }
+                */
+                None
+            })
+            .reduce(|inf1, inf2| {
+                let i_s = &InferenceState::new_in_unknown_file(db);
+                Inferred::from_type(inf1.as_type(i_s).union(inf2.as_type(i_s)))
+            })
+    }
+
+    fn infer_param(
+        &mut self,
+        argument_file: &'db PythonFile,
+        param: InferrableParam<FunctionParam>,
+    ) -> Option<Inferred> {
+        // TODO use defaults
+        self.with_different_file(argument_file)
+            .infer_argument(param.argument)
+    }
+
+    fn infer_argument(&mut self, argument: ParamArgument) -> Option<Inferred> {
+        match argument {
+            ParamArgument::None => None,
+            ParamArgument::Argument(arg) => match arg.kind {
+                ArgKind::Positional(arg) => {
+                    Some(self.infer_expression(arg.named_expr.expression()))
+                }
+                ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression)),
+                ArgKind::Inferred { inferred, .. }
+                | ArgKind::InferredWithCustomAddIssue { inferred, .. }
+                | ArgKind::Overridden { inferred, .. } => Some(inferred),
+                ArgKind::StarredWithUnpack {
+                    with_unpack,
+                    node_ref,
+                    position,
+                } => todo!(),
+                ArgKind::ParamSpec {
+                    usage,
+                    node_ref,
+                    kwargs_node_ref,
+                    position,
+                } => todo!(),
+                ArgKind::Comprehension {
+                    i_s,
+                    file,
+                    comprehension,
+                } => todo!(),
+            },
+            ParamArgument::TupleUnpack(args) => todo!(),
+            ParamArgument::MatchedUnpackedTypedDictMember {
+                argument,
+                type_,
+                name,
+            } => todo!(),
+            ParamArgument::ParamSpecArgs(param_spec_usage, args) => todo!(),
+        }
+    }
+
+    fn with_i_s<T>(&self, callback: impl FnOnce(&InferenceState) -> T) -> T {
+        InferenceState::new(self.state.db, self.file)
+            .avoid_errors_within(callback)
+            .0
+    }
+
+    fn infer_expression(&mut self, expr: Expression) -> Inferred {
+        self.with_i_s(|i_s| self.file.inference(i_s).infer_expression(expr))
+    }
 }
 
-fn search_callable_arguments(db: &Database, search_in_file: &PythonFile, name: Name) {
-    let wanted_name = PointLink::new(search_in_file.file_index, name.index());
-    let name = name.as_code();
-    let regex = Regex::new(&format!(r"\b{name}\b\(")).unwrap();
-    for execution in FileNameSearcher::new(db, search_in_file, &regex, wanted_name) {
-        /*
-        // The deeper we're in the recursion, the less code should be inferred.
-        if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
-            found_arguments = True;
-            yield arguments
+impl<'db> PositionalDocument<'db, GotoNode<'db>> {
+    pub fn infer_heuristics_if_possible(&self) -> Option<Inferred> {
+        debug!("Try to find heuristics");
+        let mut heuristic = HeuristicInference {
+            state: &mut HeuristicState {
+                db: self.db,
+                callable_search_cache: Default::default(),
+            },
+            file: self.file,
+        };
+        match self.node {
+            GotoNode::Name(name) => heuristic.infer_name_reference(name),
+            /*
+            GotoNode::ImportFromAsName { .. } => (),
+            GotoNode::Primary(_) => (),
+            GotoNode::PrimaryTarget(_) => (),
+            GotoNode::GlobalName(_) | GotoNode::NonlocalName(_) | GotoNode::Atom(_) => (),
+            GotoNode::Operator { .. } | GotoNode::AugAssignOperator { .. } | GotoNode::None => (),
+            */
+            _ => None,
         }
-        */
     }
 }
 

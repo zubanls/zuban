@@ -13,7 +13,7 @@ pub(crate) use class::{
     check_type_var_variance_validity_for_type,
 };
 pub(crate) use function::{
-    FirstParamKind, FirstParamProperties, Function, GeneratorType, is_private,
+    FirstParamKind, FirstParamProperties, Function, FunctionParam, GeneratorType, is_private,
 };
 pub(crate) use instance::{
     Instance, InstanceLookupOptions, LookupDetails, execute_isinstance, execute_issubclass,
