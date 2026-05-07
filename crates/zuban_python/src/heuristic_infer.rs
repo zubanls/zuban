@@ -241,7 +241,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             file: self.file,
         };
         match self.node {
-            GotoNode::Name(name) => heuristic.infer_name_reference(name),
+            GotoNode::Name(name) => heuristic.infer_name(name),
             /*
             GotoNode::ImportFromAsName { .. } => (),
             GotoNode::Primary(_) => (),
