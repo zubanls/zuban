@@ -80,14 +80,29 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
     fn search_callable_arguments(&mut self, param_name: Name) -> Option<Inferred> {
         let func = param_name.expect_as_param_of_function();
         let func_name = func.name();
-        let wanted_name = PointLink::new(self.file.file_index, func_name.index());
-        let entry = self.state.callable_search_cache.entry(wanted_name);
+        let mut search_name = func_name.as_code();
+        let mut skip_first_param = false;
+        let wanted_link = if search_name == "__init__"
+            && let Scope::Class(class) = func.parent_scope()
+        {
+            let cls_name = class.name();
+            search_name = cls_name.as_code();
+            skip_first_param = true;
+            PointLink::new(self.file.file_index, cls_name.index())
+        } else if search_name.starts_with("__") && search_name.ends_with("__") {
+            // These are magic methods and should probably not be searched.
+            return None;
+        } else {
+            PointLink::new(self.file.file_index, func_name.index())
+        };
+
+        let entry = self.state.callable_search_cache.entry(wanted_link);
         // Cache the executions
         let db = self.state.db;
         let executions = entry
             .or_insert_with(|| {
-                let regex = Regex::new(&format!(r"\b{}\b\(", func_name.as_code())).unwrap();
-                FileNameSearcher::new(db, self.file, &regex, wanted_name).collect()
+                let regex = Regex::new(&format!(r"\b{}\b\(", search_name)).unwrap();
+                FileNameSearcher::new(db, self.file, &regex, wanted_link).collect()
             })
             .clone();
 
@@ -101,7 +116,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
                     execution.primary.index(),
                     execution.details,
                 );
-                for param in func.iter_args_with_params(db, args.iter(Mode::Normal), false) {
+                for param in
+                    func.iter_args_with_params(db, args.iter(Mode::Normal), skip_first_param)
+                {
                     if param.param.name_def().name_index() == param_name.index() {
                         if let Some(found) = self
                             .with_different_file(execution.file)

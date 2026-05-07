@@ -91,14 +91,14 @@ func.sys
 # classes
 # -----------------
 
-class A():
+class A1():
     def __init__(self, a):
         #? str()
         a
 
-A("s")
+A1("s")
 
-class A():
+class A2():
     def __init__(self, a):
         #? int()
         a
@@ -119,8 +119,8 @@ class A():
         #? int()
         self.c
 
-A(3).test(2.0)
-A(3).test2()
+A2(3).test(2.0)
+A2(3).test2()
 
 
 def from_class(x):
