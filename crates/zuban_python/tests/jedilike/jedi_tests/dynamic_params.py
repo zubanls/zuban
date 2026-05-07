@@ -163,3 +163,13 @@ class X():
 
 
 X().x_method('')
+
+# -----------------
+# Non-Jedi tests
+# -----------------
+
+def new(x):
+    #? int()
+    x
+
+new (1)

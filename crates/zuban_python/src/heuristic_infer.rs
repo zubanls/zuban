@@ -117,7 +117,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
         let _indent = debug_indent();
         let executions = entry
             .or_insert_with(|| {
-                let regex = Regex::new(&format!(r"\b{}\b\(", search_name)).unwrap();
+                let regex = Regex::new(&format!(r"\b{}\b\s*\(", search_name)).unwrap();
                 FileNameSearcher::new(db, self.file, &regex, wanted_link).collect()
             })
             .clone();
