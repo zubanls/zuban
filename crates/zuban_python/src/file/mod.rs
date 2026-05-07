@@ -14,7 +14,7 @@ mod utils;
 pub(crate) use diagnostics::{OVERLAPPING_REVERSE_TO_NORMAL_METHODS, check_multiple_inheritance};
 pub(crate) use file_state::File;
 pub(crate) use flow_analysis::{FLOW_ANALYSIS, RedefinitionResult, process_unfinished_partials};
-use inference::Inference;
+pub(crate) use inference::Inference;
 pub(crate) use inference::{first_defined_name, first_defined_name_of_multi_def};
 pub(crate) use name_binder::{
     FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,

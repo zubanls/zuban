@@ -24,8 +24,8 @@ use super::{ClassInitializer, PythonFile, python_file::StarImport};
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
-    pub(super) file: &'file PythonFile,
-    pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
+    pub file: &'file PythonFile,
+    pub i_s: &'i_s InferenceState<'db, 'i_s>,
     // Type computation uses alias calculation, which works in a different way than normal
     // inference. Therefore we want to stop and return the assignment.
     pub(super) stop_on_assignments: bool,
