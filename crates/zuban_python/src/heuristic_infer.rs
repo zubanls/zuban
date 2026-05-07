@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    ArgumentsDetails, Expression, GotoNode, Name, NameParent, NodeIndex, Primary, PrimaryContent,
-    Scope, TypeLike,
+    ArgumentsDetails, ClassDef, Expression, GotoNode, Name, NameParent, NodeIndex, Primary,
+    PrimaryContent, Scope, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
 
 use crate::{
     arguments::{ArgKind, Args as _, SimpleArgs},
-    database::{Database, Point, PointKind, PointLink},
+    database::{Database, ParentScope, Point, PointKind, PointLink},
     debug,
     file::PythonFile,
     goto::{
@@ -20,7 +20,9 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     params::{InferrableParam, ParamArgument},
+    type_::FunctionKind,
     type_helpers::{Function, FunctionParam},
+    utils::debug_indent,
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:
@@ -82,10 +84,12 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
         let func_name = func.name();
         let mut search_name = func_name.as_code();
         let mut skip_first_param = false;
+        let db = self.state.db;
+        let func = Function::new_with_unknown_parent(db, NodeRef::new(self.file, func.index()));
         let wanted_link = if search_name == "__init__"
-            && let Scope::Class(class) = func.parent_scope()
+            && let Some(class) = func.class
         {
-            let cls_name = class.name();
+            let cls_name = class.node().name();
             search_name = cls_name.as_code();
             skip_first_param = true;
             PointLink::new(self.file.file_index, cls_name.index())
@@ -93,20 +97,32 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
             // These are magic methods and should probably not be searched.
             return None;
         } else {
+            if func.class.is_some() {
+                match self.with_i_s(|i_s| func.kind(i_s)) {
+                    FunctionKind::Function { .. } | FunctionKind::Classmethod { .. } => {
+                        skip_first_param = true
+                    }
+                    FunctionKind::Staticmethod => (),
+                    FunctionKind::Property { .. } => return None, // Properties are never called
+                }
+            }
             PointLink::new(self.file.file_index, func_name.index())
         };
 
         let entry = self.state.callable_search_cache.entry(wanted_link);
         // Cache the executions
-        let db = self.state.db;
+        debug!(
+            "Try to find callable execution for {search_name}, skip_first_param={skip_first_param}"
+        );
+        let _indent = debug_indent();
         let executions = entry
             .or_insert_with(|| {
                 let regex = Regex::new(&format!(r"\b{}\b\(", search_name)).unwrap();
                 FileNameSearcher::new(db, self.file, &regex, wanted_link).collect()
             })
             .clone();
+        debug!("Found executions: {executions:?}");
 
-        let func = Function::new_with_unknown_parent(db, NodeRef::new(self.file, func.index()));
         executions
             .iter()
             .filter_map(|execution| {
@@ -299,7 +315,7 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                 .current_file
                 .tree
                 .goto_node(match_.range().start as NodeIndex);
-            if let GotoNode::Name(name) = node
+            if let Some(name) = node.on_name()
                 && let Some(primary) = name.maybe_left_of_primary()
                 && let PrimaryContent::Execution(details) = primary.second()
             {

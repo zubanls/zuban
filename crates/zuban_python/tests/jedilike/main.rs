@@ -53,7 +53,7 @@ lazy_static::lazy_static! {
         ("completion.py", 5),
         ("context.py", 4),
         ("docstring.py", 38),
-        ("dynamic_params.py", 12),
+        ("dynamic_params.py", 10),
         ("imports.py", 8),
         ("goto.py", 3),
         ("keywords.py", 9),

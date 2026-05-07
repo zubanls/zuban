@@ -123,13 +123,18 @@ A2(3).test(2.0)
 A2(3).test2()
 
 
-def from_class(x):
+def from_class1(x):
+    #? int()
+    x
+from UNDEFINED import from_class1
+class Foo(from_class1(1),):
+    pass
+
+from UNDEFINED import from_class2
+def from_class2(x):
     #?
     x
-
-from UNDEFINED import from_class
-
-class Foo(from_class(1),):
+class Foo(from_class2(1),):
     pass
 
 # -----------------
