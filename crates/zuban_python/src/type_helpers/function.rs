@@ -1,9 +1,9 @@
 use std::{borrow::Cow, cell::Cell, fmt, sync::Arc};
 
 use parsa_python_cst::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, NameDef, Param as CSTParam,
-    ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield,
-    TrivialBodyState, YieldExprContent,
+    Decorated, Decorator, Expression, ExpressionContent, ExpressionPart, NameDef,
+    Param as CSTParam, ParamIterator, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
+    ReturnOrYield, TrivialBodyState, YieldExprContent,
 };
 
 use crate::{
@@ -2200,6 +2200,10 @@ pub(crate) struct FunctionParam<'x> {
 impl<'db: 'x, 'x> FunctionParam<'x> {
     pub fn name_def(&self) -> NameDef<'x> {
         self.param.name_def()
+    }
+
+    pub fn default(&self) -> Option<Expression<'x>> {
+        self.param.default()
     }
 
     fn annotation_or_any(&self, db: &'db Database) -> Cow<'x, Type> {

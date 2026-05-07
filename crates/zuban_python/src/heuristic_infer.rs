@@ -131,9 +131,21 @@ impl<'db, 'state> HeuristicInference<'db, 'state> {
         argument_file: &'db PythonFile,
         param: InferrableParam<FunctionParam>,
     ) -> Option<Inferred> {
-        // TODO use defaults
-        self.with_different_file(argument_file)
-            .infer_argument(param.argument)
+        let result = self
+            .with_different_file(argument_file)
+            .infer_argument(param.argument);
+        if let Some(default) = param.param.default() {
+            let inferred_default = self.infer_expression(default);
+            if let Some(result) = result {
+                return Some(Inferred::from_type(
+                    result
+                        .as_type(&InferenceState::new(self.state.db, argument_file))
+                        .union(self.with_i_s(|i_s| inferred_default.as_type(i_s))),
+                ));
+            }
+            return Some(inferred_default);
+        }
+        result
     }
 
     fn infer_argument(&mut self, argument: ParamArgument) -> Option<Inferred> {

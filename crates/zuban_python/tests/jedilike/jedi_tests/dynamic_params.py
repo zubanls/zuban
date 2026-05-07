@@ -22,8 +22,8 @@ def func2(a):
 
 func2(1.0)
 
-# Again the same function, but with no call.
-def func3(a):
+# Again a function, but with no call.
+def without_call(a):
     #? 
     return a
 
@@ -60,7 +60,8 @@ func4("something")
 
 @def_func
 def func5(c=1):
-    #? float()
+    # zuban-diff #? float()
+    #? float() int()
     return c
 
 func5(1.0)
