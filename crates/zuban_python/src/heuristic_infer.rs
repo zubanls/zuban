@@ -53,6 +53,16 @@ struct HeuristicState<'db> {
     call_stack: Vec<(FuncNodeRef<'db>, ArgumentsFrame<'db>)>,
 }
 
+impl<'db> HeuristicState<'db> {
+    fn find_call_stack_frame(&self, func_node_ref: FuncNodeRef) -> Option<&ArgumentsFrame<'db>> {
+        let (_, args_frame) = self
+            .call_stack
+            .iter()
+            .find(|frame| frame.0 == func_node_ref)?;
+        Some(args_frame)
+    }
+}
+
 struct HeuristicInference<'db, 'state, 'i_s> {
     state: &'state mut HeuristicState<'db>,
     inference: Inference<'db, 'db, 'i_s>,
@@ -107,12 +117,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 TypeLike::ParamName(_) => {
                     let func = name.expect_as_param_of_function();
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
-                    if let Some((_, args_frame)) = self
-                        .state
-                        .call_stack
-                        .iter()
-                        .find(|frame| frame.0 == func_node_ref)
-                    {
+                    if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
                         let details = match args_frame.kind {
                             ArgumentsFrameKind::Arguments(args_index) => ArgumentsDetails::Node(
                                 Arguments::by_index(&args_frame.file.tree, args_index),
