@@ -223,7 +223,7 @@ where
     }
 }
 
-pub(crate) fn limit_length_for_debug(s: &str) -> Cow<str> {
+pub(crate) fn limit_length_for_debug(s: &str) -> Cow<'_, str> {
     const MAX_LEN: usize = 30;
     if s.len() > MAX_LEN {
         Cow::Owned(format!("{}..", &s[..MAX_LEN]))
