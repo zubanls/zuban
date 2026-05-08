@@ -24,7 +24,7 @@ use crate::{
     result_context::ResultContext,
     type_::{FunctionKind, Type},
     type_helpers::{Function, FunctionParam},
-    utils::debug_indent,
+    utils::{debug_indent, limit_length_for_debug},
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:
@@ -100,6 +100,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 TypeLike::ParamName(_) => {
                     let func = name.expect_as_param_of_function();
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
+                    dbg!(func_node_ref);
                     if let Some((_, args_frame)) = self
                         .state
                         .call_stack
@@ -365,6 +366,10 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     fn infer_expression(&mut self, expr: Expression) -> Heuristic {
         let inf = self.inference.infer_expression(expr);
         self.create_heuristic_if_necessary(inf, |slf| {
+            debug!(
+                "Heuristics for expr {}",
+                limit_length_for_debug(expr.as_code())
+            );
             match expr.unpack() {
                 ExpressionContent::ExpressionPart(expr_part) => match expr_part {
                     ExpressionPart::Atom(atom) => slf.infer_atom(atom),

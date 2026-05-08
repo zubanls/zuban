@@ -9,11 +9,11 @@ use std::{
 
 use parsa_python_cst::{Name, NodeIndex};
 
-thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
+thread_local!(pub(crate) static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 
 #[inline]
 #[must_use]
-pub fn debug_indent() -> DebugIndent {
+pub(crate) fn debug_indent() -> DebugIndent {
     if cfg!(feature = "zuban_debug") {
         DEBUG_INDENTATION.with(|i| {
             i.set(i.get() + 1);
@@ -22,7 +22,7 @@ pub fn debug_indent() -> DebugIndent {
     DebugIndent()
 }
 
-pub struct DebugIndent();
+pub(crate) struct DebugIndent();
 
 impl Drop for DebugIndent {
     #[inline]
@@ -136,7 +136,7 @@ impl SymbolTable {
     }
 }
 
-pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
+pub(crate) fn bytes_repr(bytes: Cow<[u8]>) -> String {
     let mut string = String::with_capacity(bytes.len());
     for &b in bytes.iter() {
         match b {
@@ -152,7 +152,7 @@ pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
     format!("b'{string}'")
 }
 
-pub fn str_repr(content: &str) -> String {
+pub(crate) fn str_repr(content: &str) -> String {
     let mut repr = String::new();
     for c in content.chars() {
         // Since the control characters cause an issue when printing to a terminal, we have to
@@ -177,7 +177,7 @@ pub fn str_repr(content: &str) -> String {
     format!("'{repr}'")
 }
 
-pub fn join_with_commas<I, S>(input: I) -> String
+pub(crate) fn join_with_commas<I, S>(input: I) -> String
 where
     I: IntoIterator<Item = S>,
     S: Borrow<str>,
@@ -185,7 +185,7 @@ where
     input.into_iter().collect::<Vec<S>>().as_slice().join(", ")
 }
 
-pub fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {
+pub(crate) fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {
     // Performance issue: Arc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
 
     // TODO we could avoid cloning here and just use a copy for the slice parts.
@@ -195,15 +195,15 @@ pub fn arc_slice_into_vec<T: Clone>(this: Arc<[T]>) -> Vec<T> {
 }
 
 #[inline]
-pub fn is_magic_method(name: &str) -> bool {
+pub(crate) fn is_magic_method(name: &str) -> bool {
     name.starts_with("__") && name.ends_with("__")
 }
 
-pub fn is_file_with_python_ending(path_or_name: &str) -> bool {
+pub(crate) fn is_file_with_python_ending(path_or_name: &str) -> bool {
     path_or_name.ends_with(".py") || path_or_name.ends_with(".pyi")
 }
 
-pub enum EitherIterator<IT1, IT2> {
+pub(crate) enum EitherIterator<IT1, IT2> {
     Left(IT1),
     Right(IT2),
 }
@@ -220,5 +220,14 @@ where
             Self::Left(iterator) => iterator.next(),
             Self::Right(iterator) => iterator.next(),
         }
+    }
+}
+
+pub(crate) fn limit_length_for_debug(s: &str) -> Cow<str> {
+    const MAX_LEN: usize = 30;
+    if s.len() > MAX_LEN {
+        Cow::Owned(format!("{}..", &s[..MAX_LEN]))
+    } else {
+        s.into()
     }
 }
