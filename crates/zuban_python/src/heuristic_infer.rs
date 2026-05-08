@@ -382,6 +382,13 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 if func_node_ref.is_generator() {
                     return None; // TODO make generators possible
                 }
+                if self.state.find_call_stack_frame(func_node_ref).is_some() {
+                    debug!(
+                        "Heuristics: Had a recursion with func '{}', stopping inference",
+                        func_node_ref.qualified_name(self.inference.i_s.db)
+                    );
+                    return None;
+                }
 
                 let args_frame = ArgumentsFrame {
                     file: self.inference.file,

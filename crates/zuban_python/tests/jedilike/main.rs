@@ -25,13 +25,13 @@ pub struct Filter {
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
-        ("arrays.py", 32),
+        ("arrays.py", 31),
         ("async_.py", 4),
         ("basic.py", 19),
         ("classes.py", 20),
         ("comprehensions.py", 31),
         ("django.py", 3),
-        ("decorators.py", 31),
+        ("decorators.py", 30),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 18),
@@ -47,7 +47,7 @@ lazy_static::lazy_static! {
         ("pep0484_decorators.py", 2),
         ("positional_only_params.py", 3),
         ("precedence.py", 7),
-        ("stdlib.py", 43),
+        ("stdlib.py", 41),
 
         // TODO work on these files
         ("completion.py", 5),
@@ -63,16 +63,13 @@ lazy_static::lazy_static! {
 
         // Changes from removing UntypedFunctionReturnMode::Advanced
         ("classes.py", 31),
-        ("descriptors.py", 13),
+        ("descriptors.py", 12),
         ("dynamic_arrays.py", 14),
-        ("functions.py", 75),
+        ("functions.py", 70),
         ("parser.py", 1),
         ("pep0484_generic_passthroughs.py", 2),
-        ("positional_only_params.py", 6),
         ("recursion.py", 1),
-        ("stdlib.py", 43),
         ("instance.py", 1),
-
     ]);
 }
 
