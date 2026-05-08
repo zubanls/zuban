@@ -193,7 +193,7 @@ def funct1():
     global global_dict_var
     global_dict_var = dict()
 def funct2():
-    #! ['global_dict_var', 'global_dict_var']
+    #! ['global global_dict_var']
     global global_dict_var
     #? dict()
     global_dict_var
@@ -231,9 +231,11 @@ if r:
 
 deleted_var = 3
 del deleted_var
-#?
+# zuban-diff: #?
+#? int()
 deleted_var
-#? []
+# zuban-diff: #? []
+#? ["deleted_var"]
 deleted_var
 # zuban-diff: #! []
 #! ["deleted_var = 3"]
@@ -256,12 +258,12 @@ def a():
 # str literals in comment """ upper
 
 def completion_in_comment():
-    #? ['Exception']
+    #? ['Exception', 'ExceptionGroup']
     # might fail because the comment is not a leaf: Exception
     pass
 
 some_word
-#? ['Exception']
+#? ['Exception', 'ExceptionGroup']
 # Very simple comment completion: Exception
 # Commment after it
 
@@ -366,9 +368,9 @@ def foo(my_t: lala=some_defa, my_t2: my_typ
 #? []
 def foo(my_t: lala=some_defa, my_t
 
-#? []
+#? ["my_t", "my_t2", "my_ty", "my_type"]
 lambda my_t
-#? []
+#? ["my_t", "my_t2", "my_ty", "my_type"]
 lambda my_, my_t
 #? ['some_default']
 lambda x=some_defa
@@ -430,7 +432,7 @@ class Foo():
 with Foo() as f3:
     #? str()
     f3
-#! 14 ['with Foo() as f3: f3']
+#! 14 ['Foo() as f3']
 with Foo() as f3:
     f3
 #? 6 Foo

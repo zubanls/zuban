@@ -3,8 +3,7 @@ a = 3  # type: str
 a
 
 b = 3  # type: str but I write more
-# zuban-diff: #? int()
-#?
+#? int()
 b
 
 c = 3  # type: str # I comment more

@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    Arguments, ArgumentsDetails, Atom, AtomContent, Comprehension, Expression, ExpressionContent,
-    ExpressionPart, FunctionDef, GotoNode, Name, NameParent, NodeIndex, Primary, PrimaryContent,
-    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions, TypeLike,
+    Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom, AtomContent,
+    Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef, GotoNode, Name,
+    NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
+    StarExpressionContent, StarExpressions, Target, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -22,8 +23,8 @@ use crate::{
     node_ref::NodeRef,
     params::{InferrableParam, ParamArgument},
     result_context::ResultContext,
-    type_::{FunctionKind, Type},
-    type_helpers::{Function, FunctionParam},
+    type_::{FunctionKind, LookupResult, Type},
+    type_helpers::{Function, FunctionParam, InstanceLookupOptions},
     utils::{debug_indent, limit_length_for_debug},
 };
 
@@ -150,7 +151,27 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     }
                     self.search_callable_arguments(func, name)
                 }
-                TypeLike::Assignment(_) => None, // TODO
+                TypeLike::Assignment(assignment) => {
+                    if let AssignmentContent::Normal(targets, right_side) = assignment.unpack() {
+                        for target in targets {
+                            match target {
+                                Target::Name(name_def) | Target::NameExpression(_, name_def) => {
+                                    if name_def.name_index() == name.index() {
+                                        return match right_side {
+                                            AssignmentRightSide::YieldExpr(_) => None,
+                                            AssignmentRightSide::StarExpressions(star_exprs) => {
+                                                Some(self.infer_star_exprs(star_exprs)?.into())
+                                            }
+                                        };
+                                    }
+                                }
+                                Target::Tuple(_) => (), // TODO
+                                _ => (),
+                            }
+                        }
+                    }
+                    None
+                }
                 _ => None,
             },
             NameParent::Primary(primary) => self.infer_primary(primary).maybe_guessed(),
@@ -346,6 +367,10 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             .inference
             .infer_primary(primary, &mut ResultContext::Unknown);
         self.create_heuristic_if_necessary(inf, |slf| {
+            debug!(
+                "Heuristics for primary expr: {}",
+                limit_length_for_debug(primary.as_code()),
+            );
             let first = slf.infer_primary_or_atom(primary.first()).into();
             slf.infer_primary_or_primary_t_content(first, primary.index(), primary.second())?
                 .maybe_guessed()
@@ -374,7 +399,27 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         content: PrimaryContent,
     ) -> Option<Heuristic> {
         match content {
-            PrimaryContent::Attribute(_) => None,
+            PrimaryContent::Attribute(attr_name) => {
+                if matches!(base.as_cow_type(self.inference.i_s).as_ref(), Type::Self_)
+                    && let Some(cls) = self.inference.i_s.current_class()
+                    && let LookupResult::GotoName { name, .. } = cls
+                        .instance()
+                        .lookup(
+                            self.inference.i_s,
+                            attr_name.as_code(),
+                            InstanceLookupOptions::new(&|_| false),
+                        )
+                        .lookup
+                {
+                    let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
+                    return Some(Heuristic::Guess(
+                        self.with_different_file(directed_to.file, |h| {
+                            h.infer_name(directed_to.expect_name())
+                        })?,
+                    ));
+                }
+                None
+            }
             PrimaryContent::Execution(details) => {
                 let node_ref = base.maybe_saved_node_ref(self.inference.i_s.db)?;
                 node_ref.maybe_function()?;
