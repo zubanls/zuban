@@ -23,7 +23,6 @@ use crate::{
         expect_class_or_simple_generic, first_defined_name,
     },
     format_data::FormatData,
-    heuristic_infer,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::LookupKind,

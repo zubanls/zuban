@@ -157,7 +157,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub(crate) fn avoid_errors_within<T>(
         &self,
-        mut callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
         let had_error = &Cell::new(false);
         let i_s = &InferenceState {

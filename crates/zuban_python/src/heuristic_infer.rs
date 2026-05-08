@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
 use parsa_python_cst::{
-    ArgumentsDetails, Atom, Expression, GotoNode, Name, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, Scope, TypeLike,
+    ArgumentsDetails, Atom, Expression, ExpressionContent, ExpressionPart, FunctionDef, GotoNode,
+    Name, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
+    StarExpressionContent, StarExpressions, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -11,7 +12,7 @@ use crate::{
     arguments::{ArgKind, Args as _, SimpleArgs},
     database::{Database, PointKind, PointLink},
     debug,
-    file::{Inference, PythonFile},
+    file::{FuncNodeRef, Inference, PythonFile},
     goto::{
         FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
         try_to_follow,
@@ -21,7 +22,7 @@ use crate::{
     node_ref::NodeRef,
     params::{InferrableParam, ParamArgument},
     result_context::ResultContext,
-    type_::FunctionKind,
+    type_::{FunctionKind, Type},
     type_helpers::{Function, FunctionParam},
     utils::debug_indent,
 };
@@ -34,9 +35,15 @@ const PARSED_FILE_LIMIT: usize = 10;
 const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
+#[derive(Debug)]
+enum ArgumentsFrame<'db> {
+    Arguments(NodeRef<'db>),
+    Comprehension(NodeRef<'db>),
+}
+
 struct HeuristicState<'db> {
-    db: &'db Database,
     callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
+    call_stack: Vec<(FuncNodeRef<'db>, ArgumentsFrame<'db>)>,
 }
 
 struct HeuristicInference<'db, 'state, 'i_s> {
@@ -58,6 +65,10 @@ impl From<Heuristic> for Inferred {
 }
 
 impl Heuristic {
+    fn new_any_due_to_error() -> Self {
+        Self::WellKnown(Inferred::new_any_from_error())
+    }
+
     fn maybe_guessed(self) -> Option<Inferred> {
         match self {
             Heuristic::WellKnown(_) => None,
@@ -72,7 +83,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         file: &'db PythonFile,
         callback: impl FnOnce(&mut HeuristicInference<'db, '_, '_>) -> T,
     ) -> T {
-        InferenceState::new(self.state.db, file)
+        InferenceState::new(self.inference.i_s.db, file)
             .avoid_errors_within(|i_s| {
                 callback(&mut HeuristicInference {
                     state: self.state,
@@ -86,7 +97,20 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
             NameParent::NameDef(name_def) => match name_def.expect_type() {
-                TypeLike::ParamName(_) => self.search_callable_arguments(name),
+                TypeLike::ParamName(_) => {
+                    let func = name.expect_as_param_of_function();
+                    let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
+                    if let Some((_, args_frame)) = self
+                        .state
+                        .call_stack
+                        .iter()
+                        .find(|frame| frame.0 == func_node_ref)
+                    {
+                        todo!();
+                        return None;
+                    }
+                    self.search_callable_arguments(func, name)
+                }
                 TypeLike::Assignment(_) => None, // TODO
                 _ => None,
             },
@@ -103,23 +127,26 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     fn infer_name_reference(&mut self, name: Name<'db>) -> Option<Inferred> {
         match try_to_follow(
-            self.state.db,
+            self.inference.i_s.db,
             NodeRef::new(self.inference.file, name.index()),
             true,
         )?? {
             FollowImportResult::File(file_index) => Some(Inferred::new_file_reference(file_index)),
             FollowImportResult::TreeName(tree_name) => {
-                self.with_different_file(tree_name.file, |mut h| h.infer_name(tree_name.cst_name))
+                self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
             }
         }
     }
 
-    fn search_callable_arguments(&mut self, param_name: Name) -> Option<Inferred> {
-        let func = param_name.expect_as_param_of_function();
+    fn search_callable_arguments(
+        &mut self,
+        func: FunctionDef,
+        param_name: Name,
+    ) -> Option<Inferred> {
         let func_name = func.name();
         let mut search_name = func_name.as_code();
         let mut skip_first_param = false;
-        let db = self.state.db;
+        let db = self.inference.i_s.db;
         let func =
             Function::new_with_unknown_parent(db, NodeRef::new(self.inference.file, func.index()));
         let wanted_link = if search_name == "__init__"
@@ -201,11 +228,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     ) -> Option<Inferred> {
         let result = self.with_different_file(argument_file, |h| h.infer_argument(param.argument));
         if let Some(default) = param.param.default() {
-            let inferred_default = self.infer_expression(default);
+            let inferred_default: Inferred = self.infer_expression(default).into();
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
-                        .as_type(&InferenceState::new(self.state.db, argument_file))
+                        .as_type(&InferenceState::new(self.inference.i_s.db, argument_file))
                         .union(inferred_default.as_type(self.inference.i_s)),
                 ));
             }
@@ -219,16 +246,16 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             ParamArgument::None => None,
             ParamArgument::Argument(arg) => match arg.kind {
                 ArgKind::Positional(arg) => {
-                    Some(self.infer_expression(arg.named_expr.expression()))
+                    Some(self.infer_expression(arg.named_expr.expression()).into())
                 }
-                ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression)),
+                ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression).into()),
                 ArgKind::Inferred { inferred, .. }
                 | ArgKind::InferredWithCustomAddIssue { inferred, .. }
                 | ArgKind::Overridden { inferred, .. } => Some(inferred),
                 ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
                 ArgKind::Comprehension { comprehension, .. } => todo!(),
             },
-            ParamArgument::TupleUnpack(args) => todo!(),
+            ParamArgument::TupleUnpack(_args) => todo!(),
             ParamArgument::MatchedUnpackedTypedDictMember { type_, .. } => todo!(),
             ParamArgument::ParamSpecArgs(..) => todo!(),
         }
@@ -243,13 +270,22 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         let inf = self
             .inference
             .infer_primary(primary, &mut ResultContext::Unknown);
+        self.create_heuristic_if_necessary(inf, |slf| {
+            let first = slf.infer_primary_or_atom(primary.first()).into();
+            slf.infer_primary_or_primary_t_content(first, primary.second())?
+                .maybe_guessed()
+        })
+    }
+
+    fn create_heuristic_if_necessary(
+        &mut self,
+        inf: Inferred,
+        infer_heuristic: impl FnOnce(&mut Self) -> Option<Inferred>,
+    ) -> Heuristic {
         let t = inf.as_cow_type(self.inference.i_s);
         if let Some(mut without_any) = t.maybe_remove_any(self.inference.i_s.db) {
-            let first = self.infer_primary_or_atom(primary.first()).into();
-            if let Some(Heuristic::Guess(guess)) =
-                self.infer_primary_or_primary_t_content(first, primary.second())
-            {
-                without_any.union_in_place(guess.into_type(self.inference.i_s));
+            if let Some(new) = infer_heuristic(self) {
+                without_any.union_in_place(new.into_type(self.inference.i_s));
                 return Heuristic::Guess(Inferred::from_type(without_any));
             }
         }
@@ -263,9 +299,60 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     ) -> Option<Heuristic> {
         match content {
             PrimaryContent::Attribute(_) => None,
-            PrimaryContent::Execution(arguments_details) => None,
+            PrimaryContent::Execution(details) => {
+                let node_ref = base.maybe_saved_node_ref(self.inference.i_s.db)?;
+                let func = node_ref.maybe_function()?;
+                let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
+                if func_node_ref.is_generator() {
+                    return None; // TODO make generators possible
+                }
+                let args_frame = match details {
+                    ArgumentsDetails::None => return None,
+                    ArgumentsDetails::Node(arguments) => ArgumentsFrame::Arguments(NodeRef::new(
+                        self.inference.file,
+                        arguments.index(),
+                    )),
+                    ArgumentsDetails::Comprehension(comprehension) => {
+                        ArgumentsFrame::Comprehension(NodeRef::new(
+                            self.inference.file,
+                            comprehension.index(),
+                        ))
+                    }
+                };
+                self.state.call_stack.push((func_node_ref, args_frame));
+                let mut result_t = Type::NEVER;
+                for ret_or_yield in func_node_ref.iter_return_or_yield() {
+                    match ret_or_yield {
+                        ReturnOrYield::Return(return_stmt) => {
+                            let inferred = match return_stmt.star_expressions() {
+                                Some(star_exprs) => self.infer_star_exprs(star_exprs)?.into(),
+                                None => Inferred::new_none(),
+                            };
+                            result_t.union_in_place(inferred.into_type(self.inference.i_s))
+                        }
+                        ReturnOrYield::Yield(yield_expr) => todo!(),
+                    }
+                }
+                self.state.call_stack.pop();
+                if result_t.is_never() {
+                    return None;
+                }
+                Some(Heuristic::Guess(Inferred::from_type(result_t)))
+            }
             PrimaryContent::GetItem(_) => None,
         }
+    }
+
+    fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic> {
+        Some(match star_exprs.unpack() {
+            StarExpressionContent::Expression(expr) => self.infer_expression(expr),
+            // This is invalid anyway
+            StarExpressionContent::StarExpression(_) => Heuristic::new_any_due_to_error(),
+            StarExpressionContent::Tuple(_tuple) => {
+                // TODO implement
+                return None;
+            }
+        })
     }
 
     fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic {
@@ -275,8 +362,35 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         }
     }
 
-    fn infer_expression(&mut self, expr: Expression) -> Inferred {
-        self.inference.infer_expression(expr)
+    fn infer_expression(&mut self, expr: Expression) -> Heuristic {
+        let inf = self.inference.infer_expression(expr);
+        self.create_heuristic_if_necessary(inf, |slf| {
+            match expr.unpack() {
+                ExpressionContent::ExpressionPart(expr_part) => match expr_part {
+                    ExpressionPart::Atom(atom) => slf.infer_atom(atom),
+                    ExpressionPart::Primary(primary) => slf.infer_primary(primary),
+                    _ => return None,
+                    /*
+                    ExpressionPart::AwaitPrimary(await_primary) => todo!(),
+                    ExpressionPart::Power(power) => todo!(),
+                    ExpressionPart::Factor(factor) => todo!(),
+                    ExpressionPart::Term(term) => todo!(),
+                    ExpressionPart::Sum(sum) => todo!(),
+                    ExpressionPart::ShiftExpr(shift_expr) => todo!(),
+                    ExpressionPart::BitwiseAnd(bitwise_and) => todo!(),
+                    ExpressionPart::BitwiseXor(bitwise_xor) => todo!(),
+                    ExpressionPart::BitwiseOr(bitwise_or) => todo!(),
+                    ExpressionPart::Comparisons(comparisons) => todo!(),
+                    ExpressionPart::Inversion(inversion) => todo!(),
+                    ExpressionPart::Conjunction(conjunction) => todo!(),
+                    ExpressionPart::Disjunction(disjunction) => todo!(),
+                    */
+                },
+                ExpressionContent::Ternary(ternary) => todo!(),
+                ExpressionContent::Lambda(lambda) => todo!(),
+            }
+            .maybe_guessed()
+        })
     }
 }
 
@@ -286,8 +400,8 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         self.with_i_s(|i_s| {
             let mut heuristic = HeuristicInference {
                 state: &mut HeuristicState {
-                    db: self.db,
                     callable_search_cache: Default::default(),
+                    call_stack: Default::default(),
                 },
                 inference: self.file.inference(i_s),
             };
