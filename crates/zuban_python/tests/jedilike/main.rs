@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
         ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 18),
         ("fstring.py", 4),
-        ("functions.py", 65),
+        ("functions.py", 66),
         ("generators.py", 12),
         ("inheritance.py", 3),
         ("isinstance.py", 2),
@@ -64,8 +64,7 @@ lazy_static::lazy_static! {
         // Changes from removing UntypedFunctionReturnMode::Advanced
         ("classes.py", 31),
         ("descriptors.py", 12),
-        ("dynamic_arrays.py", 14),
-        ("functions.py", 68),
+        ("dynamic_arrays.py", 13),
         ("parser.py", 1),
         ("pep0484_generic_passthroughs.py", 2),
         ("recursion.py", 1),

@@ -949,7 +949,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_as_param_of_function(&self) -> FunctionDef<'db> {
-        let params = self
+        let mut params = self
             .node
             .parent()
             .unwrap()
@@ -957,6 +957,9 @@ impl<'db> Name<'db> {
             .unwrap()
             .parent()
             .unwrap();
+        if params.is_type(Nonterminal(star_etc)) {
+            params = params.parent().unwrap();
+        }
         debug_assert_eq!(params.type_(), Nonterminal(parameters));
         let func_node = params.parent().unwrap().parent().unwrap();
         FunctionDef::new(func_node)

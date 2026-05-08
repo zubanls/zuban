@@ -14,6 +14,7 @@ use crate::{
     database::{Database, PointKind, PointLink},
     debug,
     file::{FuncNodeRef, Inference, PythonFile},
+    getitem::SliceType,
     goto::{
         FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
         try_to_follow,
@@ -23,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     params::{InferrableParam, ParamArgument},
     result_context::ResultContext,
-    type_::{FunctionKind, LookupResult, Type},
+    type_::{AnyCause, FunctionKind, LookupResult, Type},
     type_helpers::{Function, FunctionParam, InstanceLookupOptions},
     utils::{debug_indent, limit_length_for_debug},
 };
@@ -69,6 +70,7 @@ struct HeuristicInference<'db, 'state, 'i_s> {
     inference: Inference<'db, 'db, 'i_s>,
 }
 
+#[derive(Debug)]
 enum Heuristic {
     WellKnown(Inferred),
     Guess(Inferred),
@@ -112,6 +114,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     }
 
     fn infer_name(&mut self, name: Name<'db>) -> Option<Inferred> {
+        debug!("Heuristics: Infer name: {}", name.as_code());
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
             NameParent::NameDef(name_def) => match name_def.expect_type() {
@@ -371,7 +374,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 "Heuristics for primary expr: {}",
                 limit_length_for_debug(primary.as_code()),
             );
-            let first = slf.infer_primary_or_atom(primary.first()).into();
+            let first = slf.infer_primary_or_atom(primary.first());
             slf.infer_primary_or_primary_t_content(first, primary.index(), primary.second())?
                 .maybe_guessed()
         })
@@ -388,18 +391,25 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 without_any.union_in_place(new.into_type(self.inference.i_s));
                 return Heuristic::Guess(Inferred::from_type(without_any));
             }
+        } else if let Type::Tuple(tup) = t.as_ref()
+            && tup.args.maybe_any() == Some(AnyCause::Unannotated)
+        {
+            if let Some(new) = infer_heuristic(self) {
+                return Heuristic::Guess(new);
+            }
         }
         Heuristic::WellKnown(inf)
     }
 
     fn infer_primary_or_primary_t_content(
         &mut self,
-        base: Inferred,
+        base: Heuristic,
         primary_node_index: NodeIndex,
         content: PrimaryContent,
     ) -> Option<Heuristic> {
         match content {
             PrimaryContent::Attribute(attr_name) => {
+                let base: Inferred = base.into();
                 if matches!(base.as_cow_type(self.inference.i_s).as_ref(), Type::Self_)
                     && let Some(cls) = self.inference.i_s.current_class()
                     && let LookupResult::GotoName { name, .. } = cls
@@ -421,6 +431,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 None
             }
             PrimaryContent::Execution(details) => {
+                let base: Inferred = base.into();
                 let node_ref = base.maybe_saved_node_ref(self.inference.i_s.db)?;
                 node_ref.maybe_function()?;
                 let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
@@ -468,7 +479,22 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 }
                 Some(Heuristic::Guess(Inferred::from_type(result_t)))
             }
-            PrimaryContent::GetItem(_) => None,
+            PrimaryContent::GetItem(slice) => {
+                if let Heuristic::Guess(base) = base {
+                    let inf = base.get_item(
+                        self.inference.i_s,
+                        &SliceType::new(self.inference.file, primary_node_index, slice),
+                        &mut ResultContext::Unknown,
+                    );
+                    debug!(
+                        "Heuristics: Getitem result: {}",
+                        inf.format_short(self.inference.i_s)
+                    );
+                    Some(Heuristic::Guess(inf))
+                } else {
+                    None
+                }
+            }
         }
     }
 
