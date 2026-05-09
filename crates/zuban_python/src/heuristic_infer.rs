@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::rc::Rc;
 
 use parsa_python_cst::{
     Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom, AtomContent,
@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
-    type_::{AnyCause, FunctionKind, LookupResult, Tuple, Type},
+    type_::{FunctionKind, LookupResult, Tuple, Type},
     type_helpers::{Function, FunctionParam, InstanceLookupOptions},
     utils::{debug_indent, limit_length_for_debug},
 };
@@ -39,6 +39,7 @@ const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
 #[derive(Debug, Copy, Clone)]
 enum ArgumentsFrameKind {
+    None,
     Arguments(NodeIndex),
     Comprehension(NodeIndex),
 }
@@ -123,6 +124,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
                     if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
                         let details = match args_frame.kind {
+                            ArgumentsFrameKind::None => ArgumentsDetails::None,
                             ArgumentsFrameKind::Arguments(args_index) => ArgumentsDetails::Node(
                                 Arguments::by_index(&args_frame.file.tree, args_index),
                             ),
@@ -429,18 +431,32 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         let _indent = debug_indent();
         let i_s = self.inference.i_s;
         let t = inf.as_cow_type(i_s);
-        if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
+        if t.has_any(i_s) {
             if let Some(new) = infer_heuristic(self) {
-                without_any.union_in_place(new.into_type(i_s));
-                return Heuristic::Guess(Inferred::from_type(without_any));
+                let new_t = new.into_type(i_s);
+                if new_t
+                    .iter_with_unpacked_unions(i_s.db)
+                    .all(|t| matches!(t, Type::Any(_) | Type::None))
+                {
+                    debug!(
+                        "Did find heuristics, but it's a useless: {}",
+                        t.format_short(i_s.db)
+                    );
+                } else {
+                    debug!("Found heuristics: {}", new_t.format_short(i_s.db));
+                    return Heuristic::Guess(Inferred::from_type(new_t));
+                }
+            } else {
+                debug!(
+                    "Did not find heuristics, after searching, inferred {} instead",
+                    t.format_short(i_s.db)
+                );
             }
-        } else if let Type::Tuple(tup) = t.as_ref()
-            && tup.args.maybe_any() == Some(AnyCause::Unannotated)
-        {
-            if let Some(new) = infer_heuristic(self) {
-                debug!("Found heuristics: {}", new.format_short(i_s));
-                return Heuristic::Guess(new);
-            }
+        } else {
+            debug!(
+                "Did not need heuristics, because the type {} has no Any",
+                t.format_short(i_s.db)
+            );
         }
         Heuristic::WellKnown(inf)
     }
@@ -476,16 +492,29 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             }
             PrimaryContent::Execution(details) => {
                 let base: Inferred = base.into();
-                let node_ref = base.maybe_saved_node_ref(self.inference.i_s.db)?;
-                node_ref.maybe_function()?;
+                let db = self.inference.i_s.db;
+                let Some(node_ref) = base.maybe_saved_node_ref(db) else {
+                    debug!(
+                        "Heuristics: Did not execute, because the base is not a saved NodeRef, but {}",
+                        base.debug_info(db)
+                    );
+                    return None;
+                };
+                if node_ref.maybe_function().is_none() {
+                    debug!(
+                        "Heuristics: Did not execute, because the base is not a function, but {}",
+                        base.debug_info(db)
+                    );
+                }
                 let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
                 if func_node_ref.is_generator() {
+                    debug!("Heuristics: TODO Did not execute, because the function is a generator");
                     return None; // TODO make generators possible
                 }
                 if self.state.find_call_stack_frame(func_node_ref).is_some() {
                     debug!(
                         "Heuristics: Had a recursion with func '{}', stopping inference",
-                        func_node_ref.qualified_name(self.inference.i_s.db)
+                        func_node_ref.qualified_name(db)
                     );
                     return None;
                 }
@@ -493,7 +522,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 let args_frame = ArgumentsFrame {
                     file: self.inference.file,
                     kind: match details {
-                        ArgumentsDetails::None => return None,
+                        ArgumentsDetails::None => ArgumentsFrameKind::None,
                         ArgumentsDetails::Node(arguments) => {
                             ArgumentsFrameKind::Arguments(arguments.index())
                         }
@@ -509,7 +538,17 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     match ret_or_yield {
                         ReturnOrYield::Return(return_stmt) => {
                             let inferred = match return_stmt.star_expressions() {
-                                Some(star_exprs) => self.infer_star_exprs(star_exprs)?.into(),
+                                Some(star_exprs) => {
+                                    let Some(inf) = self.infer_star_exprs(star_exprs) else {
+                                        debug!(
+                                            "Heuristics: Aborting execution because return '{}' \
+                                             was not calculated",
+                                            limit_length_for_debug(star_exprs.as_code()),
+                                        );
+                                        return None;
+                                    };
+                                    inf.into()
+                                }
                                 None => Inferred::new_none(),
                             };
                             result_t.union_in_place(inferred.into_type(self.inference.i_s))
@@ -519,8 +558,17 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 }
                 self.state.call_stack.pop();
                 if result_t.is_never() {
+                    debug!(
+                        "Heuristics: Execution of {} with Never result, aborting",
+                        func_node_ref.qualified_name(db)
+                    );
                     return None;
                 }
+                debug!(
+                    "Heuristics: Executed {} with result: {}",
+                    func_node_ref.qualified_name(db),
+                    result_t.format_short(db),
+                );
                 Some(Heuristic::Guess(Inferred::from_type(result_t)))
             }
             PrimaryContent::GetItem(slice) => {
@@ -601,6 +649,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     pub fn infer_heuristics_if_possible(&self) -> Option<Inferred> {
         debug!("Try to find heuristics");
+        let _indent = debug_indent();
         self.with_i_s(|i_s| {
             let mut heuristic = HeuristicInference {
                 state: &mut HeuristicState {
