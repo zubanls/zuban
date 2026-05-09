@@ -133,10 +133,10 @@ a()
 # keyword arguments
 # -----------------
 
-def func(a=1, b=''):
+def func2(a=1, b=''):
     return a, b
 
-exe = func(b=list, a=tuple)
+exe = func2(b=list, a=tuple)
 #? tuple
 exe[0]
 
@@ -148,27 +148,27 @@ exe[1]
 # -----------------
 
 #? int()
-func()[0]
+func2()[0]
 #? str()
-func()[1]
+func2()[1]
 #? float()
-func(1.0)[0]
+func2(1.0)[0]
 #? str()
-func(1.0)[1]
+func2(1.0)[1]
 
 
 #? float()
-func(a=1.0)[0]
+func2(a=1.0)[0]
 #? str()
-func(a=1.0)[1]
+func2(a=1.0)[1]
 #? int()
-func(b=1.0)[0]
+func2(b=1.0)[0]
 #? float()
-func(b=1.0)[1]
+func2(b=1.0)[1]
 #? list
-func(a=list, b=set)[0]
+func2(a=list, b=set)[0]
 #? set
-func(a=list, b=set)[1]
+func2(a=list, b=set)[1]
 
 
 def func_default(a, b=1):

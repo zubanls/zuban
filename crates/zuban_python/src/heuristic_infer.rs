@@ -380,11 +380,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     pub fn infer_atom(&mut self, atom: Atom) -> Heuristic {
         let inf = self.inference.infer_atom(atom, &mut ResultContext::Unknown);
+        debug!(
+            "Heuristics for atom: {}",
+            limit_length_for_debug(atom.as_code())
+        );
         self.create_heuristic_if_necessary(inf, |slf| {
-            debug!(
-                "Heuristics for atom: {}",
-                limit_length_for_debug(atom.as_code())
-            );
             match atom.unpack() {
                 AtomContent::Name(name) => return slf.infer_name_reference(name),
                 AtomContent::NamedExpression(named_expr) => {
@@ -410,11 +410,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         let inf = self
             .inference
             .infer_primary(primary, &mut ResultContext::Unknown);
+        debug!(
+            "Heuristics for primary: {}",
+            limit_length_for_debug(primary.as_code()),
+        );
         self.create_heuristic_if_necessary(inf, |slf| {
-            debug!(
-                "Heuristics for primary expr: {}",
-                limit_length_for_debug(primary.as_code()),
-            );
             let first = slf.infer_primary_or_atom(primary.first());
             slf.infer_primary_or_primary_t_content(first, primary.index(), primary.second())?
                 .maybe_guessed()
@@ -426,16 +426,19 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         inf: Inferred,
         infer_heuristic: impl FnOnce(&mut Self) -> Option<Inferred>,
     ) -> Heuristic {
-        let t = inf.as_cow_type(self.inference.i_s);
-        if let Some(mut without_any) = t.maybe_remove_any(self.inference.i_s.db) {
+        let _indent = debug_indent();
+        let i_s = self.inference.i_s;
+        let t = inf.as_cow_type(i_s);
+        if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
             if let Some(new) = infer_heuristic(self) {
-                without_any.union_in_place(new.into_type(self.inference.i_s));
+                without_any.union_in_place(new.into_type(i_s));
                 return Heuristic::Guess(Inferred::from_type(without_any));
             }
         } else if let Type::Tuple(tup) = t.as_ref()
             && tup.args.maybe_any() == Some(AnyCause::Unannotated)
         {
             if let Some(new) = infer_heuristic(self) {
+                debug!("Found heuristics: {}", new.format_short(i_s));
                 return Heuristic::Guess(new);
             }
         }
@@ -561,11 +564,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     fn infer_expression(&mut self, expr: Expression) -> Heuristic {
         let inf = self.inference.infer_expression(expr);
+        debug!(
+            "Heuristics for expr: {}",
+            limit_length_for_debug(expr.as_code())
+        );
         self.create_heuristic_if_necessary(inf, |slf| {
-            debug!(
-                "Heuristics for expr: {}",
-                limit_length_for_debug(expr.as_code())
-            );
             match expr.unpack() {
                 ExpressionContent::ExpressionPart(expr_part) => match expr_part {
                     ExpressionPart::Atom(atom) => slf.infer_atom(atom),
