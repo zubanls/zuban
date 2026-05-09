@@ -152,7 +152,13 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                                 _ => skip_first_param = true,
                             }
                         }
-                        return self.infer_param_with_args(&func, args, skip_first_param, name);
+                        return self.infer_param_with_args(
+                            &func,
+                            args,
+                            skip_first_param,
+                            name,
+                            false,
+                        );
                     }
                     self.search_callable_arguments(func, name)
                 }
@@ -261,7 +267,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     execution.primary.index(),
                     execution.details,
                 );
-                self.infer_param_with_args(&func, args, skip_first_param, param_name)
+                self.infer_param_with_args(&func, args, skip_first_param, param_name, true)
                 /*
                 // The deeper we're in the recursion, the less code should be inferred.
                 if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
@@ -282,6 +288,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         args: SimpleArgs<'db, 'db>,
         skip_first_param: bool,
         search_param_name: Name,
+        from_callable_search: bool,
     ) -> Option<Inferred> {
         let mut arg_iterator = func.iter_args_with_params(
             self.inference.i_s.db,
@@ -291,7 +298,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         for param in arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
                 let found = self.with_different_file(args.file, |h| {
-                    h.infer_param(args.file, param, arg_iterator)
+                    h.infer_param(args.file, param, arg_iterator, from_callable_search)
                 })?;
                 return Some(found);
             }
@@ -310,6 +317,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             FunctionParam<'x>,
             ArgIterator<'x, '_>,
         >,
+        from_callable_search: bool,
     ) -> Option<Inferred> {
         let result = self.with_different_file(argument_file, |h| {
             h.infer_argument(
@@ -318,6 +326,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 rest_args,
             )
         });
+        if !from_callable_search && result.is_some() {
+            // If there is a result in a normal execution heuristic, we can simply continue,
+            // because the actual type has been found from the execution.
+            return result;
+        }
         if let Some(default) = param.param.default() {
             let inferred_default: Inferred = self.infer_expression(default).into();
             if let Some(result) = result {
