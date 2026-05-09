@@ -1,16 +1,16 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom, AtomContent,
     Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef, GotoNode, Name,
-    NameParent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
+    NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
     StarExpressionContent, StarExpressions, Target, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
 
 use crate::{
-    arguments::{ArgKind, Args as _, SimpleArgs},
+    arguments::{ArgIterator, ArgKind, Args as _, SimpleArgs},
     database::{Database, PointKind, PointLink},
     debug,
     file::{FuncNodeRef, Inference, PythonFile},
@@ -22,9 +22,9 @@ use crate::{
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     node_ref::NodeRef,
-    params::{InferrableParam, ParamArgument},
+    params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
-    type_::{AnyCause, FunctionKind, LookupResult, Type},
+    type_::{AnyCause, FunctionKind, LookupResult, Tuple, Type},
     type_helpers::{Function, FunctionParam, InstanceLookupOptions},
     utils::{debug_indent, limit_length_for_debug},
 };
@@ -281,28 +281,41 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         skip_first_param: bool,
         search_param_name: Name,
     ) -> Option<Inferred> {
-        for param in func.iter_args_with_params(
+        let mut arg_iterator = func.iter_args_with_params(
             self.inference.i_s.db,
             args.iter(Mode::Normal),
             skip_first_param,
-        ) {
+        );
+        for param in arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
-                if let Some(found) =
-                    self.with_different_file(args.file, |h| h.infer_param(args.file, param))
-                {
-                    return Some(found);
-                }
+                let found = self.with_different_file(args.file, |h| {
+                    h.infer_param(args.file, param, arg_iterator)
+                })?;
+                return Some(found);
             }
         }
         None
     }
 
-    fn infer_param(
+    fn infer_param<'x>(
         &mut self,
         argument_file: &'db PythonFile,
         param: InferrableParam<FunctionParam>,
+        rest_args: InferrableParamIterator<
+            'x,
+            '_,
+            impl Iterator<Item = FunctionParam<'x>>,
+            FunctionParam<'x>,
+            ArgIterator<'x, '_>,
+        >,
     ) -> Option<Inferred> {
-        let result = self.with_different_file(argument_file, |h| h.infer_argument(param.argument));
+        let result = self.with_different_file(argument_file, |h| {
+            h.infer_argument(
+                param.param.kind(h.inference.i_s.db),
+                param.argument,
+                rest_args,
+            )
+        });
         if let Some(default) = param.param.default() {
             let inferred_default: Inferred = self.infer_expression(default).into();
             if let Some(result) = result {
@@ -317,24 +330,52 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         result
     }
 
-    fn infer_argument(&mut self, argument: ParamArgument) -> Option<Inferred> {
-        match argument {
+    fn infer_argument<'x>(
+        &mut self,
+        param_kind: ParamKind,
+        argument: ParamArgument,
+        rest_args: InferrableParamIterator<
+            'x,
+            '_,
+            impl Iterator<Item = FunctionParam<'x>>,
+            FunctionParam<'x>,
+            ArgIterator<'x, '_>,
+        >,
+    ) -> Option<Inferred> {
+        let i_s = *self.inference.i_s;
+        let mut infer = |argument| match argument {
             ParamArgument::None => None,
             ParamArgument::Argument(arg) => match arg.kind {
                 ArgKind::Positional(arg) => {
                     Some(self.infer_expression(arg.named_expr.expression()).into())
                 }
                 ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression).into()),
-                ArgKind::Inferred { inferred, .. }
-                | ArgKind::InferredWithCustomAddIssue { inferred, .. }
+                ArgKind::InferredWithCustomAddIssue { inferred, .. }
                 | ArgKind::Overridden { inferred, .. } => Some(inferred),
-                ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
+
+                ArgKind::Inferred {
+                    inferred,
+                    in_args_or_kwargs_and_arbitrary_len,
+                    ..
+                } => (!in_args_or_kwargs_and_arbitrary_len).then(|| inferred),
                 ArgKind::Comprehension { comprehension, .. } => todo!(),
+                ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
             },
             ParamArgument::TupleUnpack(_args) => todo!(),
             ParamArgument::MatchedUnpackedTypedDictMember { type_, .. } => todo!(),
             ParamArgument::ParamSpecArgs(..) => todo!(),
+        };
+        if matches!(param_kind, ParamKind::Star) {
+            let tuple = Tuple::new_fixed_length(
+                std::iter::once(argument)
+                    .chain(rest_args.map(|p| p.argument))
+                    .map(|arg| Some(infer(arg)?.into_type(&i_s)))
+                    .collect::<Option<_>>()?,
+            );
+
+            return Some(Inferred::from_type(Type::Tuple(tuple)));
         }
+        infer(argument)
     }
 
     pub fn infer_atom(&mut self, atom: Atom) -> Heuristic {
@@ -487,8 +528,9 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                         &mut ResultContext::Unknown,
                     );
                     debug!(
-                        "Heuristics: Getitem result: {}",
-                        inf.format_short(self.inference.i_s)
+                        "Heuristics: Getitem on {}, result: {}",
+                        base.format_short(self.inference.i_s),
+                        inf.format_short(self.inference.i_s),
                     );
                     Some(Heuristic::Guess(inf))
                 } else {
