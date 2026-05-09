@@ -518,8 +518,26 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                         "Heuristics: Did not execute, because the base is not a function, but {}",
                         base.debug_info(db)
                     );
+                    return None;
                 }
                 let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
+                if func_node_ref.return_annotation().is_some() {
+                    let ret = func_node_ref.return_annotation_type(self.inference.i_s);
+                    if !ret.is_any_or_any_in_union(db) {
+                        debug!(
+                            "Heuristics: Did not execute, because the function has \
+                                an annotation without an explicit Any"
+                        );
+                        return None;
+                    }
+                    if ret.has_type_vars() {
+                        debug!(
+                            "Heuristics: Did not execute, because the function has \
+                                an annotation with type vars"
+                        );
+                        return None;
+                    }
+                }
                 if func_node_ref.is_generator() {
                     debug!("Heuristics: TODO Did not execute, because the function is a generator");
                     return None; // TODO make generators possible
@@ -670,8 +688,8 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     ExpressionPart::Disjunction(disjunction) => todo!(),
                     */
                 },
-                ExpressionContent::Ternary(_ternary) => todo!(),
-                ExpressionContent::Lambda(_lambda) => todo!(),
+                ExpressionContent::Ternary(_ternary) => return None, // TODO
+                ExpressionContent::Lambda(_lambda) => return None,   // TODO
             }
             .maybe_guessed()
         })
