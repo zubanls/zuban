@@ -1232,3 +1232,21 @@ __main__.py:8:infer -> __main__.py:<MISSING>; builtins.pyi:builtins.int
 __main__.py:10:goto -> __main__.py:<MISSING>; builtins.pyi:builtins.int
 __main__.py:12:goto -> __main__.py:4:0:__main__.MISSING
 __main__.py:14:infer -> __main__.py:4:19:<MISSING>
+
+[case infer_kwargs_heuristics]
+# flags: --mode mypy
+def f(**kwargs):
+    return kwargs
+
+#? infer
+f(x=1, y="")
+
+def check(dct: dict[str, bytes], dct2: dict[str, float]):
+    #? infer
+    f(x=1, y="", **dct)
+    #? infer
+    f(x=1, y="", **dct, **dct2)
+[out]
+__main__.py:6:infer -> __main__.py:6:0:TypedDict({'x'?: int, 'y'?: str})
+__main__.py:10:infer -> __main__.py:10:4:TypedDict({'x'?: int, 'y'?: str}, extra_items=bytes)
+__main__.py:12:infer -> __main__.py:12:4:TypedDict({'x'?: int, 'y'?: str}, extra_items=bytes)

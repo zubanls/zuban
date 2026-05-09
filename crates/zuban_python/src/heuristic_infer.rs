@@ -370,14 +370,9 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     Some(self.infer_expression(arg.named_expr.expression()).into())
                 }
                 ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression).into()),
-                ArgKind::InferredWithCustomAddIssue { inferred, .. }
+                ArgKind::Inferred { inferred, .. }
+                | ArgKind::InferredWithCustomAddIssue { inferred, .. }
                 | ArgKind::Overridden { inferred, .. } => Some(inferred),
-
-                ArgKind::Inferred {
-                    inferred,
-                    in_args_or_kwargs_and_arbitrary_len,
-                    ..
-                } => (!in_args_or_kwargs_and_arbitrary_len).then(|| inferred),
                 ArgKind::Comprehension { .. } => todo!(),
                 ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
             },
