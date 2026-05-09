@@ -1873,7 +1873,10 @@ fn find_stmt_typed_dict_types(
                                 TypedDictMember {
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
-                                    name: StringSlice::from_name(file.file_index, name_def.name()),
+                                    name: DbString::StringSlice(StringSlice::from_name(
+                                        file.file_index,
+                                        name_def.name(),
+                                    )),
                                     read_only: false,
                                 },
                                 extra_items,

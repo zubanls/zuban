@@ -18,7 +18,7 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     result_context::ResultContext,
-    type_::{IterCause, ParamSpecUsage, StringSlice, TupleArgs, Type, TypedDict, WithUnpack},
+    type_::{DbString, IterCause, ParamSpecUsage, TupleArgs, Type, TypedDict, WithUnpack},
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {
@@ -408,7 +408,7 @@ pub(crate) enum ArgKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
-        is_keyword: Option<Option<StringSlice>>,
+        is_keyword: Option<Option<DbString>>,
     },
     InferredWithCustomAddIssue {
         inferred: Inferred,
@@ -1156,7 +1156,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                 let Some((name, t)) = ms
                     .named
                     .get(iterator_index)
-                    .map(|member| (member.name, member.type_.clone()))
+                    .map(|member| (member.name.clone(), member.type_.clone()))
                 else {
                     if let Some(e) = &ms.extra_items {
                         return Some(Arg {

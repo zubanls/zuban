@@ -25,10 +25,10 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
+        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics, DbString,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
-        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
+        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
+        Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
 };
@@ -739,7 +739,7 @@ pub(crate) fn match_arguments_against_params<
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
-    let mut missing_unpacked_typed_dict_names: Option<Vec<(StringSlice, bool)>> = None;
+    let mut missing_unpacked_typed_dict_names: Option<Vec<(DbString, bool)>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     // lambdas are analyzed at the end to improve type inference.
@@ -1131,7 +1131,7 @@ pub(crate) fn match_arguments_against_params<
                                 .named
                                 .iter()
                                 .filter(|m| &m.name != name)
-                                .map(|m| (m.name, m.required))
+                                .map(|m| (m.name.clone(), m.required))
                                 .collect(),
                         );
                     }
@@ -1141,7 +1141,7 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_missing_kw_issue = |param_name| {
+    let add_missing_kw_issue = |param_name: &str| {
         let mut s = format!("Missing named argument {:?}", param_name);
         s += diagnostic_string(" for ").as_deref().unwrap_or("");
         add_issue(IssueKind::ArgumentIssue(s.into()));
