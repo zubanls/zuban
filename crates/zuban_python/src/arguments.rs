@@ -7,7 +7,7 @@ use parsa_python_cst::{
 
 use crate::{
     InferenceState,
-    database::{Database, PointsBackup},
+    database::{Database, PointLink, PointsBackup},
     debug,
     diagnostics::IssueKind,
     file::PythonFile,
@@ -248,6 +248,10 @@ impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn primary_link(&self) -> PointLink {
+        PointLink::new(self.file.file_index, self.primary_node_index)
     }
 }
 

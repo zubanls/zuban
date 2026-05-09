@@ -24,7 +24,10 @@ use crate::{
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
-    type_::{FunctionKind, LookupResult, Tuple, Type},
+    type_::{
+        DbString, ExtraItemsType, FunctionKind, LookupResult, Tuple, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+    },
     type_helpers::{Function, FunctionParam, InstanceLookupOptions},
     utils::{debug_indent, limit_length_for_debug},
 };
@@ -32,9 +35,9 @@ use crate::{
 // Stats from a 2016 Lenovo Notebook running Linux:
 // With os.walk, it takes about 10s to scan 11'000 files (without filesystem
 // caching). Once cached it only takes 5s.
-const OPENED_FILE_LIMIT: usize = 200;
-const PARSED_FILE_LIMIT: usize = 10;
-const MAX_PARAM_SEARCHES: usize = 20;
+// const OPENED_FILE_LIMIT: usize = 200;
+// const PARSED_FILE_LIMIT: usize = 10;
+// const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
 #[derive(Debug, Copy, Clone)]
@@ -298,7 +301,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         for param in arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
                 let found = self.with_different_file(args.file, |h| {
-                    h.infer_param(args.file, param, arg_iterator, from_callable_search)
+                    h.infer_param(&args, param, arg_iterator, from_callable_search)
                 })?;
                 return Some(found);
             }
@@ -308,7 +311,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     fn infer_param<'x>(
         &mut self,
-        argument_file: &'db PythonFile,
+        args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
         rest_args: InferrableParamIterator<
             'x,
@@ -319,8 +322,9 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         >,
         from_callable_search: bool,
     ) -> Option<Inferred> {
-        let result = self.with_different_file(argument_file, |h| {
+        let result = self.with_different_file(args.file, |h| {
             h.infer_argument(
+                args,
                 param.param.kind(h.inference.i_s.db),
                 param.argument,
                 rest_args,
@@ -336,7 +340,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
-                        .as_type(&InferenceState::new(self.inference.i_s.db, argument_file))
+                        .as_type(&InferenceState::new(self.inference.i_s.db, args.file))
                         .union(inferred_default.as_type(self.inference.i_s)),
                 ));
             }
@@ -347,6 +351,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     fn infer_argument<'x>(
         &mut self,
+        args: &SimpleArgs<'db, 'db>,
         param_kind: ParamKind,
         argument: ParamArgument,
         rest_args: InferrableParamIterator<
@@ -373,24 +378,72 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     in_args_or_kwargs_and_arbitrary_len,
                     ..
                 } => (!in_args_or_kwargs_and_arbitrary_len).then(|| inferred),
-                ArgKind::Comprehension { comprehension, .. } => todo!(),
+                ArgKind::Comprehension { .. } => todo!(),
                 ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
             },
             ParamArgument::TupleUnpack(_args) => todo!(),
-            ParamArgument::MatchedUnpackedTypedDictMember { type_, .. } => todo!(),
+            ParamArgument::MatchedUnpackedTypedDictMember { .. } => todo!(),
             ParamArgument::ParamSpecArgs(..) => todo!(),
         };
-        if matches!(param_kind, ParamKind::Star) {
-            let tuple = Tuple::new_fixed_length(
-                std::iter::once(argument)
+        match param_kind {
+            ParamKind::Star => {
+                let tuple = Tuple::new_fixed_length(
+                    std::iter::once(argument)
+                        .chain(
+                            rest_args
+                                .take_while(|p| p.param.kind(i_s.db) == ParamKind::Star)
+                                .map(|p| p.argument),
+                        )
+                        .map(|arg| Some(infer(arg)?.into_type(&i_s)))
+                        .collect::<Option<_>>()?,
+                );
+                Some(Inferred::from_type(Type::Tuple(tuple)))
+            }
+            ParamKind::StarStar => {
+                let mut extra_items = Type::NEVER;
+                let named = std::iter::once(argument)
                     .chain(rest_args.map(|p| p.argument))
-                    .map(|arg| Some(infer(arg)?.into_type(&i_s)))
-                    .collect::<Option<_>>()?,
-            );
-
-            return Some(Inferred::from_type(Type::Tuple(tuple)));
+                    .filter_map(|arg| {
+                        let inner = match &arg {
+                            ParamArgument::Argument(arg) => arg,
+                            ParamArgument::MatchedUnpackedTypedDictMember { .. } => {
+                                return None; // TODO?
+                            }
+                            // Not sure if this even happens
+                            _ => return None,
+                        };
+                        if let Some(name) = inner.keyword_name(i_s.db) {
+                            let name = DbString::ArcStr(name.into());
+                            let type_ = infer(arg)?.into_type(&i_s);
+                            Some(TypedDictMember {
+                                name,
+                                type_,
+                                required: false,
+                                read_only: false,
+                            })
+                        } else {
+                            let arbitrary = inner.in_args_or_kwargs_and_arbitrary_len();
+                            let type_ = infer(arg)?.into_type(&i_s);
+                            if arbitrary {
+                                extra_items.union_in_place(type_);
+                            }
+                            None
+                        }
+                    })
+                    .collect();
+                let members = TypedDictMembers {
+                    named,
+                    extra_items: (!extra_items.is_never()).then(|| ExtraItemsType {
+                        t: extra_items,
+                        read_only: false,
+                    }),
+                };
+                let td =
+                    TypedDict::new(None, members, args.primary_link(), TypedDictGenerics::None);
+                Some(Inferred::from_type(Type::TypedDict(td)))
+            }
+            _ => infer(argument),
         }
-        infer(argument)
     }
 
     pub fn infer_atom(&mut self, atom: Atom) -> Heuristic {
