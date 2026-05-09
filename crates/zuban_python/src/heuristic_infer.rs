@@ -4,7 +4,7 @@ use parsa_python_cst::{
     Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom, AtomContent,
     Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef, GotoNode, Name,
     NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
-    StarExpressionContent, StarExpressions, Target, TypeLike,
+    StarExpressionContent, StarExpressions, StarLikeExpression, Target, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -596,9 +596,28 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             StarExpressionContent::Expression(expr) => self.infer_expression(expr),
             // This is invalid anyway
             StarExpressionContent::StarExpression(_) => Heuristic::new_any_due_to_error(),
-            StarExpressionContent::Tuple(_tuple) => {
-                // TODO implement
-                return None;
+            StarExpressionContent::Tuple(tuple) => {
+                let tuple = Tuple::new_fixed_length(
+                    tuple
+                        .iter()
+                        .map(|s| {
+                            let inf: Inferred = match s {
+                                StarLikeExpression::Expression(e) => self.infer_expression(e),
+                                StarLikeExpression::NamedExpression(ne) => {
+                                    self.infer_expression(ne.expression())
+                                }
+                                StarLikeExpression::StarExpression(_)
+                                | StarLikeExpression::StarNamedExpression(_) => {
+                                    debug!("Heuristics: TODO star exprs tuple calculation");
+                                    return None;
+                                }
+                            }
+                            .into();
+                            Some(inf.into_type(self.inference.i_s))
+                        })
+                        .collect::<Option<_>>()?,
+                );
+                return Some(Heuristic::Guess(Inferred::from_type(Type::Tuple(tuple))));
             }
         })
     }
