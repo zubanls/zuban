@@ -315,14 +315,17 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
         rest_args: InferrableParamIterator<
-            'x,
+            'db,
             '_,
             impl Iterator<Item = FunctionParam<'x>>,
             FunctionParam<'x>,
-            ArgIterator<'x, '_>,
+            ArgIterator<'db, '_>,
         >,
         from_callable_search: bool,
-    ) -> Option<Inferred> {
+    ) -> Option<Inferred>
+    where
+        'db: 'x,
+    {
         let result = self.with_different_file(args.file, |h| {
             h.infer_argument(args, param.param, param.argument, rest_args)
         });
@@ -351,13 +354,16 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         param: FunctionParam,
         argument: ParamArgument,
         rest_args: InferrableParamIterator<
-            'x,
+            'db,
             '_,
             impl Iterator<Item = FunctionParam<'x>>,
             FunctionParam<'x>,
-            ArgIterator<'x, '_>,
+            ArgIterator<'db, '_>,
         >,
-    ) -> Option<Inferred> {
+    ) -> Option<Inferred>
+    where
+        'db: 'x,
+    {
         let i_s = *self.inference.i_s;
         let mut infer = |argument| match argument {
             ParamArgument::None => None,
