@@ -14,6 +14,7 @@ use crate::{
     database::{Database, PointKind, PointLink},
     debug,
     file::{FuncNodeRef, Inference, PythonFile},
+    format_data::FormatData,
     getitem::SliceType,
     goto::{
         FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
@@ -323,12 +324,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         from_callable_search: bool,
     ) -> Option<Inferred> {
         let result = self.with_different_file(args.file, |h| {
-            h.infer_argument(
-                args,
-                param.param.kind(h.inference.i_s.db),
-                param.argument,
-                rest_args,
-            )
+            h.infer_argument(args, param.param, param.argument, rest_args)
         });
         if !from_callable_search && result.is_some() {
             // If there is a result in a normal execution heuristic, we can simply continue,
@@ -352,7 +348,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     fn infer_argument<'x>(
         &mut self,
         args: &SimpleArgs<'db, 'db>,
-        param_kind: ParamKind,
+        param: FunctionParam,
         argument: ParamArgument,
         rest_args: InferrableParamIterator<
             'x,
@@ -380,7 +376,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             ParamArgument::MatchedUnpackedTypedDictMember { .. } => todo!(),
             ParamArgument::ParamSpecArgs(..) => todo!(),
         };
-        match param_kind {
+        match param.kind(i_s.db) {
             ParamKind::Star => {
                 let tuple = Tuple::new_fixed_length(
                     std::iter::once(argument)
@@ -391,6 +387,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                         )
                         .map(|arg| Some(infer(arg)?.into_type(&i_s)))
                         .collect::<Option<_>>()?,
+                );
+                debug!(
+                    "Heuristics: Inferred param *{} as: {}",
+                    param.name_def().as_code(),
+                    tuple.format(&FormatData::new_short(i_s.db)),
                 );
                 Some(Inferred::from_type(Type::Tuple(tuple)))
             }
@@ -435,9 +436,29 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 };
                 let td =
                     TypedDict::new(None, members, args.primary_link(), TypedDictGenerics::None);
+                debug!(
+                    "Heuristics: Inferred param **{} as: {}",
+                    param.name_def().as_code(),
+                    td.format(&FormatData::new_short(i_s.db)),
+                );
                 Some(Inferred::from_type(Type::TypedDict(td)))
             }
-            _ => infer(argument),
+            _ => {
+                let result = infer(argument);
+                if let Some(result) = &result {
+                    debug!(
+                        "Heuristics: Inferred param {} as: {}",
+                        param.name_def().as_code(),
+                        result.format_short(&i_s),
+                    );
+                } else {
+                    debug!(
+                        "Heuristics: Could not infer param {}",
+                        param.name_def().as_code(),
+                    );
+                }
+                result
+            }
         }
     }
 
