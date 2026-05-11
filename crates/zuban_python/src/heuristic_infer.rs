@@ -25,6 +25,7 @@ use crate::{
     },
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
+    matching::IteratorContent,
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
@@ -320,68 +321,81 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 }
                 // Override the args/kwargs inference
                 if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current {
-                    match iterator.clone().next()?.1 {
-                        Argument::Star(starred_expr) => {
-                            let i = iterator.next().unwrap().0; // Skip this and replace it
-                            let ret = slf.borrow_mut().with_different_file(args.file, |h| {
-                                let inf: Inferred =
-                                    h.infer_expression(starred_expr.expression()).into();
-                                debug!(
-                                    "Inferred {} as: {}",
-                                    starred_expr.as_code(),
-                                    inf.format_short(h.inference.i_s)
-                                );
-                                let node_ref = NodeRef::new(h.inference.file, starred_expr.index());
-                                ArgsKwargsIterator::Args {
-                                    iterator: inf.iter(
-                                        h.inference.i_s,
+                    for (i, argument) in iterator.clone() {
+                        match argument {
+                            Argument::Star(starred_expr) => {
+                                iterator.next(); // Skip this and replace it
+                                let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                    let inf: Inferred =
+                                        h.infer_expression(starred_expr.expression()).into();
+                                    debug!(
+                                        "Inferred {} as: {}",
+                                        starred_expr.as_code(),
+                                        inf.format_short(h.inference.i_s)
+                                    );
+                                    let node_ref =
+                                        NodeRef::new(h.inference.file, starred_expr.index());
+                                    ArgsKwargsIterator::Args {
+                                        iterator: inf.iter(
+                                            h.inference.i_s,
+                                            node_ref,
+                                            IterCause::VariadicUnpack,
+                                        ),
                                         node_ref,
-                                        IterCause::VariadicUnpack,
-                                    ),
-                                    node_ref,
-                                    position: i + 1,
+                                        position: i + 1,
+                                    }
+                                });
+                                if let ArgsKwargsIterator::Args {
+                                    iterator: IteratorContent::FixedLenTupleGenerics { entries, .. },
+                                    ..
+                                } = &ret
+                                    && entries.is_empty()
+                                {
+                                    debug!("Avoid star args, because it's an empty tuple");
+                                    continue;
                                 }
-                            });
-                            arg_iterator.args_kwargs_iterator = ret;
-                        }
-                        Argument::StarStar(star_star_expr) => {
-                            let i = iterator.next().unwrap().0; // Skip this and replace it
-                            let ret = slf.borrow_mut().with_different_file(args.file, |h| {
-                                let inf: Inferred =
-                                    h.infer_expression(star_star_expr.expression()).into();
-                                debug!(
-                                    "Inferred {} as: {}",
-                                    star_star_expr.as_code(),
-                                    inf.format_short(h.inference.i_s)
-                                );
-                                let i_s = h.inference.i_s;
-                                let type_ = inf.as_cow_type(i_s);
-                                let node_ref =
-                                    NodeRef::new(h.inference.file, star_star_expr.index());
-                                if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
-                                    return ArgsKwargsIterator::TypedDict {
-                                        db: i_s.db,
-                                        typed_dict,
-                                        iterator_index: 0,
+                                arg_iterator.args_kwargs_iterator = ret;
+                            }
+                            Argument::StarStar(star_star_expr) => {
+                                iterator.next(); // Skip this and replace it
+                                let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                    let inf: Inferred =
+                                        h.infer_expression(star_star_expr.expression()).into();
+                                    debug!(
+                                        "Inferred {} as: {}",
+                                        star_star_expr.as_code(),
+                                        inf.format_short(h.inference.i_s)
+                                    );
+                                    let i_s = h.inference.i_s;
+                                    let type_ = inf.as_cow_type(i_s);
+                                    let node_ref =
+                                        NodeRef::new(h.inference.file, star_star_expr.index());
+                                    if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
+                                        return ArgsKwargsIterator::TypedDict {
+                                            db: i_s.db,
+                                            typed_dict,
+                                            iterator_index: 0,
+                                            node_ref,
+                                            position: i + 1,
+                                        };
+                                    }
+                                    let unpacked = unpack_star_star(i_s, &type_);
+                                    let value = if let Some((_, value)) = unpacked {
+                                        value
+                                    } else {
+                                        Type::ERROR
+                                    };
+                                    return ArgsKwargsIterator::Kwargs {
+                                        inferred_value: Inferred::from_type(value),
                                         node_ref,
                                         position: i + 1,
                                     };
-                                }
-                                let unpacked = unpack_star_star(i_s, &type_);
-                                let value = if let Some((_, value)) = unpacked {
-                                    value
-                                } else {
-                                    Type::ERROR
-                                };
-                                return ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::from_type(value),
-                                    node_ref,
-                                    position: i + 1,
-                                };
-                            });
-                            arg_iterator.args_kwargs_iterator = ret;
+                                });
+                                arg_iterator.args_kwargs_iterator = ret;
+                            }
+                            _ => (),
                         }
-                        _ => (),
+                        break;
                     }
                 }
                 arg_iterator.next()
@@ -398,6 +412,19 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     from_callable_search,
                 )?;
                 return Some(found);
+            }
+        }
+        for param in func.iter_params() {
+            if param.name_def().name_index() == search_param_name.index()
+                && param.kind(db) == ParamKind::Star
+            {
+                // *args might be inferred as tuple[Any, ...] instead of an empty tuple, because it
+                // when no argument matches it. This is because it is simply omitted in that case,
+                // but here in heuristics we want to make sure that it's clear that it's empty,
+                // otherwise params might be assigned wrong.
+                return Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
+                    [].into(),
+                ))));
             }
         }
         None

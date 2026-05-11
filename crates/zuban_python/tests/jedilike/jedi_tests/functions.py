@@ -187,7 +187,8 @@ nested_default(a=1.0, b='')[1]
 
 # Defaults should only work if they are defined before - not after.
 def default_function(a=default):
-    #?
+    # zuban-diff: #?
+    #? int()
     return a
 
 # zuban-diff: #?
