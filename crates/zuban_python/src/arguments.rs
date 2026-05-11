@@ -738,7 +738,7 @@ pub enum BaseArgReturn<'db, 'a> {
 }
 
 impl<'db, 'a> ArgIteratorBase<'db, 'a> {
-    fn expect_i_s(&mut self) -> &InferenceState<'db, 'a> {
+    fn expect_i_s(&self) -> &InferenceState<'db, 'a> {
         if let Self::Iterator { i_s, .. } = self {
             i_s
         } else {
@@ -1052,57 +1052,99 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
     type Item = Arg<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match std::mem::replace(&mut self.args_kwargs_iterator, ArgsKwargsIterator::None) {
-            ArgsKwargsIterator::None => match self.current.next() {
-                Some(BaseArgReturn::Arg(mut kind)) => {
-                    let index = self.counter;
-                    if let ArgKind::Inferred { position, .. }
-                    | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
-                    {
-                        // This is a bit of a special case where 0 means that we're on a bound self
-                        // argument. In that case we do not want to increase the counter, because
-                        // the bound argument is not counted as an argument.
-                        if *position != 0 {
+        self.args_kwargs_iterator
+            .next(&self.current, &mut self.counter)
+            .or_else(|| {
+                match self.current.next() {
+                    Some(BaseArgReturn::Arg(mut kind)) => {
+                        let index = self.counter;
+                        if let ArgKind::Inferred { position, .. }
+                        | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
+                        {
+                            // This is a bit of a special case where 0 means that we're on a bound
+                            // self argument. In that case we do not want to increase the counter,
+                            // because the bound argument is not counted as an argument.
+                            if *position != 0 {
+                                self.counter += 1;
+                            }
+                            *position += index;
+                        } else {
                             self.counter += 1;
                         }
-                        *position += index;
-                    } else {
-                        self.counter += 1;
+                        Some(Arg {
+                            kind,
+                            index: self.counter,
+                        })
                     }
-                    Some(Arg {
-                        kind,
-                        index: self.counter,
-                    })
-                }
-                Some(BaseArgReturn::ArgsKwargs(args_kwargs)) => {
-                    self.args_kwargs_iterator = args_kwargs;
-                    self.next()
-                }
-                None => {
-                    self.next?;
-                    if let Some((mode, next)) = self.next {
-                        let old_counter = self.counter;
-                        *self = next.iter(mode);
-                        self.counter += old_counter;
+                    Some(BaseArgReturn::ArgsKwargs(args_kwargs)) => {
+                        self.args_kwargs_iterator = args_kwargs;
                         self.next()
-                    } else {
-                        None
+                    }
+                    None => {
+                        self.next?;
+                        if let Some((mode, next)) = self.next {
+                            let old_counter = self.counter;
+                            *self = next.iter(mode);
+                            self.counter += old_counter;
+                            self.next()
+                        } else {
+                            None
+                        }
                     }
                 }
-            },
-            ArgsKwargsIterator::Args {
+            })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ArgsKwargsIterator<'a> {
+    Args {
+        iterator: IteratorContent,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    Kwargs {
+        inferred_value: Inferred,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    TypedDict {
+        db: &'a Database,
+        typed_dict: Arc<TypedDict>,
+        iterator_index: usize,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    WithUnpack {
+        with_unpack: WithUnpack,
+        before_iterator_index: usize,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    None,
+}
+
+impl<'a> ArgsKwargsIterator<'a> {
+    fn next<'db>(
+        &mut self,
+        current: &ArgIteratorBase<'db, 'a>,
+        counter: &mut usize,
+    ) -> Option<Arg<'static, 'a>> {
+        match std::mem::replace(self, Self::None) {
+            Self::None => None,
+            Self::Args {
                 mut iterator,
                 node_ref,
                 position,
-            } => match iterator.next_as_argument(self.current.expect_i_s()) {
-                Some(UnpackedArgument::Normal {
+            } => match iterator.next_as_argument(current.expect_i_s())? {
+                UnpackedArgument::Normal {
                     inferred,
                     arbitrary_len,
-                }) => {
-                    let index = self.counter;
-                    self.counter += 1;
+                } => {
+                    let index = *counter;
+                    *counter += 1;
                     if !arbitrary_len {
-                        self.args_kwargs_iterator = ArgsKwargsIterator::Args {
+                        *self = Self::Args {
                             iterator,
                             node_ref,
                             position,
@@ -1119,24 +1161,23 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                         index,
                     })
                 }
-                Some(UnpackedArgument::WithUnpack(with_unpack)) => {
-                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
+                UnpackedArgument::WithUnpack(with_unpack) => {
+                    *self = Self::WithUnpack {
                         with_unpack,
                         before_iterator_index: 0,
                         node_ref,
                         position,
                     };
-                    self.next()
+                    self.next(current, counter)
                 }
-                None => self.next(),
             },
-            ArgsKwargsIterator::Kwargs {
+            Self::Kwargs {
                 inferred_value,
                 node_ref,
                 position,
             } => {
-                let index = self.counter;
-                self.counter += 1;
+                let index = *counter;
+                *counter += 1;
                 Some(Arg {
                     kind: ArgKind::Inferred {
                         inferred: inferred_value,
@@ -1148,43 +1189,41 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     index,
                 })
             }
-            ArgsKwargsIterator::TypedDict {
+            Self::TypedDict {
                 db,
                 node_ref,
                 position,
                 typed_dict,
                 iterator_index,
             } => {
-                let index = self.counter;
+                let index = *counter;
                 let ms = typed_dict.members(db);
                 let Some((name, t)) = ms
                     .named
                     .get(iterator_index)
                     .map(|member| (member.name.clone(), member.type_.clone()))
                 else {
-                    if let Some(e) = &ms.extra_items {
-                        self.counter += 1;
-                        return Some(Arg {
-                            kind: ArgKind::Inferred {
-                                inferred: Inferred::from_type(e.t.clone()),
-                                position,
-                                node_ref,
-                                in_args_or_kwargs_and_arbitrary_len: true,
-                                is_keyword: Some(None),
-                            },
-                            index,
-                        });
-                    }
-                    return self.next();
+                    let e = ms.extra_items.as_ref()?;
+                    *counter += 1;
+                    return Some(Arg {
+                        kind: ArgKind::Inferred {
+                            inferred: Inferred::from_type(e.t.clone()),
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len: true,
+                            is_keyword: Some(None),
+                        },
+                        index,
+                    });
                 };
-                self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
+                *self = Self::TypedDict {
                     db,
                     node_ref,
                     position,
                     typed_dict,
                     iterator_index: iterator_index + 1,
                 };
-                self.counter += 1;
+                *counter += 1;
                 Some(Arg {
                     kind: ArgKind::Inferred {
                         inferred: Inferred::from_type(t),
@@ -1196,18 +1235,18 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     index,
                 })
             }
-            ArgsKwargsIterator::WithUnpack {
+            Self::WithUnpack {
                 mut with_unpack,
                 mut before_iterator_index,
                 position,
                 node_ref,
             } => {
-                let index = self.counter;
-                self.counter += 1;
+                let index = *counter;
+                *counter += 1;
                 if let Some(t) = with_unpack.before.get(before_iterator_index) {
                     let current_t = t.clone();
                     before_iterator_index += 1;
-                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
+                    *self = Self::WithUnpack {
                         with_unpack,
                         before_iterator_index,
                         position,
@@ -1240,34 +1279,6 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
             }
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ArgsKwargsIterator<'a> {
-    Args {
-        iterator: IteratorContent,
-        position: usize,
-        node_ref: NodeRef<'a>,
-    },
-    Kwargs {
-        inferred_value: Inferred,
-        position: usize,
-        node_ref: NodeRef<'a>,
-    },
-    TypedDict {
-        db: &'a Database,
-        typed_dict: Arc<TypedDict>,
-        iterator_index: usize,
-        position: usize,
-        node_ref: NodeRef<'a>,
-    },
-    WithUnpack {
-        with_unpack: WithUnpack,
-        before_iterator_index: usize,
-        position: usize,
-        node_ref: NodeRef<'a>,
-    },
-    None,
 }
 
 pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
