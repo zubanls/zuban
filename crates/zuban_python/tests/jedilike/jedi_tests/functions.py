@@ -201,7 +201,7 @@ def default_function2(a=default):
     return a
 
 #? int()
-default_function()
+default_function2()
 
 def default(a=default):
     #? int()

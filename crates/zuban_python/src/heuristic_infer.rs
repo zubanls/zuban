@@ -265,6 +265,13 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             .clone();
         debug!("Found executions: {executions:?}");
 
+        if executions.is_empty() {
+            let param = func
+                .iter_params()
+                .find(|p| p.name_def().name_index() == param_name.index())?;
+            return Some(self.infer_expression(param.default()?).into());
+        }
+
         executions
             .iter()
             .filter_map(|execution| {
