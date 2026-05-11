@@ -308,9 +308,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             db,
             params,
             std::iter::from_fn(|| {
-                if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current
-                    && matches!(arg_iterator.args_kwargs_iterator, ArgsKwargsIterator::None)
-                {
+                if let next @ Some(_) = arg_iterator.next_from_args_kwargs_iterator() {
+                    return next;
+                }
+                // Override the args/kwargs inference
+                if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current {
                     match iterator.clone().next()?.1 {
                         Argument::Star(starred_expr) => {
                             let i = iterator.next().unwrap().0; // Skip this and replace it

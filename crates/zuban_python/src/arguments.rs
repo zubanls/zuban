@@ -1046,53 +1046,57 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
         }
         result.into_boxed_slice()
     }
+
+    #[inline]
+    pub fn next_from_args_kwargs_iterator(&mut self) -> Option<<Self as Iterator>::Item> {
+        self.args_kwargs_iterator
+            .next(&self.current, &mut self.counter)
+    }
 }
 
 impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
     type Item = Arg<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.args_kwargs_iterator
-            .next(&self.current, &mut self.counter)
-            .or_else(|| {
-                match self.current.next() {
-                    Some(BaseArgReturn::Arg(mut kind)) => {
-                        let index = self.counter;
-                        if let ArgKind::Inferred { position, .. }
-                        | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
-                        {
-                            // This is a bit of a special case where 0 means that we're on a bound
-                            // self argument. In that case we do not want to increase the counter,
-                            // because the bound argument is not counted as an argument.
-                            if *position != 0 {
-                                self.counter += 1;
-                            }
-                            *position += index;
-                        } else {
+        self.next_from_args_kwargs_iterator().or_else(|| {
+            match self.current.next() {
+                Some(BaseArgReturn::Arg(mut kind)) => {
+                    let index = self.counter;
+                    if let ArgKind::Inferred { position, .. }
+                    | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
+                    {
+                        // This is a bit of a special case where 0 means that we're on a bound
+                        // self argument. In that case we do not want to increase the counter,
+                        // because the bound argument is not counted as an argument.
+                        if *position != 0 {
                             self.counter += 1;
                         }
-                        Some(Arg {
-                            kind,
-                            index: self.counter,
-                        })
+                        *position += index;
+                    } else {
+                        self.counter += 1;
                     }
-                    Some(BaseArgReturn::ArgsKwargs(args_kwargs)) => {
-                        self.args_kwargs_iterator = args_kwargs;
+                    Some(Arg {
+                        kind,
+                        index: self.counter,
+                    })
+                }
+                Some(BaseArgReturn::ArgsKwargs(args_kwargs)) => {
+                    self.args_kwargs_iterator = args_kwargs;
+                    self.next()
+                }
+                None => {
+                    self.next?;
+                    if let Some((mode, next)) = self.next {
+                        let old_counter = self.counter;
+                        *self = next.iter(mode);
+                        self.counter += old_counter;
                         self.next()
-                    }
-                    None => {
-                        self.next?;
-                        if let Some((mode, next)) = self.next {
-                            let old_counter = self.counter;
-                            *self = next.iter(mode);
-                            self.counter += old_counter;
-                            self.next()
-                        } else {
-                            None
-                        }
+                    } else {
+                        None
                     }
                 }
-            })
+            }
+        })
     }
 }
 
@@ -1125,7 +1129,7 @@ pub enum ArgsKwargsIterator<'a> {
 }
 
 impl<'a> ArgsKwargsIterator<'a> {
-    fn next<'db>(
+    pub fn next<'db>(
         &mut self,
         current: &ArgIteratorBase<'db, 'a>,
         counter: &mut usize,
