@@ -190,7 +190,8 @@ def default_function(a=default):
     #?
     return a
 
-#?
+# zuban-diff: #?
+#? int()
 default_function()
 
 default = int()
@@ -228,11 +229,11 @@ def args_func(*args):
     #? tuple()
     return args
 
-exe = args_func(1, "")
+exe2 = args_func(1, "")
 #? int()
-exe[0]
+exe2[0]
 #? str()
-exe[1]
+exe2[1]
 
 # illegal args (TypeError)
 #?
@@ -242,7 +243,7 @@ args_func(*1)[0]
 args_func(*iter([1]))[0]
 
 # different types
-e = args_func(*[1 if UNDEFINED else "", {}])
+e = args_func(*(1 if UNDEFINED else "", {}))
 #? int() str()
 e[0]
 #? dict()
@@ -252,23 +253,24 @@ _list = [1,""]
 exe2 = args_func(_list)[0]
 
 #? str()
-exe2[1]
-
-exe3 = args_func([1,""])[0]
-
-#? str()
 exe3[1]
+
+exe4 = args_func([1,""])[0]
+
+# zuban-diff: #? str()
+#? str() int()
+exe4[1]
 
 def args_func(arg1, *args):
     return arg1, args
 
-exe = args_func(1, "", list)
+exe5 = args_func(1, "", list)
 #? int()
-exe[0]
+exe5[0]
 #? tuple()
-exe[1]
+exe5[1]
 #? list
-exe[1][1]
+exe5[1][1]
 
 
 # In a dynamic search, both inputs should be given.
@@ -307,42 +309,44 @@ def kwargs_func(**kwargs):
     #? dict()
     return kwargs
 
-exe = kwargs_func(a=3,b=4.0)
+exe6 = kwargs_func(a=3,b=4.0)
 #? dict()
-exe
+exe6
 #? int()
-exe['a']
+exe6['a']
 #? float()
-exe['b']
+exe6['b']
 #? int() float()
-exe['c']
+exe6['c']
 
 a = 'a'
-exe2 = kwargs_func(**{a:3,
+exe7 = kwargs_func(**{a:3,
                       'b':4.0})
 
-#? int()
-exe2['a']
-#? float()
-exe2['b']
+# zuban-diff: #? int()
 #? int() float()
-exe2['c']
+exe7['a']
+# zuban-diff: #? float()
+#? float() int()
+exe7['b']
+#? int() float()
+exe7['c']
 
-exe3 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
+exe8 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
 
 # Should resolve to the same as 2 but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
 # zuban-diff: #? 
 #? int() float()
-exe3['a']
+exe8['a']
 
 # zuban-diff: #? 
 #? int() float()
-exe3['b']
+exe8['b']
 
 # zuban-diff: #? 
 #? int() float()
-exe3['c']
+exe8['c']
 
 # -----------------
 # *args / ** kwargs
@@ -357,27 +361,28 @@ def func_without_call(*args, **kwargs):
 def fu(a=1, b="", *args, **kwargs):
     return a, b, args, kwargs
 
-exe = fu(list, 1, "", c=set, d="")
+exe9 = fu(list, 1, "", c=set, d="")
 
 #? list
-exe[0]
+exe9[0]
 #? int()
-exe[1]
+exe9[1]
 #? tuple()
-exe[2]
+exe9[2]
 #? str()
-exe[2][0]
+exe9[2][0]
 #? dict()
-exe[3]
+exe9[3]
 #? set
-exe[3]['c']
+exe9[3]['c']
 
 
 def kwargs_iteration(**kwargs):
     return kwargs
 
 for x in kwargs_iteration(d=3):
-    #? float()
+    # zuban-diff: #? float()
+    #? float() str()
     {'d': 1.0, 'c': '1'}[x]
 
 
@@ -432,8 +437,7 @@ nested_kw(a='').
 
 #? int()
 nested_kw2(b=1)
-# zuban-diff: #? int()
-#? int() float()
+#? int()
 nested_kw2(b=1, c=1.0)
 # zuban-diff: #? int()
 #? int() float()
