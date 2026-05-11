@@ -1156,7 +1156,6 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                 iterator_index,
             } => {
                 let index = self.counter;
-                self.counter += 1;
                 let ms = typed_dict.members(db);
                 let Some((name, t)) = ms
                     .named
@@ -1164,6 +1163,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     .map(|member| (member.name.clone(), member.type_.clone()))
                 else {
                     if let Some(e) = &ms.extra_items {
+                        self.counter += 1;
                         return Some(Arg {
                             kind: ArgKind::Inferred {
                                 inferred: Inferred::from_type(e.t.clone()),
@@ -1184,6 +1184,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     typed_dict,
                     iterator_index: iterator_index + 1,
                 };
+                self.counter += 1;
                 Some(Arg {
                     kind: ArgKind::Inferred {
                         inferred: Inferred::from_type(t),

@@ -308,14 +308,20 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             db,
             params,
             std::iter::from_fn(|| {
-                // ARGS
-                if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current {
+                if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current
+                    && matches!(arg_iterator.args_kwargs_iterator, ArgsKwargsIterator::None)
+                {
                     match iterator.clone().next()?.1 {
                         Argument::Star(starred_expr) => {
                             let i = iterator.next().unwrap().0; // Skip this and replace it
                             let ret = slf.borrow_mut().with_different_file(args.file, |h| {
                                 let inf: Inferred =
                                     h.infer_expression(starred_expr.expression()).into();
+                                debug!(
+                                    "Inferred {} as: {}",
+                                    starred_expr.as_code(),
+                                    inf.format_short(h.inference.i_s)
+                                );
                                 let node_ref = NodeRef::new(h.inference.file, starred_expr.index());
                                 ArgsKwargsIterator::Args {
                                     iterator: inf.iter(
@@ -334,6 +340,11 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                             let ret = slf.borrow_mut().with_different_file(args.file, |h| {
                                 let inf: Inferred =
                                     h.infer_expression(star_star_expr.expression()).into();
+                                debug!(
+                                    "Inferred {} as: {}",
+                                    star_star_expr.as_code(),
+                                    inf.format_short(h.inference.i_s)
+                                );
                                 let i_s = h.inference.i_s;
                                 let type_ = inf.as_cow_type(i_s);
                                 let node_ref =
