@@ -1,16 +1,19 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_cst::{
-    Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom, AtomContent,
-    Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef, GotoNode, Name,
-    NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
-    StarExpressionContent, StarExpressions, StarLikeExpression, Target, TypeLike,
+    Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
+    AtomContent, Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef,
+    GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
+    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression, Target,
+    TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
 
 use crate::{
-    arguments::{ArgIterator, ArgKind, Args as _, SimpleArgs},
+    arguments::{
+        Arg, ArgIteratorBase, ArgKind, Args as _, ArgsKwargsIterator, SimpleArgs, unpack_star_star,
+    },
     database::{Database, PointKind, PointLink},
     debug,
     file::{FuncNodeRef, Inference, PythonFile},
@@ -294,16 +297,69 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         search_param_name: Name,
         from_callable_search: bool,
     ) -> Option<Inferred> {
-        let mut arg_iterator = func.iter_args_with_params(
-            self.inference.i_s.db,
-            args.iter(Mode::Normal),
-            skip_first_param,
+        let mut params = func.iter_params();
+        if skip_first_param {
+            params.next();
+        }
+        let mut arg_iterator = args.iter(Mode::Normal);
+        let db = self.inference.i_s.db;
+        let slf = RefCell::new(self);
+        let mut matched_arg_iterator = InferrableParamIterator::new(
+            db,
+            params,
+            std::iter::from_fn(|| {
+                // ARGS
+                if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current {
+                    match iterator.clone().next()?.1 {
+                        Argument::Star(_) => (),
+                        Argument::StarStar(star_star_expr) => {
+                            let i = iterator.next().unwrap().0; // Skip this and replace it
+                            let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                let inf: Inferred =
+                                    h.infer_expression(star_star_expr.expression()).into();
+                                let i_s = h.inference.i_s;
+                                let type_ = inf.as_cow_type(i_s);
+                                let node_ref =
+                                    NodeRef::new(h.inference.file, star_star_expr.index());
+                                if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
+                                    return ArgsKwargsIterator::TypedDict {
+                                        db: i_s.db,
+                                        typed_dict,
+                                        iterator_index: 0,
+                                        node_ref,
+                                        position: i + 1,
+                                    };
+                                }
+                                let unpacked = unpack_star_star(i_s, &type_);
+                                let value = if let Some((_, value)) = unpacked {
+                                    value
+                                } else {
+                                    Type::ERROR
+                                };
+                                return ArgsKwargsIterator::Kwargs {
+                                    inferred_value: Inferred::from_type(value),
+                                    node_ref,
+                                    position: i + 1,
+                                };
+                            });
+                            arg_iterator.args_kwargs_iterator = ret;
+                        }
+                        _ => (),
+                    }
+                }
+                arg_iterator.next()
+            }),
         );
-        for param in arg_iterator.by_ref() {
+        for param in matched_arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
-                let found = self.with_different_file(args.file, |h| {
-                    h.infer_param(&args, param, arg_iterator, from_callable_search)
-                })?;
+                let found = Self::infer_param(
+                    db,
+                    &slf,
+                    &args,
+                    param,
+                    matched_arg_iterator,
+                    from_callable_search,
+                )?;
                 return Some(found);
             }
         }
@@ -311,36 +367,36 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     }
 
     fn infer_param<'x>(
-        &mut self,
+        db: &Database,
+        slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
         rest_args: InferrableParamIterator<
             'db,
-            '_,
+            'x,
             impl Iterator<Item = FunctionParam<'x>>,
             FunctionParam<'x>,
-            ArgIterator<'db, '_>,
+            impl Iterator<Item = Arg<'db, 'x>>,
         >,
         from_callable_search: bool,
     ) -> Option<Inferred>
     where
         'db: 'x,
     {
-        let result = self.with_different_file(args.file, |h| {
-            h.infer_argument(args, param.param, param.argument, rest_args)
-        });
+        let result = Self::infer_argument(db, slf, args, param.param, param.argument, rest_args);
         if !from_callable_search && result.is_some() {
             // If there is a result in a normal execution heuristic, we can simply continue,
             // because the actual type has been found from the execution.
             return result;
         }
         if let Some(default) = param.param.default() {
-            let inferred_default: Inferred = self.infer_expression(default).into();
+            let mut slf = slf.borrow_mut();
+            let inferred_default: Inferred = slf.infer_expression(default).into();
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
-                        .as_type(&InferenceState::new(self.inference.i_s.db, args.file))
-                        .union(inferred_default.as_type(self.inference.i_s)),
+                        .as_type(&InferenceState::new(db, args.file))
+                        .union(inferred_default.as_type(slf.inference.i_s)),
                 ));
             }
             return Some(inferred_default);
@@ -349,29 +405,32 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     }
 
     fn infer_argument<'x>(
-        &mut self,
+        db: &Database,
+        slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: FunctionParam,
         argument: ParamArgument,
         rest_args: InferrableParamIterator<
             'db,
-            '_,
+            'x,
             impl Iterator<Item = FunctionParam<'x>>,
             FunctionParam<'x>,
-            ArgIterator<'db, '_>,
+            impl Iterator<Item = Arg<'db, 'x>>,
         >,
     ) -> Option<Inferred>
     where
         'db: 'x,
     {
-        let i_s = *self.inference.i_s;
-        let mut infer = |argument| match argument {
+        let i_s = &InferenceState::new(db, args.file);
+        let inf_expr = |expr| {
+            slf.borrow_mut()
+                .with_different_file(args.file, |h| h.infer_expression(expr).into())
+        };
+        let infer = |argument| match argument {
             ParamArgument::None => None,
             ParamArgument::Argument(arg) => match arg.kind {
-                ArgKind::Positional(arg) => {
-                    Some(self.infer_expression(arg.named_expr.expression()).into())
-                }
-                ArgKind::Keyword(kw) => Some(self.infer_expression(kw.expression).into()),
+                ArgKind::Positional(arg) => Some(inf_expr(arg.named_expr.expression())),
+                ArgKind::Keyword(kw) => Some(inf_expr(kw.expression)),
                 ArgKind::Inferred { inferred, .. }
                 | ArgKind::InferredWithCustomAddIssue { inferred, .. }
                 | ArgKind::Overridden { inferred, .. } => Some(inferred),

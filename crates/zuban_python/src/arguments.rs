@@ -710,7 +710,7 @@ impl<'db> Arg<'db, '_> {
 }
 
 #[derive(Debug, Clone)]
-enum ArgIteratorBase<'db, 'a> {
+pub enum ArgIteratorBase<'db, 'a> {
     Iterator {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
@@ -731,7 +731,8 @@ enum ArgIteratorBase<'db, 'a> {
     Finished,
 }
 
-enum BaseArgReturn<'db, 'a> {
+#[derive(Debug)]
+pub enum BaseArgReturn<'db, 'a> {
     ArgsKwargs(ArgsKwargsIterator<'a>),
     Arg(ArgKind<'db, 'a>),
 }
@@ -1005,8 +1006,8 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ArgIterator<'db, 'a> {
-    current: ArgIteratorBase<'db, 'a>,
-    args_kwargs_iterator: ArgsKwargsIterator<'a>,
+    pub current: ArgIteratorBase<'db, 'a>,
+    pub args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<(Mode<'a>, &'a dyn Args<'db>)>,
     counter: usize,
 }
@@ -1241,7 +1242,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-enum ArgsKwargsIterator<'a> {
+pub enum ArgsKwargsIterator<'a> {
     Args {
         iterator: IteratorContent,
         position: usize,
