@@ -29,7 +29,7 @@ use crate::{
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
     type_::{
-        DbString, ExtraItemsType, FunctionKind, LookupResult, Tuple, Type, TypedDict,
+        DbString, ExtraItemsType, FunctionKind, IterCause, LookupResult, Tuple, Type, TypedDict,
         TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Function, FunctionParam, InstanceLookupOptions},
@@ -311,7 +311,24 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 // ARGS
                 if let ArgIteratorBase::Iterator { iterator, .. } = &mut arg_iterator.current {
                     match iterator.clone().next()?.1 {
-                        Argument::Star(_) => (),
+                        Argument::Star(starred_expr) => {
+                            let i = iterator.next().unwrap().0; // Skip this and replace it
+                            let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                let inf: Inferred =
+                                    h.infer_expression(starred_expr.expression()).into();
+                                let node_ref = NodeRef::new(h.inference.file, starred_expr.index());
+                                ArgsKwargsIterator::Args {
+                                    iterator: inf.iter(
+                                        h.inference.i_s,
+                                        node_ref,
+                                        IterCause::VariadicUnpack,
+                                    ),
+                                    node_ref,
+                                    position: i + 1,
+                                }
+                            });
+                            arg_iterator.args_kwargs_iterator = ret;
+                        }
                         Argument::StarStar(star_star_expr) => {
                             let i = iterator.next().unwrap().0; // Skip this and replace it
                             let ret = slf.borrow_mut().with_different_file(args.file, |h| {
