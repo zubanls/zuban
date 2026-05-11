@@ -704,7 +704,12 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             PrimaryContent::Execution(details) => {
                 let base: Inferred = base.into();
                 let db = self.inference.i_s.db;
-                let Some(node_ref) = base.maybe_saved_node_ref(db) else {
+                let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
+                    base.maybe_bound_method().map(|bound| {
+                        // Bound methods are also "saved"
+                        NodeRef::from_link(db, bound.func_link)
+                    })
+                }) else {
                     debug!(
                         "Heuristics: Did not execute, because the base is not a saved NodeRef, but {}",
                         base.debug_info(db)
