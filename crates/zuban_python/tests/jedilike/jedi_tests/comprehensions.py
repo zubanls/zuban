@@ -10,9 +10,9 @@ a[0]
 #? ['insert']
 a.insert
 
-a = [a for a in [1]]
+a2 = [a for a in [1]]
 #? int()
-a[0]
+a2[0]
 
 y = 1.0
 # Should not leak.
@@ -20,29 +20,30 @@ y = 1.0
 #? float()
 y
 
-a = [a for a in (1, 2)]
+a3 = [a for a in (1, 2)]
 #? int()
-a[0]
+a3[0]
 
-a = [a for a,b in [(1,'')]]
+a4 = [a for a,b in [(1,'')]]
 #? int()
-a[0]
-a = [a for (a,b) in [(1,'')]]
+a4[0]
+a5 = [a for (a,b) in [(1,'')]]
 #? int()
-a[0]
+a5[0]
 
 arr = [1,'']
-a = [a for a in arr]
-#? int()
-a[0]
-#? str()
-a[1]
+a6 = [a for a in arr]
+# zuban-diff: #? int()   <- This is one of many that was changed
 #? int() str()
-a[2]
+a6[0]
+#? str() int()
+a6[1]
+#? int() str()
+a6[2]
 
-a = [a if 1.0 else '' for a in [1] if [1.0]]
+a7 = [a if 1.0 else '' for a in [1] if [1.0]]
 #? int() str()
-a[0]
+a7[0]
 
 # name resolve should be correct
 left, right = 'a', 'b'
@@ -70,35 +71,35 @@ _listen(['' for x in [1]])
 # -----------------
 
 b = [a for arr in [[1, 1.0]] for a in arr]
-#? int()
+#? int() float()
 b[0]
-#? float()
+#? float() int()
 b[1]
 
-b = [arr for arr in [[1, 1.0]] for a in arr]
-#? int()
-b[0][0]
-#? float()
-b[1][1]
+b2 = [arr for arr in [[1, 1.0]] for a in arr]
+#? int() float()
+b2[0][0]
+#? float() int()
+b2[1][1]
 
-b = [a for arr in [[1]] if '' for a in arr if '']
+b3 = [a for arr in [[1]] if '' for a in arr if '']
 #? int()
-b[0]
+b3[0]
 
-b = [b for arr in [[[1.0]]] for a in arr for b in a]
+b4 = [b for arr in [[[1.0]]] for a in arr for b in a]
 #? float()
-b[0]
+b4[0]
 
 #? str()
 [x for x in 'chr'][0]
 
 # From GitHub #26
 #? list()
-a = [[int(v) for v in line.strip().split() if v] for line in ["123", str(), "123"] if line]
+a8 = [[int(v) for v in line.strip().split() if v] for line in ["123", str(), "123"] if line]
 #? list()
-a[0]
+a8[0]
 #? int()
-a[0][0]
+a8[0][0]
 
 # From GitHub #1524
 #?
@@ -110,9 +111,9 @@ a[0][0]
 
 left, right = (i for i in (1, ''))
 
-#? int()
+#? int() str()
 left
-#? str()
+#? str() int()
 right
 
 gen = (i for i in (1,))
@@ -122,9 +123,9 @@ next(gen)
 #?
 gen[0]
 
-gen = (a for arr in [[1.0]] for a in arr)
+gen2 = (a for arr in [[1.0]] for a in arr)
 #? float()
-next(gen)
+next(gen2)
 
 #? int()
 (i for i in (1,)).send()
@@ -132,9 +133,9 @@ next(gen)
 # issues with different formats
 left, right = (i for i in
                        ('1', 2))
-#? str()
+#? str() int()
 left
-#? int()
+#? int() str()
 right
 
 # -----------------
@@ -153,9 +154,9 @@ def x():
 
 #? list()
 foo = [x for x in [1, '']][:1]
-#? int()
+#? int() str()
 foo[0]
-#? str()
+#? str() int()
 foo[1]
 
 # -----------------
@@ -185,13 +186,13 @@ list({a - 1: 3 for a in [1]})[0]
 d = {a - 1: b for a, b in {1: 'a', 3: 1.0}.items()}
 #? int()
 list(d)[0]
-#? str() float()
+#?
 d.values()[0]
-#? str()
+#? str() float()
 d[0]
 #? float() str()
 d[1]
-#? float()
+#? float() str()
 d[2]
 
 # -----------------
@@ -251,11 +252,13 @@ x[0]
 # work (and especially not raise Exceptions). It's debatable wheter inferring
 # values for invalid statements is a good idea, but not failing is a must.
 
-#? int()
-next(foo(x for x in [1], 1))
+# zuban-diff: #? int()
+#?
+next(foo_func(x for x in [1], 1))
 
 def bar(x, y):
     return y
 
-#? str()
+# zuban-diff: #? str()
+#?
 next(bar(x for x in [1], x for x in ['']))
