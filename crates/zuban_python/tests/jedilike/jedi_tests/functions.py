@@ -196,7 +196,7 @@ default_function()
 
 default = int()
 
-def default_function(a=default):
+def default_function2(a=default):
     #? int()
     return a
 
@@ -250,9 +250,10 @@ e[0]
 e[1]
 
 _list = [1,""]
-exe2 = args_func(_list)[0]
+exe3 = args_func(_list)[0]
 
-#? str()
+# zuban-diff: #? str()
+#? str() int()
 exe3[1]
 
 exe4 = args_func([1,""])[0]
@@ -316,7 +317,8 @@ exe6
 exe6['a']
 #? float()
 exe6['b']
-#? int() float()
+# zuban-diff: #? int() float()
+#?
 exe6['c']
 
 a = 'a'
@@ -431,21 +433,18 @@ nested_kw(a=3.0, b=1)
 nested_kw(b=1, a=r"")
 #? []
 nested_kw(1, '').
-# zuban-diff: #? []
-#? --contains-subset ['upper', '__init__']
+#? []
 nested_kw(a='').
 
 #? int()
 nested_kw2(b=1)
 #? int()
 nested_kw2(b=1, c=1.0)
-# zuban-diff: #? int()
-#? int() float()
+#? int()
 nested_kw2(c=1.0, b=1)
 #? []
 nested_kw2('').
-# zuban-diff: #? []
-#? --contains-subset ['upper', '__init__']
+#? []
 nested_kw2(a='').
 #? []
 nested_kw2('', b=1).
