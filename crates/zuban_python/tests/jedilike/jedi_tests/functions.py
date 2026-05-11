@@ -261,10 +261,10 @@ exe4 = args_func([1,""])[0]
 #? str() int()
 exe4[1]
 
-def args_func(arg1, *args):
+def args_func2(arg1, *args):
     return arg1, args
 
-exe5 = args_func(1, "", list)
+exe5 = args_func2(1, "", list)
 #? int()
 exe5[0]
 #? tuple()
@@ -460,9 +460,11 @@ def nested_both2(*args, **kwargs):
     return nested_both(*args, **kwargs)
 
 # invalid commands, may return whatever.
-#? list
+# zuban-diff: #? list
+#?
 nested_both('', b=1, c=1.0, list)
-#? list
+# zuban-diff: #? list
+#?
 nested_both('', c=1.0, b=1, list)
 
 #? []
@@ -505,6 +507,6 @@ nested_def2('')[1].
 # -----------------
 # magic methods
 # -----------------
-def a(): pass
+def myfunc(): pass
 #? ['__closure__']
-a.__closure__
+myfunc.__closure__
