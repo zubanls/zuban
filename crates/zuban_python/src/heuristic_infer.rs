@@ -105,7 +105,7 @@ impl From<Heuristic<'_>> for Inferred {
     }
 }
 
-impl Heuristic<'_> {
+impl<'db> Heuristic<'db> {
     fn new_any_due_to_error() -> Self {
         Self::WellKnown(Inferred::new_any_from_error())
     }
@@ -114,6 +114,13 @@ impl Heuristic<'_> {
         match self {
             Self::WellKnown(_) => None,
             Self::Guess(inf) | Self::Instance { inf, .. } => Some(inf),
+        }
+    }
+
+    fn into_inferred_and_instance(self) -> (Inferred, Option<HeuristicInstance<'db>>) {
+        match self {
+            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => (inf, None),
+            Heuristic::Instance { inf, instance } => (inf, Some(instance)),
         }
     }
 }
@@ -659,10 +666,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 .is_some_and(|c| !c.file.is_stub() && !matches!(c.generics, Generics::List(..)))
         {
             if let Some(new) = infer_heuristic(self) {
-                let new: Inferred = match new {
-                    Heuristic::Instance { .. } => return new,
-                    _ => new.into(),
-                };
+                let (new, instance) = new.into_inferred_and_instance();
                 let new_t = new.into_type(i_s);
                 if new_t
                     .iter_with_unpacked_unions(i_s.db)
@@ -674,7 +678,12 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     );
                 } else {
                     debug!("Found heuristics: {}", new_t.format_short(i_s.db));
-                    return Heuristic::Guess(Inferred::from_type(new_t));
+                    let inf = Inferred::from_type(new_t);
+                    if let Some(instance) = instance {
+                        return Heuristic::Instance { inf, instance };
+                    } else {
+                        return Heuristic::Guess(inf);
+                    }
                 }
             } else {
                 debug!(
