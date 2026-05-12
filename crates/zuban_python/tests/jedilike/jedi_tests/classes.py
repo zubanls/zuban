@@ -148,7 +148,7 @@ A().addition = None
 A(1).addition = None
 #? 1 A
 A(1).addition = None
-#! 8 []
+#! 8 ['self.addition']
 A().addition = None
 a = A()
 #? 8 int()
@@ -642,9 +642,9 @@ from import_tree.pkg.base import MyBase
 
 class C1(MyBase):
     def f3(self):
-        #! 13 ['def f1']
+        #! 13 ['def f1(self):']
         self.f1() . # hey'''
-        #? 13 MyBase.f1
+        #? 13 import_tree.pkg.base.MyBase.f1
         self.f1() . # hey'''
 
 # -----------------

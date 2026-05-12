@@ -61,7 +61,7 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Changes from removing UntypedFunctionReturnMode::Advanced
-        ("classes.py", 28),
+        ("classes.py", 25),
         ("descriptors.py", 11),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),

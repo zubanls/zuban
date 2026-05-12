@@ -16,7 +16,7 @@ use crate::{
     },
     database::{Database, PointKind, PointLink},
     debug,
-    file::{FuncNodeRef, Inference, PythonFile},
+    file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
     format_data::FormatData,
     getitem::SliceType,
     goto::{
@@ -25,7 +25,7 @@ use crate::{
     },
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::IteratorContent,
+    matching::{IteratorContent, LookupKind},
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
@@ -62,6 +62,7 @@ struct ArgumentsFrame<'db> {
 struct HeuristicState<'db> {
     callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
     call_stack: Vec<(FuncNodeRef<'db>, ArgumentsFrame<'db>)>,
+    self_stack: Vec<HeuristicInstance<'db>>,
 }
 
 impl<'db> HeuristicState<'db> {
@@ -80,28 +81,39 @@ struct HeuristicInference<'db, 'state, 'i_s> {
 }
 
 #[derive(Debug)]
-enum Heuristic {
-    WellKnown(Inferred),
-    Guess(Inferred),
+struct HeuristicInstance<'db> {
+    class: ClassNodeRef<'db>,
 }
 
-impl From<Heuristic> for Inferred {
+#[derive(Debug)]
+enum Heuristic<'db> {
+    WellKnown(Inferred),
+    Guess(Inferred),
+    Instance {
+        inf: Inferred,
+        instance: HeuristicInstance<'db>,
+    },
+}
+
+impl From<Heuristic<'_>> for Inferred {
     fn from(value: Heuristic) -> Self {
         match value {
-            Heuristic::WellKnown(inferred) | Heuristic::Guess(inferred) => inferred,
+            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) | Heuristic::Instance { inf, .. } => {
+                inf
+            }
         }
     }
 }
 
-impl Heuristic {
+impl Heuristic<'_> {
     fn new_any_due_to_error() -> Self {
         Self::WellKnown(Inferred::new_any_from_error())
     }
 
     fn maybe_guessed(self) -> Option<Inferred> {
         match self {
-            Heuristic::WellKnown(_) => None,
-            Heuristic::Guess(inferred) => Some(inferred),
+            Self::WellKnown(_) => None,
+            Self::Guess(inf) | Self::Instance { inf, .. } => Some(inf),
         }
     }
 }
@@ -167,6 +179,8 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                             name,
                             false,
                         );
+                    } else if let Some(inf) = self.state.self_stack.last() {
+                        return None;
                     }
                     self.search_callable_arguments(func, name)
                 }
@@ -591,7 +605,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         }
     }
 
-    pub fn infer_atom(&mut self, atom: Atom) -> Heuristic {
+    pub fn infer_atom(&mut self, atom: Atom) -> Heuristic<'db> {
         let inf = self.inference.infer_atom(atom, &mut ResultContext::Unknown);
         debug!(
             "Heuristics for atom: {}",
@@ -619,7 +633,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         })
     }
 
-    fn infer_primary(&mut self, primary: Primary) -> Heuristic {
+    fn infer_primary(&mut self, primary: Primary) -> Heuristic<'db> {
         let inf = self
             .inference
             .infer_primary(primary, &mut ResultContext::Unknown);
@@ -638,7 +652,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         &mut self,
         inf: Inferred,
         infer_heuristic: impl FnOnce(&mut Self) -> Option<Inferred>,
-    ) -> Heuristic {
+    ) -> Heuristic<'db> {
         let _indent = debug_indent();
         let i_s = self.inference.i_s;
         let t = inf.as_cow_type(i_s);
@@ -674,30 +688,42 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
 
     fn infer_primary_or_primary_t_content(
         &mut self,
-        base: Heuristic,
+        base: Heuristic<'db>,
         primary_node_index: NodeIndex,
         content: PrimaryContent,
-    ) -> Option<Heuristic> {
+    ) -> Option<Heuristic<'db>> {
         match content {
             PrimaryContent::Attribute(attr_name) => {
+                let base_is_heuristic = matches!(base, Heuristic::Guess(_));
                 let base: Inferred = base.into();
-                if matches!(base.as_cow_type(self.inference.i_s).as_ref(), Type::Self_)
-                    && let Some(cls) = self.inference.i_s.current_class()
-                    && let LookupResult::GotoName { name, .. } = cls
-                        .instance()
-                        .lookup(
-                            self.inference.i_s,
-                            attr_name.as_code(),
-                            InstanceLookupOptions::new(&|_| false),
-                        )
-                        .lookup
-                {
+                let base_t = base.as_cow_type(self.inference.i_s);
+                let mut added_to_stack = false;
+                if !matches!(base_t.as_ref(), Type::Module(_) | Type::Namespace(_)) {
+                    added_to_stack = true;
+                    // self.state.self_stack.push(base.clone());
+                }
+                let result = base_t.lookup(
+                    self.inference.i_s,
+                    self.inference.file,
+                    attr_name.as_code(),
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|_| false,
+                    &|_| (),
+                );
+                if let LookupResult::GotoName { name, .. } = result {
                     let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
-                    return Some(Heuristic::Guess(
-                        self.with_different_file(directed_to.file, |h| {
-                            h.infer_name(directed_to.expect_name())
-                        })?,
-                    ));
+                    if let Some(found) = self.with_different_file(directed_to.file, |h| {
+                        h.infer_name(directed_to.expect_name())
+                    }) {
+                        return Some(Heuristic::Guess(found));
+                    }
+                }
+                if added_to_stack {
+                    self.state.self_stack.pop();
+                }
+                if base_is_heuristic {
+                    return Some(Heuristic::Guess(result.into_maybe_inferred()?));
                 }
                 None
             }
@@ -856,14 +882,14 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         })
     }
 
-    fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic {
+    fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic<'db> {
         match p_or_a {
             PrimaryOrAtom::Primary(p) => self.infer_primary(p),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
 
-    fn infer_expression(&mut self, expr: Expression) -> Heuristic {
+    fn infer_expression(&mut self, expr: Expression) -> Heuristic<'db> {
         let inf = self.inference.infer_expression(expr);
         debug!(
             "Heuristics for expr: {}",
@@ -908,6 +934,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 state: &mut HeuristicState {
                     callable_search_cache: Default::default(),
                     call_stack: Default::default(),
+                    self_stack: Default::default(),
                 },
                 inference: self.file.inference(i_s),
             };
