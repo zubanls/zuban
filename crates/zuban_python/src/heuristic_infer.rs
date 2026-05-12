@@ -25,7 +25,7 @@ use crate::{
     },
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::{IteratorContent, LookupKind},
+    matching::{Generics, IteratorContent, LookupKind},
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
@@ -33,7 +33,7 @@ use crate::{
         DbString, ExtraItemsType, FunctionKind, IterCause, LookupResult, Tuple, Type, TypedDict,
         TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
-    type_helpers::{Function, FunctionParam, InstanceLookupOptions},
+    type_helpers::{Class, Function, FunctionParam},
     utils::{debug_indent, limit_length_for_debug},
 };
 
@@ -612,8 +612,8 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             limit_length_for_debug(atom.as_code())
         );
         self.create_heuristic_if_necessary(inf, |slf| {
-            match atom.unpack() {
-                AtomContent::Name(name) => return slf.infer_name_reference(name),
+            Some(match atom.unpack() {
+                AtomContent::Name(name) => Heuristic::Guess(slf.infer_name_reference(name)?),
                 AtomContent::NamedExpression(named_expr) => {
                     slf.infer_expression(named_expr.expression())
                 }
@@ -628,8 +628,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 AtomContent::GeneratorComprehension(comprehension) => todo!(),
                 */
                 _ => return None,
-            }
-            .maybe_guessed()
+            })
         })
     }
 
@@ -643,21 +642,27 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         );
         self.create_heuristic_if_necessary(inf, |slf| {
             let first = slf.infer_primary_or_atom(primary.first());
-            slf.infer_primary_or_primary_t_content(first, primary.index(), primary.second())?
-                .maybe_guessed()
+            slf.infer_primary_or_primary_t_content(first, primary.index(), primary.second())
         })
     }
 
     fn create_heuristic_if_necessary(
         &mut self,
         inf: Inferred,
-        infer_heuristic: impl FnOnce(&mut Self) -> Option<Inferred>,
+        infer_heuristic: impl FnOnce(&mut Self) -> Option<Heuristic<'db>>,
     ) -> Heuristic<'db> {
         let _indent = debug_indent();
         let i_s = self.inference.i_s;
         let t = inf.as_cow_type(i_s);
-        if t.has_any(i_s) {
+        if t.has_any(i_s)
+            || t.maybe_class(i_s.db)
+                .is_some_and(|c| !c.file.is_stub() && !matches!(c.generics, Generics::List(..)))
+        {
             if let Some(new) = infer_heuristic(self) {
+                let new: Inferred = match new {
+                    Heuristic::Instance { .. } => return new,
+                    _ => new.into(),
+                };
                 let new_t = new.into_type(i_s);
                 if new_t
                     .iter_with_unpacked_unions(i_s.db)
@@ -694,14 +699,14 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     ) -> Option<Heuristic<'db>> {
         match content {
             PrimaryContent::Attribute(attr_name) => {
+                let mut added_to_stack = false;
+                if let Heuristic::Instance { instance, .. } = &base {
+                    // self.state.self_stack.push(instance);
+                    added_to_stack = true;
+                }
                 let base_is_heuristic = matches!(base, Heuristic::Guess(_));
                 let base: Inferred = base.into();
                 let base_t = base.as_cow_type(self.inference.i_s);
-                let mut added_to_stack = false;
-                if !matches!(base_t.as_ref(), Type::Module(_) | Type::Namespace(_)) {
-                    added_to_stack = true;
-                    // self.state.self_stack.push(base.clone());
-                }
                 let result = base_t.lookup(
                     self.inference.i_s,
                     self.inference.file,
@@ -711,12 +716,13 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     &|_| false,
                     &|_| (),
                 );
+                let mut out = None;
                 if let LookupResult::GotoName { name, .. } = result {
                     let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
                     if let Some(found) = self.with_different_file(directed_to.file, |h| {
                         h.infer_name(directed_to.expect_name())
                     }) {
-                        return Some(Heuristic::Guess(found));
+                        out = Some(Heuristic::Guess(found));
                     }
                 }
                 if added_to_stack {
@@ -725,7 +731,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 if base_is_heuristic {
                     return Some(Heuristic::Guess(result.into_maybe_inferred()?));
                 }
-                None
+                out
             }
             PrimaryContent::Execution(details) => {
                 let base: Inferred = base.into();
@@ -742,6 +748,20 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     );
                     return None;
                 };
+                if node_ref.maybe_class().is_some() {
+                    let cls_node_ref = ClassNodeRef::from_node_ref(node_ref);
+                    let class = Class::with_undefined_generics(cls_node_ref);
+                    debug!(
+                        "Heuristics: Found instance call for class \"{}\"",
+                        class.qualified_name(db)
+                    );
+                    return Some(Heuristic::Instance {
+                        inf: Inferred::from_type(class.as_type(db)),
+                        instance: HeuristicInstance {
+                            class: cls_node_ref,
+                        },
+                    });
+                }
                 if node_ref.maybe_function().is_none() {
                     debug!(
                         "Heuristics: Did not execute, because the base is not a function, but {}",
@@ -851,7 +871,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         }
     }
 
-    fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic> {
+    fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic<'db>> {
         Some(match star_exprs.unpack() {
             StarExpressionContent::Expression(expr) => self.infer_expression(expr),
             // This is invalid anyway
@@ -896,7 +916,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             limit_length_for_debug(expr.as_code())
         );
         self.create_heuristic_if_necessary(inf, |slf| {
-            match expr.unpack() {
+            Some(match expr.unpack() {
                 ExpressionContent::ExpressionPart(expr_part) => match expr_part {
                     ExpressionPart::Atom(atom) => slf.infer_atom(atom),
                     ExpressionPart::Primary(primary) => slf.infer_primary(primary),
@@ -919,8 +939,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 },
                 ExpressionContent::Ternary(_ternary) => return None, // TODO
                 ExpressionContent::Lambda(_lambda) => return None,   // TODO
-            }
-            .maybe_guessed()
+            })
         })
     }
 }
