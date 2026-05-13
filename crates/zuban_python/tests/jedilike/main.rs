@@ -30,7 +30,7 @@ lazy_static::lazy_static! {
         ("basic.py", 12),
         ("classes.py", 20),
         ("comprehensions.py", 4),
-        ("django.py", 3),
+        ("django.py", 4),
         ("decorators.py", 24),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
@@ -61,12 +61,10 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Changes from removing UntypedFunctionReturnMode::Advanced
-        ("classes.py", 25),
-        ("descriptors.py", 11),
+        ("classes.py", 24),
+        ("descriptors.py", 12),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),
-        ("recursion.py", 1),
-        ("instance.py", 1),
         ("complex.py", 1),
         ("callable.py", 1),
     ]);

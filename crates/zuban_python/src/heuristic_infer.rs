@@ -52,21 +52,55 @@ enum ArgumentsFrameKind {
     Comprehension(NodeIndex),
 }
 
-#[derive(Debug)]
-struct ArgumentsFrame<'db> {
+#[derive(Debug, Copy, Clone)]
+struct ArgsFrame<'db> {
     file: &'db PythonFile,
     primary_node_index: NodeIndex,
     kind: ArgumentsFrameKind,
 }
 
+impl<'db> ArgsFrame<'db> {
+    fn new(
+        file: &'db PythonFile,
+        primary_node_index: NodeIndex,
+        details: ArgumentsDetails,
+    ) -> Self {
+        Self {
+            file,
+            primary_node_index,
+            kind: match details {
+                ArgumentsDetails::None => ArgumentsFrameKind::None,
+                ArgumentsDetails::Node(arguments) => {
+                    ArgumentsFrameKind::Arguments(arguments.index())
+                }
+                ArgumentsDetails::Comprehension(comprehension) => {
+                    ArgumentsFrameKind::Comprehension(comprehension.index())
+                }
+            },
+        }
+    }
+
+    fn as_details(&self) -> ArgumentsDetails<'db> {
+        match self.kind {
+            ArgumentsFrameKind::None => ArgumentsDetails::None,
+            ArgumentsFrameKind::Arguments(args_index) => {
+                ArgumentsDetails::Node(Arguments::by_index(&self.file.tree, args_index))
+            }
+            ArgumentsFrameKind::Comprehension(comp_index) => ArgumentsDetails::Comprehension(
+                Comprehension::by_index(&self.file.tree, comp_index),
+            ),
+        }
+    }
+}
+
 struct HeuristicState<'db> {
     callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
-    call_stack: Vec<(FuncNodeRef<'db>, ArgumentsFrame<'db>)>,
+    call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
     self_stack: Vec<HeuristicInstance<'db>>,
 }
 
 impl<'db> HeuristicState<'db> {
-    fn find_call_stack_frame(&self, func_node_ref: FuncNodeRef) -> Option<&ArgumentsFrame<'db>> {
+    fn find_call_stack_frame(&self, func_node_ref: FuncNodeRef) -> Option<&ArgsFrame<'db>> {
         let (_, args_frame) = self
             .call_stack
             .iter()
@@ -80,9 +114,10 @@ struct HeuristicInference<'db, 'state, 'i_s> {
     inference: Inference<'db, 'db, 'i_s>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct HeuristicInstance<'db> {
     class: ClassNodeRef<'db>,
+    args: ArgsFrame<'db>,
 }
 
 #[derive(Debug)]
@@ -149,19 +184,12 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 TypeLike::ParamName(_) => {
                     let func = name.expect_as_param_of_function();
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
-                    if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
-                        let details = match args_frame.kind {
-                            ArgumentsFrameKind::None => ArgumentsDetails::None,
-                            ArgumentsFrameKind::Arguments(args_index) => ArgumentsDetails::Node(
-                                Arguments::by_index(&args_frame.file.tree, args_index),
-                            ),
-                            ArgumentsFrameKind::Comprehension(comp_index) => {
-                                ArgumentsDetails::Comprehension(Comprehension::by_index(
-                                    &args_frame.file.tree,
-                                    comp_index,
-                                ))
-                            }
-                        };
+                    if let Some(args_frame) = self
+                        .state
+                        .find_call_stack_frame(func_node_ref)
+                        .or_else(|| self.state.self_stack.last().map(|instance| &instance.args))
+                    {
+                        let details = args_frame.as_details();
                         let args = SimpleArgs::new(
                             InferenceState::new(self.inference.i_s.db, args_frame.file),
                             args_frame.file,
@@ -186,8 +214,6 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                             name,
                             false,
                         );
-                    } else if let Some(inf) = self.state.self_stack.last() {
-                        return None;
                     }
                     self.search_callable_arguments(func, name)
                 }
@@ -452,7 +478,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     }
 
     fn infer_param<'x>(
-        db: &Database,
+        db: &'db Database,
         slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
@@ -490,7 +516,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
     }
 
     fn infer_argument<'x>(
-        db: &Database,
+        db: &'db Database,
         slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: FunctionParam,
@@ -710,7 +736,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             PrimaryContent::Attribute(attr_name) => {
                 let mut added_to_stack = false;
                 if let Heuristic::Instance { instance, .. } = &base {
-                    // self.state.self_stack.push(instance);
+                    self.state.self_stack.push(*instance);
                     added_to_stack = true;
                 }
                 let base_is_heuristic = matches!(base, Heuristic::Guess(_));
@@ -768,6 +794,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                         inf: Inferred::from_type(class.as_type(db)),
                         instance: HeuristicInstance {
                             class: cls_node_ref,
+                            args: ArgsFrame::new(self.inference.file, primary_node_index, details),
                         },
                     });
                 }
@@ -808,19 +835,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     return None;
                 }
 
-                let args_frame = ArgumentsFrame {
-                    file: self.inference.file,
-                    kind: match details {
-                        ArgumentsDetails::None => ArgumentsFrameKind::None,
-                        ArgumentsDetails::Node(arguments) => {
-                            ArgumentsFrameKind::Arguments(arguments.index())
-                        }
-                        ArgumentsDetails::Comprehension(comprehension) => {
-                            ArgumentsFrameKind::Comprehension(comprehension.index())
-                        }
-                    },
-                    primary_node_index,
-                };
+                let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
                 self.state.call_stack.push((func_node_ref, args_frame));
                 let mut result_t = Type::NEVER;
                 for ret_or_yield in func_node_ref.iter_return_or_yield() {
