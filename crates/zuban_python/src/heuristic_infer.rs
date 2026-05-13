@@ -176,7 +176,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             .0
     }
 
-    fn infer_name(&mut self, name: Name<'db>) -> Option<Inferred> {
+    fn infer_name(&mut self, name: Name<'db>) -> Option<Heuristic<'db>> {
         debug!("Heuristics: Infer name: {}", name.as_code());
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
@@ -207,15 +207,17 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                                 _ => skip_first_param = true,
                             }
                         }
-                        return self.infer_param_with_args(
+                        return Some(Heuristic::Guess(self.infer_param_with_args(
                             &func,
                             args,
                             skip_first_param,
                             name,
                             false,
-                        );
+                        )?));
                     }
-                    self.search_callable_arguments(func, name)
+                    Some(Heuristic::Guess(
+                        self.search_callable_arguments(func, name)?,
+                    ))
                 }
                 TypeLike::Assignment(assignment) => {
                     if let AssignmentContent::Normal(targets, right_side) = assignment.unpack() {
@@ -240,7 +242,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 }
                 _ => None,
             },
-            NameParent::Primary(primary) => self.infer_primary(primary).maybe_guessed(),
+            NameParent::Primary(primary) => Some(self.infer_primary(primary)),
             /*
             NameParent::PrimaryTarget(primary_target) => (),
             NameParent::KeywordPattern(keyword_pattern) => (),
@@ -251,14 +253,16 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         }
     }
 
-    fn infer_name_reference(&mut self, name: Name) -> Option<Inferred> {
+    fn infer_name_reference(&mut self, name: Name) -> Option<Heuristic<'db>> {
         debug!("Heuristic follow name: {}", name.as_code());
         match try_to_follow(
             self.inference.i_s.db,
             NodeRef::new(self.inference.file, name.index()),
             true,
         )?? {
-            FollowImportResult::File(file_index) => Some(Inferred::new_file_reference(file_index)),
+            FollowImportResult::File(file_index) => Some(Heuristic::WellKnown(
+                Inferred::new_file_reference(file_index),
+            )),
             FollowImportResult::TreeName(tree_name) => {
                 self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
             }
@@ -646,7 +650,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         );
         self.create_heuristic_if_necessary(inf, |slf| {
             Some(match atom.unpack() {
-                AtomContent::Name(name) => Heuristic::Guess(slf.infer_name_reference(name)?),
+                AtomContent::Name(name) => slf.infer_name_reference(name)?,
                 AtomContent::NamedExpression(named_expr) => {
                     slf.infer_expression(named_expr.expression())
                 }
@@ -757,7 +761,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                     if let Some(found) = self.with_different_file(directed_to.file, |h| {
                         h.infer_name(directed_to.expect_name())
                     }) {
-                        out = Some(Heuristic::Guess(found));
+                        out = Some(found);
                     }
                 }
                 if added_to_stack {
@@ -982,16 +986,17 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 inference: self.file.inference(i_s),
             };
             match self.node {
-                GotoNode::Name(name) => heuristic.infer_name(name),
-                GotoNode::Primary(primary) => heuristic.infer_primary(primary).maybe_guessed(),
+                GotoNode::Name(name) => heuristic.infer_name(name)?,
+                GotoNode::Primary(primary) => heuristic.infer_primary(primary),
                 /*
                 GotoNode::PrimaryTarget(primary) => (),
                 GotoNode::ImportFromAsName { .. } => (),
                 GotoNode::GlobalName(_) | GotoNode::NonlocalName(_) | GotoNode::Atom(_) => (),
                 GotoNode::Operator { .. } | GotoNode::AugAssignOperator { .. } | GotoNode::None => (),
                 */
-                _ => None,
+                _ => return None,
             }
+            .maybe_guessed()
         })
     }
 }

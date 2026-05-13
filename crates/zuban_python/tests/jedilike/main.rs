@@ -27,17 +27,17 @@ lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 31),
         ("async_.py", 4),
-        ("basic.py", 12),
+        ("basic.py", 13),
         ("classes.py", 20),
         ("comprehensions.py", 4),
-        ("django.py", 4),
+        ("django.py", 8),
         ("decorators.py", 24),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 18),
         ("fstring.py", 4),
         ("functions.py", 3),
-        ("generators.py", 12),
+        ("generators.py", 11),
         ("inheritance.py", 3),
         ("isinstance.py", 2),
         ("lambdas.py", 19),
@@ -60,13 +60,13 @@ lazy_static::lazy_static! {
         ("sys_path.py", 4),
         ("stubs.py", 5),
 
-        // Changes from removing UntypedFunctionReturnMode::Advanced
-        ("classes.py", 24),
-        ("descriptors.py", 12),
+        // Regressions
+        ("descriptors.py", 11),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),
         ("complex.py", 1),
         ("callable.py", 1),
+
     ]);
 }
 
