@@ -758,9 +758,25 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 let mut out = None;
                 if let LookupResult::GotoName { name, .. } = result {
                     let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
-                    if let Some(found) = self.with_different_file(directed_to.file, |h| {
-                        h.infer_name(directed_to.expect_name())
-                    }) {
+                    let new_name = directed_to.expect_name();
+                    // Should always be a NameDef
+                    let found = if let Type::Class(c) = base_t.as_ref() {
+                        InferenceState::from_class(
+                            self.inference.i_s.db,
+                            &c.class(self.inference.i_s.db),
+                        )
+                        .avoid_errors_within(|i_s| {
+                            HeuristicInference {
+                                state: self.state,
+                                inference: directed_to.file.inference(i_s),
+                            }
+                            .infer_name(new_name)
+                        })
+                        .0
+                    } else {
+                        self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
+                    };
+                    if let Some(found) = found {
                         out = Some(found);
                     }
                 }

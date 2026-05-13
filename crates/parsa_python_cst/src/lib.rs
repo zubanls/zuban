@@ -4694,6 +4694,7 @@ fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option
     (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
 }
 
+#[derive(Debug)]
 pub enum NameDefParent {
     Primary,
     GlobalStmt,
