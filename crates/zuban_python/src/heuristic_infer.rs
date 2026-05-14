@@ -486,13 +486,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
-        rest_args: InferrableParamIterator<
-            'db,
-            'x,
-            impl Iterator<Item = FunctionParam<'x>>,
-            FunctionParam<'x>,
-            impl Iterator<Item = Arg<'db, 'x>>,
-        >,
+        rest_args: impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>,
         from_callable_search: bool,
     ) -> Option<Inferred>
     where
@@ -525,13 +519,7 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
         args: &SimpleArgs<'db, 'db>,
         param: FunctionParam,
         argument: ParamArgument,
-        rest_args: InferrableParamIterator<
-            'db,
-            'x,
-            impl Iterator<Item = FunctionParam<'x>>,
-            FunctionParam<'x>,
-            impl Iterator<Item = Arg<'db, 'x>>,
-        >,
+        rest_args: impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>,
     ) -> Option<Inferred>
     where
         'db: 'x,
