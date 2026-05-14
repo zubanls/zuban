@@ -12,7 +12,7 @@ use utils::FastHashMap;
 
 use crate::{
     arguments::{
-        Arg, ArgIteratorBase, ArgKind, Args as _, ArgsKwargsIterator, SimpleArgs, unpack_star_star,
+        ArgIteratorBase, ArgKind, Args as _, ArgsKwargsIterator, SimpleArgs, unpack_star_star,
     },
     database::{Database, PointKind, PointLink},
     debug,
@@ -160,7 +160,7 @@ impl<'db> Heuristic<'db> {
     }
 }
 
-impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
+impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn with_different_file<T>(
         &mut self,
         file: &'db PythonFile,
@@ -348,25 +348,25 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
             })
     }
 
-    fn infer_param_with_args(
-        &mut self,
-        func: &Function,
-        args: SimpleArgs<'db, 'db>,
+    fn arg_param_iterator<'a>(
+        db: &'db Database,
+        slf: &'a RefCell<&mut Self>,
+        func: &Function<'a, 'a>,
+        args: &'a SimpleArgs<'db, 'db>,
         skip_first_param: bool,
-        search_param_name: Name,
-        from_callable_search: bool,
-    ) -> Option<Inferred> {
+    ) -> impl Iterator<Item = InferrableParam<'db, 'a, FunctionParam<'a>>>
+    where
+        'db: 'a,
+    {
         let mut params = func.iter_params();
         if skip_first_param {
             params.next();
         }
         let mut arg_iterator = args.iter(Mode::Normal);
-        let db = self.inference.i_s.db;
-        let slf = RefCell::new(self);
-        let mut matched_arg_iterator = InferrableParamIterator::new(
+        InferrableParamIterator::new(
             db,
             params,
-            std::iter::from_fn(|| {
+            std::iter::from_fn(move || {
                 if let next @ Some(_) = arg_iterator.next_from_args_kwargs_iterator() {
                     return next;
                 }
@@ -451,12 +451,26 @@ impl<'db, 'state> HeuristicInference<'db, '_, 'state> {
                 }
                 arg_iterator.next()
             }),
-        );
+        )
+    }
+
+    fn infer_param_with_args(
+        &mut self,
+        func: &Function,
+        args: SimpleArgs<'db, 'db>,
+        skip_first_param: bool,
+        search_param_name: Name,
+        from_callable_search: bool,
+    ) -> Option<Inferred> {
+        let db = self.inference.i_s.db;
+        let slf = &RefCell::new(self);
+        let mut matched_arg_iterator =
+            Self::arg_param_iterator(db, slf, func, &args, skip_first_param);
         for param in matched_arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
                 let found = Self::infer_param(
                     db,
-                    &slf,
+                    slf,
                     &args,
                     param,
                     matched_arg_iterator,
