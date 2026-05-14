@@ -75,7 +75,8 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
     calc_dunder_init_type_vars(i_s, class, &function, |matcher, class_type_vars| {
-        if class_type_vars.has_from_untyped_params() {
+        if class_type_vars.has_from_untyped_params() && i_s.db.project.should_infer_untyped_params()
+        {
             let mut result = calc_untyped_func_type_vars_with_matcher(
                 matcher,
                 i_s,

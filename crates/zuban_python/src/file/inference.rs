@@ -4269,18 +4269,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.use_cached_param_annotation(annotation)
                 } else {
                     let new_any = |param_index| {
-                        if let Some(usage) = func
-                            .type_vars(self.i_s.db)
-                            .find_untyped_param_type_var(func.as_link(), param_index)
-                        {
-                            return Type::TypeVar(usage);
-                        }
-                        if let Some(cls) = func.class
-                            && let Some(usage) = cls
-                                .type_vars(self.i_s)
-                                .find_untyped_param_type_var(cls.as_link(), param_index)
-                        {
-                            return Type::TypeVar(usage);
+                        if self.i_s.db.project.should_infer_untyped_params() {
+                            if let Some(usage) = func
+                                .type_vars(self.i_s.db)
+                                .find_untyped_param_type_var(func.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
+                            if let Some(cls) = func.class
+                                && let Some(usage) = cls
+                                    .type_vars(self.i_s)
+                                    .find_untyped_param_type_var(cls.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
                         }
                         Type::Any(AnyCause::Unannotated)
                     };

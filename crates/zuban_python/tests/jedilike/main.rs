@@ -61,7 +61,7 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Regressions
-        ("descriptors.py", 11),
+        ("descriptors.py", 12),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),
         ("complex.py", 1),

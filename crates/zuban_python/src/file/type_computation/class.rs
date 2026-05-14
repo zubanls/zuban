@@ -15,7 +15,7 @@ use crate::{
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database,
         DeferredTypedDictMembers, Locality, MetaclassState, ParentScope, Point, PointLink,
-        ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
+        ProtocolMember, RunCause, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -179,7 +179,11 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
             let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
-            if found.is_empty() && i_s.db.project.should_infer_untyped_params() {
+            if found.is_empty()
+                && (i_s.db.project.should_infer_untyped_params()
+                    // For language servers we need the generics to store heuristics
+                    || i_s.db.run_cause == RunCause::LanguageServer && !self.file.is_stub())
+            {
                 let storage = self.class_storage();
                 if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__")
                     && let Some(func) = NodeRef::new(self.file, name_index)
