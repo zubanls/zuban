@@ -7,7 +7,7 @@ use std::{
 };
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
-use parsa_python_cst::{NodeIndex, Tree};
+use parsa_python_cst::{FunctionDef, NodeIndex, Tree};
 use rayon::prelude::*;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
@@ -1859,6 +1859,17 @@ impl std::cmp::PartialEq for ClassStorage {
     fn eq(&self, _other: &Self) -> bool {
         recoverable_error!("Should never compare  class storage with ==");
         false
+    }
+}
+
+impl ClassStorage {
+    pub fn maybe_init_func<'db>(&self, file: &'db PythonFile) -> Option<FunctionDef<'db>> {
+        let name_index = self.class_symbol_table.lookup_symbol("__init__")?;
+        NodeRef::new(file, name_index)
+            .expect_name()
+            .name_def()
+            .unwrap()
+            .maybe_name_of_func()
     }
 }
 

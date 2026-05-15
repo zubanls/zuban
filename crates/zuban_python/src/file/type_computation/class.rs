@@ -185,13 +185,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                     || i_s.db.run_cause == RunCause::LanguageServer && !self.file.is_stub())
             {
                 let storage = self.class_storage();
-                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__")
-                    && let Some(func) = NodeRef::new(self.file, name_index)
-                        .expect_name()
-                        .name_def()
-                        .unwrap()
-                        .maybe_name_of_func()
-                {
+                if let Some(func) = storage.maybe_init_func(self.file) {
                     // Only generate type vars for classes that are not typed at all and have
                     // initialization params.
                     if !func.is_typed() && func.params().iter().nth(1).is_some() {
