@@ -28,7 +28,7 @@ lazy_static::lazy_static! {
         ("arrays.py", 31),
         ("async_.py", 4),
         ("basic.py", 13),
-        ("classes.py", 20),
+        ("classes.py", 18),
         ("comprehensions.py", 4),
         ("django.py", 8),
         ("decorators.py", 24),
@@ -66,7 +66,6 @@ lazy_static::lazy_static! {
         ("pep0484_generic_passthroughs.py", 2),
         ("complex.py", 1),
         ("callable.py", 1),
-        ("parser.py", 1),
 
     ]);
 }

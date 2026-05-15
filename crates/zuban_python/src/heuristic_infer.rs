@@ -184,6 +184,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     );
                     let i_s = self.inference.i_s;
                     if let Some(self_) = self.state.self_stack.last()
+                        && func.name() == "__init__"
                         && let Type::Class(c) = self_
                         && let class = c.class(i_s.db)
                         && func.class.is_some_and(|c| c.node_ref == class.node_ref)
@@ -950,6 +951,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         if let Some(bound) = bound_to {
             self.state.self_stack.push(bound.clone());
         }
+        debug!("Heuristics: Execute function {}", func.qualified_name(db));
         let result_t = self.with_different_i_s(
             self.inference.i_s.with_func_context(&func),
             func_node_ref.file,
@@ -977,6 +979,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Type> {
+        let _indent = debug_indent();
         let mut result_t = Type::NEVER;
         for ret_or_yield in func_node_ref.iter_return_or_yield() {
             match ret_or_yield {
