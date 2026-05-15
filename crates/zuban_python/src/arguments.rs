@@ -117,22 +117,22 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         first.maybe_positional_arg(i_s, context)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         None
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct SimpleArgs<'db, 'a> {
+pub(crate) struct SimpleArgs<'db, 'file, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    pub file: &'a PythonFile,
+    pub file: &'file PythonFile,
     primary_node_index: NodeIndex,
     pub details: ArgumentsDetails<'a>,
     i_s: InferenceState<'db, 'a>,
 }
 
-impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
+impl<'db: 'a, 'file: 'a, 'a> Args<'db> for SimpleArgs<'db, 'file, 'a> {
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgIteratorBase::Iterator {
@@ -217,15 +217,15 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         self.file.points.reset_from_backup(backup.as_ref().unwrap());
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         Some(self)
     }
 }
 
-impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
+impl<'db: 'a, 'file: 'a, 'a> SimpleArgs<'db, 'file, 'a> {
     pub fn new(
         i_s: InferenceState<'db, 'a>,
-        file: &'a PythonFile,
+        file: &'file PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
     ) -> Self {
@@ -239,7 +239,7 @@ impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
 
     pub fn from_primary(
         i_s: InferenceState<'db, 'a>,
-        file: &'a PythonFile,
+        file: &'file PythonFile,
         primary_node: Primary<'a>,
     ) -> Self {
         match primary_node.second() {
@@ -1340,9 +1340,9 @@ impl<'db> Args<'db> for NoArgs<'_> {
 }
 
 #[derive(Debug)]
-pub(crate) struct InitSubclassArgs<'db, 'a>(pub SimpleArgs<'db, 'a>);
+pub(crate) struct InitSubclassArgs<'db, 'file, 'a>(pub SimpleArgs<'db, 'file, 'a>);
 
-impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
+impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, '_, 'a> {
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         let mut iterator = self.0.iter(mode);
         for arg in iterator.clone() {
@@ -1378,7 +1378,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
         self.0.reset_points_from_backup(backup)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         None
     }
 }

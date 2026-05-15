@@ -352,7 +352,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         db: &'db Database,
         slf: &'a RefCell<&mut Self>,
         func: &Function<'a, 'a>,
-        args: &'a SimpleArgs<'db, 'db>,
+        args: &'a SimpleArgs<'db, 'db, 'db>,
         skip_first_param: bool,
     ) -> impl Iterator<Item = InferrableParam<'db, 'a, FunctionParam<'a>>>
     where
@@ -457,7 +457,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_param_with_args(
         &mut self,
         func: &Function,
-        args: SimpleArgs<'db, 'db>,
+        args: SimpleArgs<'db, 'db, 'db>,
         skip_first_param: bool,
         search_param_name: Name,
         from_callable_search: bool,
@@ -498,7 +498,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_param<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db>,
+        args: &SimpleArgs<'db, 'db, 'db>,
         param: InferrableParam<FunctionParam>,
         rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
         from_callable_search: bool,
@@ -530,7 +530,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_argument<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db>,
+        args: &SimpleArgs<'db, 'db, 'db>,
         param: FunctionParam,
         argument: ParamArgument,
         mut rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
