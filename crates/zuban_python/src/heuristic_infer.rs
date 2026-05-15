@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, iter::Peekable, rc::Rc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
@@ -473,7 +473,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     slf,
                     &args,
                     param,
-                    matched_arg_iterator,
+                    matched_arg_iterator.peekable(),
                     from_callable_search,
                 )?;
                 return Some(found);
@@ -500,7 +500,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         slf: &RefCell<&mut Self>,
         args: &SimpleArgs<'db, 'db>,
         param: InferrableParam<FunctionParam>,
-        rest_args: impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>,
+        rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
         from_callable_search: bool,
     ) -> Option<Inferred>
     where
@@ -533,7 +533,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         args: &SimpleArgs<'db, 'db>,
         param: FunctionParam,
         argument: ParamArgument,
-        rest_args: impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>,
+        mut rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
     ) -> Option<Inferred>
     where
         'db: 'x,
@@ -563,9 +563,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 let tuple = Tuple::new_fixed_length(
                     std::iter::once(argument)
                         .chain(
-                            rest_args
-                                .take_while(|p| p.param.kind(i_s.db) == ParamKind::Star)
-                                .map(|p| p.argument),
+                            std::iter::from_fn(|| {
+                                rest_args.next_if(|p| p.param.kind(i_s.db) == ParamKind::Star)
+                            })
+                            .map(|p| p.argument),
                         )
                         .map(|arg| Some(infer(arg)?.into_type(&i_s)))
                         .collect::<Option<_>>()?,
