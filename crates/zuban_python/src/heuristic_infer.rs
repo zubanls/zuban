@@ -810,159 +810,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
                 out
             }
-            PrimaryContent::Execution(details) => {
-                let base: Inferred = base.into();
-                let db = self.inference.i_s.db;
-                let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
-                    base.maybe_bound_method().map(|bound| {
-                        // Bound methods are also "saved"
-                        NodeRef::from_link(db, bound.func_link)
-                    })
-                }) else {
-                    debug!(
-                        "Heuristics: Did not execute, because the base is not a saved NodeRef, but {}",
-                        base.debug_info(db)
-                    );
-                    return None;
-                };
-                if node_ref.maybe_class().is_some() {
-                    let cls_node_ref = ClassNodeRef::from_node_ref(node_ref);
-                    debug!(
-                        "Heuristics: Found instance call for class \"{}\"",
-                        Class::with_undefined_generics(cls_node_ref).qualified_name(db)
-                    );
-                    let type_vars = cls_node_ref.use_cached_type_vars(db);
-
-                    if type_vars.has_from_untyped_params()
-                        && let Some(func) = cls_node_ref.maybe_init_func()
-                    {
-                        let i_s = *self.inference.i_s;
-                        let args =
-                            SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
-                        let func = Function::new_with_unknown_parent(
-                            self.inference.i_s.db,
-                            NodeRef::new(node_ref.file, func.index()),
-                        );
-
-                        let slf = &RefCell::new(self);
-                        let mut matched_arg_iterator =
-                            Self::arg_param_iterator(i_s.db, slf, &func, &args, true).peekable();
-                        let mut generics = vec![];
-                        while let Some(param) = matched_arg_iterator.next() {
-                            let found = Self::infer_param(
-                                db,
-                                slf,
-                                &args,
-                                param,
-                                matched_arg_iterator.by_ref(),
-                                false,
-                            )
-                            .unwrap_or_else(Inferred::new_any_from_error);
-                            generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
-                        }
-                        if generics.is_empty() || generics.iter().all(|g| g.maybe_any().is_some()) {
-                            return Some(Heuristic::Guess(Inferred::from_type(Type::Class(
-                                GenericClass {
-                                    link: cls_node_ref.as_link(),
-                                    generics: ClassGenerics::new_none(),
-                                },
-                            ))));
-                        }
-                        debug_assert_eq!(type_vars.len(), generics.len());
-                        let inf = Inferred::from_type(Type::Class(GenericClass {
-                            link: cls_node_ref.as_link(),
-                            generics: ClassGenerics::List(GenericsList::generics_from_vec(
-                                generics,
-                            )),
-                        }));
-                        return Some(Heuristic::Instance {
-                            inf: inf.clone(),
-                            instance: HeuristicInstance {
-                                inf,
-                                class: cls_node_ref,
-                            },
-                        });
-                    }
-                    debug!("Heuristics: class has no untyped params, TODO is this ok?");
-                    return None;
-                }
-                if node_ref.maybe_function().is_none() {
-                    debug!(
-                        "Heuristics: Did not execute, because the base is not a function, but {}",
-                        base.debug_info(db)
-                    );
-                    return None;
-                }
-                let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
-                if func_node_ref.return_annotation().is_some() {
-                    let ret = func_node_ref.return_annotation_type(self.inference.i_s);
-                    if !ret.is_any_or_any_in_union(db) {
-                        debug!(
-                            "Heuristics: Did not execute, because the function has \
-                                an annotation without an explicit Any"
-                        );
-                        return None;
-                    }
-                    if ret.has_type_vars() {
-                        debug!(
-                            "Heuristics: Did not execute, because the function has \
-                                an annotation with type vars"
-                        );
-                        return None;
-                    }
-                }
-                if func_node_ref.is_generator() {
-                    debug!("Heuristics: TODO Did not execute, because the function is a generator");
-                    return None; // TODO make generators possible
-                }
-                if self.state.find_call_stack_frame(func_node_ref).is_some() {
-                    debug!(
-                        "Heuristics: Had a recursion with func '{}', stopping inference",
-                        func_node_ref.qualified_name(db)
-                    );
-                    return None;
-                }
-
-                let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
-                self.state.call_stack.push((func_node_ref, args_frame));
-                let mut result_t = Type::NEVER;
-                for ret_or_yield in func_node_ref.iter_return_or_yield() {
-                    match ret_or_yield {
-                        ReturnOrYield::Return(return_stmt) => {
-                            let inferred = match return_stmt.star_expressions() {
-                                Some(star_exprs) => {
-                                    let Some(inf) = self.infer_star_exprs(star_exprs) else {
-                                        debug!(
-                                            "Heuristics: Aborting execution because return '{}' \
-                                             was not calculated",
-                                            limit_length_for_debug(star_exprs.as_code()),
-                                        );
-                                        return None;
-                                    };
-                                    inf.into()
-                                }
-                                None => Inferred::new_none(),
-                            };
-                            result_t.union_in_place(inferred.into_type(self.inference.i_s))
-                        }
-                        ReturnOrYield::Yield(_yield_expr) => todo!(),
-                    }
-                }
-                self.state.call_stack.pop();
-                if result_t.is_never() {
-                    debug!(
-                        "Heuristics: Execution of {} with Never result, aborting",
-                        func_node_ref.qualified_name(db)
-                    );
-                    return None;
-                }
-                debug!(
-                    "Heuristics: Executed {} with result: {}",
-                    func_node_ref.qualified_name(db),
-                    result_t.format_short(db),
-                );
-                Some(Heuristic::Guess(Inferred::from_type(result_t)))
-            }
+            PrimaryContent::Execution(details) => self.execute(base, primary_node_index, details),
             PrimaryContent::GetItem(slice) => {
                 if let Heuristic::Guess(base) = base {
                     let inf = base.get_item(
@@ -981,6 +829,162 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             }
         }
+    }
+
+    fn execute(
+        &mut self,
+        base: Heuristic<'db>,
+        primary_node_index: NodeIndex,
+        details: ArgumentsDetails,
+    ) -> Option<Heuristic<'db>> {
+        let base: Inferred = base.into();
+        let db = self.inference.i_s.db;
+        let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
+            base.maybe_bound_method().map(|bound| {
+                // Bound methods are also "saved"
+                NodeRef::from_link(db, bound.func_link)
+            })
+        }) else {
+            debug!(
+                "Heuristics: Did not execute, because the base is not a saved NodeRef, but {}",
+                base.debug_info(db)
+            );
+            return None;
+        };
+        if node_ref.maybe_class().is_some() {
+            let cls_node_ref = ClassNodeRef::from_node_ref(node_ref);
+            debug!(
+                "Heuristics: Found instance call for class \"{}\"",
+                Class::with_undefined_generics(cls_node_ref).qualified_name(db)
+            );
+            let type_vars = cls_node_ref.use_cached_type_vars(db);
+
+            if type_vars.has_from_untyped_params()
+                && let Some(func) = cls_node_ref.maybe_init_func()
+            {
+                let i_s = *self.inference.i_s;
+                let args = SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
+                let func = Function::new_with_unknown_parent(
+                    self.inference.i_s.db,
+                    NodeRef::new(node_ref.file, func.index()),
+                );
+
+                let slf = &RefCell::new(self);
+                let mut matched_arg_iterator =
+                    Self::arg_param_iterator(i_s.db, slf, &func, &args, true).peekable();
+                let mut generics = vec![];
+                while let Some(param) = matched_arg_iterator.next() {
+                    let found = Self::infer_param(
+                        db,
+                        slf,
+                        &args,
+                        param,
+                        matched_arg_iterator.by_ref(),
+                        false,
+                    )
+                    .unwrap_or_else(Inferred::new_any_from_error);
+                    generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
+                }
+                if generics.is_empty() || generics.iter().all(|g| g.maybe_any().is_some()) {
+                    return Some(Heuristic::Guess(Inferred::from_type(Type::Class(
+                        GenericClass {
+                            link: cls_node_ref.as_link(),
+                            generics: ClassGenerics::new_none(),
+                        },
+                    ))));
+                }
+                debug_assert_eq!(type_vars.len(), generics.len());
+                let inf = Inferred::from_type(Type::Class(GenericClass {
+                    link: cls_node_ref.as_link(),
+                    generics: ClassGenerics::List(GenericsList::generics_from_vec(generics)),
+                }));
+                return Some(Heuristic::Instance {
+                    inf: inf.clone(),
+                    instance: HeuristicInstance {
+                        inf,
+                        class: cls_node_ref,
+                    },
+                });
+            }
+            debug!("Heuristics: class has no untyped params, TODO is this ok?");
+            return None;
+        }
+        if node_ref.maybe_function().is_none() {
+            debug!(
+                "Heuristics: Did not execute, because the base is not a function, but {}",
+                base.debug_info(db)
+            );
+            return None;
+        }
+        let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
+        if func_node_ref.return_annotation().is_some() {
+            let ret = func_node_ref.return_annotation_type(self.inference.i_s);
+            if !ret.is_any_or_any_in_union(db) {
+                debug!(
+                    "Heuristics: Did not execute, because the function has \
+                                an annotation without an explicit Any"
+                );
+                return None;
+            }
+            if ret.has_type_vars() {
+                debug!(
+                    "Heuristics: Did not execute, because the function has \
+                                an annotation with type vars"
+                );
+                return None;
+            }
+        }
+        if func_node_ref.is_generator() {
+            debug!("Heuristics: TODO Did not execute, because the function is a generator");
+            return None; // TODO make generators possible
+        }
+        if self.state.find_call_stack_frame(func_node_ref).is_some() {
+            debug!(
+                "Heuristics: Had a recursion with func '{}', stopping inference",
+                func_node_ref.qualified_name(db)
+            );
+            return None;
+        }
+
+        let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
+        self.state.call_stack.push((func_node_ref, args_frame));
+        let mut result_t = Type::NEVER;
+        for ret_or_yield in func_node_ref.iter_return_or_yield() {
+            match ret_or_yield {
+                ReturnOrYield::Return(return_stmt) => {
+                    let inferred = match return_stmt.star_expressions() {
+                        Some(star_exprs) => {
+                            let Some(inf) = self.infer_star_exprs(star_exprs) else {
+                                debug!(
+                                    "Heuristics: Aborting execution because return '{}' \
+                                             was not calculated",
+                                    limit_length_for_debug(star_exprs.as_code()),
+                                );
+                                return None;
+                            };
+                            inf.into()
+                        }
+                        None => Inferred::new_none(),
+                    };
+                    result_t.union_in_place(inferred.into_type(self.inference.i_s))
+                }
+                ReturnOrYield::Yield(_yield_expr) => todo!(),
+            }
+        }
+        self.state.call_stack.pop();
+        if result_t.is_never() {
+            debug!(
+                "Heuristics: Execution of {} with Never result, aborting",
+                func_node_ref.qualified_name(db)
+            );
+            return None;
+        }
+        debug!(
+            "Heuristics: Executed {} with result: {}",
+            func_node_ref.qualified_name(db),
+            result_t.format_short(db),
+        );
+        Some(Heuristic::Guess(Inferred::from_type(result_t)))
     }
 
     fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic<'db>> {
