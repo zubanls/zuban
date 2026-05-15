@@ -6,8 +6,8 @@ use std::{
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent,
     AsyncStmtContent, AtomContent, ClassDef, Decorated, Decoratee, Expression, ExpressionContent,
-    ExpressionPart, Kwarg, Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression,
-    StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
+    ExpressionPart, FunctionDef, Kwarg, Name, NodeIndex, Primary, PrimaryContent,
+    StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -184,8 +184,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                     // For language servers we need the generics to store heuristics
                     || i_s.db.run_cause == RunCause::LanguageServer && !self.file.is_stub())
             {
-                let storage = self.class_storage();
-                if let Some(func) = storage.maybe_init_func(self.file) {
+                if let Some(func) = self.maybe_init_func() {
                     // Only generate type vars for classes that are not typed at all and have
                     // initialization params.
                     if !func.is_typed() && func.params().iter().nth(1).is_some() {
@@ -202,6 +201,18 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_var_likes), Locality::Todo);
         }
         self.type_vars(i_s)
+    }
+
+    pub fn maybe_init_func(&self) -> Option<FunctionDef<'file>> {
+        let name_index = self
+            .class_storage()
+            .class_symbol_table
+            .lookup_symbol("__init__")?;
+        NodeRef::new(self.file, name_index)
+            .expect_name()
+            .name_def()
+            .unwrap()
+            .maybe_name_of_func()
     }
 
     pub fn use_cached_type_vars(&self, db: &'file Database) -> &'file TypeVarLikes {
