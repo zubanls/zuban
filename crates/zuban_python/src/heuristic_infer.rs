@@ -162,19 +162,31 @@ impl<'db> Heuristic<'db> {
 }
 
 impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
+    fn with_different_i_s<T>(
+        &mut self,
+        i_s: InferenceState<'db, '_>,
+        file: &'db PythonFile,
+        callback: impl FnOnce(&mut HeuristicInference<'db, '_, '_>) -> T,
+    ) -> T {
+        i_s.avoid_errors_within(|i_s| {
+            callback(&mut HeuristicInference {
+                state: self.state,
+                inference: file.inference(i_s),
+            })
+        })
+        .0
+    }
+
     fn with_different_file<T>(
         &mut self,
         file: &'db PythonFile,
         callback: impl FnOnce(&mut HeuristicInference<'db, '_, '_>) -> T,
     ) -> T {
-        InferenceState::new(self.inference.i_s.db, file)
-            .avoid_errors_within(|i_s| {
-                callback(&mut HeuristicInference {
-                    state: self.state,
-                    inference: file.inference(i_s),
-                })
-            })
-            .0
+        self.with_different_i_s(
+            InferenceState::new(self.inference.i_s.db, file),
+            file,
+            callback,
+        )
     }
 
     fn infer_name(&mut self, name: Name<'db>) -> Option<Heuristic<'db>> {
@@ -183,24 +195,31 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
             NameParent::NameDef(name_def) => match name_def.expect_type() {
                 TypeLike::ParamName(_) => {
-                    let func = name.expect_as_param_of_function();
-                    let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
+                    let func_node = name.expect_as_param_of_function();
+                    let func_node_ref = FuncNodeRef::new(self.inference.file, func_node.index());
+                    let func = Function::new_with_unknown_parent(
+                        self.inference.i_s.db,
+                        NodeRef::new(self.inference.file, func_node.index()),
+                    );
                     let i_s = self.inference.i_s;
                     if let Some(self_) = self.state.self_stack.last()
                         && let Type::Class(c) = self_
                         && let class = c.class(i_s.db)
-                        // TODO check this is the correct class here
-                        && class.use_cached_type_vars(i_s.db).has_from_untyped_params()
-                        && let Some((param_index, _)) = func
-                            .params()
-                            .iter()
-                            .skip(1)
-                            .enumerate()
-                            .find(|(_, p)| p.name_def().index() == name_def.index())
+                        && func.class.is_some_and(|c| c.node_ref == class.node_ref)
                     {
-                        return Some(Heuristic::Guess(Inferred::from_type(
-                            class.nth_type_argument(i_s.db, param_index),
-                        )));
+                        if class.use_cached_type_vars(i_s.db).has_from_untyped_params()
+                            && let Some((param_index, _)) = func_node
+                                .params()
+                                .iter()
+                                .skip(1)
+                                .enumerate()
+                                .find(|(_, p)| p.name_def().index() == name_def.index())
+                        {
+                            return Some(Heuristic::Guess(Inferred::from_type(
+                                class.nth_type_argument(i_s.db, param_index),
+                            )));
+                        }
+                        return None;
                     }
                     if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
                         let details = args_frame.as_details();
@@ -209,10 +228,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             args_frame.file,
                             args_frame.primary_node_index,
                             details,
-                        );
-                        let func = Function::new_with_unknown_parent(
-                            self.inference.i_s.db,
-                            NodeRef::new(self.inference.file, func.index()),
                         );
                         let mut skip_first_param = false;
                         if func.class.is_some() {
@@ -230,7 +245,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         )?));
                     }
                     Some(Heuristic::Guess(
-                        self.search_callable_arguments(func, name)?,
+                        self.search_callable_arguments(func_node, name)?,
                     ))
                 }
                 TypeLike::Assignment(assignment) => {
@@ -719,6 +734,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 .is_some_and(|c| !c.file.is_stub() && !matches!(c.generics, Generics::List(..)))
         {
             if let Some(new) = infer_heuristic(self) {
+                if let Heuristic::Guess(bound) = &new
+                    && bound.maybe_bound_method().is_some()
+                {
+                    return new;
+                }
                 let (new, instance) = new.into_inferred_and_instance();
                 let new_t = new.into_type(i_s);
                 if new_t
@@ -768,7 +788,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         .push(instance.inf.as_type(self.inference.i_s));
                     added_to_stack = true;
                 }
-                let base_is_heuristic = matches!(base, Heuristic::Guess(_));
+                let base_is_heuristic = !matches!(base, Heuristic::WellKnown(_));
                 let base: Inferred = base.into();
                 let base_t = base.as_cow_type(self.inference.i_s);
                 let result = base_t.lookup(
@@ -785,31 +805,24 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
                     let new_name = directed_to.expect_name();
                     // Should always be a NameDef
-                    let found = if let Type::Class(c) = base_t.as_ref() {
-                        InferenceState::from_class(
-                            self.inference.i_s.db,
-                            &c.class(self.inference.i_s.db),
+                    out = if let Type::Class(c) = base_t.as_ref() {
+                        self.with_different_i_s(
+                            InferenceState::from_class(
+                                self.inference.i_s.db,
+                                &c.class(self.inference.i_s.db),
+                            ),
+                            directed_to.file,
+                            |h| h.infer_name(new_name),
                         )
-                        .avoid_errors_within(|i_s| {
-                            HeuristicInference {
-                                state: self.state,
-                                inference: directed_to.file.inference(i_s),
-                            }
-                            .infer_name(new_name)
-                        })
-                        .0
                     } else {
                         self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
                     };
-                    if let Some(found) = found {
-                        out = Some(found);
-                    }
                 }
                 if added_to_stack {
                     self.state.self_stack.pop();
                 }
-                if base_is_heuristic {
-                    return Some(Heuristic::Guess(result.into_maybe_inferred()?));
+                if base_is_heuristic && out.is_none() {
+                    out = result.into_maybe_inferred().map(Heuristic::Guess);
                 }
                 out
             }
@@ -890,7 +903,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     .unwrap_or_else(Inferred::new_any_from_error);
                     generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
                 }
-                if generics.is_empty() || generics.iter().all(|g| g.maybe_any().is_some()) {
+                debug!(
+                    "Heuristics: Inferred param generics as {:?}",
+                    generics
+                        .iter()
+                        .map(|g| match g {
+                            GenericItem::TypeArg(t) => t.format_short(i_s.db),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Vec<_>>()
+                );
+                if generics.is_empty() {
                     return Some(Heuristic::Guess(Inferred::from_type(Type::Class(
                         GenericClass {
                             link: cls_node_ref.as_link(),
@@ -951,10 +974,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             return None;
         }
 
+        let func = Function::new_with_unknown_parent(db, *func_node_ref);
+
         let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
         self.state.call_stack.push((func_node_ref, args_frame));
-        let result_t = self.heuristic_return_type(func_node_ref);
+        if let Some(bound) = bound_to {
+            self.state.self_stack.push(bound.clone());
+        }
+        let result_t = self.with_different_i_s(
+            self.inference.i_s.with_func_context(&func),
+            func_node_ref.file,
+            |h| h.heuristic_return_type(func_node_ref),
+        );
+        if bound_to.is_some() {
+            self.state.self_stack.pop();
+        }
         self.state.call_stack.pop();
+
         let result_t = result_t?;
         if result_t.is_never() {
             debug!(
