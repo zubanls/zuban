@@ -213,7 +213,7 @@ pub(crate) enum GenericItem {
 }
 
 impl GenericItem {
-    fn maybe_any(&self) -> Option<AnyCause> {
+    pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
             Self::TypeArg(Type::Any(cause)) => Some(*cause),
             Self::TypeArg(_) => None,

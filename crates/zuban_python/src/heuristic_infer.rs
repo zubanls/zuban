@@ -30,8 +30,9 @@ use crate::{
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
     type_::{
-        DbString, ExtraItemsType, FunctionKind, IterCause, LookupResult, Tuple, Type, TypedDict,
-        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
+        GenericsList, IterCause, LookupResult, Tuple, Type, TypedDict, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, Function, FunctionParam},
     utils::{debug_indent, limit_length_for_debug},
@@ -352,7 +353,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         db: &'db Database,
         slf: &'a RefCell<&mut Self>,
         func: &Function<'a, 'a>,
-        args: &'a SimpleArgs<'db, 'db, 'db>,
+        args: &'a SimpleArgs<'db, 'db, 'a>,
         skip_first_param: bool,
     ) -> impl Iterator<Item = InferrableParam<'db, 'a, FunctionParam<'a>>>
     where
@@ -468,15 +469,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             Self::arg_param_iterator(db, slf, func, &args, skip_first_param);
         for param in matched_arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
-                let found = Self::infer_param(
+                return Self::infer_param(
                     db,
                     slf,
                     &args,
                     param,
-                    matched_arg_iterator.peekable(),
+                    &mut matched_arg_iterator.peekable(),
                     from_callable_search,
-                )?;
-                return Some(found);
+                );
             }
         }
         for param in func.iter_params() {
@@ -498,9 +498,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_param<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db, 'db>,
+        args: &SimpleArgs<'db, 'db, '_>,
         param: InferrableParam<FunctionParam>,
-        rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
+        rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
         from_callable_search: bool,
     ) -> Option<Inferred>
     where
@@ -514,7 +514,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
         if let Some(default) = param.param.default() {
             let mut slf = slf.borrow_mut();
+
             let inferred_default: Inferred = slf.infer_expression(default).into();
+            /*
+             * TODO use this
+            let inferred_default: Inferred = slf
+                .with_different_file(param.param.file, |h| h.infer_expression(default))
+                .into();
+            */
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
@@ -530,10 +537,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_argument<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db, 'db>,
+        args: &SimpleArgs<'db, 'db, '_>,
         param: FunctionParam,
         argument: ParamArgument,
-        mut rest_args: Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
+        rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
     ) -> Option<Inferred>
     where
         'db: 'x,
@@ -808,18 +815,69 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 };
                 if node_ref.maybe_class().is_some() {
                     let cls_node_ref = ClassNodeRef::from_node_ref(node_ref);
-                    let class = Class::with_undefined_generics(cls_node_ref);
                     debug!(
                         "Heuristics: Found instance call for class \"{}\"",
-                        class.qualified_name(db)
+                        Class::with_undefined_generics(cls_node_ref).qualified_name(db)
                     );
-                    return Some(Heuristic::Instance {
-                        inf: Inferred::from_type(class.as_type(db)),
-                        instance: HeuristicInstance {
-                            class: cls_node_ref,
-                            args: ArgsFrame::new(self.inference.file, primary_node_index, details),
-                        },
-                    });
+                    let type_vars = cls_node_ref.use_cached_type_vars(db);
+
+                    if type_vars.has_from_untyped_params()
+                        && let Some(func) = cls_node_ref.maybe_init_func()
+                    {
+                        let i_s = *self.inference.i_s;
+                        let args_frame =
+                            ArgsFrame::new(self.inference.file, primary_node_index, details);
+                        let args = SimpleArgs::new(
+                            i_s,
+                            self.inference.file,
+                            primary_node_index,
+                            args_frame.as_details(),
+                        );
+                        let func = Function::new_with_unknown_parent(
+                            self.inference.i_s.db,
+                            NodeRef::new(node_ref.file, func.index()),
+                        );
+
+                        let slf = &RefCell::new(self);
+                        let mut matched_arg_iterator =
+                            Self::arg_param_iterator(i_s.db, slf, &func, &args, true).peekable();
+                        let mut generics = vec![];
+                        while let Some(param) = matched_arg_iterator.next() {
+                            let found = Self::infer_param(
+                                db,
+                                slf,
+                                &args,
+                                param,
+                                matched_arg_iterator.by_ref(),
+                                false,
+                            )
+                            .unwrap_or_else(Inferred::new_any_from_error);
+                            generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
+                        }
+                        if generics.is_empty() || generics.iter().all(|g| g.maybe_any().is_some()) {
+                            return Some(Heuristic::Guess(Inferred::from_type(Type::Class(
+                                GenericClass {
+                                    link: cls_node_ref.as_link(),
+                                    generics: ClassGenerics::new_none(),
+                                },
+                            ))));
+                        }
+                        debug_assert_eq!(type_vars.len(), generics.len());
+                        return Some(Heuristic::Instance {
+                            inf: Inferred::from_type(Type::Class(GenericClass {
+                                link: cls_node_ref.as_link(),
+                                generics: ClassGenerics::List(GenericsList::generics_from_vec(
+                                    generics,
+                                )),
+                            })),
+                            instance: HeuristicInstance {
+                                class: cls_node_ref,
+                                args: args_frame,
+                            },
+                        });
+                    }
+                    debug!("Heuristics: class has no untyped params, TODO is this ok?");
+                    return None;
                 }
                 if node_ref.maybe_function().is_none() {
                     debug!(

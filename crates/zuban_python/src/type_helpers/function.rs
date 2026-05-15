@@ -2190,7 +2190,7 @@ pub(crate) struct AsCallableOptions<'a> {
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct FunctionParam<'x> {
-    file: &'x PythonFile,
+    pub file: &'x PythonFile,
     param: CSTParam<'x>,
 }
 
