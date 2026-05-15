@@ -160,13 +160,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> InferrableParamIterator<
         'db,
         'b,
-        impl Iterator<Item = FunctionParam<'b>>,
-        FunctionParam<'b>,
+        impl Iterator<Item = FunctionParam<'a>>,
+        FunctionParam<'a>,
         AI,
-    >
-    where
-        'a: 'b,
-    {
+    > {
         let mut params = self.iter_params();
         if skip_first_param {
             params.next();
