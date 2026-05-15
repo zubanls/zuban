@@ -35,7 +35,7 @@ use crate::{
         TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, Function, FunctionParam},
-    utils::{debug_indent, limit_length_for_debug},
+    utils::{debug_indent, is_magic_method, limit_length_for_debug},
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:
@@ -298,7 +298,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             search_name = cls_name.as_code();
             skip_first_param = true;
             PointLink::new(self.inference.file.file_index, cls_name.index())
-        } else if search_name.starts_with("__") && search_name.ends_with("__") {
+        } else if is_magic_method(search_name) {
             // These are magic methods and should probably not be searched.
             return None;
         } else {

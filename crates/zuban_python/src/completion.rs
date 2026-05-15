@@ -31,6 +31,7 @@ use crate::{
         FunctionKind, Namespace, ParamType, Type,
     },
     type_helpers::{Class, Function, TypeOrClass, is_private},
+    utils::is_magic_method,
 };
 
 struct CompletionInfo<'db> {
@@ -1093,7 +1094,7 @@ enum CompletionSortPriority<'db> {
 
 impl<'db> CompletionSortPriority<'db> {
     fn new_symbol(symbol: &'db str) -> Self {
-        if symbol.starts_with("__") && symbol.ends_with("__") {
+        if is_magic_method(symbol) {
             Self::Dunder(symbol)
         } else {
             Self::Default(symbol)
