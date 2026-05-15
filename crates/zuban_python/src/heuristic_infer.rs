@@ -115,33 +115,21 @@ struct HeuristicInference<'db, 'state, 'i_s> {
     inference: Inference<'db, 'db, 'i_s>,
 }
 
-#[derive(Debug, Clone)]
-struct HeuristicInstance<'db> {
-    inf: Inferred,
-    class: ClassNodeRef<'db>,
-}
-
 #[derive(Debug)]
-enum Heuristic<'db> {
+enum Heuristic {
     WellKnown(Inferred),
     Guess(Inferred),
-    Instance {
-        inf: Inferred,
-        instance: HeuristicInstance<'db>,
-    },
 }
 
-impl From<Heuristic<'_>> for Inferred {
+impl From<Heuristic> for Inferred {
     fn from(value: Heuristic) -> Self {
         match value {
-            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) | Heuristic::Instance { inf, .. } => {
-                inf
-            }
+            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => inf,
         }
     }
 }
 
-impl<'db> Heuristic<'db> {
+impl Heuristic {
     fn new_any_due_to_error() -> Self {
         Self::WellKnown(Inferred::new_any_from_error())
     }
@@ -149,14 +137,7 @@ impl<'db> Heuristic<'db> {
     fn maybe_guessed(self) -> Option<Inferred> {
         match self {
             Self::WellKnown(_) => None,
-            Self::Guess(inf) | Self::Instance { inf, .. } => Some(inf),
-        }
-    }
-
-    fn into_inferred_and_instance(self) -> (Inferred, Option<HeuristicInstance<'db>>) {
-        match self {
-            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => (inf, None),
-            Heuristic::Instance { inf, instance } => (inf, Some(instance)),
+            Self::Guess(inf) => Some(inf),
         }
     }
 }
@@ -189,7 +170,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         )
     }
 
-    fn infer_name(&mut self, name: Name<'db>) -> Option<Heuristic<'db>> {
+    fn infer_name(&mut self, name: Name<'db>) -> Option<Heuristic> {
         debug!("Heuristics: Infer name: {}", name.as_code());
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
@@ -282,7 +263,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn infer_name_reference(&mut self, name: Name) -> Option<Heuristic<'db>> {
+    fn infer_name_reference(&mut self, name: Name) -> Option<Heuristic> {
         debug!("Heuristic follow name: {}", name.as_code());
         match try_to_follow(
             self.inference.i_s.db,
@@ -680,7 +661,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    pub fn infer_atom(&mut self, atom: Atom) -> Heuristic<'db> {
+    pub fn infer_atom(&mut self, atom: Atom) -> Heuristic {
         let inf = self.inference.infer_atom(atom, &mut ResultContext::Unknown);
         debug!(
             "Heuristics for atom: {}",
@@ -707,7 +688,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         })
     }
 
-    fn infer_primary(&mut self, primary: Primary) -> Heuristic<'db> {
+    fn infer_primary(&mut self, primary: Primary) -> Heuristic {
         let inf = self
             .inference
             .infer_primary(primary, &mut ResultContext::Unknown);
@@ -724,8 +705,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn create_heuristic_if_necessary(
         &mut self,
         inf: Inferred,
-        infer_heuristic: impl FnOnce(&mut Self) -> Option<Heuristic<'db>>,
-    ) -> Heuristic<'db> {
+        infer_heuristic: impl FnOnce(&mut Self) -> Option<Heuristic>,
+    ) -> Heuristic {
         let _indent = debug_indent();
         let i_s = self.inference.i_s;
         let t = inf.as_cow_type(i_s);
@@ -739,7 +720,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 {
                     return new;
                 }
-                let (new, instance) = new.into_inferred_and_instance();
+                let new: Inferred = new.into();
                 let new_t = new.into_type(i_s);
                 if new_t
                     .iter_with_unpacked_unions(i_s.db)
@@ -752,11 +733,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 } else {
                     debug!("Found heuristics: {}", new_t.format_short(i_s.db));
                     let inf = Inferred::from_type(new_t);
-                    if let Some(instance) = instance {
-                        return Heuristic::Instance { inf, instance };
-                    } else {
-                        return Heuristic::Guess(inf);
-                    }
+                    return Heuristic::Guess(inf);
                 }
             } else {
                 debug!(
@@ -775,22 +752,20 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn infer_primary_or_primary_t_content(
         &mut self,
-        base: Heuristic<'db>,
+        base: Heuristic,
         primary_node_index: NodeIndex,
         content: PrimaryContent,
-    ) -> Option<Heuristic<'db>> {
+    ) -> Option<Heuristic> {
         match content {
             PrimaryContent::Attribute(attr_name) => {
-                let mut added_to_stack = false;
-                if let Heuristic::Instance { instance, .. } = &base {
-                    self.state
-                        .self_stack
-                        .push(instance.inf.as_type(self.inference.i_s));
-                    added_to_stack = true;
-                }
                 let base_is_heuristic = !matches!(base, Heuristic::WellKnown(_));
                 let base: Inferred = base.into();
                 let base_t = base.as_cow_type(self.inference.i_s);
+                let mut added_to_stack = false;
+                if let t @ Type::Class(_) = base_t.as_ref() {
+                    self.state.self_stack.push(t.clone());
+                    added_to_stack = true;
+                }
                 let result = base_t.lookup(
                     self.inference.i_s,
                     self.inference.file,
@@ -849,10 +824,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn execute(
         &mut self,
-        base: Heuristic<'db>,
+        base: Heuristic,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails,
-    ) -> Option<Heuristic<'db>> {
+    ) -> Option<Heuristic> {
         let base: Inferred = base.into();
         let db = self.inference.i_s.db;
         let mut bound_to = None;
@@ -926,13 +901,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     link: cls_node_ref.as_link(),
                     generics: ClassGenerics::List(GenericsList::generics_from_vec(generics)),
                 }));
-                return Some(Heuristic::Instance {
-                    inf: inf.clone(),
-                    instance: HeuristicInstance {
-                        inf,
-                        class: cls_node_ref,
-                    },
-                });
+                return Some(Heuristic::Guess(inf));
             }
             debug!("Heuristics: class has no untyped params, TODO is this ok?");
             return None;
@@ -1034,7 +1003,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         Some(result_t)
     }
 
-    fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic<'db>> {
+    fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic> {
         Some(match star_exprs.unpack() {
             StarExpressionContent::Expression(expr) => self.infer_expression(expr),
             // This is invalid anyway
@@ -1065,14 +1034,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         })
     }
 
-    fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic<'db> {
+    fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic {
         match p_or_a {
             PrimaryOrAtom::Primary(p) => self.infer_primary(p),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
 
-    fn infer_expression(&mut self, expr: Expression) -> Heuristic<'db> {
+    fn infer_expression(&mut self, expr: Expression) -> Heuristic {
         let inf = self.inference.infer_expression(expr);
         debug!(
             "Heuristics for expr: {}",
