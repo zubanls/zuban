@@ -115,10 +115,10 @@ struct HeuristicInference<'db, 'state, 'i_s> {
     inference: Inference<'db, 'db, 'i_s>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 struct HeuristicInstance<'db> {
+    inf: Inferred,
     class: ClassNodeRef<'db>,
-    args: ArgsFrame<'db>,
 }
 
 #[derive(Debug)]
@@ -185,11 +185,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 TypeLike::ParamName(_) => {
                     let func = name.expect_as_param_of_function();
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
-                    if let Some(args_frame) = self
-                        .state
-                        .find_call_stack_frame(func_node_ref)
-                        .or_else(|| self.state.self_stack.last().map(|instance| &instance.args))
+                    let i_s = self.inference.i_s;
+                    if let Some(self_) = self.state.self_stack.last()
+                        && let Type::Class(c) = self_.inf.as_cow_type(i_s).as_ref()
+                        && let class = c.class(i_s.db)
+                        && class.use_cached_type_vars(i_s.db).has_from_untyped_params()
+                        && let Some((param_index, _)) = func
+                            .params()
+                            .iter()
+                            .skip(1)
+                            .enumerate()
+                            .find(|(_, p)| p.name_def().index() == name_def.index())
                     {
+                        return Some(Heuristic::Guess(Inferred::from_type(
+                            class.nth_type_argument(i_s.db, param_index),
+                        )));
+                    }
+                    if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
                         let details = args_frame.as_details();
                         let args = SimpleArgs::new(
                             InferenceState::new(self.inference.i_s.db, args_frame.file),
@@ -750,7 +762,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             PrimaryContent::Attribute(attr_name) => {
                 let mut added_to_stack = false;
                 if let Heuristic::Instance { instance, .. } = &base {
-                    self.state.self_stack.push(*instance);
+                    self.state.self_stack.push(instance.clone());
                     added_to_stack = true;
                 }
                 let base_is_heuristic = matches!(base, Heuristic::Guess(_));
@@ -825,14 +837,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         && let Some(func) = cls_node_ref.maybe_init_func()
                     {
                         let i_s = *self.inference.i_s;
-                        let args_frame =
-                            ArgsFrame::new(self.inference.file, primary_node_index, details);
-                        let args = SimpleArgs::new(
-                            i_s,
-                            self.inference.file,
-                            primary_node_index,
-                            args_frame.as_details(),
-                        );
+                        let args =
+                            SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
                         let func = Function::new_with_unknown_parent(
                             self.inference.i_s.db,
                             NodeRef::new(node_ref.file, func.index()),
@@ -863,16 +869,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             ))));
                         }
                         debug_assert_eq!(type_vars.len(), generics.len());
+                        let inf = Inferred::from_type(Type::Class(GenericClass {
+                            link: cls_node_ref.as_link(),
+                            generics: ClassGenerics::List(GenericsList::generics_from_vec(
+                                generics,
+                            )),
+                        }));
                         return Some(Heuristic::Instance {
-                            inf: Inferred::from_type(Type::Class(GenericClass {
-                                link: cls_node_ref.as_link(),
-                                generics: ClassGenerics::List(GenericsList::generics_from_vec(
-                                    generics,
-                                )),
-                            })),
+                            inf: inf.clone(),
                             instance: HeuristicInstance {
+                                inf,
                                 class: cls_node_ref,
-                                args: args_frame,
                             },
                         });
                     }
