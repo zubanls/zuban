@@ -97,7 +97,7 @@ impl<'db> ArgsFrame<'db> {
 struct HeuristicState<'db> {
     callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
     call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
-    self_stack: Vec<HeuristicInstance<'db>>,
+    self_stack: Vec<Type>,
 }
 
 impl<'db> HeuristicState<'db> {
@@ -187,8 +187,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     let func_node_ref = FuncNodeRef::new(self.inference.file, func.index());
                     let i_s = self.inference.i_s;
                     if let Some(self_) = self.state.self_stack.last()
-                        && let Type::Class(c) = self_.inf.as_cow_type(i_s).as_ref()
+                        && let Type::Class(c) = self_
                         && let class = c.class(i_s.db)
+                        // TODO check this is the correct class here
                         && class.use_cached_type_vars(i_s.db).has_from_untyped_params()
                         && let Some((param_index, _)) = func
                             .params()
@@ -762,7 +763,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             PrimaryContent::Attribute(attr_name) => {
                 let mut added_to_stack = false;
                 if let Heuristic::Instance { instance, .. } = &base {
-                    self.state.self_stack.push(instance.clone());
+                    self.state
+                        .self_stack
+                        .push(instance.inf.as_type(self.inference.i_s));
                     added_to_stack = true;
                 }
                 let base_is_heuristic = matches!(base, Heuristic::Guess(_));
@@ -839,8 +842,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     ) -> Option<Heuristic<'db>> {
         let base: Inferred = base.into();
         let db = self.inference.i_s.db;
+        let mut bound_to = None;
         let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
             base.maybe_bound_method().map(|bound| {
+                bound_to = Some(&bound.instance);
                 // Bound methods are also "saved"
                 NodeRef::from_link(db, bound.func_link)
             })
@@ -865,13 +870,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 let i_s = *self.inference.i_s;
                 let args = SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
                 let func = Function::new_with_unknown_parent(
-                    self.inference.i_s.db,
+                    db,
                     NodeRef::new(node_ref.file, func.index()),
                 );
 
                 let slf = &RefCell::new(self);
                 let mut matched_arg_iterator =
-                    Self::arg_param_iterator(i_s.db, slf, &func, &args, true).peekable();
+                    Self::arg_param_iterator(db, slf, &func, &args, true).peekable();
                 let mut generics = vec![];
                 while let Some(param) = matched_arg_iterator.next() {
                     let found = Self::infer_param(
@@ -948,6 +953,25 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
         let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
         self.state.call_stack.push((func_node_ref, args_frame));
+        let result_t = self.heuristic_return_type(func_node_ref);
+        self.state.call_stack.pop();
+        let result_t = result_t?;
+        if result_t.is_never() {
+            debug!(
+                "Heuristics: Execution of {} with Never result, aborting",
+                func_node_ref.qualified_name(db)
+            );
+            return None;
+        }
+        debug!(
+            "Heuristics: Executed {} with result: {}",
+            func_node_ref.qualified_name(db),
+            result_t.format_short(db),
+        );
+        Some(Heuristic::Guess(Inferred::from_type(result_t)))
+    }
+
+    fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Type> {
         let mut result_t = Type::NEVER;
         for ret_or_yield in func_node_ref.iter_return_or_yield() {
             match ret_or_yield {
@@ -971,20 +995,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 ReturnOrYield::Yield(_yield_expr) => todo!(),
             }
         }
-        self.state.call_stack.pop();
-        if result_t.is_never() {
-            debug!(
-                "Heuristics: Execution of {} with Never result, aborting",
-                func_node_ref.qualified_name(db)
-            );
-            return None;
-        }
-        debug!(
-            "Heuristics: Executed {} with result: {}",
-            func_node_ref.qualified_name(db),
-            result_t.format_short(db),
-        );
-        Some(Heuristic::Guess(Inferred::from_type(result_t)))
+        Some(result_t)
     }
 
     fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic<'db>> {
