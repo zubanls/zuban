@@ -218,7 +218,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         }
                         return Some(Heuristic::Guess(self.infer_param_with_args(
                             &func,
-                            args,
+                            NodeRef::new(args_frame.file, args_frame.primary_node_index),
+                            &args,
                             skip_first_param,
                             name,
                             false,
@@ -342,7 +343,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     execution.primary.index(),
                     execution.details,
                 );
-                self.infer_param_with_args(&func, args, skip_first_param, param_name, true)
+                self.infer_param_with_args(
+                    &func,
+                    NodeRef::new(execution.file, execution.primary.index()),
+                    &args,
+                    skip_first_param,
+                    param_name,
+                    true,
+                )
                 /*
                 // The deeper we're in the recursion, the less code should be inferred.
                 if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
@@ -467,7 +475,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_param_with_args(
         &mut self,
         func: &Function,
-        args: SimpleArgs<'db, 'db, 'db>,
+        call_site: NodeRef<'db>,
+        args: &dyn Args<'db>,
         skip_first_param: bool,
         search_param_name: Name,
         from_callable_search: bool,
@@ -475,13 +484,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let db = self.inference.i_s.db;
         let slf = &RefCell::new(self);
         let mut matched_arg_iterator =
-            Self::arg_param_iterator(db, slf, func, args.file, &args, skip_first_param);
+            Self::arg_param_iterator(db, slf, func, call_site.file, args, skip_first_param);
         for param in matched_arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
                 return Self::infer_param(
                     db,
                     slf,
-                    &args,
+                    call_site,
                     param,
                     &mut matched_arg_iterator.peekable(),
                     from_callable_search,
@@ -507,7 +516,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_param<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db, '_>,
+        call_site: NodeRef<'db>,
         param: InferrableParam<FunctionParam>,
         rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
         from_callable_search: bool,
@@ -515,7 +524,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     where
         'db: 'x,
     {
-        let result = Self::infer_argument(db, slf, args, param.param, param.argument, rest_args);
+        let result =
+            Self::infer_argument(db, slf, call_site, param.param, param.argument, rest_args);
         if !from_callable_search && result.is_some() {
             // If there is a result in a normal execution heuristic, we can simply continue,
             // because the actual type has been found from the execution.
@@ -534,7 +544,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
-                        .as_type(&InferenceState::new(db, args.file))
+                        .as_type(&InferenceState::new(db, call_site.file))
                         .union(inferred_default.as_type(slf.inference.i_s)),
                 ));
             }
@@ -546,7 +556,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_argument<'x>(
         db: &'db Database,
         slf: &RefCell<&mut Self>,
-        args: &SimpleArgs<'db, 'db, '_>,
+        call_site: NodeRef<'db>,
         param: FunctionParam,
         argument: ParamArgument,
         rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
@@ -554,10 +564,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     where
         'db: 'x,
     {
-        let i_s = &InferenceState::new(db, args.file);
+        let i_s = &InferenceState::new(db, call_site.file);
         let inf_expr = |expr| {
             slf.borrow_mut()
-                .with_different_file(args.file, |h| h.infer_expression(expr).into())
+                .with_different_file(call_site.file, |h| h.infer_expression(expr).into())
         };
         let infer = |argument| match argument {
             ParamArgument::None => None,
@@ -634,7 +644,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     }),
                 };
                 let td =
-                    TypedDict::new(None, members, args.primary_link(), TypedDictGenerics::None);
+                    TypedDict::new(None, members, call_site.as_link(), TypedDictGenerics::None);
                 debug!(
                     "Heuristics: Inferred param **{} as: {}",
                     param.name_def().as_code(),
@@ -870,7 +880,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     let found = Self::infer_param(
                         db,
                         slf,
-                        &args,
+                        NodeRef::new(args.file, primary_node_index),
                         param,
                         matched_arg_iterator.by_ref(),
                         false,
