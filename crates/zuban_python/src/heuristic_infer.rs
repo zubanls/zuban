@@ -11,9 +11,7 @@ use regex::{Matches, Regex};
 use utils::FastHashMap;
 
 use crate::{
-    arguments::{
-        ArgIteratorBase, ArgKind, Args as _, ArgsKwargsIterator, SimpleArgs, unpack_star_star,
-    },
+    arguments::{ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, SimpleArgs, unpack_star_star},
     database::{Database, PointKind, PointLink},
     debug,
     file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
@@ -363,7 +361,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         db: &'db Database,
         slf: &'a RefCell<&mut Self>,
         func: &Function<'a, 'a>,
-        args: &'a SimpleArgs<'db, 'db, 'a>,
+        args_file: &'db PythonFile,
+        args: &'a dyn Args<'db>,
         skip_first_param: bool,
     ) -> impl Iterator<Item = InferrableParam<'db, 'a, FunctionParam<'a>>>
     where
@@ -387,7 +386,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         match argument {
                             Argument::Star(starred_expr) => {
                                 iterator.next(); // Skip this and replace it
-                                let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                let ret = slf.borrow_mut().with_different_file(args_file, |h| {
                                     let inf: Inferred =
                                         h.infer_expression(starred_expr.expression()).into();
                                     debug!(
@@ -420,7 +419,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             }
                             Argument::StarStar(star_star_expr) => {
                                 iterator.next(); // Skip this and replace it
-                                let ret = slf.borrow_mut().with_different_file(args.file, |h| {
+                                let ret = slf.borrow_mut().with_different_file(args_file, |h| {
                                     let inf: Inferred =
                                         h.infer_expression(star_star_expr.expression()).into();
                                     debug!(
@@ -476,7 +475,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let db = self.inference.i_s.db;
         let slf = &RefCell::new(self);
         let mut matched_arg_iterator =
-            Self::arg_param_iterator(db, slf, func, &args, skip_first_param);
+            Self::arg_param_iterator(db, slf, func, args.file, &args, skip_first_param);
         for param in matched_arg_iterator.by_ref() {
             if param.param.name_def().name_index() == search_param_name.index() {
                 return Self::infer_param(
@@ -865,7 +864,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
                 let slf = &RefCell::new(self);
                 let mut matched_arg_iterator =
-                    Self::arg_param_iterator(db, slf, &func, &args, true).peekable();
+                    Self::arg_param_iterator(db, slf, &func, args.file, &args, true).peekable();
                 let mut generics = vec![];
                 while let Some(param) = matched_arg_iterator.next() {
                     let found = Self::infer_param(

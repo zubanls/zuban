@@ -570,9 +570,9 @@ D().b
 # With import
 # -----------------
 
-from import_tree.classes import Config2, BaseClass
+from import_tree.classes import Config2, BaseClass as BaseClass2
 
-class Config(BaseClass):
+class Config(BaseClass2):
     """#884"""
 
 #? import_tree.classes.Config2()
