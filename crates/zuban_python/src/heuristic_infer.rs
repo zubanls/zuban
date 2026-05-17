@@ -851,12 +851,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                 )
                                 .into_maybe_inferred()
                         {
-                            //let class_as_inferred = class.as_inferred(i_s);
                             out = self.execute(
                                 descriptor,
                                 ArgsFrame {
                                     call_site: NodeRef::new(file, primary_node_index),
-                                    kind: SavedArgsKind::Known(Type::ERROR, Type::ERROR),
+                                    kind: SavedArgsKind::Known(self_inf.clone(), Type::ERROR),
                                 },
                             );
                         }
