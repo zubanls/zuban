@@ -47,6 +47,23 @@ use crate::{
 // const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
+struct HeuristicState<'db> {
+    callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
+    call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
+    self_stack: Vec<Type>,
+}
+
+struct HeuristicInference<'db, 'state, 'i_s> {
+    state: &'state mut HeuristicState<'db>,
+    inference: Inference<'db, 'db, 'i_s>,
+}
+
+#[derive(Debug)]
+enum Heuristic {
+    WellKnown(Inferred),
+    Guess(Inferred),
+}
+
 #[derive(Debug, Copy, Clone)]
 enum SavedArgumentsDetails {
     None,
@@ -101,12 +118,6 @@ impl SavedArgumentsDetails {
     }
 }
 
-struct HeuristicState<'db> {
-    callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
-    call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
-    self_stack: Vec<Type>,
-}
-
 impl<'db> HeuristicState<'db> {
     fn find_call_stack_frame(&self, func_node_ref: FuncNodeRef) -> Option<&ArgsFrame<'db>> {
         let (_, args_frame) = self
@@ -115,17 +126,6 @@ impl<'db> HeuristicState<'db> {
             .find(|frame| frame.0 == func_node_ref)?;
         Some(args_frame)
     }
-}
-
-struct HeuristicInference<'db, 'state, 'i_s> {
-    state: &'state mut HeuristicState<'db>,
-    inference: Inference<'db, 'db, 'i_s>,
-}
-
-#[derive(Debug)]
-enum Heuristic {
-    WellKnown(Inferred),
-    Guess(Inferred),
 }
 
 impl From<Heuristic> for Inferred {
