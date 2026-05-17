@@ -45,17 +45,22 @@ use crate::{
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
 #[derive(Debug, Copy, Clone)]
-enum ArgumentsFrameKind {
+enum SavedArgumentsDetails {
     None,
     Arguments(NodeIndex),
     Comprehension(NodeIndex),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
+enum SavedArgsKind {
+    Simple(SavedArgumentsDetails),
+    Known(Vec<Type>),
+}
+
+#[derive(Debug)]
 struct ArgsFrame<'db> {
-    file: &'db PythonFile,
-    primary_node_index: NodeIndex,
-    kind: ArgumentsFrameKind,
+    call_site: NodeRef<'db>,
+    kind: SavedArgsKind,
 }
 
 impl<'db> ArgsFrame<'db> {
@@ -65,29 +70,30 @@ impl<'db> ArgsFrame<'db> {
         details: ArgumentsDetails,
     ) -> Self {
         Self {
-            file,
-            primary_node_index,
-            kind: match details {
-                ArgumentsDetails::None => ArgumentsFrameKind::None,
+            call_site: NodeRef::new(file, primary_node_index),
+            kind: SavedArgsKind::Simple(match details {
+                ArgumentsDetails::None => SavedArgumentsDetails::None,
                 ArgumentsDetails::Node(arguments) => {
-                    ArgumentsFrameKind::Arguments(arguments.index())
+                    SavedArgumentsDetails::Arguments(arguments.index())
                 }
                 ArgumentsDetails::Comprehension(comprehension) => {
-                    ArgumentsFrameKind::Comprehension(comprehension.index())
+                    SavedArgumentsDetails::Comprehension(comprehension.index())
                 }
-            },
+            }),
         }
     }
+}
 
-    fn as_details(&self) -> ArgumentsDetails<'db> {
-        match self.kind {
-            ArgumentsFrameKind::None => ArgumentsDetails::None,
-            ArgumentsFrameKind::Arguments(args_index) => {
-                ArgumentsDetails::Node(Arguments::by_index(&self.file.tree, args_index))
+impl SavedArgumentsDetails {
+    fn as_details<'db>(&self, file: &'db PythonFile) -> ArgumentsDetails<'db> {
+        match self {
+            SavedArgumentsDetails::None => ArgumentsDetails::None,
+            SavedArgumentsDetails::Arguments(args_index) => {
+                ArgumentsDetails::Node(Arguments::by_index(&file.tree, *args_index))
             }
-            ArgumentsFrameKind::Comprehension(comp_index) => ArgumentsDetails::Comprehension(
-                Comprehension::by_index(&self.file.tree, comp_index),
-            ),
+            SavedArgumentsDetails::Comprehension(comp_index) => {
+                ArgumentsDetails::Comprehension(Comprehension::by_index(&file.tree, *comp_index))
+            }
         }
     }
 }
@@ -202,13 +208,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         return None;
                     }
                     if let Some(args_frame) = self.state.find_call_stack_frame(func_node_ref) {
-                        let details = args_frame.as_details();
-                        let args = SimpleArgs::new(
-                            InferenceState::new(self.inference.i_s.db, args_frame.file),
-                            args_frame.file,
-                            args_frame.primary_node_index,
-                            details,
-                        );
                         let mut skip_first_param = false;
                         if func.class.is_some() {
                             match func.kind(self.inference.i_s) {
@@ -216,14 +215,25 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                 _ => skip_first_param = true,
                             }
                         }
-                        return Some(Heuristic::Guess(self.infer_param_with_args(
-                            &func,
-                            NodeRef::new(args_frame.file, args_frame.primary_node_index),
-                            &args,
-                            skip_first_param,
-                            name,
-                            false,
-                        )?));
+                        return Some(Heuristic::Guess(match &args_frame.kind {
+                            SavedArgsKind::Simple(simple) => {
+                                let args = SimpleArgs::new(
+                                    InferenceState::new(i_s.db, args_frame.call_site.file),
+                                    args_frame.call_site.file,
+                                    args_frame.call_site.node_index,
+                                    simple.as_details(args_frame.call_site.file),
+                                );
+                                self.infer_param_with_args(
+                                    &func,
+                                    args_frame.call_site,
+                                    &args,
+                                    skip_first_param,
+                                    name,
+                                    false,
+                                )?
+                            }
+                            SavedArgsKind::Known(items) => todo!(),
+                        }));
                     }
                     Some(Heuristic::Guess(
                         self.search_callable_arguments(func_node, name)?,
@@ -811,7 +821,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
                 out
             }
-            PrimaryContent::Execution(details) => self.execute(base, primary_node_index, details),
+            PrimaryContent::Execution(details) => {
+                let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
+                self.execute(base, primary_node_index, args_frame)
+            }
             PrimaryContent::GetItem(slice) => {
                 if let Heuristic::Guess(base) = base {
                     let inf = base.get_item(
@@ -836,7 +849,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         &mut self,
         base: Heuristic,
         primary_node_index: NodeIndex,
-        details: ArgumentsDetails,
+        args_frame: ArgsFrame<'db>,
     ) -> Option<Heuristic> {
         let base: Inferred = base.into();
         let db = self.inference.i_s.db;
@@ -866,6 +879,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 && let Some(func) = cls_node_ref.maybe_init_func()
             {
                 let i_s = *self.inference.i_s;
+                let details = match args_frame.kind {
+                    SavedArgsKind::Simple(details) => details.as_details(args_frame.call_site.file),
+                    SavedArgsKind::Known(_) => todo!(),
+                };
                 let args = SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
                 let func = Function::new_with_unknown_parent(
                     db,
@@ -955,7 +972,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
         let func = Function::new_with_unknown_parent(db, *func_node_ref);
 
-        let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
         self.state.call_stack.push((func_node_ref, args_frame));
         if let Some(bound) = bound_to {
             self.state.self_stack.push(bound.clone());
