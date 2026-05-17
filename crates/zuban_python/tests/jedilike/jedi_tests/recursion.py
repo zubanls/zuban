@@ -89,13 +89,11 @@ class A:
             x
 
 class B:
-    """ TODO reenable
     def a(self, b):
         for i in b:
             for i in self.a(i):
                 #?
                 yield i
-    """
 
 
 foo = int

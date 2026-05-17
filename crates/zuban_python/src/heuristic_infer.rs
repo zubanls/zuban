@@ -47,10 +47,12 @@ use crate::{
 // const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 
+#[derive(Default)]
 struct HeuristicState<'db> {
     callable_search_cache: FastHashMap<PointLink, Rc<[FoundExecution<'db>]>>,
     call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
     self_stack: Vec<Type>,
+    callable_search_stack: Vec<PointLink>,
 }
 
 struct HeuristicInference<'db, 'state, 'i_s> {
@@ -382,6 +384,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             }
             PointLink::new(self.inference.file.file_index, func_name.index())
         };
+        if self.state.callable_search_stack.contains(&wanted_link) {
+            debug!("Heuristics: Callable execution for {search_name} recursed");
+            return None;
+        }
 
         let entry = self.state.callable_search_cache.entry(wanted_link);
         // Cache the executions
@@ -404,7 +410,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             return Some(self.infer_expression(param.default()?).into());
         }
 
-        executions
+        self.state.callable_search_stack.push(wanted_link);
+        let result = executions
             .iter()
             .filter_map(|execution| {
                 let args = SimpleArgs::new(
@@ -432,7 +439,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             .reduce(|inf1, inf2| {
                 let i_s = &InferenceState::new_in_unknown_file(db);
                 Inferred::from_type(inf1.as_type(i_s).union(inf2.as_type(i_s)))
-            })
+            });
+        self.state.callable_search_stack.pop();
+        result
     }
 
     fn arg_param_iterator<'a>(
@@ -1212,11 +1221,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         let _indent = debug_indent();
         self.with_i_s(|i_s| {
             let mut heuristic = HeuristicInference {
-                state: &mut HeuristicState {
-                    callable_search_cache: Default::default(),
-                    call_stack: Default::default(),
-                    self_stack: Default::default(),
-                },
+                state: &mut HeuristicState::default(),
                 inference: self.file.inference(i_s),
             };
             match self.node {
