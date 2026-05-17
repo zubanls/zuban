@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
         // TODO work on these files
         ("completion.py", 5),
         ("context.py", 4),
-        ("docstring.py", 38),
+        ("docstring.py", 37),
         ("dynamic_params.py", 5),
         ("imports.py", 8),
         ("goto.py", 3),
@@ -64,8 +64,6 @@ lazy_static::lazy_static! {
         ("descriptors.py", 11),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),
-        ("complex.py", 1),
-        ("callable.py", 1),
 
     ]);
 }

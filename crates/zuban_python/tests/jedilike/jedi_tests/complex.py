@@ -22,8 +22,7 @@ def args_returner(*args):
 
 #? tuple()
 args_returner(1)[:]
-# zuban-diff #? int()
-#? 
+#? int()
 args_returner(1)[:][0]
 
 
