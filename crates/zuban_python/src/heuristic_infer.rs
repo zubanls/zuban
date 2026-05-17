@@ -956,13 +956,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn execute(&mut self, base: Inferred, args_frame: ArgsFrame<'db>) -> Option<Heuristic> {
         let db = self.inference.i_s.db;
         let mut bound_to = None;
-        let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
-            base.maybe_bound_method().map(|bound| {
-                bound_to = Some(&bound.instance);
-                // Bound methods are also "saved"
-                NodeRef::from_link(db, bound.func_link)
+        let Some(node_ref) = base
+            .maybe_saved_node_ref(db)
+            .or_else(|| {
+                base.maybe_bound_method().map(|bound| {
+                    bound_to = Some(&bound.instance);
+                    // Bound methods are also "saved"
+                    NodeRef::from_link(db, bound.func_link)
+                })
             })
-        }) else {
+            .or_else(|| {
+                let t = base.as_cow_type(self.inference.i_s);
+                if let Type::Callable(c) = &*t {
+                    return Some(NodeRef::from_link(db, c.defined_at));
+                }
+                None
+            })
+        else {
             debug!(
                 "Heuristics: Did not execute, because the base is not a saved NodeRef, but {}",
                 base.debug_info(db)

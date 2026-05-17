@@ -228,7 +228,7 @@ function_var_args(1)
 # method decorators
 # -----------------
 
-def dec2(f):
+def dec3(f):
     def wrapper(s):
         return f(s)
     return wrapper
@@ -238,15 +238,15 @@ class MethodDecorators():
     def __init__(self):
         self._method_var = ''
 
-    @dec2
+    @dec3
     def constant(self):
         return 1.0
 
-    @dec2
+    @dec3
     def class_var(self):
         return self._class_var
 
-    @dec2
+    @dec3
     def method_var(self):
         return self._method_var
 
@@ -265,7 +265,7 @@ class Base():
     @not_existing
     def b(self):
         return ''
-    @dec2
+    @dec3
     def c(self):
         return 1
 

@@ -28,15 +28,15 @@ lazy_static::lazy_static! {
         ("arrays.py", 10),
         ("async_.py", 4),
         ("basic.py", 13),
-        ("classes.py", 14),
+        ("classes.py", 13),
         ("comprehensions.py", 3),
         ("django.py", 3),
-        ("decorators.py", 13),
+        ("decorators.py", 9),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 9),
         ("fstring.py", 2),
-        ("functions.py", 3),
+        ("functions.py", 1),
         ("generators.py", 11),
         ("inheritance.py", 3),
         ("isinstance.py", 2),
@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
         ("pep0484_typing.py", 3),
         ("pep0484_decorators.py", 2),
         ("precedence.py", 7),
-        ("stdlib.py", 39),
+        ("stdlib.py", 38),
 
         // TODO work on these files
         ("completion.py", 5),
@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Regressions
-        ("descriptors.py", 11),
+        ("descriptors.py", 8),
         ("dynamic_arrays.py", 13),
 
     ]);
