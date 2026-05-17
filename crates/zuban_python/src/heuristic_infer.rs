@@ -4,8 +4,8 @@ use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef,
     GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
-    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarExpressionsIterator,
-    StarLikeExpression, Target, TypeLike,
+    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression, Target,
+    TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -57,7 +57,7 @@ enum SavedArgumentsDetails {
 #[derive(Debug, Clone)]
 enum SavedArgsKind {
     Simple(SavedArgumentsDetails),
-    Known(Vec<Type>),
+    Known(Type, Type),
 }
 
 #[derive(Debug)]
@@ -241,23 +241,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                     false,
                                 )?
                             }
-                            SavedArgsKind::Known(items) => {
-                                /*
-                                out = (Some(inf.execute(
-                                    self.inference.i_s,
-                                    &CombinedArgs::new(
-                                        &KnownArgsWithCustomAddIssue::new(
-                                            &Inferred::new_none(),
-                                            &|_| false,
-                                        ),
-                                        &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &|_| {
-                                            false
-                                        }),
+                            SavedArgsKind::Known(first, second) => self.infer_param_with_args(
+                                &func,
+                                args_frame.call_site,
+                                &CombinedArgs::new(
+                                    &KnownArgsWithCustomAddIssue::new(
+                                        &Inferred::from_type(first.clone()),
+                                        &|_| false,
                                     ),
-                                )));
-                                */
-                                todo!()
-                            }
+                                    &KnownArgsWithCustomAddIssue::new(
+                                        &Inferred::from_type(second.clone()),
+                                        &|_| false,
+                                    ),
+                                ),
+                                skip_first_param,
+                                name,
+                                false,
+                            )?,
                         }));
                     }
                     Some(Heuristic::Guess(
@@ -856,7 +856,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                 descriptor,
                                 ArgsFrame {
                                     call_site: NodeRef::new(file, primary_node_index),
-                                    kind: SavedArgsKind::Known(vec![Type::ERROR, Type::ERROR]),
+                                    kind: SavedArgsKind::Known(Type::ERROR, Type::ERROR),
                                 },
                             );
                         }
@@ -926,7 +926,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 let i_s = *self.inference.i_s;
                 let details = match args_frame.kind {
                     SavedArgsKind::Simple(details) => details.as_details(args_frame.call_site.file),
-                    SavedArgsKind::Known(_) => todo!(),
+                    SavedArgsKind::Known(_, _) => return None,
                 };
                 let args = SimpleArgs::new(
                     i_s,

@@ -47,6 +47,29 @@ m.just_a_method
 #? []
 C.just_a_method
 
+# Added only for Zuban
+
+class Intermediate(object):
+    def __init__(self, val):
+        self.val = val
+
+    def __get__(self, obj, objtype):
+        return (self.val, obj.for_descriptor)
+
+class C2(object):
+    x = Intermediate(10)
+    def __init__(self, for_descriptor):
+        self.for_descriptor = for_descriptor
+
+n = C2("")
+#? tuple()
+n.x
+#? int()
+n.x[0]
+##? str()
+n.x[1]
+
+
 # -----------------
 # properties
 # -----------------
