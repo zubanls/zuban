@@ -32,8 +32,7 @@ b = [6,7]
 #? int()
 b[8-7]
 # Something unreasonable:
-# zuban-diff: #? int()
-#?
+#? int()
 b['']
 
 # -----------------
@@ -47,22 +46,21 @@ b[int():]
 
 #? list()
 b[:]
-# zuban-diff: (including all below) #? int()
-#?
+#? int()
 b[:, :-1]
 
 #? 3
 b[:]
 
-#?
+#? int()
 b[:, 1]
-#?
+#? int()
 b[:1, 1]
-#?
+#? int()
 b[1:1, 1]
-#?
+#? int()
 b[1:1:, ...]
-#?
+#? int()
 b[1:1:5, ...]
 
 class _StrangeSlice():

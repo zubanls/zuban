@@ -876,12 +876,26 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 self.execute(base.into(), args_frame)
             }
             PrimaryContent::GetItem(slice) => {
+                let i_s = self.inference.i_s;
+                let t = base.as_inferred().as_cow_type(self.inference.i_s);
+                let slice_type = SliceType::new(self.inference.file, primary_node_index, slice);
+                // List indexing for non-slices should not cause Any
+                if let Type::Class(c) = t.as_ref()
+                    && c.link == i_s.db.python_state.list_link()
+                    && let slice_inf = slice_type.infer(i_s)
+                    && !matches!(
+                        slice_inf.as_cow_type(i_s).as_ref(),
+                        Type::Class(slice_c) if slice_c.link != i_s.db.python_state.slice_link()
+                    )
+                {
+                    return Some(Heuristic::Guess(Inferred::from_type(
+                        c.class(i_s.db).nth_type_argument(i_s.db, 0),
+                    )));
+                }
+                // slice_type.infer(i_s)
                 if let Heuristic::Guess(base) = base {
-                    let inf = base.get_item(
-                        self.inference.i_s,
-                        &SliceType::new(self.inference.file, primary_node_index, slice),
-                        &mut ResultContext::Unknown,
-                    );
+                    let inf =
+                        base.get_item(self.inference.i_s, &slice_type, &mut ResultContext::Unknown);
                     debug!(
                         "Heuristics: Getitem on {}, result: {}",
                         base.format_short(self.inference.i_s),

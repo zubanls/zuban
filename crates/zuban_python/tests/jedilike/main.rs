@@ -41,7 +41,6 @@ lazy_static::lazy_static! {
         ("inheritance.py", 3),
         ("isinstance.py", 2),
         ("lambdas.py", 19),
-        ("list.py", 1),
         ("ordering.py", 3),
         ("pep0484_typing.py", 3),
         ("pep0484_decorators.py", 2),
