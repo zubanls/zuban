@@ -25,11 +25,11 @@ pub struct Filter {
 
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
-        ("arrays.py", 11),
+        ("arrays.py", 10),
         ("async_.py", 4),
         ("basic.py", 13),
         ("classes.py", 14),
-        ("comprehensions.py", 4),
+        ("comprehensions.py", 3),
         ("django.py", 3),
         ("decorators.py", 24),
         ("descriptors.py", 2),
@@ -62,7 +62,6 @@ lazy_static::lazy_static! {
         // Regressions
         ("descriptors.py", 11),
         ("dynamic_arrays.py", 13),
-        ("pep0484_generic_passthroughs.py", 2),
 
     ]);
 }

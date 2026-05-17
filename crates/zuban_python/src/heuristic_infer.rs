@@ -2,10 +2,10 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
-    AtomContent, Comprehension, Expression, ExpressionContent, ExpressionPart, FunctionDef,
-    GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
-    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression, Target,
-    TypeLike,
+    AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
+    FunctionDef, GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent,
+    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
+    StarLikeExpression, Target, TypeLike,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -32,8 +32,8 @@ use crate::{
     result_context::ResultContext,
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
-        GenericsList, IterCause, LookupResult, Tuple, Type, TypedDict, TypedDictGenerics,
-        TypedDictMember, TypedDictMembers,
+        GenericsList, IterCause, IterInfos, LookupResult, Tuple, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, Function, FunctionParam},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -267,25 +267,42 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 TypeLike::Assignment(assignment) => {
                     if let AssignmentContent::Normal(targets, right_side) = assignment.unpack() {
                         for target in targets {
-                            match target {
-                                Target::Name(name_def) | Target::NameExpression(_, name_def) => {
-                                    if name_def.name_index() == name.index() {
-                                        return match right_side {
-                                            AssignmentRightSide::YieldExpr(_) => None,
-                                            AssignmentRightSide::StarExpressions(star_exprs) => {
-                                                Some(self.infer_star_exprs(star_exprs)?.into())
-                                            }
-                                        };
+                            if let result @ Some(_) =
+                                self.assign_target_for_name(target, name, |h| match right_side {
+                                    AssignmentRightSide::YieldExpr(_) => None,
+                                    AssignmentRightSide::StarExpressions(star_exprs) => {
+                                        Some(h.infer_star_exprs(star_exprs)?.into())
                                     }
-                                }
-                                Target::Tuple(_) => (), // TODO
-                                _ => (),
+                                })
+                            {
+                                return result;
                             }
                         }
                     }
                     None
                 }
-                _ => None,
+                _ => {
+                    if let DefiningStmt::ForStmt(for_stmt) = name_def.expect_defining_stmt() {
+                        let (star_target, star_exprs, _, _) = for_stmt.unpack();
+                        self.assign_target_for_name(star_target.as_target(), name, |h| {
+                            let inf: Inferred = h.infer_star_exprs(star_exprs)?.into();
+                            Some(Heuristic::Guess(
+                                inf.as_cow_type(h.inference.i_s)
+                                    .iter(
+                                        h.inference.i_s,
+                                        IterInfos::new(
+                                            NodeRef::new(h.inference.file, star_exprs.index()),
+                                            IterCause::AssignmentUnpack,
+                                            &|_| false,
+                                        ),
+                                    )
+                                    .infer_all(h.inference.i_s),
+                            ))
+                        })
+                    } else {
+                        None
+                    }
+                }
             },
             NameParent::Primary(primary) => Some(self.infer_primary(primary)),
             /*
@@ -294,6 +311,24 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             NameParent::DottedPatternName(dotted_pattern_name) => (),
             NameParent::FStringConversion(fstring_conversion) => (),
             */
+            _ => None,
+        }
+    }
+
+    fn assign_target_for_name(
+        &mut self,
+        target: Target,
+        search_name: Name,
+        infer: impl FnOnce(&mut Self) -> Option<Heuristic>,
+    ) -> Option<Heuristic> {
+        match target {
+            Target::Name(name_def) | Target::NameExpression(_, name_def) => {
+                if name_def.name_index() == search_name.index() {
+                    return infer(self);
+                }
+                None
+            }
+            Target::Tuple(_) => None, // TODO
             _ => None,
         }
     }

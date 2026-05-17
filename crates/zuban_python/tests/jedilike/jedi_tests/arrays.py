@@ -76,7 +76,7 @@ for x in b[:]:
     x
 
 for x in b[:, :-1]:
-    #?
+    #? int()
     x
 
 class Foo:
@@ -512,26 +512,26 @@ tuple({1})[0]
 # PEP 3132 Extended Iterable Unpacking (star unpacking)
 # -----------------
 
-a, *b, c = [1, 'b', list, dict]
+a8, *b8, c8 = [1, 'b', list, dict]
 #? str() int() dict list
-a
+a8
 # zuban-diff: #?
 #? list()
-b
+b8
 #? str() int() list dict
-c
+c8
 
 # Not valid syntax
-a, *b, *c = [1, 'd', list]
+a9, *b9, *c9 = [1, 'd', list]
 # zuban-diff: #? int()
 #?
-a
+a9
 # zuban-diff: #?
 #? list()
-b
+b9
 # zuban-diff: #?
 #? list()
-c
+c9
 
 lc = [x for a, *x in [(1, '', 1.0)]]
 
