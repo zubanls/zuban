@@ -31,7 +31,7 @@ lazy_static::lazy_static! {
         ("classes.py", 14),
         ("comprehensions.py", 3),
         ("django.py", 3),
-        ("decorators.py", 24),
+        ("decorators.py", 13),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
         ("flow_analysis.py", 9),
