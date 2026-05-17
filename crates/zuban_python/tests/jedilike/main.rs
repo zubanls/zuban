@@ -28,9 +28,9 @@ lazy_static::lazy_static! {
         ("arrays.py", 31),
         ("async_.py", 4),
         ("basic.py", 13),
-        ("classes.py", 16),
+        ("classes.py", 14),
         ("comprehensions.py", 4),
-        ("django.py", 8),
+        ("django.py", 3),
         ("decorators.py", 24),
         ("descriptors.py", 2),
         ("dynamic_arrays.py", 7),
@@ -61,7 +61,7 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Regressions
-        ("descriptors.py", 12),
+        ("descriptors.py", 11),
         ("dynamic_arrays.py", 13),
         ("pep0484_generic_passthroughs.py", 2),
         ("complex.py", 1),

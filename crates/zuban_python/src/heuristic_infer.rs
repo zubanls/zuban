@@ -11,7 +11,10 @@ use regex::{Matches, Regex};
 use utils::FastHashMap;
 
 use crate::{
-    arguments::{ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, SimpleArgs, unpack_star_star},
+    arguments::{
+        ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
+        KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
+    },
     database::{Database, PointKind, PointLink},
     debug,
     file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
@@ -144,6 +147,12 @@ impl Heuristic {
             Self::Guess(inf) => Some(inf),
         }
     }
+
+    fn as_inferred(&self) -> &Inferred {
+        match self {
+            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => inf,
+        }
+    }
 }
 
 impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
@@ -232,7 +241,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                     false,
                                 )?
                             }
-                            SavedArgsKind::Known(items) => todo!(),
+                            SavedArgsKind::Known(items) => {
+                                /*
+                                out = (Some(inf.execute(
+                                    self.inference.i_s,
+                                    &CombinedArgs::new(
+                                        &KnownArgsWithCustomAddIssue::new(
+                                            &Inferred::new_none(),
+                                            &|_| false,
+                                        ),
+                                        &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &|_| {
+                                            false
+                                        }),
+                                    ),
+                                )));
+                                */
+                                todo!()
+                            }
                         }));
                     }
                     Some(Heuristic::Guess(
@@ -786,9 +811,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     self.state.self_stack.push(t.clone());
                     added_to_stack = true;
                 }
+                let file = self.inference.file;
                 let result = base_t.lookup(
                     self.inference.i_s,
-                    self.inference.file,
+                    file,
                     attr_name.as_code(),
                     LookupKind::Normal,
                     &mut ResultContext::Unknown,
@@ -800,18 +826,43 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
                     let new_name = directed_to.expect_name();
                     // Should always be a NameDef
-                    out = if let Type::Class(c) = base_t.as_ref() {
-                        self.with_different_i_s(
+                    if let Type::Class(c) = base_t.as_ref() {
+                        out = self.with_different_i_s(
                             InferenceState::from_class(
                                 self.inference.i_s.db,
                                 &c.class(self.inference.i_s.db),
                             ),
                             directed_to.file,
                             |h| h.infer_name(new_name),
-                        )
+                        );
+                        if let Some(known) = &out
+                            && let Some(self_inf) = self.state.self_stack.last()
+                            && let Some(descriptor) = known
+                                .as_inferred()
+                                .as_cow_type(self.inference.i_s)
+                                .lookup(
+                                    self.inference.i_s,
+                                    file,
+                                    "__get__",
+                                    LookupKind::OnlyType,
+                                    &mut ResultContext::Unknown,
+                                    &|_| false,
+                                    &|_| (),
+                                )
+                                .into_maybe_inferred()
+                        {
+                            //let class_as_inferred = class.as_inferred(i_s);
+                            out = self.execute(
+                                descriptor,
+                                ArgsFrame {
+                                    call_site: NodeRef::new(file, primary_node_index),
+                                    kind: SavedArgsKind::Known(vec![Type::ERROR, Type::ERROR]),
+                                },
+                            );
+                        }
                     } else {
-                        self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
-                    };
+                        out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
+                    }
                 }
                 if added_to_stack {
                     self.state.self_stack.pop();
@@ -823,7 +874,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             }
             PrimaryContent::Execution(details) => {
                 let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
-                self.execute(base, primary_node_index, args_frame)
+                self.execute(base.into(), args_frame)
             }
             PrimaryContent::GetItem(slice) => {
                 if let Heuristic::Guess(base) = base {
@@ -845,13 +896,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn execute(
-        &mut self,
-        base: Heuristic,
-        primary_node_index: NodeIndex,
-        args_frame: ArgsFrame<'db>,
-    ) -> Option<Heuristic> {
-        let base: Inferred = base.into();
+    fn execute(&mut self, base: Inferred, args_frame: ArgsFrame<'db>) -> Option<Heuristic> {
         let db = self.inference.i_s.db;
         let mut bound_to = None;
         let Some(node_ref) = base.maybe_saved_node_ref(db).or_else(|| {
@@ -883,7 +928,12 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     SavedArgsKind::Simple(details) => details.as_details(args_frame.call_site.file),
                     SavedArgsKind::Known(_) => todo!(),
                 };
-                let args = SimpleArgs::new(i_s, self.inference.file, primary_node_index, details);
+                let args = SimpleArgs::new(
+                    i_s,
+                    args_frame.call_site.file,
+                    args_frame.call_site.node_index,
+                    details,
+                );
                 let func = Function::new_with_unknown_parent(
                     db,
                     NodeRef::new(node_ref.file, func.index()),
@@ -897,7 +947,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     let found = Self::infer_param(
                         db,
                         slf,
-                        NodeRef::new(args.file, primary_node_index),
+                        args_frame.call_site,
                         param,
                         matched_arg_iterator.by_ref(),
                         false,
