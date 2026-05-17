@@ -79,7 +79,7 @@ Xt = type('Xt', (object,), dict(a=1))
 # Doesn't work yet.
 #?
 Xt.a
-#?
+#? type()
 Xt
 
 if os.path.isfile():
@@ -322,7 +322,7 @@ class F():
         cls.my_variable
         #? ['my_method', 'my_method_without_call']
         cls.my_meth
-        #?
+        #? str()
         return param
 
 #? str()
