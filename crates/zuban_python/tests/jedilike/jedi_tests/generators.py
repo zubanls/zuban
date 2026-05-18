@@ -125,7 +125,6 @@ class Counter:
 
 
 for c in Counter(3, 8):
-    reveal_type(c)
     #? int()
     print c
 
@@ -288,9 +287,9 @@ def test_in_brackets():
     #? float()
     x
 
-    generator = (1 for 1 in [1])
+    generator = (1 for _ in [1])
     x = yield from generator
-    #? None
+    #? types.NoneType()
     x
     x = yield from 1
     #?
