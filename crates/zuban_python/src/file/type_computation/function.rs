@@ -7,7 +7,10 @@ use parsa_python_cst::{
 use utils::FastHashSet;
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
+    database::{
+        ComplexPoint, Database, Locality, OverloadDefinition, ParentScope, Point, PointLink,
+        Specific,
+    },
     diagnostics::{Issue, IssueKind},
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
@@ -416,6 +419,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             self.add_issue_for_declaration(i_s, IssueKind::UnboundTypeVarLike { type_var_like });
         }
         (type_vars, type_guard, star_annotation)
+    }
+
+    pub fn maybe_overload(&self) -> Option<&'file OverloadDefinition> {
+        if let ComplexPoint::FunctionOverload(overload) = self.maybe_complex()? {
+            Some(overload)
+        } else {
+            None
+        }
     }
 
     pub fn return_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {

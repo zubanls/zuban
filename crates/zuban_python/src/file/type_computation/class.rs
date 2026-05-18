@@ -2343,7 +2343,7 @@ fn maybe_dataclass_transform_func(
     Function::new_with_unknown_parent(db, *func)
         .ensure_cached_func(&InferenceState::new(db, func.file));
     debug_assert!(func.point().calculated());
-    if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
+    if let Some(overload) = func.maybe_overload() {
         overload.dataclass_transform.clone()
     } else {
         for decorator in decorated.decorators().iter() {

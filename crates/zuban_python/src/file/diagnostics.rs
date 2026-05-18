@@ -1339,7 +1339,7 @@ impl Inference<'_, '_, '_> {
         Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func_from_diagnostics(i_s);
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
+        if let Some(overload) = func_node_ref.maybe_overload() {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
@@ -1501,7 +1501,7 @@ impl Inference<'_, '_, '_> {
         let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
 
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
+        if let Some(o) = function.maybe_overload() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
                 let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {

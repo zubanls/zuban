@@ -724,7 +724,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             _ => {
                 if let Some(original_func) = self.original_func_for_overload() {
-                    if let Some(ComplexPoint::FunctionOverload(o)) = original_func.maybe_complex() {
+                    if let Some(o) = original_func.maybe_overload() {
                         for c in o.functions.iter_functions() {
                             if c.defined_at == self.node_ref.as_link() {
                                 return c.kind.clone();
@@ -736,7 +736,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             return implementation.callable.kind.clone();
                         }
                     }
-                    Function::new(original_func, self.class).kind(i_s)
+                    Function::new(*original_func, self.class).kind(i_s)
                 } else {
                     FunctionKind::Function {
                         had_first_self_or_class_annotation,
@@ -746,7 +746,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn original_func_for_overload(&self) -> Option<NodeRef<'a>> {
+    pub fn original_func_for_overload(&self) -> Option<FuncNodeRef<'a>> {
         let is_ov_unreachable =
             |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
         if is_ov_unreachable(self.node_ref.point()) {
@@ -764,7 +764,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
             debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
-            Some(NodeRef::new(self.node_ref.file, pre_unreachable))
+            Some(FuncNodeRef::new(self.node_ref.file, pre_unreachable))
         } else {
             None
         }
@@ -1454,8 +1454,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && let Some(first_index) =
                 first_defined_name_of_multi_def(file, self.node().name().index())
             && let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function()
-            && let Some(ComplexPoint::FunctionOverload(o)) =
-                NodeRef::new(self.node_ref.file, func.index()).maybe_complex()
+            && let Some(o) = FuncNodeRef::new(self.node_ref.file, func.index()).maybe_overload()
         {
             return Some(o);
         }
