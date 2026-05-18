@@ -137,14 +137,14 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
         let db = self.infos.db;
         match &self.infos.node.node {
             CompletionNode::Attribute { base } => {
-                let inf = self.infos.infer_primary_or_atom(*base);
+                let inf = self.infos.infer_primary_or_atom_with_heuristics(*base);
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global { context } => {
                 match context {
                     Some(CompletionContext::PrimaryCall { base, args }) => {
                         self.add_keyword_param_completions(
-                            self.infos.infer_primary_or_atom(*base),
+                            self.infos.infer_primary_or_atom_with_heuristics(*base),
                             *args,
                         );
                     }

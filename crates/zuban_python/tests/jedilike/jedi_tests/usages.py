@@ -263,8 +263,7 @@ class DynamicParam():
         return
 
 def check(instance):
-    # zuban-diff: #< 13 (-5,8), (0,13)
-    #< 13
+    #< 13 (-5,8), (0,13)
     instance.foo()
 
 check(DynamicParam())

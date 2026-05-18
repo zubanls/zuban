@@ -44,7 +44,7 @@ lazy_static::lazy_static! {
         ("pep0484_typing.py", 3),
         ("pep0484_decorators.py", 2),
         ("precedence.py", 7),
-        ("stdlib.py", 38),
+        ("stdlib.py", 37),
 
         // TODO work on these files
         ("completion.py", 5),

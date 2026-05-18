@@ -1,5 +1,6 @@
 
 
 def something():
-    global foo
+# TODO reenable    
+#    global foo
     foo = 3

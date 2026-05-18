@@ -1278,6 +1278,21 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 }
 
+pub fn infer_heuristics_if_necessary(
+    i_s: &InferenceState,
+    inferred: Inferred,
+    generate_heuristics: impl FnOnce() -> Option<Inferred>,
+) -> Inferred {
+    let t = inferred.as_cow_type(i_s);
+    if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
+        if let Some(found) = generate_heuristics() {
+            without_any.union_in_place(found.as_type(i_s));
+            return Inferred::from_type(without_any);
+        }
+    }
+    inferred
+}
+
 impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     pub fn infer_heuristics_if_possible(&self) -> Option<Inferred> {
         debug!("Try to find heuristics");
@@ -1299,6 +1314,24 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 _ => return None,
             }
             .maybe_guessed()
+        })
+    }
+}
+
+impl<'db, T> PositionalDocument<'db, T> {
+    pub fn infer_primary_or_atom_with_heuristics(&self, p_or_a: PrimaryOrAtom) -> Inferred {
+        let inf = match p_or_a {
+            PrimaryOrAtom::Primary(p) => self.infer_primary(p),
+            PrimaryOrAtom::Atom(a) => self.infer_atom(a),
+        };
+        self.with_i_s(|i_s| {
+            infer_heuristics_if_necessary(i_s, inf, || {
+                let mut heuristic = HeuristicInference {
+                    state: &mut HeuristicState::default(),
+                    inference: self.file.inference(i_s),
+                };
+                Some(heuristic.infer_primary_or_atom(p_or_a).into())
+            })
         })
     }
 }

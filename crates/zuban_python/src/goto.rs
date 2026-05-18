@@ -8,7 +8,7 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 use parsa_python_cst::{
     Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
     Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
+    PrimaryContent, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
@@ -23,6 +23,7 @@ use crate::{
         expect_class_or_simple_generic, first_defined_name,
     },
     format_data::FormatData,
+    heuristic_infer::infer_heuristics_if_necessary,
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
     matching::LookupKind,
@@ -101,20 +102,6 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         )
     }
 
-    fn infer_heuristics_if_necessary(
-        &self,
-        i_s: &InferenceState,
-        inferred: &Inferred,
-    ) -> Option<Inferred> {
-        let t = inferred.as_cow_type(i_s);
-        if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
-            let found = self.infer_heuristics_if_possible()?;
-            without_any.union_in_place(found.as_type(i_s));
-            return Some(Inferred::from_type(without_any));
-        }
-        None
-    }
-
     fn infer_position_maybe_with_heuristics(
         &self,
         i_s: &InferenceState,
@@ -124,8 +111,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             return self.infer_position(i_s);
         }
         let inferred = self.infer_position(i_s)?;
-        self.infer_heuristics_if_necessary(i_s, &inferred)
-            .or(Some(inferred))
+        Some(infer_heuristics_if_necessary(i_s, inferred, || {
+            self.infer_heuristics_if_possible()
+        }))
     }
 
     fn infer_position(&self, i_s: &InferenceState) -> Option<Inferred> {
@@ -286,13 +274,6 @@ impl<'db, T> PositionalDocument<'db, T> {
             import_result.into_inferred(self.db)
         } else {
             Inferred::new_any_from_error()
-        }
-    }
-
-    pub fn infer_primary_or_atom(&self, p_or_a: PrimaryOrAtom) -> Inferred {
-        match p_or_a {
-            PrimaryOrAtom::Primary(p) => self.infer_primary(p),
-            PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
 
@@ -550,7 +531,9 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             GotoNode::Name(name) => lookup_on_name(name),
             GotoNode::Primary(primary) => match primary.second() {
                 PrimaryContent::Attribute(name) => lookup_on_name(name).or_else(|| {
-                    let base = self.infos.infer_primary_or_atom(primary.first());
+                    let base = self
+                        .infos
+                        .infer_primary_or_atom_with_heuristics(primary.first());
                     self.goto_primary_attr(base, name.as_code(), follow_imports)
                 }),
                 _ => None,
