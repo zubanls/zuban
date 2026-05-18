@@ -126,6 +126,7 @@ class Counter:
 
 
 for c in Counter(3, 8):
+    reveal_type(c)
     #? int()
     print c
 
@@ -208,35 +209,35 @@ gen()()
 # empty yield
 # -----------------
 
-def x():
+def x2():
     yield
 
-#? None
-next(x())
-#? gen()
-x()
+#? types.NoneType()
+next(x2())
+#? typing.Generator()
+x2()
 
-def x():
+def x3():
     for i in range(3):
         yield
 
-#? None
-next(x())
+#? types.NoneType()
+next(x3())
 
 # -----------------
 # yield in expression
 # -----------------
 
-def x():
+def x4():
      a= [(yield 1)]
 
 #? int()
-next(x())
+next(x4())
 
 # -----------------
 # statements
 # -----------------
-def x():
+def x5():
     foo = yield
     #?
     foo
@@ -256,10 +257,10 @@ def yield_from_multiple():
     yield str()
     return 2.0
 
-x, y = yield_from_multiple()
+x6, y6 = yield_from_multiple()
 # zuban-diff: #? int()
 #? int() str()
-x
+x6
 # zuban-diff: #? str()
 #? int() str()
 y
@@ -270,17 +271,17 @@ def test_nested():
     x
     yield x
 
-x, y, z = test_nested()
+x7, y7, z7 = test_nested()
 # zuban-diff: #? int()
 #? float() int() str()
-x
+x7
 # zuban-diff: #? str()
 #? float() int() str()
-y
+y7
 # For whatever reason this is currently empty
 # zuban-diff: #? float()
 #? float() int() str()
-z
+z7
 
 
 def test_in_brackets():
@@ -296,7 +297,7 @@ def test_in_brackets():
     #?
     x
     x = yield from [1]
-    #? None
+    #? types.NoneType()
     x
 
 

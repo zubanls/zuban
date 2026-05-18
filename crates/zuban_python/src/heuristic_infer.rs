@@ -5,7 +5,7 @@ use parsa_python_cst::{
     AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
     FunctionDef, GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent,
     PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
-    StarLikeExpression, Target, TypeLike,
+    StarLikeExpression, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -26,7 +26,8 @@ use crate::{
     },
     inference_state::{InferenceState, Mode},
     inferred::Inferred,
-    matching::{Generics, IteratorContent, LookupKind},
+    matching::{Generics, IteratorContent, LookupKind, OnTypeError},
+    new_class,
     node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
@@ -35,7 +36,7 @@ use crate::{
         GenericsList, IterCause, IterInfos, LookupResult, Tuple, Type, TypedDict,
         TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
-    type_helpers::{Class, Function, FunctionParam},
+    type_helpers::{Class, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
 };
 
@@ -1075,9 +1076,27 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             let ret = func_node_ref.return_annotation_type(i_s);
             if !ret.is_any_or_any_in_union(db) {
                 debug!(
-                    "Heuristics: Did not execute, because the function has \
-                                an annotation without an explicit Any"
+                    "Heuristics: Did not execute {}, because the function has \
+                                an annotation without an explicit Any",
+                    func_node_ref.qualified_name(db)
                 );
+                // Dealing with simple overloads like next(<single-arg>)
+                if let Some(overload) = func_node_ref.maybe_overload()
+                    && let Some(args) = args_frame.maybe_simple_args(i_s)
+                    && let Some(arg) = args.maybe_single_arg(i_s)
+                    && let ArgKind::Positional(positional) = &arg.kind
+                    && bound_to.is_none()
+                {
+                    let inf = self.infer_expression(positional.named_expr.expression());
+                    return Some(Heuristic::Guess(
+                        OverloadedFunction::new(&overload.functions, None).execute(
+                            i_s,
+                            &KnownArgsWithCustomAddIssue::new(&inf.into(), &|_| false),
+                            &mut ResultContext::Unknown,
+                            OnTypeError::new(&|_, _, _, _| ()),
+                        ),
+                    ));
+                }
                 return None;
             }
             if ret.has_type_vars() {
@@ -1087,10 +1106,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 );
                 return None;
             }
-        }
-        if func_node_ref.is_generator() {
-            debug!("Heuristics: TODO Did not execute, because the function is a generator");
-            return None; // TODO make generators possible
         }
         if self.state.find_call_stack_frame(func_node_ref).is_some() {
             debug!(
@@ -1133,8 +1148,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Type> {
+        let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
-        let mut result_t = Type::NEVER;
+        let mut return_t = Type::NEVER;
+        let mut yield_t = Type::NEVER;
         for ret_or_yield in func_node_ref.iter_return_or_yield() {
             match ret_or_yield {
                 ReturnOrYield::Return(return_stmt) => {
@@ -1152,12 +1169,36 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         }
                         None => Inferred::new_none(),
                     };
-                    result_t.union_in_place(inferred.into_type(self.inference.i_s))
+                    return_t.union_in_place(inferred.into_type(self.inference.i_s))
                 }
-                ReturnOrYield::Yield(_yield_expr) => todo!(),
+                ReturnOrYield::Yield(yield_expr) => {
+                    let t = match yield_expr.unpack() {
+                        YieldExprContent::StarExpressions(star_exprs) => {
+                            if let Some(h) = self.infer_star_exprs(star_exprs) {
+                                let inf: Inferred = h.into();
+                                inf.into_type(self.inference.i_s)
+                            } else {
+                                continue;
+                            }
+                        }
+                        // TODO yield from
+                        YieldExprContent::YieldFrom(_) => return None,
+                        YieldExprContent::None => Type::None,
+                    };
+                    yield_t.union_in_place(t)
+                }
             }
         }
-        Some(result_t)
+        Some(if is_generator {
+            new_class!(
+                self.inference.i_s.db.python_state.generator_link(),
+                yield_t,
+                Type::ERROR,
+                return_t
+            )
+        } else {
+            return_t
+        })
     }
 
     fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic> {

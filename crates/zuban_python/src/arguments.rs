@@ -104,16 +104,21 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         ))
     }
 
-    fn maybe_single_positional_arg(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        context: &mut ResultContext,
-    ) -> Option<Inferred> {
+    fn maybe_single_arg<'x>(&'x self, i_s: &InferenceState<'db, 'x>) -> Option<Arg<'db, 'x>> {
         let mut iterator = self.iter(i_s.mode);
         let first = iterator.next()?;
         if iterator.next().is_some() {
             return None;
         }
+        Some(first)
+    }
+
+    fn maybe_single_positional_arg(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        let first = self.maybe_single_arg(i_s)?;
         first.maybe_positional_arg(i_s, context)
     }
 
