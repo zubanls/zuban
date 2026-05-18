@@ -37,7 +37,7 @@ lazy_static::lazy_static! {
         ("flow_analysis.py", 9),
         ("fstring.py", 2),
         ("functions.py", 1),
-        ("generators.py", 5),
+        ("generators.py", 3),
         ("inheritance.py", 3),
         ("isinstance.py", 2),
         ("lambdas.py", 19),

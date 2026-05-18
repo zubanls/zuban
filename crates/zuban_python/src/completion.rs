@@ -627,6 +627,17 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                     let tup_cls = db.python_state.tuple_class_with_generics_to_be_defined();
                     self.add_class_symbols(tup_cls, is_instance)
                 }
+                Type::Callable(_) => {
+                    const CALL: &str = "__call__";
+                    if self.maybe_add(CALL) {
+                        if let Some(result) =
+                            (self.on_result)(self.replace_range, &FixedStringField(CALL.into()))
+                        {
+                            self.items
+                                .push((CompletionSortPriority::Dunder(CALL), result))
+                        }
+                    }
+                }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");
                 }
