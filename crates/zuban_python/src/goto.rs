@@ -909,7 +909,17 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
             )
             .unwrap(),
             GotoGoal::Indifferent,
-            |n: Name<'db, '_>| follow_goto_if_necessary(n, on_name),
+            |n: Name<'db, '_>| {
+                if let Name::TreeName(new) = n
+                    && let Name::TreeName(old) = n
+                    && new.cst_name.index() == old.cst_name.index()
+                    && new.file.file_index == old.file.file_index
+                {
+                    on_name(n)
+                } else {
+                    follow_goto_if_necessary(n, on_name)
+                }
+            },
         )
         .goto_name(false);
     };

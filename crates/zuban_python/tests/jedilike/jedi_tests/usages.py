@@ -363,6 +363,11 @@ class DefinitelyNotGlobal:
         def my_global(self):
             pass
 
+
+def check_global_without_global_definition():
+    #< (0, 11)
+    global my_global2
+
 # -----------------
 # stubs
 # -----------------
