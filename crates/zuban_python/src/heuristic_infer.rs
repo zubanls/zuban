@@ -104,6 +104,25 @@ impl<'db> ArgsFrame<'db> {
             }),
         }
     }
+
+    fn maybe_simple_args<'a>(
+        &self,
+        i_s: &InferenceState<'db, 'a>,
+    ) -> Option<SimpleArgs<'db, 'db, 'a>>
+    where
+        'db: 'a,
+    {
+        let details = match self.kind {
+            SavedArgsKind::Simple(details) => details.as_details(self.call_site.file),
+            SavedArgsKind::Known(_, _) => return None,
+        };
+        Some(SimpleArgs::new(
+            *i_s,
+            self.call_site.file,
+            self.call_site.node_index,
+            details,
+        ))
+    }
 }
 
 impl SavedArgumentsDetails {
@@ -227,13 +246,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             }
                         }
                         return Some(Heuristic::Guess(match &args_frame.kind {
-                            SavedArgsKind::Simple(simple) => {
-                                let args = SimpleArgs::new(
-                                    InferenceState::new(i_s.db, args_frame.call_site.file),
-                                    args_frame.call_site.file,
-                                    args_frame.call_site.node_index,
-                                    simple.as_details(args_frame.call_site.file),
-                                );
+                            SavedArgsKind::Simple(_) => {
+                                let args = args_frame
+                                    .maybe_simple_args(&InferenceState::new(
+                                        i_s.db,
+                                        args_frame.call_site.file,
+                                    ))
+                                    .unwrap();
                                 self.infer_param_with_args(
                                     &func,
                                     args_frame.call_site,
@@ -954,7 +973,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn execute(&mut self, base: Inferred, args_frame: ArgsFrame<'db>) -> Option<Heuristic> {
-        let db = self.inference.i_s.db;
+        let i_s = self.inference.i_s;
+        let db = i_s.db;
         let mut bound_to = None;
         let Some(node_ref) = base
             .maybe_saved_node_ref(db)
@@ -966,7 +986,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 })
             })
             .or_else(|| {
-                let t = base.as_cow_type(self.inference.i_s);
+                let t = base.as_cow_type(i_s);
                 if let Type::Callable(c) = &*t {
                     return Some(NodeRef::from_link(db, c.defined_at));
                 }
@@ -990,17 +1010,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             if type_vars.has_from_untyped_params()
                 && let Some(func) = cls_node_ref.maybe_init_func()
             {
-                let i_s = *self.inference.i_s;
-                let details = match args_frame.kind {
-                    SavedArgsKind::Simple(details) => details.as_details(args_frame.call_site.file),
-                    SavedArgsKind::Known(_, _) => return None,
+                let Some(args) = args_frame.maybe_simple_args(i_s) else {
+                    debug!("Did not find a single arg");
+                    return None;
                 };
-                let args = SimpleArgs::new(
-                    i_s,
-                    args_frame.call_site.file,
-                    args_frame.call_site.node_index,
-                    details,
-                );
                 let func = Function::new_with_unknown_parent(
                     db,
                     NodeRef::new(node_ref.file, func.index()),
@@ -1059,7 +1072,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
         let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
         if func_node_ref.return_annotation().is_some() {
-            let ret = func_node_ref.return_annotation_type(self.inference.i_s);
+            let ret = func_node_ref.return_annotation_type(i_s);
             if !ret.is_any_or_any_in_union(db) {
                 debug!(
                     "Heuristics: Did not execute, because the function has \
@@ -1094,11 +1107,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             self.state.self_stack.push(bound.clone());
         }
         debug!("Heuristics: Execute function {}", func.qualified_name(db));
-        let result_t = self.with_different_i_s(
-            self.inference.i_s.with_func_context(&func),
-            func_node_ref.file,
-            |h| h.heuristic_return_type(func_node_ref),
-        );
+        let result_t =
+            self.with_different_i_s(i_s.with_func_context(&func), func_node_ref.file, |h| {
+                h.heuristic_return_type(func_node_ref)
+            });
         if bound_to.is_some() {
             self.state.self_stack.pop();
         }
