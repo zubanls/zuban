@@ -1924,10 +1924,14 @@ impl Type {
         return_type: impl FnOnce() -> Type,
     ) -> Self {
         if is_async {
-            new_class!(db.python_state.async_generator_link(), self, Type::None,)
+            new_class!(
+                db.python_state.async_generator_type_link(),
+                self,
+                Type::None,
+            )
         } else {
             new_class!(
-                db.python_state.generator_link(),
+                db.python_state.generator_type_link(),
                 self,
                 Type::None,
                 return_type()

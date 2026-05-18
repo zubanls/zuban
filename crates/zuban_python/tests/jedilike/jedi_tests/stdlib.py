@@ -55,8 +55,7 @@ type([])
 def x():
     yield 1
 generator = type(x())
-# zuban-diff: #? generator
-#? typing.Generator
+#? types.GeneratorType
 type(x for x in [])
 #? type(x)
 type(lambda: x)

@@ -213,6 +213,8 @@ pub(crate) struct PythonState {
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: Option<NodeIndex>,
+    types_generator_type_index: NodeIndex,
+    types_async_generator_type_index: NodeIndex,
     types_ellipsis_type_index: Option<NodeIndex>,
     types_union_type_index: Option<NodeIndex>,
     types_generic_alias_index: NodeIndex,
@@ -317,6 +319,8 @@ impl PythonState {
             notimplemented_type_link: PointLink::new(FileIndex(0), 0),
             types_module_type_index: 0,
             types_none_type_index: None,
+            types_generator_type_index: 0,
+            types_async_generator_type_index: 0,
             types_ellipsis_type_index: None,
             types_union_type_index: None,
             builtins_ellipsis_fallback_index: None,
@@ -770,6 +774,12 @@ impl PythonState {
         cache_optional_index!(types_none_type_index, types, "NoneType");
         cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
         cache_optional_index!(types_union_type_index, types, "UnionType");
+        cache_index!(types_generator_type_index, types, "GeneratorType");
+        cache_index!(
+            types_async_generator_type_index,
+            types,
+            "AsyncGeneratorType"
+        );
         cache_index!(types_generic_alias_index, types, "GenericAlias");
         if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis")
             && matches!(
@@ -1160,6 +1170,8 @@ impl PythonState {
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
+    attribute_link!(types, pub generator_type_link, types_generator_type_index);
+    attribute_link!(types, pub async_generator_type_link, types_async_generator_type_index);
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(types, pub union_type_link, types_union_type_index);
     optional_attribute_link!(
@@ -1292,6 +1304,14 @@ impl PythonState {
 
     pub fn reveal_type(&self, db: &Database) -> Type {
         node_ref_to_global_func_type(db, NodeRef::from_link(db, self.reveal_type_link))
+    }
+
+    pub fn is_generator(&self, link: PointLink) -> bool {
+        link == self.generator_link() || link == self.generator_type_link()
+    }
+
+    pub fn is_async_generator(&self, link: PointLink) -> bool {
+        link == self.async_generator_link() || link == self.async_generator_type_link()
     }
 }
 

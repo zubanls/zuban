@@ -4961,7 +4961,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
 fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Type) -> Type {
     match t {
         Type::Class(c) => {
-            if c.link == i_s.db.python_state.generator_link() {
+            if i_s.db.python_state.is_generator(c.link) {
                 c.class(i_s.db).nth_type_argument(i_s.db, 2)
             } else {
                 had_issue();

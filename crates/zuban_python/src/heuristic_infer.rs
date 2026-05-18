@@ -1191,7 +1191,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
         Some(if is_generator {
             new_class!(
-                self.inference.i_s.db.python_state.generator_link(),
+                self.inference.i_s.db.python_state.generator_type_link(),
                 yield_t,
                 Type::ERROR,
                 return_t

@@ -28,8 +28,7 @@ next(gen_ret()).
 a = ''
 if gen_ret():
     a = 3
-# zuban-diff #? int()
-#? int() str()
+#? int()
 a
 
 
@@ -214,7 +213,7 @@ def x2():
 
 #? types.NoneType()
 next(x2())
-#? typing.Generator()
+#? types.GeneratorType()
 x2()
 
 def x3():

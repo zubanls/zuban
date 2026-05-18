@@ -2552,7 +2552,7 @@ impl GeneratorType {
                     return_type: None,
                 })
             }
-            Type::Class(c) if c.link == db.python_state.generator_link() => {
+            Type::Class(c) if db.python_state.is_generator(c.link) => {
                 let cls = c.class(db);
                 Some(GeneratorType {
                     yield_type: cls.nth_type_argument(db, 0),
@@ -2560,7 +2560,7 @@ impl GeneratorType {
                     return_type: Some(cls.nth_type_argument(db, 2)),
                 })
             }
-            Type::Class(c) if c.link == db.python_state.async_generator_link() => {
+            Type::Class(c) if db.python_state.is_async_generator(c.link) => {
                 let cls = c.class(db);
                 Some(GeneratorType {
                     yield_type: cls.nth_type_argument(db, 0),
