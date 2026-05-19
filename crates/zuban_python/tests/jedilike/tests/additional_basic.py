@@ -42,3 +42,13 @@ ternary2 = f(1) if bool() else f("")
 ternary1
 #? int() str()
 ternary2
+
+factor1 = ~f(1)
+factor2 = -f(1)
+factor3 = +f("")  # This makes no sense
+#? int()
+factor1
+#? int()
+factor2
+#? str()
+factor3

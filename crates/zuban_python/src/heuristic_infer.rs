@@ -1339,7 +1339,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             ExpressionPart::Primary(primary) => Some(self.infer_primary(primary)),
             ExpressionPart::AwaitPrimary(prim) => self.infer_expr_part(prim.primary()),
             ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
-            ExpressionPart::Factor(factor) => todo!(),
+            ExpressionPart::Factor(factor) => self.infer_expr_part(factor.unpack().1),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::ShiftExpr(shift_expr) => {
