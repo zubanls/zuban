@@ -1304,11 +1304,36 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         );
         self.create_heuristic_if_necessary(inf, |slf| match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => slf.infer_expr_part(part),
-            ExpressionContent::Ternary(_ternary) => return None, // TODO
-            ExpressionContent::Lambda(_lambda) => return None,   // TODO
+            ExpressionContent::Ternary(ternary) => {
+                let (left, _, right) = ternary.unpack();
+                let left = slf.infer_expr_part(left);
+                let right = slf.infer_expression(right);
+                slf.union_both_sides(left, Some(right))
+            }
+            ExpressionContent::Lambda(_lambda) => None,
         })
     }
+
+    fn union_both_sides(
+        &mut self,
+        side1: Option<Heuristic>,
+        side2: Option<Heuristic>,
+    ) -> Option<Heuristic> {
+        match (side1, side2) {
+            (Some(side1), Some(side2)) => Some(Heuristic::Guess(
+                Inferred::from(side1).simplified_union(self.inference.i_s, Inferred::from(side2)),
+            )),
+            (Some(single), None) | (None, Some(single)) => Some(single),
+            (None, None) => None,
+        }
+    }
+
     fn infer_expr_part(&mut self, part: ExpressionPart) -> Option<Heuristic> {
+        let mut both_sides = |(e1, e2)| {
+            let side1 = self.infer_expr_part(e1);
+            let side2 = self.infer_expr_part(e2);
+            self.union_both_sides(side1, side2)
+        };
         match part {
             ExpressionPart::Atom(atom) => Some(self.infer_atom(atom)),
             ExpressionPart::Primary(primary) => Some(self.infer_primary(primary)),
@@ -1330,8 +1355,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 self.infer_operation(bitwise_or.as_operation())
             }
             ExpressionPart::Comparisons(_) | ExpressionPart::Inversion(_) => return None,
-            ExpressionPart::Conjunction(conjunction) => todo!(),
-            ExpressionPart::Disjunction(disjunction) => todo!(),
+            ExpressionPart::Conjunction(conjunction) => both_sides(conjunction.unpack()),
+            ExpressionPart::Disjunction(disjunction) => both_sides(disjunction.unpack()),
         }
     }
 
