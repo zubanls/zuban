@@ -32,8 +32,7 @@ lazy_static::lazy_static! {
         ("comprehensions.py", 3),
         ("django.py", 3),
         ("decorators.py", 6),
-        ("descriptors.py", 2),
-        ("dynamic_arrays.py", 7),
+        ("descriptors.py", 5),
         ("flow_analysis.py", 9),
         ("fstring.py", 2),
         ("functions.py", 1),
@@ -57,9 +56,6 @@ lazy_static::lazy_static! {
         ("ns_path.py", 4),
         ("sys_path.py", 4),
         ("stubs.py", 5),
-
-        // Regressions
-        ("descriptors.py", 8),
         ("dynamic_arrays.py", 13),
 
     ]);

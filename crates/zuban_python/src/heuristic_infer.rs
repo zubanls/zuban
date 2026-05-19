@@ -908,12 +908,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     &|_| (),
                 );
                 let mut out = None;
-                if let LookupResult::GotoName { name, .. } = result {
+                if let LookupResult::GotoName { name, ref inf } = result {
                     let db = self.inference.i_s.db;
                     let directed_to = NodeRef::from_link(db, name);
                     let new_name = directed_to.expect_name();
-                    // Should always be a NameDef
-                    if matches!(attr_kind, AttributeKind::Property { .. })
+                    if inf.maybe_specific(db) == Some(Specific::Cycle) {
+                        // We need to ensure that cycles are not executed in some way
+                        out = Some(Heuristic::Guess(inf.clone()))
+                    } else if matches!(attr_kind, AttributeKind::Property { .. })
                         && let Some(name_def) = new_name.name_def()
                         && let Some(func) = name_def.maybe_name_of_func()
                     {
@@ -923,7 +925,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                 call_site: NodeRef::new(self.inference.file, attr_name.index()),
                                 kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),
                             },
-                        )
+                        );
                     } else if let Type::Class(c) = base_t.as_ref() {
                         out = self.with_different_i_s(
                             InferenceState::from_class(db, &c.class(db)),
