@@ -160,8 +160,8 @@ def just_a_func():
 #? int()
 just_a_func()
 
-#? ['__closure__']
-just_a_func.__closure__
+#? ['__call__']
+just_a_func.__call__
 
 
 class JustAClass:
@@ -177,6 +177,19 @@ JustAClass().a()
 JustAClass.a.__call__
 #? int()
 JustAClass.a()
+
+class JustAClass2:
+    def __init__(self, x):
+        self.x = x
+
+    @not_found_decorator2
+    def a(self):
+        return self.x
+
+#? int()
+JustAClass2(1).a()
+#? str()
+JustAClass2("").a()
 
 # -----------------
 # illegal decorators

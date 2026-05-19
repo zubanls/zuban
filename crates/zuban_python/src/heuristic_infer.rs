@@ -36,7 +36,7 @@ use crate::{
         GenericsList, IterCause, IterInfos, LookupResult, Tuple, Type, TypedDict,
         TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
-    type_helpers::{Class, Function, FunctionParam, OverloadedFunction},
+    type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
 };
 
@@ -301,6 +301,18 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             }
                         }
                     }
+                    None
+                }
+                TypeLike::Function(func_node) => {
+                    /*
+                    let func = Function::new_with_unknown_parent(
+                        self.inference.i_s.db,
+                        NodeRef::new(self.inference.file, func_node.index()),
+                    );
+                    Some(Heuristic::Guess(Inferred::from_type(
+                        func.as_type(self.inference.i_s, FirstParamProperties::None),
+                    )))
+                    */
                     None
                 }
                 _ => {
@@ -901,27 +913,46 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         );
                         if let Some(known) = &out
                             && let Some(self_inf) = self.state.self_stack.last()
-                            && let Some(descriptor) = known
-                                .as_inferred()
-                                .as_cow_type(self.inference.i_s)
-                                .lookup(
-                                    self.inference.i_s,
-                                    file,
-                                    "__get__",
-                                    LookupKind::OnlyType,
-                                    &mut ResultContext::Unknown,
-                                    &|_| false,
-                                    &|_| (),
-                                )
-                                .into_maybe_inferred()
                         {
-                            out = self.execute(
-                                descriptor,
-                                ArgsFrame {
-                                    call_site: NodeRef::new(file, primary_node_index),
-                                    kind: SavedArgsKind::Known(self_inf.clone(), Type::ERROR),
-                                },
-                            );
+                            let t = known.as_inferred().as_cow_type(self.inference.i_s);
+                            if (matches!(t.as_ref(), Type::Class(_)))
+                                && let Some(descriptor) = t
+                                    .lookup(
+                                        self.inference.i_s,
+                                        file,
+                                        "__get__",
+                                        LookupKind::OnlyType,
+                                        &mut ResultContext::Unknown,
+                                        &|_| false,
+                                        &|_| (),
+                                    )
+                                    .into_maybe_inferred()
+                            {
+                                out = self.execute(
+                                    descriptor,
+                                    ArgsFrame {
+                                        call_site: NodeRef::new(file, primary_node_index),
+                                        kind: SavedArgsKind::Known(self_inf.clone(), Type::ERROR),
+                                    },
+                                );
+                            } else {
+                                /*
+                                dbg!(&out);
+                                out = Inferred::from(out.unwrap())
+                                    .bind_instance_descriptors(
+                                        &self.inference.i_s,
+                                        attr_name.as_code(),
+                                        base_t.as_ref().clone(),
+                                        c.class(self.inference.i_s.db),
+                                        |_| false,
+                                        0.into(),
+                                        false,
+                                        false,
+                                    )
+                                    .map(|(inf, _)| Heuristic::Guess(inf));
+                                dbg!(&out);
+                                */
+                            }
                         }
                     } else {
                         out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
@@ -1285,6 +1316,10 @@ pub fn infer_heuristics_if_necessary(
 ) -> Inferred {
     let t = inferred.as_cow_type(i_s);
     if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
+        debug!(
+            "Needed to infer heuristics, because {:?} contains Any",
+            t.format_short(i_s.db)
+        );
         if let Some(found) = generate_heuristics() {
             without_any.union_in_place(found.as_type(i_s));
             return Inferred::from_type(without_any);
