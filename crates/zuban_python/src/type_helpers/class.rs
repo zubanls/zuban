@@ -2691,6 +2691,7 @@ fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
     let mut params = vec![];
     for (_, cls) in cls.mro(i_s.db) {
         if let Some(cls) = cls.maybe_class() {
+            let mut should_use_symbols = vec![];
             for (_, symbol) in cls.class_storage.class_symbol_table.iter() {
                 let name_ref = NodeRef::new(cls.file, *symbol);
                 let name = name_ref.expect_name();
@@ -2704,19 +2705,23 @@ fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
                     && let Some(field_cls) = inf.as_cow_type(i_s).maybe_class(i_s.db)
                     && field_cls.is_django_field(i_s.db)
                 {
-                    params.push(CallableParam {
-                        name: Some(DbString::StringSlice(StringSlice::from_name(
-                            cls.file.file_index,
-                            name,
-                        ))),
-                        // TODO this should not be any but probably the generic of
-                        // _pyi_private_get_type
-                        type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Internal)),
-                        // Params are optional in Django.
-                        has_default: true,
-                        might_have_type_vars: false,
-                    });
+                    should_use_symbols.push((symbol, name));
                 }
+            }
+            should_use_symbols.sort_by_key(|(symbol_index, _)| **symbol_index);
+            for (_, name) in should_use_symbols {
+                params.push(CallableParam {
+                    name: Some(DbString::StringSlice(StringSlice::from_name(
+                        cls.file.file_index,
+                        name,
+                    ))),
+                    // TODO this should not be any but probably the generic of
+                    // _pyi_private_get_type
+                    type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Internal)),
+                    // Params are optional in Django.
+                    has_default: true,
+                    might_have_type_vars: false,
+                });
             }
         }
     }
