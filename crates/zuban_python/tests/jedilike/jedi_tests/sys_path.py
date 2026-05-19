@@ -10,15 +10,19 @@ sys.path.append(os.path.join(dirname(__file__), 'thirdparty'))
 # syntax err
 sys.path.append('a' +* '/thirdparty')
 
-#? ['inference']
+# zuban-diff: #? ['inference']
+#? []
 import inference
 
-#? ['inference_state_function_cache']
+# zuban-diff: #? ['inference_state_function_cache']
+#? []
 inference.inference_state_fu
 
 # Those don't work because dirname and abspath are not properly understood.
-#? ['jedi_']
+# zuban-diff: #? ['jedi_']
+#? []
 import jedi_
 
-#? ['el']
+# zuban-diff: #? ['el']
+#? []
 jedi_.el
