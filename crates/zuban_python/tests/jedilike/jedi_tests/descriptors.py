@@ -131,6 +131,8 @@ class PropClass():
 
 #? str()
 PropClass("").ret
+#?
+PropClass("").ret
 #? []
 PropClass().ret.
 

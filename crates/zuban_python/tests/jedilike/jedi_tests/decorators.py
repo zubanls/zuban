@@ -186,10 +186,25 @@ class JustAClass2:
     def a(self):
         return self.x
 
+    @not_found_decorator2
+    def b(self, x):
+        return (self.x, x)
+
 #? int()
 JustAClass2(1).a()
 #? str()
 JustAClass2("").a()
+
+myb1 = JustAClass2("").b(1.0)
+myb2 = JustAClass2(1).b(b'')
+#? str()
+myb1[0]
+#? int()
+myb2[0]
+#? float()
+myb1[1]
+#? bytes()
+myb2[1]
 
 # -----------------
 # illegal decorators

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, iter::Peekable, rc::Rc};
+use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
@@ -15,7 +15,7 @@ use crate::{
         ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
         KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
     },
-    database::{Database, PointKind, PointLink},
+    database::{ComplexPoint, Database, HeuristicBound, PointKind, PointLink},
     debug,
     file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
     format_data::FormatData,
@@ -304,7 +304,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     None
                 }
                 TypeLike::Function(func_node) => {
-                    /*
                     let func = Function::new_with_unknown_parent(
                         self.inference.i_s.db,
                         NodeRef::new(self.inference.file, func_node.index()),
@@ -312,8 +311,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     Some(Heuristic::Guess(Inferred::from_type(
                         func.as_type(self.inference.i_s, FirstParamProperties::None),
                     )))
-                    */
-                    None
                 }
                 _ => {
                     if let DefiningStmt::ForStmt(for_stmt) = name_def.expect_defining_stmt() {
@@ -837,7 +834,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         {
             if let Some(new) = infer_heuristic(self) {
                 if let Heuristic::Guess(bound) = &new
-                    && bound.maybe_bound_method().is_some()
+                    && (bound.maybe_bound_method().is_some()
+                        || matches!(
+                            bound.maybe_complex_point(i_s.db),
+                            Some(ComplexPoint::HeuristicBound(_))
+                        ))
                 {
                     return new;
                 }
@@ -911,47 +912,37 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             directed_to.file,
                             |h| h.infer_name(new_name),
                         );
-                        if let Some(known) = &out
-                            && let Some(self_inf) = self.state.self_stack.last()
-                        {
-                            let t = known.as_inferred().as_cow_type(self.inference.i_s);
-                            if (matches!(t.as_ref(), Type::Class(_)))
-                                && let Some(descriptor) = t
-                                    .lookup(
-                                        self.inference.i_s,
-                                        file,
-                                        "__get__",
-                                        LookupKind::OnlyType,
-                                        &mut ResultContext::Unknown,
-                                        &|_| false,
-                                        &|_| (),
-                                    )
-                                    .into_maybe_inferred()
-                            {
-                                out = self.execute(
-                                    descriptor,
-                                    ArgsFrame {
-                                        call_site: NodeRef::new(file, primary_node_index),
-                                        kind: SavedArgsKind::Known(self_inf.clone(), Type::ERROR),
-                                    },
-                                );
-                            } else {
-                                /*
-                                dbg!(&out);
-                                out = Inferred::from(out.unwrap())
-                                    .bind_instance_descriptors(
-                                        &self.inference.i_s,
-                                        attr_name.as_code(),
-                                        base_t.as_ref().clone(),
-                                        c.class(self.inference.i_s.db),
-                                        |_| false,
-                                        0.into(),
-                                        false,
-                                        false,
-                                    )
-                                    .map(|(inf, _)| Heuristic::Guess(inf));
-                                dbg!(&out);
-                                */
+                        if let Some(self_t) = self.state.self_stack.last() {
+                            if let Some(known) = &out {
+                                let t = known.as_inferred().as_cow_type(self.inference.i_s);
+                                if (matches!(t.as_ref(), Type::Class(_)))
+                                    && let Some(descriptor) = t
+                                        .lookup(
+                                            self.inference.i_s,
+                                            file,
+                                            "__get__",
+                                            LookupKind::OnlyType,
+                                            &mut ResultContext::Unknown,
+                                            &|_| false,
+                                            &|_| (),
+                                        )
+                                        .into_maybe_inferred()
+                                {
+                                    out = self.execute(
+                                        descriptor,
+                                        ArgsFrame {
+                                            call_site: NodeRef::new(file, primary_node_index),
+                                            kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
+                                        },
+                                    );
+                                } else if matches!(t.as_ref(), Type::Callable(_)) {
+                                    out = Some(Heuristic::Guess(Inferred::new_unsaved_complex(
+                                        ComplexPoint::HeuristicBound(Arc::new(HeuristicBound {
+                                            type_: t.as_ref().clone(),
+                                            bound_to: self_t.clone(),
+                                        })),
+                                    )))
+                                }
                             }
                         }
                     } else {
@@ -1018,6 +1009,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 })
             })
             .or_else(|| {
+                if let Some(ComplexPoint::HeuristicBound(b)) = base.maybe_complex_point(db) {
+                    bound_to = Some(&b.bound_to);
+                }
                 let t = base.as_cow_type(i_s);
                 if let Type::Callable(c) = &*t {
                     return Some(NodeRef::from_link(db, c.defined_at));
