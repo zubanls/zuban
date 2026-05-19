@@ -1920,6 +1920,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         widened.widened.format_short(db)
                     )
                 }
+                ComplexPoint::HeuristicBound(heuristic) => {
+                    format!(
+                        "HeuristicBound(type={}, bound={})",
+                        heuristic.type_.format_short(db),
+                        heuristic.bound_to.format_short(db),
+                    )
+                }
             }
         }
         match &self.state {
@@ -2923,9 +2930,9 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
         ComplexPoint::WidenedType(widened) => type_of_complex(i_s, &widened.original, definition),
-        _ => {
-            unreachable!("Classes are handled earlier {complex:?}")
-        }
+        ComplexPoint::HeuristicBound(b) => Cow::Borrowed(&b.type_),
+        ComplexPoint::ClassInfos(_) => unreachable!("Classes are handled earlier {complex:?}"),
+        ComplexPoint::TypeVarLikes(_) => unreachable!("TypeVarLikes should never be accessed"),
     }
 }
 

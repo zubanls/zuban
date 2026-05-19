@@ -697,6 +697,7 @@ pub(crate) enum ComplexPoint {
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Arc<Type>),
     WidenedType(Arc<WidenedType>),
+    HeuristicBound(Arc<HeuristicBound>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -1860,6 +1861,12 @@ impl std::cmp::PartialEq for ClassStorage {
         recoverable_error!("Should never compare  class storage with ==");
         false
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeuristicBound {
+    pub type_: Type,
+    pub bound_to: Type,
 }
 
 #[cfg(test)]
