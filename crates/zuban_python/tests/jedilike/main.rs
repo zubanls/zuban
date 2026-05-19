@@ -16,6 +16,8 @@ use config::{ProjectOptions, Settings, TypeCheckerFlags};
 use vfs::{LocalFS, NormalizedPath, VfsHandler as _};
 use zuban_python::{Project, RunCause};
 
+use crate::cases::run_parse_python_list_tests;
+
 #[derive(Debug)]
 pub struct Filter {
     name: String,
@@ -26,7 +28,7 @@ pub struct Filter {
 lazy_static::lazy_static! {
     static ref EXPECTED_TEST_FAILURES: HashMap<&'static str, usize> = HashMap::from([
         ("arrays.py", 10),
-        ("async_.py", 3),
+        ("async_.py", 2),
         ("basic.py", 13),
         ("classes.py", 13),
         ("comprehensions.py", 3),
@@ -110,6 +112,7 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
 
 fn main() -> ExitCode {
     logging_config::setup_logging(None).unwrap();
+    run_parse_python_list_tests();
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
 
