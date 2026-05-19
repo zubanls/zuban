@@ -1302,31 +1302,32 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             "Heuristics for expr: {}",
             limit_length_for_debug(expr.as_code())
         );
-        self.create_heuristic_if_necessary(inf, |slf| {
-            Some(match expr.unpack() {
-                ExpressionContent::ExpressionPart(expr_part) => match expr_part {
-                    ExpressionPart::Atom(atom) => slf.infer_atom(atom),
-                    ExpressionPart::Primary(primary) => slf.infer_primary(primary),
-                    _ => return None,
-                    /*
-                    ExpressionPart::AwaitPrimary(await_primary) => todo!(),
-                    ExpressionPart::Power(power) => todo!(),
-                    ExpressionPart::Factor(factor) => todo!(),
-                    ExpressionPart::Term(term) => todo!(),
-                    ExpressionPart::Sum(sum) => todo!(),
-                    ExpressionPart::ShiftExpr(shift_expr) => todo!(),
-                    ExpressionPart::BitwiseAnd(bitwise_and) => todo!(),
-                    ExpressionPart::BitwiseXor(bitwise_xor) => todo!(),
-                    ExpressionPart::BitwiseOr(bitwise_or) => todo!(),
-                    ExpressionPart::Comparisons(comparisons) => todo!(),
-                    ExpressionPart::Inversion(inversion) => todo!(),
-                    ExpressionPart::Conjunction(conjunction) => todo!(),
-                    ExpressionPart::Disjunction(disjunction) => todo!(),
-                    */
-                },
-                ExpressionContent::Ternary(_ternary) => return None, // TODO
-                ExpressionContent::Lambda(_lambda) => return None,   // TODO
-            })
+        self.create_heuristic_if_necessary(inf, |slf| match expr.unpack() {
+            ExpressionContent::ExpressionPart(part) => slf.infer_expr_part(part),
+            ExpressionContent::Ternary(_ternary) => return None, // TODO
+            ExpressionContent::Lambda(_lambda) => return None,   // TODO
+        })
+    }
+    fn infer_expr_part(&mut self, part: ExpressionPart) -> Option<Heuristic> {
+        Some(match part {
+            ExpressionPart::Atom(atom) => self.infer_atom(atom),
+            ExpressionPart::Primary(primary) => self.infer_primary(primary),
+            ExpressionPart::AwaitPrimary(prim) => return self.infer_expr_part(prim.primary()),
+            _ => return None,
+            /*
+            ExpressionPart::Power(power) => todo!(),
+            ExpressionPart::Factor(factor) => todo!(),
+            ExpressionPart::Term(term) => todo!(),
+            ExpressionPart::Sum(sum) => todo!(),
+            ExpressionPart::ShiftExpr(shift_expr) => todo!(),
+            ExpressionPart::BitwiseAnd(bitwise_and) => todo!(),
+            ExpressionPart::BitwiseXor(bitwise_xor) => todo!(),
+            ExpressionPart::BitwiseOr(bitwise_or) => todo!(),
+            ExpressionPart::Comparisons(comparisons) => todo!(),
+            ExpressionPart::Inversion(inversion) => todo!(),
+            ExpressionPart::Conjunction(conjunction) => todo!(),
+            ExpressionPart::Disjunction(disjunction) => todo!(),
+            */
         })
     }
 }
