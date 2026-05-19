@@ -513,7 +513,7 @@ async def check():
     reveal_type(await f(1))  # N: Revealed type is "int"
     reveal_type(await f(""))  # N: Revealed type is "str"
 
-    reveal_type(g(1))  # N: Revealed type is "typing.Coroutine[Any, Any, list[int]]"
+    reveal_type(g(1))  # N: Revealed type is "types.CoroutineType[Any, Any, list[int]]"
     reveal_type(await g(1))  # N: Revealed type is "list[int]"
     reveal_type(await g(""))  # N: Revealed type is "list[str]"
 

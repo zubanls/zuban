@@ -443,7 +443,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let t = self.return_annotation_type(i_s);
         if self.is_async() && !self.is_generator() {
             Cow::Owned(new_class!(
-                i_s.db.python_state.coroutine_link(),
+                i_s.db.python_state.coroutine_type_link(),
                 Type::Any(AnyCause::Todo),
                 Type::Any(AnyCause::Todo),
                 t.into_owned(),

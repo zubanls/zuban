@@ -309,7 +309,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .into_proper_type(i_s);
         if needs_async_remap {
             result = Inferred::from_type(new_class!(
-                i_s.db.python_state.coroutine_link(),
+                i_s.db.python_state.coroutine_type_link(),
                 Type::Any(AnyCause::Todo),
                 Type::Any(AnyCause::Todo),
                 result.as_type(i_s),

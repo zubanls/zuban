@@ -215,6 +215,7 @@ pub(crate) struct PythonState {
     types_none_type_index: Option<NodeIndex>,
     types_generator_type_index: NodeIndex,
     types_async_generator_type_index: NodeIndex,
+    types_coroutine_type_index: NodeIndex,
     types_ellipsis_type_index: Option<NodeIndex>,
     types_union_type_index: Option<NodeIndex>,
     types_generic_alias_index: NodeIndex,
@@ -321,6 +322,7 @@ impl PythonState {
             types_none_type_index: None,
             types_generator_type_index: 0,
             types_async_generator_type_index: 0,
+            types_coroutine_type_index: 0,
             types_ellipsis_type_index: None,
             types_union_type_index: None,
             builtins_ellipsis_fallback_index: None,
@@ -780,6 +782,7 @@ impl PythonState {
             types,
             "AsyncGeneratorType"
         );
+        cache_index!(types_coroutine_type_index, types, "CoroutineType");
         cache_index!(types_generic_alias_index, types, "GenericAlias");
         if let Some(ellipsis) = db.python_state.builtins().lookup_symbol("ellipsis")
             && matches!(
@@ -1172,6 +1175,8 @@ impl PythonState {
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     attribute_link!(types, pub generator_type_link, types_generator_type_index);
     attribute_link!(types, pub async_generator_type_link, types_async_generator_type_index);
+    attribute_link!(types, pub coroutine_type_link, types_coroutine_type_index);
+
     optional_attribute_link!(types, ellipsis_type_link, types_ellipsis_type_index);
     optional_attribute_link!(types, pub union_type_link, types_union_type_index);
     optional_attribute_link!(
@@ -1312,6 +1317,10 @@ impl PythonState {
 
     pub fn is_async_generator(&self, link: PointLink) -> bool {
         link == self.async_generator_link() || link == self.async_generator_type_link()
+    }
+
+    pub fn is_coroutine(&self, link: PointLink) -> bool {
+        link == self.coroutine_link() || link == self.coroutine_type_link()
     }
 }
 

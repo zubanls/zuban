@@ -3137,7 +3137,7 @@ fn is_async_iterator_without_async(
     let db = i_s.db;
     match override_ {
         Type::Class(c) if c.link == db.python_state.async_iterator_link() => match original {
-            Type::Class(c) if c.link == db.python_state.coroutine_link() => {
+            Type::Class(c) if db.python_state.is_coroutine(c.link) => {
                 let check = c.class(db).nth_type_argument(db, 2);
                 override_.is_simple_same_type(i_s, &check).bool()
             }
