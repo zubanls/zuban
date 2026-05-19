@@ -15,7 +15,7 @@ use crate::{
         ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
         KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
     },
-    database::{ComplexPoint, Database, HeuristicBound, PointKind, PointLink},
+    database::{ComplexPoint, Database, HeuristicBound, PointKind, PointLink, Specific},
     debug,
     file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
     format_data::FormatData,
@@ -304,13 +304,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     None
                 }
                 TypeLike::Function(func_node) => {
-                    let func = Function::new_with_unknown_parent(
-                        self.inference.i_s.db,
-                        NodeRef::new(self.inference.file, func_node.index()),
-                    );
-                    Some(Heuristic::Guess(Inferred::from_type(
-                        func.as_type(self.inference.i_s, FirstParamProperties::None),
-                    )))
+                    let node_ref = NodeRef::new(self.inference.file, func_node.index());
+                    if node_ref.point().maybe_calculated_and_specific()
+                        == Some(Specific::AnyDueToError)
+                    {
+                        let func =
+                            Function::new_with_unknown_parent(self.inference.i_s.db, node_ref);
+                        return Some(Heuristic::Guess(Inferred::from_type(
+                            func.as_type(self.inference.i_s, FirstParamProperties::None),
+                        )));
+                    }
+                    None
                 }
                 _ => {
                     if let DefiningStmt::ForStmt(for_stmt) = name_def.expect_defining_stmt() {
@@ -935,7 +939,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                             kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
                                         },
                                     );
-                                } else if matches!(t.as_ref(), Type::Callable(_)) {
+                                } else if let Type::Callable(c) = t.as_ref() {
                                     out = Some(Heuristic::Guess(Inferred::new_unsaved_complex(
                                         ComplexPoint::HeuristicBound(Arc::new(HeuristicBound {
                                             type_: t.as_ref().clone(),

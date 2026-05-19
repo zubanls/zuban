@@ -59,7 +59,7 @@ lazy_static::lazy_static! {
         ("stubs.py", 5),
 
         // Regressions
-        ("descriptors.py", 13),
+        ("descriptors.py", 8),
         ("dynamic_arrays.py", 13),
 
     ]);
