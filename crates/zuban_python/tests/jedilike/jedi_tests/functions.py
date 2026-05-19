@@ -508,5 +508,5 @@ nested_def2('')[1].
 # magic methods
 # -----------------
 def myfunc(): pass
-#? ['__closure__']
-myfunc.__closure__
+#? ['__call__']
+myfunc.__call__
