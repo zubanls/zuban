@@ -129,10 +129,14 @@ class PropClass():
         """ mutual recusion """
         return self.join1
 
+    @property
+    def ret3(self):
+        return self.a[0]
+
 #? str()
 PropClass("").ret
 #?
-PropClass("").ret
+PropClass().ret
 #? []
 PropClass().ret.
 
@@ -155,6 +159,10 @@ PropClass().nested2.
 
 #? 
 PropClass(1).join1
+
+#? str()
+PropClass([""]).ret3
+
 # -----------------
 # staticmethod/classmethod
 # -----------------
@@ -199,8 +207,7 @@ E.g(1)
 
 #? int()
 e.s(1)
-# zuban-diff: #? int()
-#?
+#? int()
 E.s(1)
 #? int()
 e.t(1)

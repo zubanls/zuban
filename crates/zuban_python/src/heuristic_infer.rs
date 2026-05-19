@@ -25,7 +25,7 @@ use crate::{
         try_to_follow,
     },
     inference_state::{InferenceState, Mode},
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, LookupKind, OnTypeError},
     new_class,
     node_ref::NodeRef,
@@ -305,6 +305,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
                 TypeLike::Function(func_node) => {
                     let node_ref = NodeRef::new(self.inference.file, func_node.index());
+                    if let Some(t @ Type::Callable(c)) = node_ref.maybe_type()
+                        && matches!(c.kind, FunctionKind::Property { .. })
+                    {
+                        return Some(Heuristic::Guess(Inferred::from_type(t.clone())));
+                    }
                     if node_ref.point().maybe_calculated_and_specific()
                         == Some(Specific::AnyDueToError)
                     {
@@ -893,7 +898,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     added_to_stack = true;
                 }
                 let file = self.inference.file;
-                let result = base_t.lookup(
+                let (result, attr_kind) = base_t.lookup_with_first_attr_kind(
                     self.inference.i_s,
                     file,
                     attr_name.as_code(),
@@ -904,20 +909,33 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 );
                 let mut out = None;
                 if let LookupResult::GotoName { name, .. } = result {
-                    let directed_to = NodeRef::from_link(self.inference.i_s.db, name);
+                    let db = self.inference.i_s.db;
+                    let directed_to = NodeRef::from_link(db, name);
                     let new_name = directed_to.expect_name();
                     // Should always be a NameDef
                     if let Type::Class(c) = base_t.as_ref() {
                         out = self.with_different_i_s(
-                            InferenceState::from_class(
-                                self.inference.i_s.db,
-                                &c.class(self.inference.i_s.db),
-                            ),
+                            InferenceState::from_class(db, &c.class(db)),
                             directed_to.file,
                             |h| h.infer_name(new_name),
                         );
                         if let Some(self_t) = self.state.self_stack.last() {
-                            if let Some(known) = &out {
+                            if matches!(attr_kind, AttributeKind::Property { .. })
+                                && let Some(name_def) = new_name.name_def()
+                                && let Some(func) = name_def.maybe_name_of_func()
+                            {
+                                // This implements property access
+                                out = self.with_different_i_s(
+                                    InferenceState::from_class(db, &c.class(db)),
+                                    directed_to.file,
+                                    |h| {
+                                        h.heuristic_return_type(FuncNodeRef::new(
+                                            directed_to.file,
+                                            func.index(),
+                                        ))
+                                    },
+                                );
+                            } else if let Some(known) = &out {
                                 let t = known.as_inferred().as_cow_type(self.inference.i_s);
                                 if (matches!(t.as_ref(), Type::Class(_)))
                                     && let Some(descriptor) = t
@@ -939,7 +957,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                             kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
                                         },
                                     );
-                                } else if let Type::Callable(c) = t.as_ref() {
+                                } else if matches!(t.as_ref(), Type::Callable(_)) {
                                     out = Some(Heuristic::Guess(Inferred::new_unsaved_complex(
                                         ComplexPoint::HeuristicBound(Arc::new(HeuristicBound {
                                             type_: t.as_ref().clone(),
@@ -1151,7 +1169,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             self.state.self_stack.push(bound.clone());
         }
         debug!("Heuristics: Execute function {}", func.qualified_name(db));
-        let result_t =
+        let result =
             self.with_different_i_s(i_s.with_func_context(&func), func_node_ref.file, |h| {
                 h.heuristic_return_type(func_node_ref)
             });
@@ -1159,24 +1177,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             self.state.self_stack.pop();
         }
         self.state.call_stack.pop();
-
-        let result_t = result_t?;
-        if result_t.is_never() {
-            debug!(
-                "Heuristics: Execution of {} with Never result, aborting",
-                func_node_ref.qualified_name(db)
-            );
-            return None;
-        }
-        debug!(
-            "Heuristics: Executed {} with result: {}",
-            func_node_ref.qualified_name(db),
-            result_t.format_short(db),
-        );
-        Some(Heuristic::Guess(Inferred::from_type(result_t)))
+        result
     }
 
-    fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Type> {
+    fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
         let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
         let mut return_t = Type::NEVER;
@@ -1218,16 +1222,28 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             }
         }
-        Some(if is_generator {
+        let result_t = if is_generator {
             new_class!(
                 self.inference.i_s.db.python_state.generator_type_link(),
                 yield_t,
                 Type::ERROR,
                 return_t
             )
+        } else if return_t.is_never() {
+            debug!(
+                "Heuristics: Execution of {} with Never result, aborting",
+                func_node_ref.qualified_name(self.inference.i_s.db)
+            );
+            return None;
         } else {
             return_t
-        })
+        };
+        debug!(
+            "Heuristics: Executed {} with result: {}",
+            func_node_ref.qualified_name(self.inference.i_s.db),
+            result_t.format_short(self.inference.i_s.db),
+        );
+        Some(Heuristic::Guess(Inferred::from_type(result_t)))
     }
 
     fn infer_star_exprs(&mut self, star_exprs: StarExpressions) -> Option<Heuristic> {
