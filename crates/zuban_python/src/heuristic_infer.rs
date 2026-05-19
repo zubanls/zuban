@@ -3,8 +3,8 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
-    FunctionDef, GotoNode, Name, NameParent, NodeIndex, ParamKind, Primary, PrimaryContent,
-    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
+    FunctionDef, GotoNode, Name, NameParent, NodeIndex, Operation, ParamKind, Primary,
+    PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
     StarLikeExpression, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
@@ -1309,26 +1309,45 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         })
     }
     fn infer_expr_part(&mut self, part: ExpressionPart) -> Option<Heuristic> {
-        Some(match part {
-            ExpressionPart::Atom(atom) => self.infer_atom(atom),
-            ExpressionPart::Primary(primary) => self.infer_primary(primary),
-            ExpressionPart::AwaitPrimary(prim) => return self.infer_expr_part(prim.primary()),
-            _ => return None,
-            /*
-            ExpressionPart::Power(power) => todo!(),
+        match part {
+            ExpressionPart::Atom(atom) => Some(self.infer_atom(atom)),
+            ExpressionPart::Primary(primary) => Some(self.infer_primary(primary)),
+            ExpressionPart::AwaitPrimary(prim) => self.infer_expr_part(prim.primary()),
+            ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
             ExpressionPart::Factor(factor) => todo!(),
-            ExpressionPart::Term(term) => todo!(),
-            ExpressionPart::Sum(sum) => todo!(),
-            ExpressionPart::ShiftExpr(shift_expr) => todo!(),
-            ExpressionPart::BitwiseAnd(bitwise_and) => todo!(),
-            ExpressionPart::BitwiseXor(bitwise_xor) => todo!(),
-            ExpressionPart::BitwiseOr(bitwise_or) => todo!(),
-            ExpressionPart::Comparisons(comparisons) => todo!(),
-            ExpressionPart::Inversion(inversion) => todo!(),
+            ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
+            ExpressionPart::ShiftExpr(shift_expr) => {
+                self.infer_operation(shift_expr.as_operation())
+            }
+            ExpressionPart::BitwiseAnd(bitwise_and) => {
+                self.infer_operation(bitwise_and.as_operation())
+            }
+            ExpressionPart::BitwiseXor(bitwise_xor) => {
+                self.infer_operation(bitwise_xor.as_operation())
+            }
+            ExpressionPart::BitwiseOr(bitwise_or) => {
+                self.infer_operation(bitwise_or.as_operation())
+            }
+            ExpressionPart::Comparisons(_) | ExpressionPart::Inversion(_) => return None,
             ExpressionPart::Conjunction(conjunction) => todo!(),
             ExpressionPart::Disjunction(disjunction) => todo!(),
-            */
-        })
+        }
+    }
+
+    fn infer_operation(&mut self, op: Operation) -> Option<Heuristic> {
+        let left = self.infer_expr_part(op.left)?;
+        let right = self.infer_expr_part(op.right)?;
+        if !matches!(left, Heuristic::Guess(_)) && !matches!(right, Heuristic::Guess(_)) {
+            return None;
+        }
+        Some(Heuristic::Guess(self.inference.infer_detailed_operation(
+            op.index,
+            op.infos,
+            left.into(),
+            &right.into(),
+            &mut ResultContext::Unknown,
+        )))
     }
 }
 

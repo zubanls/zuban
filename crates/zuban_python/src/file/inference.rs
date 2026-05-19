@@ -3112,7 +3112,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 
-    fn infer_detailed_operation(
+    pub fn infer_detailed_operation(
         &self,
         error_index: NodeIndex,
         op_infos: OpInfos,
