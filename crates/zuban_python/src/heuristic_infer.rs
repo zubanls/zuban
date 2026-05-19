@@ -924,15 +924,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                 && let Some(name_def) = new_name.name_def()
                                 && let Some(func) = name_def.maybe_name_of_func()
                             {
-                                // This implements property access
-                                out = self.with_different_i_s(
-                                    InferenceState::from_class(db, &c.class(db)),
-                                    directed_to.file,
-                                    |h| {
-                                        h.heuristic_return_type(FuncNodeRef::new(
-                                            directed_to.file,
-                                            func.index(),
-                                        ))
+                                out = self.heuristic_return_type(
+                                    FuncNodeRef::new(directed_to.file, func.index()),
+                                    ArgsFrame {
+                                        call_site: NodeRef::new(
+                                            self.inference.file,
+                                            attr_name.index(),
+                                        ),
+                                        kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),
                                     },
                                 );
                             } else if let Some(known) = &out {
@@ -1161,26 +1160,36 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             );
             return None;
         }
-
-        let func = Function::new_with_unknown_parent(db, *func_node_ref);
-
-        self.state.call_stack.push((func_node_ref, args_frame));
         if let Some(bound) = bound_to {
             self.state.self_stack.push(bound.clone());
         }
-        debug!("Heuristics: Execute function {}", func.qualified_name(db));
-        let result =
-            self.with_different_i_s(i_s.with_func_context(&func), func_node_ref.file, |h| {
-                h.heuristic_return_type(func_node_ref)
-            });
+        let result = self.heuristic_return_type(func_node_ref, args_frame);
         if bound_to.is_some() {
             self.state.self_stack.pop();
         }
+        result
+    }
+
+    fn heuristic_return_type(
+        &mut self,
+        func_node_ref: FuncNodeRef<'db>,
+        args_frame: ArgsFrame<'db>,
+    ) -> Option<Heuristic> {
+        let i_s = self.inference.i_s;
+        let db = i_s.db;
+        let func = Function::new_with_unknown_parent(db, *func_node_ref);
+        debug!("Heuristics: Execute function {}", func.qualified_name(db));
+
+        self.state.call_stack.push((func_node_ref, args_frame));
+        let result =
+            self.with_different_i_s(i_s.with_func_context(&func), func_node_ref.file, |h| {
+                h.heuristic_return_type_part2(func_node_ref)
+            });
         self.state.call_stack.pop();
         result
     }
 
-    fn heuristic_return_type(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
+    fn heuristic_return_type_part2(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
         let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
         let mut return_t = Type::NEVER;
