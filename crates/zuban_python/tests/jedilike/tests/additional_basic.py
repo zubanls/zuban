@@ -101,3 +101,19 @@ set1
 next(iter(set1))
 #? int()
 next(iter(set1)).val
+
+list2 = [A(1), A(""), f(1.0)]
+#? list()
+list2
+#? A() float()
+list2[0]
+#? int() str()
+list2[0].val
+
+set2 = {A(1), A(""), f(1.0)}
+#? set()
+set2
+#? A() float()
+next(iter(set2))
+#? int() str()
+next(iter(set2)).val

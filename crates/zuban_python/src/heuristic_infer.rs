@@ -925,90 +925,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 let base_is_heuristic = !matches!(base, Heuristic::WellKnown(_));
                 let base: Inferred = base.into();
                 let base_t = base.as_cow_type(self.inference.i_s);
-                let mut added_to_stack = false;
-                if let t @ Type::Class(_) = base_t.as_ref() {
-                    self.state.self_stack.push(t.clone());
-                    added_to_stack = true;
+                let mut result = None;
+                for base_t in base_t.iter_with_unpacked_unions(self.inference.i_s.db) {
+                    let inf =
+                        self.infer_attr(primary_node_index, attr_name, base_t, base_is_heuristic);
+                    result = self.union_both_sides(result, inf)
                 }
-                let file = self.inference.file;
-                let (result, attr_kind) = base_t.lookup_with_first_attr_kind(
-                    self.inference.i_s,
-                    file,
-                    attr_name.as_code(),
-                    LookupKind::Normal,
-                    &mut ResultContext::Unknown,
-                    &|_| false,
-                    &|_| (),
-                );
-                let mut out = None;
-                if let LookupResult::GotoName { name, ref inf } = result {
-                    let db = self.inference.i_s.db;
-                    let directed_to = NodeRef::from_link(db, name);
-                    let new_name = directed_to.expect_name();
-                    if inf.maybe_specific(db) == Some(Specific::Cycle) {
-                        // We need to ensure that cycles are not executed in some way
-                        out = Some(Heuristic::Guess(inf.clone()))
-                    } else if matches!(attr_kind, AttributeKind::Property { .. })
-                        && let Some(name_def) = new_name.name_def()
-                        && let Some(func) = name_def.maybe_name_of_func()
-                    {
-                        out = self.heuristic_return_type(
-                            FuncNodeRef::new(directed_to.file, func.index()),
-                            ArgsFrame {
-                                call_site: NodeRef::new(self.inference.file, attr_name.index()),
-                                kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),
-                            },
-                        );
-                    } else if let Type::Class(c) = base_t.as_ref() {
-                        out = self.with_different_i_s(
-                            InferenceState::from_class(db, &c.class(db)),
-                            directed_to.file,
-                            |h| h.infer_name(new_name),
-                        );
-                        if let Some(self_t) = self.state.self_stack.last()
-                            && let Some(known) = &out
-                        {
-                            let t = known.as_inferred().as_cow_type(self.inference.i_s);
-                            if (matches!(t.as_ref(), Type::Class(_)))
-                                && let Some(descriptor) = t
-                                    .lookup(
-                                        self.inference.i_s,
-                                        file,
-                                        "__get__",
-                                        LookupKind::OnlyType,
-                                        &mut ResultContext::Unknown,
-                                        &|_| false,
-                                        &|_| (),
-                                    )
-                                    .into_maybe_inferred()
-                            {
-                                out = self.execute(
-                                    descriptor,
-                                    ArgsFrame {
-                                        call_site: NodeRef::new(file, primary_node_index),
-                                        kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
-                                    },
-                                );
-                            } else if matches!(t.as_ref(), Type::Callable(_)) {
-                                out = Some(Heuristic::Guess(Inferred::new_unsaved_complex(
-                                    ComplexPoint::HeuristicBound(Arc::new(HeuristicBound {
-                                        type_: t.as_ref().clone(),
-                                        bound_to: self_t.clone(),
-                                    })),
-                                )))
-                            }
-                        }
-                    } else {
-                        out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
-                    }
-                }
-                if added_to_stack {
-                    self.state.self_stack.pop();
-                }
-                if base_is_heuristic && out.is_none() {
-                    out = result.into_maybe_inferred().map(Heuristic::Guess);
-                }
-                out
+                result
             }
             PrimaryContent::Execution(details) => {
                 let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
@@ -1046,6 +969,99 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             }
         }
+    }
+
+    fn infer_attr(
+        &mut self,
+        primary_node_index: NodeIndex,
+        attr_name: Name,
+        base_t: &Type,
+        base_is_heuristic: bool,
+    ) -> Option<Heuristic> {
+        let mut added_to_stack = false;
+        if let t @ Type::Class(_) = base_t {
+            self.state.self_stack.push(t.clone());
+            added_to_stack = true;
+        }
+        let file = self.inference.file;
+        let (result, attr_kind) = base_t.lookup_with_first_attr_kind(
+            self.inference.i_s,
+            file,
+            attr_name.as_code(),
+            LookupKind::Normal,
+            &mut ResultContext::Unknown,
+            &|_| false,
+            &|_| (),
+        );
+        let mut out = None;
+        if let LookupResult::GotoName { name, ref inf } = result {
+            let db = self.inference.i_s.db;
+            let directed_to = NodeRef::from_link(db, name);
+            let new_name = directed_to.expect_name();
+            if inf.maybe_specific(db) == Some(Specific::Cycle) {
+                // We need to ensure that cycles are not executed in some way
+                out = Some(Heuristic::Guess(inf.clone()))
+            } else if matches!(attr_kind, AttributeKind::Property { .. })
+                && let Some(name_def) = new_name.name_def()
+                && let Some(func) = name_def.maybe_name_of_func()
+            {
+                out = self.heuristic_return_type(
+                    FuncNodeRef::new(directed_to.file, func.index()),
+                    ArgsFrame {
+                        call_site: NodeRef::new(self.inference.file, attr_name.index()),
+                        kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),
+                    },
+                );
+            } else if let Type::Class(c) = base_t {
+                out = self.with_different_i_s(
+                    InferenceState::from_class(db, &c.class(db)),
+                    directed_to.file,
+                    |h| h.infer_name(new_name),
+                );
+                if let Some(self_t) = self.state.self_stack.last()
+                    && let Some(known) = &out
+                {
+                    let t = known.as_inferred().as_cow_type(self.inference.i_s);
+                    if (matches!(t.as_ref(), Type::Class(_)))
+                        && let Some(descriptor) = t
+                            .lookup(
+                                self.inference.i_s,
+                                file,
+                                "__get__",
+                                LookupKind::OnlyType,
+                                &mut ResultContext::Unknown,
+                                &|_| false,
+                                &|_| (),
+                            )
+                            .into_maybe_inferred()
+                    {
+                        out = self.execute(
+                            descriptor,
+                            ArgsFrame {
+                                call_site: NodeRef::new(file, primary_node_index),
+                                kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
+                            },
+                        );
+                    } else if matches!(t.as_ref(), Type::Callable(_)) {
+                        out = Some(Heuristic::Guess(Inferred::new_unsaved_complex(
+                            ComplexPoint::HeuristicBound(Arc::new(HeuristicBound {
+                                type_: t.as_ref().clone(),
+                                bound_to: self_t.clone(),
+                            })),
+                        )))
+                    }
+                }
+            } else {
+                out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
+            }
+        }
+        if added_to_stack {
+            self.state.self_stack.pop();
+        }
+        if base_is_heuristic && out.is_none() {
+            out = result.into_maybe_inferred().map(Heuristic::Guess);
+        }
+        out
     }
 
     fn execute(&mut self, base: Inferred, args_frame: ArgsFrame<'db>) -> Option<Heuristic> {
