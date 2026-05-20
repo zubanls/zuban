@@ -240,12 +240,12 @@ def foo_func(arg):
     return arg
 
 
-x = foo_func(x for x in [1])
+xx = foo_func(xx for xx in [1])
 
 #? int()
-next(x)
+next(xx)
 #?
-x[0]
+xx[0]
 
 # While it's illegal to have more than one argument, when a generator
 # expression is involved, it's still a valid parse tree and Jedi should still
