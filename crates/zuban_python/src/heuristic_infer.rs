@@ -5,7 +5,8 @@ use parsa_python_cst::{
     AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
     ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent, NodeIndex,
     Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield,
-    StarExpressionContent, StarExpressions, StarLikeExpression, Target, TypeLike, YieldExprContent,
+    StarExpressionContent, StarExpressions, StarLikeExpression, StarLikeExpressionIterator, Target,
+    TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -47,6 +48,7 @@ use crate::{
 // const PARSED_FILE_LIMIT: usize = 10;
 // const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
+const CONTAINER_INFER_LIMIT: usize = 4;
 
 #[derive(Default)]
 struct HeuristicState<'db> {
@@ -833,6 +835,15 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 comp,
                 slf.inference.i_s.db.python_state.set_link(),
             )),
+
+            AtomContent::List(list) => {
+                slf.infer_container(list.unpack(), slf.inference.i_s.db.python_state.list_link())
+            }
+            AtomContent::Set(set) => {
+                slf.infer_container(set.unpack(), slf.inference.i_s.db.python_state.set_link())
+            }
+            AtomContent::Dict(_) => None,              // TODO
+            AtomContent::DictComprehension(_) => None, // TODO
             _ => None,
         })
     }
@@ -1395,6 +1406,29 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             &right.into(),
             &mut ResultContext::Unknown,
         )))
+    }
+
+    fn infer_container(
+        &mut self,
+        items: StarLikeExpressionIterator,
+        container: PointLink,
+    ) -> Option<Heuristic> {
+        let mut result = None;
+        for item in items.take(CONTAINER_INFER_LIMIT) {
+            match item {
+                StarLikeExpression::NamedExpression(named_expr) => {
+                    let inf = self.infer_expression(named_expr.expression());
+                    result = self.union_both_sides(result, Some(inf));
+                }
+                StarLikeExpression::StarNamedExpression(_) => return None,
+                _ => unreachable!(),
+            }
+        }
+
+        let t = Inferred::from(result?).as_type(self.inference.i_s);
+        Some(Heuristic::Guess(Inferred::from_type(new_class!(
+            container, t,
+        ))))
     }
 
     fn infer_comprehension_for_container(

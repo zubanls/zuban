@@ -74,14 +74,30 @@ next(f((x for x in [1])))
 #? int()
 next(f(x for x in [1]))
 
-list1 = [x for x in f([1])]
+list_comp1 = [x for x in f([1])]
+#? list()
+list_comp1
+#? int()
+list_comp1[0]
+
+set_comp1 = [x for x in f([1])]
+#? list()
+set_comp1
+#? int()
+set_comp1[0]
+
+list1 = [A(1)]
 #? list()
 list1
-#? int()
+#? A()
 list1[0]
-
-set1 = [x for x in f([1])]
-#? list()
-set1
 #? int()
-set1[0]
+list1[0].val
+
+set1 = {A(1)}
+#? set()
+set1
+#? A()
+next(iter(set1))
+#? int()
+next(iter(set1)).val
