@@ -5,7 +5,7 @@ use parsa_python_cst::{
     AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, Expression,
     ExpressionContent, ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode,
     Name, NameParent, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
-    ReturnOrYield, StarExpressionContent, StarExpressions, StarLikeExpression,
+    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression,
     StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
@@ -232,6 +232,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             self.inference.i_s.db,
                             NodeRef::new(self.inference.file, func_node.index()),
                         );
+                        if self
+                            .inference
+                            .file
+                            .points
+                            .get(name_def.index())
+                            .maybe_specific()
+                            == Some(Specific::MaybeSelfParam)
+                            && !matches!(func.kind(self.inference.i_s), FunctionKind::Staticmethod)
+                        {
+                            return Some(Heuristic::Guess(Inferred::from_type(Type::Self_)));
+                        }
                         let i_s = self.inference.i_s;
                         if let Some(self_) = self.state.self_stack.last()
                             && func.name() == "__init__"
@@ -403,7 +414,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 Inferred::new_file_reference(file_index),
             )),
             FollowImportResult::TreeName(tree_name) => {
-                self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
+                if !matches!(tree_name.parent_scope, Scope::Module)
+                    && tree_name.file.file_index == self.inference.file.file_index
+                {
+                    self.infer_name(tree_name.cst_name)
+                } else {
+                    self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
+                }
             }
         }
     }
@@ -1492,6 +1509,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             .map(|i| i.into())
             .unwrap_or_else(Inferred::new_any_from_error)
             .as_type(self.inference.i_s);
+        debug!(
+            "Inferred container with item {}",
+            t.format_short(self.inference.i_s.db)
+        );
         Heuristic::Guess(Inferred::from_type(new_class!(container, t,)))
     }
 

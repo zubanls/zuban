@@ -31,7 +31,7 @@ lazy_static::lazy_static! {
         ("async_.py", 2),
         ("basic.py", 10),
         ("classes.py", 13),
-        ("comprehensions.py", 3),
+        ("comprehensions.py", 1),
         ("django.py", 2),
         ("decorators.py", 6),
         ("descriptors.py", 5),
