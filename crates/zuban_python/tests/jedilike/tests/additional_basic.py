@@ -73,3 +73,15 @@ f(x for x in [1])
 next(f((x for x in [1])))
 #? int()
 next(f(x for x in [1]))
+
+list1 = [x for x in f([1])]
+#? list()
+list1
+#? int()
+list1[0]
+
+set1 = [x for x in f([1])]
+#? list()
+set1
+#? int()
+set1[0]

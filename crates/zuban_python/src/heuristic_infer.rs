@@ -825,6 +825,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             }
             AtomContent::Tuple(tuple) => slf.infer_tuple(tuple.iter()),
             AtomContent::GeneratorComprehension(comp) => slf.infer_generator_comprehension(comp),
+            AtomContent::ListComprehension(comp) => Some(slf.infer_comprehension_for_container(
+                comp,
+                slf.inference.i_s.db.python_state.list_link(),
+            )),
+            AtomContent::SetComprehension(comp) => Some(slf.infer_comprehension_for_container(
+                comp,
+                slf.inference.i_s.db.python_state.set_link(),
+            )),
             _ => None,
         })
     }
@@ -1389,8 +1397,29 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         )))
     }
 
+    fn infer_comprehension_for_container(
+        &mut self,
+        comp: Comprehension,
+        container: PointLink,
+    ) -> Heuristic {
+        debug!("Infer comprehension: {:?}", comp.as_code());
+        let _indent = debug_indent();
+        let (named_expr, for_if_clauses) = comp.unpack();
+        let t = self
+            .infer_comprehension_recursively(for_if_clauses.iter(), |slf| {
+                slf.infer_expression(named_expr.expression())
+            })
+            .map(|i| i.into())
+            .unwrap_or_else(Inferred::new_any_from_error)
+            .as_type(self.inference.i_s);
+        Heuristic::Guess(Inferred::from_type(new_class!(container, t,)))
+    }
+
     fn infer_generator_comprehension(&mut self, comprehension: Comprehension) -> Option<Heuristic> {
-        debug!("Infer comprehension: {:?}", comprehension.as_code());
+        debug!(
+            "Infer generator comprehension: {:?}",
+            comprehension.as_code()
+        );
         let _indent = debug_indent();
         let inference = self.inference;
         Some(Heuristic::Guess(

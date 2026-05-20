@@ -4682,10 +4682,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             comp,
         );
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.list_node_ref().as_link(),
-            t,
-        ))
+        Inferred::from_type(new_class!(self.i_s.db.python_state.list_link(), t,))
     }
 
     fn infer_set_comprehension(
@@ -4702,10 +4699,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             comp,
         );
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.set_node_ref().as_link(),
-            t,
-        ))
+        Inferred::from_type(new_class!(self.i_s.db.python_state.set_link(), t,))
     }
 
     pub fn infer_generator_comprehension(
