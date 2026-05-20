@@ -1469,7 +1469,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             }
         }
 
-        let t = Inferred::from(result?).as_type(self.inference.i_s);
+        let t = result?.as_type(self.inference.i_s);
         Some(Heuristic::Guess(Inferred::from_type(new_class!(
             container, t,
         ))))
