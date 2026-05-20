@@ -142,3 +142,23 @@ for tup in dict_comp2:
     tup[0]
     ##? int()
     tup[1]
+
+dict1 = {"": A(1)}
+#? dict()
+dict1
+#? A()
+dict1[""]
+#? int()
+dict1[""].val
+#? A()
+dict1["nothing"]
+#? int()
+dict1["nothing"].val
+
+dict2 = {f("a"): A(1), f("b"): A(""), f("c"): f(1.0)}
+#? dict()
+dict2
+#? str()
+next(iter(dict2))
+#? A()
+next(iter(dict2.values()))

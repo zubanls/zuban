@@ -2,11 +2,11 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
-    AtomContent, Comprehension, DefiningStmt, DictComprehension, Expression, ExpressionContent,
-    ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent,
-    NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield,
-    StarExpressionContent, StarExpressions, StarLikeExpression, StarLikeExpressionIterator, Target,
-    TypeLike, YieldExprContent,
+    AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, Expression,
+    ExpressionContent, ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode,
+    Name, NameParent, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
+    ReturnOrYield, StarExpressionContent, StarExpressions, StarLikeExpression,
+    StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -846,7 +846,29 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             AtomContent::Set(set) => {
                 slf.infer_container(set.unpack(), slf.inference.i_s.db.python_state.set_link())
             }
-            AtomContent::Dict(_) => None, // TODO
+            AtomContent::Dict(dict) => {
+                let mut key_result = None;
+                let mut value_result = None;
+                // slf.infer_dict_comprehension_for_container(comp)
+                for item in dict.iter_elements().take(CONTAINER_INFER_LIMIT) {
+                    match item {
+                        DictElement::KeyValue(dict_key_value) => {
+                            let key = dict_key_value.key();
+                            let value = dict_key_value.value();
+                            let key = slf.infer_expression(key);
+                            let value = slf.infer_expression(value);
+                            key_result = slf.union_both_sides(key_result, Some(key));
+                            value_result = slf.union_both_sides(value_result, Some(value));
+                        }
+                        DictElement::Star(dict_starred) => return None,
+                    }
+                }
+                Some(Heuristic::Guess(Inferred::from_type(new_class!(
+                    slf.inference.i_s.db.python_state.dict_link(),
+                    key_result?.as_type(slf.inference.i_s),
+                    value_result?.as_type(slf.inference.i_s),
+                ))))
+            }
             AtomContent::DictComprehension(comp) => {
                 slf.infer_dict_comprehension_for_container(comp)
             }
