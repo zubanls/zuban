@@ -3,9 +3,9 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
-    FunctionDef, GotoNode, Name, NameParent, NodeIndex, Operation, ParamKind, Primary,
-    PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
-    StarLikeExpression, Target, TypeLike, YieldExprContent,
+    ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent, NodeIndex,
+    Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
+    StarExpressionContent, StarExpressions, StarLikeExpression, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -17,7 +17,7 @@ use crate::{
     },
     database::{ComplexPoint, Database, HeuristicBound, PointKind, PointLink, Specific},
     debug,
-    file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile},
+    file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next},
     format_data::FormatData,
     getitem::SliceType,
     goto::{
@@ -634,7 +634,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         db: &'db Database,
         slf: &RefCell<&mut Self>,
         call_site: NodeRef<'db>,
-        param: InferrableParam<FunctionParam>,
+        param: InferrableParam<'db, '_, FunctionParam>,
         rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
         from_callable_search: bool,
     ) -> Option<Inferred>
@@ -672,21 +672,21 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn infer_argument<'x>(
         db: &'db Database,
-        slf: &RefCell<&mut Self>,
+        slf: &RefCell<&mut HeuristicInference<'db, '_, '_>>,
         call_site: NodeRef<'db>,
         param: FunctionParam,
-        argument: ParamArgument,
+        argument: ParamArgument<'db, '_>,
         rest_args: &mut Peekable<impl Iterator<Item = InferrableParam<'db, 'x, FunctionParam<'x>>>>,
     ) -> Option<Inferred>
     where
         'db: 'x,
     {
         let i_s = &InferenceState::new(db, call_site.file);
-        let inf_expr = |expr| {
+        let inf_expr = |expr: Expression| {
             slf.borrow_mut()
                 .with_different_file(call_site.file, |h| h.infer_expression(expr).into())
         };
-        let infer = |argument| match argument {
+        let infer = |argument: ParamArgument<'db, '_>| match argument {
             ParamArgument::None => None,
             ParamArgument::Argument(arg) => match arg.kind {
                 ArgKind::Positional(arg) => Some(inf_expr(arg.named_expr.expression())),
@@ -694,12 +694,23 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 ArgKind::Inferred { inferred, .. }
                 | ArgKind::InferredWithCustomAddIssue { inferred, .. }
                 | ArgKind::Overridden { inferred, .. } => Some(inferred),
-                ArgKind::Comprehension { .. } => todo!(),
-                ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
+                ArgKind::Comprehension {
+                    i_s,
+                    file,
+                    comprehension,
+                } => {
+                    // The file needs to be loaded again because of different lifetimes
+                    let file = i_s.db.loaded_python_file(file.file_index);
+                    slf.borrow_mut().with_different_i_s(i_s, file, |h| {
+                        Some(h.infer_generator_comprehension(comprehension)?.into())
+                    })
+                }
+                ArgKind::StarredWithUnpack { .. } => todo!(),
+                ArgKind::ParamSpec { .. } => None,
             },
             ParamArgument::TupleUnpack(_args) => todo!(),
             ParamArgument::MatchedUnpackedTypedDictMember { .. } => todo!(),
-            ParamArgument::ParamSpecArgs(..) => todo!(),
+            ParamArgument::ParamSpecArgs(..) => None,
         };
         match param.kind(i_s.db) {
             ParamKind::Star => {
@@ -801,15 +812,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     slf.infer_expression(named_expr.expression())
                 }
                 AtomContent::Tuple(tuple) => return slf.infer_tuple(tuple.iter()),
-                /*
-                AtomContent::List(list) => todo!(),
-                AtomContent::ListComprehension(comprehension) => todo!(),
-                AtomContent::Dict(dict) => todo!(),
-                AtomContent::DictComprehension(dict_comprehension) => todo!(),
-                AtomContent::Set(set) => todo!(),
-                AtomContent::SetComprehension(comprehension) => todo!(),
-                AtomContent::GeneratorComprehension(comprehension) => todo!(),
-                */
                 _ => return None,
             })
         })
@@ -1373,6 +1375,58 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             &right.into(),
             &mut ResultContext::Unknown,
         )))
+    }
+
+    fn infer_generator_comprehension(&mut self, comprehension: Comprehension) -> Option<Heuristic> {
+        let inference = self.inference;
+        Some(Heuristic::Guess(
+            inference.wrap_generator_comprehension_result(comprehension, || {
+                let (named_expr, for_if_clauses) = comprehension.unpack();
+                if let Some(inf) = self
+                    .infer_comprehension_recursively(for_if_clauses.iter(), |slf| {
+                        slf.infer_expression(named_expr.expression())
+                    })
+                {
+                    inf.into()
+                } else {
+                    Inferred::new_any_from_error()
+                }
+                .as_type(self.inference.i_s)
+            }),
+        ))
+    }
+
+    fn infer_comprehension_recursively<T>(
+        &mut self,
+        mut for_if_clauses: ForIfClauseIterator,
+        item_callable: impl FnOnce(&mut Self) -> T,
+    ) -> Option<T> {
+        if let Some(for_if_clause) = for_if_clauses.next() {
+            let mut needs_await = false;
+            let (targets, expr_part, _) = match for_if_clause {
+                ForIfClause::Sync(sync) => sync.unpack(),
+                ForIfClause::Async(async_) => {
+                    needs_await = true;
+                    async_.unpack()
+                }
+            };
+            let clause_node_ref = NodeRef::new(self.inference.file, for_if_clause.index());
+            let base = self.infer_expr_part(expr_part)?;
+            let inf = if needs_await {
+                await_aiter_and_next(self.inference.i_s, base.into(), clause_node_ref)
+            } else {
+                Inferred::from(base)
+                    .iter(
+                        self.inference.i_s,
+                        NodeRef::new(self.inference.file, expr_part.index()),
+                        IterCause::Iter,
+                    )
+                    .infer_all(self.inference.i_s)
+            };
+            self.infer_comprehension_recursively(for_if_clauses, item_callable)
+        } else {
+            Some(item_callable(self))
+        }
     }
 }
 

@@ -54,6 +54,7 @@ use crate::{
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
+#[derive(Copy, Clone)]
 pub(crate) struct Inference<'db, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
 
 impl<'db: 'file, 'file, 'i_s> std::ops::Deref for Inference<'db, 'file, 'i_s> {
@@ -4712,15 +4713,25 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         comp: Comprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let t = self.infer_comprehension_expr_with_context(
-            result_context,
-            self.i_s.db.python_state.generator_node_ref(),
-            |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                IssueKind::GeneratorComprehensionMismatch { got, expected }
-            },
-            comp,
-        );
+        self.wrap_generator_comprehension_result(comp, || {
+            self.infer_comprehension_expr_with_context(
+                result_context,
+                self.i_s.db.python_state.generator_node_ref(),
+                |error_types| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
+                    IssueKind::GeneratorComprehensionMismatch { got, expected }
+                },
+                comp,
+            )
+        })
+    }
+
+    pub fn wrap_generator_comprehension_result(
+        &self,
+        comp: Comprehension,
+        infer: impl FnOnce() -> Type,
+    ) -> Inferred {
+        let t = infer();
         let (named_expr, for_if_clauses) = comp.unpack();
         let is_async = named_expr.has_await()
             || for_if_clauses

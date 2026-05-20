@@ -52,3 +52,15 @@ factor1
 factor2
 #? str()
 factor3
+
+def return_next(x):
+    return next(x)
+
+#? int()
+return_next((x for x in [1]))
+#? int()
+return_next(x for x in [1])
+#? types.GeneratorType()
+f((x for x in [1]))
+#? types.GeneratorType()
+f(x for x in [1])

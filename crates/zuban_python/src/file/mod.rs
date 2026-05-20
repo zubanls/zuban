@@ -11,7 +11,9 @@ mod type_computation;
 mod type_var_finder;
 mod utils;
 
-pub(crate) use diagnostics::{OVERLAPPING_REVERSE_TO_NORMAL_METHODS, check_multiple_inheritance};
+pub(crate) use diagnostics::{
+    OVERLAPPING_REVERSE_TO_NORMAL_METHODS, await_aiter_and_next, check_multiple_inheritance,
+};
 pub(crate) use file_state::File;
 pub(crate) use flow_analysis::{FLOW_ANALYSIS, RedefinitionResult, process_unfinished_partials};
 pub(crate) use inference::Inference;

@@ -2507,7 +2507,11 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
     })
 }
 
-pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
+pub(crate) fn await_aiter_and_next(
+    i_s: &InferenceState,
+    base: Inferred,
+    from: NodeRef,
+) -> Inferred {
     await_(
         i_s,
         base.type_lookup_and_execute(
