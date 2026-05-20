@@ -4,7 +4,7 @@ use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
     ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent, NodeIndex,
-    Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield, Scope,
+    Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield,
     StarExpressionContent, StarExpressions, StarLikeExpression, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
@@ -1539,7 +1539,6 @@ impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
 #[derive(Debug)]
 struct FoundExecution<'db> {
     file: &'db PythonFile,
-    scope: Scope<'db>,
     primary: Primary<'db>,
     details: ArgumentsDetails<'db>,
 }
@@ -1549,7 +1548,7 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for match_ in &mut self.matches {
-            let (scope, node) = self
+            let (_, node) = self
                 .current_file
                 .tree
                 .goto_node(match_.range().start as NodeIndex);
@@ -1573,7 +1572,6 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                         self.found_in_current_file = true;
                         return Some(FoundExecution {
                             file: self.current_file,
-                            scope,
                             primary,
                             details,
                         });
