@@ -133,14 +133,13 @@ dict_comp2
 dict_comp2["x"]
 #? float()
 dict_comp2[1]
-# TODO
-#?
+#? float()
 next(iter(dict_comp2.keys()))
 
-for tup in dict_comp2:
-    ##? int()
+for tup in dict_comp2.items():
+    #? float()
     tup[0]
-    ##? int()
+    #? float()
     tup[1]
 
 dict1 = {"": A(1)}
@@ -158,7 +157,25 @@ dict1["nothing"].val
 dict2 = {f("a"): A(1), f("b"): A(""), f("c"): f(1.0)}
 #? dict()
 dict2
+#? A() float()
+dict2[""]
+#? int() str()
+dict2[""].val
+#? int() str()
+dict2.get("a").val
+#? int() str()
+dict2.get(NOT_DEFINED).val
+# TODO?
+#?
+dict2.get("not-in-dict").val
 #? str()
 next(iter(dict2))
-#? A()
+#? A() float()
 next(iter(dict2.values()))
+#? str() int()
+next(iter(dict2.values())).val
+#? str()
+next(iter(dict2.keys()))
+for key1 in dict2.keys():
+    #? str()
+    key1

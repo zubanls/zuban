@@ -860,7 +860,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             key_result = slf.union_both_sides(key_result, Some(key));
                             value_result = slf.union_both_sides(value_result, Some(value));
                         }
-                        DictElement::Star(dict_starred) => return None,
+                        DictElement::Star(_) => return None,
                     }
                 }
                 Some(Heuristic::Guess(Inferred::from_type(new_class!(
@@ -1197,12 +1197,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         if func_node_ref.return_annotation().is_some() {
             let ret = func_node_ref.return_annotation_type(i_s);
             if !ret.is_any_or_any_in_union(db) {
-                debug!(
-                    "Heuristics: Did not execute {}, because the function has \
-                                an annotation without an explicit Any",
-                    func_node_ref.qualified_name(db)
-                );
-                // Dealing with simple overloads like next(<single-arg>)
                 if let Some(overload) = func_node_ref.maybe_overload()
                     && let Some(args) = args_frame.maybe_simple_args(i_s)
                     && let Some(arg) = args.maybe_single_arg(i_s)
@@ -1219,6 +1213,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         ),
                     ));
                 }
+                if let Some(args) = args_frame.maybe_simple_args(i_s) {
+                    return Some(Heuristic::Guess(base.execute(i_s, &args)));
+                }
+                debug!(
+                    "Heuristics: Did not execute {}, because the function has \
+                                an annotation without an explicit clear args",
+                    func_node_ref.qualified_name(db)
+                );
                 return None;
             }
             if ret.has_type_vars() {
