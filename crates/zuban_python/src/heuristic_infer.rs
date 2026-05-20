@@ -818,15 +818,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             "Heuristics for atom: {}",
             limit_length_for_debug(atom.as_code())
         );
-        self.create_heuristic_if_necessary(inf, |slf| {
-            Some(match atom.unpack() {
-                AtomContent::Name(name) => slf.infer_name_reference(name)?,
-                AtomContent::NamedExpression(named_expr) => {
-                    slf.infer_expression(named_expr.expression())
-                }
-                AtomContent::Tuple(tuple) => return slf.infer_tuple(tuple.iter()),
-                _ => return None,
-            })
+        self.create_heuristic_if_necessary(inf, |slf| match atom.unpack() {
+            AtomContent::Name(name) => slf.infer_name_reference(name),
+            AtomContent::NamedExpression(named_expr) => {
+                Some(slf.infer_expression(named_expr.expression()))
+            }
+            AtomContent::Tuple(tuple) => slf.infer_tuple(tuple.iter()),
+            AtomContent::GeneratorComprehension(comp) => slf.infer_generator_comprehension(comp),
+            _ => None,
         })
     }
 
