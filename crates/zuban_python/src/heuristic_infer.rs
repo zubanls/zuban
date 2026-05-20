@@ -2,9 +2,9 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
-    AtomContent, Comprehension, DefiningStmt, Expression, ExpressionContent, ExpressionPart,
-    ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent, NodeIndex,
-    Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield,
+    AtomContent, Comprehension, DefiningStmt, DictComprehension, Expression, ExpressionContent,
+    ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, Name, NameParent,
+    NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom, ReturnOrYield,
     StarExpressionContent, StarExpressions, StarLikeExpression, StarLikeExpressionIterator, Target,
     TypeLike, YieldExprContent,
 };
@@ -177,6 +177,10 @@ impl Heuristic {
         match self {
             Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => inf,
         }
+    }
+
+    fn as_type(&self, i_s: &InferenceState) -> Type {
+        self.as_inferred().as_type(i_s)
     }
 }
 
@@ -842,8 +846,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             AtomContent::Set(set) => {
                 slf.infer_container(set.unpack(), slf.inference.i_s.db.python_state.set_link())
             }
-            AtomContent::Dict(_) => None,              // TODO
-            AtomContent::DictComprehension(_) => None, // TODO
+            AtomContent::Dict(_) => None, // TODO
+            AtomContent::DictComprehension(comp) => {
+                slf.infer_dict_comprehension_for_container(comp)
+            }
             _ => None,
         })
     }
@@ -1487,6 +1493,31 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 .as_type(self.inference.i_s)
             }),
         ))
+    }
+
+    fn infer_dict_comprehension_for_container(
+        &mut self,
+        comp: DictComprehension,
+    ) -> Option<Heuristic> {
+        debug!("Infer dict comprehension: {:?}", comp.as_code());
+        let _indent = debug_indent();
+        let (dict_key_value, for_if_clauses) = comp.unpack();
+        let (key, value) = self.infer_comprehension_recursively(for_if_clauses.iter(), |slf| {
+            let key = dict_key_value.key();
+            let value = dict_key_value.value();
+            (slf.infer_expression(key), slf.infer_expression(value))
+        })?;
+        let t = new_class!(
+            self.inference.i_s.db.python_state.dict_link(),
+            key.as_type(self.inference.i_s),
+            value.as_type(self.inference.i_s)
+        );
+        debug!(
+            "Inferred dict comprehension {:?} as: {}",
+            comp.as_code(),
+            t.format_short(self.inference.i_s.db),
+        );
+        Some(Heuristic::Guess(Inferred::from_type(t)))
     }
 
     fn infer_comprehension_recursively<T>(

@@ -117,3 +117,28 @@ set2
 next(iter(set2))
 #? int() str()
 next(iter(set2)).val
+
+dict_comp1 = {"x": x for x in f([1])}
+#? dict()
+dict_comp1
+#? int()
+dict_comp1["x"]
+#? str()
+next(iter(dict_comp1.keys()))
+
+dict_comp2 = {x: x for x in f([1.0])}
+#? dict()
+dict_comp2
+#? float()
+dict_comp2["x"]
+#? float()
+dict_comp2[1]
+# TODO
+#?
+next(iter(dict_comp2.keys()))
+
+for tup in dict_comp2:
+    ##? int()
+    tup[0]
+    ##? int()
+    tup[1]
