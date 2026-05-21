@@ -37,6 +37,11 @@ use crate::{
     utils::is_file_with_python_ending,
 };
 
+pub(crate) struct FullyInferred {
+    pub typed: Inferred,
+    heuristic: Option<Inferred>,
+}
+
 pub(crate) struct PositionalDocument<'db, T> {
     pub db: &'db Database,
     pub file: &'db PythonFile,
@@ -106,14 +111,16 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
         &self,
         i_s: &InferenceState,
         use_heuristics: bool,
-    ) -> Option<Inferred> {
-        if !use_heuristics {
-            return self.infer_position(i_s);
-        }
-        let inferred = self.infer_position(i_s)?;
-        Some(infer_heuristics_if_necessary(i_s, inferred, || {
-            self.infer_heuristics_if_possible()
-        }))
+    ) -> Option<FullyInferred> {
+        let typed = self.infer_position(i_s)?;
+        Some(FullyInferred {
+            heuristic: if use_heuristics {
+                infer_heuristics_if_necessary(i_s, &typed, || self.infer_heuristics_if_possible())
+            } else {
+                None
+            },
+            typed,
+        })
     }
 
     fn infer_position(&self, i_s: &InferenceState) -> Option<Inferred> {
@@ -960,7 +967,7 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
 }
 
 impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
-    pub fn infer_definition(&mut self, use_heuristics: bool) -> (Inferred, Vec<T>) {
+    pub fn infer_definition(&mut self, use_heuristics: bool) -> (FullyInferred, Vec<T>) {
         let mut result = vec![];
         let file = self.infos.file;
         let db = self.infos.db;
@@ -970,9 +977,13 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 .infos
                 .infer_position_maybe_with_heuristics(i_s, use_heuristics)
             else {
-                return Inferred::new_any_from_error();
+                return FullyInferred {
+                    typed: Inferred::new_any_from_error(),
+                    heuristic: None,
+                };
             };
-            for type_ in inf.as_cow_type(i_s).iter_with_unpacked_unions(db) {
+            let inf_ref = inf.heuristic.as_ref().unwrap_or(&inf.typed);
+            for type_ in inf_ref.as_cow_type(i_s).iter_with_unpacked_unions(db) {
                 debug!(
                     "Part of inferring type definition: {:?}",
                     type_.format_short(db)

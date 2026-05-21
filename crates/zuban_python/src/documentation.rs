@@ -74,7 +74,7 @@ impl<'project> Document<'project> {
         let mut type_formatted = if only_docstrings {
             "".into()
         } else {
-            let t = inf.as_cow_type(i_s);
+            let t = inf.typed.as_cow_type(i_s);
             if let Type::Namespace(_) = t.as_ref() {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
