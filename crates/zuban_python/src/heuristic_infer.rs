@@ -49,6 +49,7 @@ use crate::{
 // const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 const CONTAINER_INFER_LIMIT: usize = 4;
+const EXECUTION_STACK_LIMIT: usize = 10;
 
 #[derive(Default)]
 struct HeuristicState<'db> {
@@ -1347,6 +1348,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let db = i_s.db;
         let func = Function::new_with_unknown_parent(db, *func_node_ref);
         debug!("Heuristics: Execute function {}", func.qualified_name(db));
+
+        if self.state.call_stack.len() >= EXECUTION_STACK_LIMIT {
+            return None;
+        }
 
         self.state.call_stack.push((func_node_ref, args_frame));
         let result =

@@ -122,3 +122,30 @@ class Comprehension:
 Comprehension(1).foo[0]
 #? int()
 Comprehension(1).foo
+
+# Only for zuban
+
+class Container:
+    def __init__(self, x):
+        self.x = x
+
+def f1(x): return f2(x)
+def f2(x): return f3(x)
+def f3(x): return f4(x)
+def f4(x): return f5(x)
+def f5(x): return f6(x)
+def f6(x): return f7(x)
+def f7(x): return f8(x)
+def f8(x): return f9(x)
+def f9(x): return f10(x)
+def f10(x): return f11(x)
+def f11(x): return Container(x)
+
+#?
+f1(1).x
+#?
+f1("").x
+#? int()
+f2(1).x
+#? str()
+f2("").x
