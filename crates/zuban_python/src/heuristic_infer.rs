@@ -34,8 +34,8 @@ use crate::{
     result_context::ResultContext,
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
-        GenericsList, IterCause, IterInfos, LiteralValue, LookupResult, Tuple, Type, TypedDict,
-        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue, LookupResult,
+        Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -80,7 +80,8 @@ enum SavedArgumentsDetails {
 #[derive(Debug, Clone)]
 enum SavedArgsKind {
     Simple(SavedArgumentsDetails),
-    Known(Type, Type),
+    SinglePositional(Type),
+    TwoPositional(Type, Type),
 }
 
 #[derive(Debug)]
@@ -118,7 +119,7 @@ impl<'db> ArgsFrame<'db> {
     {
         let details = match self.kind {
             SavedArgsKind::Simple(details) => details.as_details(self.call_site.file),
-            SavedArgsKind::Known(_, _) => return None,
+            SavedArgsKind::SinglePositional(_) | SavedArgsKind::TwoPositional(_, _) => return None,
         };
         Some(SimpleArgs::new(
             *i_s,
@@ -289,23 +290,36 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                         false,
                                     )?
                                 }
-                                SavedArgsKind::Known(first, second) => self.infer_param_with_args(
-                                    &func,
-                                    args_frame.call_site,
-                                    &CombinedArgs::new(
+                                SavedArgsKind::SinglePositional(first) => self
+                                    .infer_param_with_args(
+                                        &func,
+                                        args_frame.call_site,
                                         &KnownArgsWithCustomAddIssue::new(
                                             &Inferred::from_type(first.clone()),
                                             &|_| false,
                                         ),
-                                        &KnownArgsWithCustomAddIssue::new(
-                                            &Inferred::from_type(second.clone()),
-                                            &|_| false,
+                                        skip_first_param,
+                                        name,
+                                        false,
+                                    )?,
+                                SavedArgsKind::TwoPositional(first, second) => self
+                                    .infer_param_with_args(
+                                        &func,
+                                        args_frame.call_site,
+                                        &CombinedArgs::new(
+                                            &KnownArgsWithCustomAddIssue::new(
+                                                &Inferred::from_type(first.clone()),
+                                                &|_| false,
+                                            ),
+                                            &KnownArgsWithCustomAddIssue::new(
+                                                &Inferred::from_type(second.clone()),
+                                                &|_| false,
+                                            ),
                                         ),
-                                    ),
-                                    skip_first_param,
-                                    name,
-                                    false,
-                                )?,
+                                        skip_first_param,
+                                        name,
+                                        false,
+                                    )?,
                             }));
                         }
                         Some(Heuristic::Guess(
@@ -1039,9 +1053,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             &|_| false,
             &|_| (),
         );
+        let db = self.inference.i_s.db;
         let mut out = None;
         if let LookupResult::GotoName { name, ref inf } = result {
-            let db = self.inference.i_s.db;
             let directed_to = NodeRef::from_link(db, name);
             let new_name = directed_to.expect_name();
             if inf.maybe_specific(db) == Some(Specific::Cycle) {
@@ -1085,7 +1099,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             descriptor,
                             ArgsFrame {
                                 call_site: NodeRef::new(file, from_node_index),
-                                kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
+                                kind: SavedArgsKind::TwoPositional(self_t.clone(), Type::ERROR),
                             },
                         );
                     } else if matches!(t.as_ref(), Type::Callable(_)) {
@@ -1103,6 +1117,28 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             } else {
                 out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
             }
+        } else if let LookupResult::UnknownName(inf) = &result
+            && inf.maybe_any(db).is_some()
+            && let LookupResult::GotoName { inf, .. } = base_t.lookup(
+                self.inference.i_s,
+                file,
+                "__getattr__",
+                LookupKind::OnlyType,
+                &mut ResultContext::Unknown,
+                &|_| false,
+                &|_| (),
+            )
+        {
+            return self.execute(
+                inf,
+                ArgsFrame {
+                    call_site: NodeRef::new(file, from_node_index),
+                    kind: SavedArgsKind::SinglePositional(Type::Literal(Literal {
+                        kind: LiteralKind::String(DbString::ArcStr(attr_name.into())),
+                        implicit: true,
+                    })),
+                },
+            );
         }
         if added_to_stack {
             self.state.self_stack.pop();
