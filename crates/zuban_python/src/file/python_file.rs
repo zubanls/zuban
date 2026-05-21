@@ -540,6 +540,11 @@ impl<'db> PythonFile {
         self.stub_cache.is_some()
     }
 
+    #[inline]
+    pub fn is_builtins(&self, db: &Database) -> bool {
+        self.file_index == db.python_state.builtins().file_index
+    }
+
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {

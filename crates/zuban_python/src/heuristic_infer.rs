@@ -4,9 +4,9 @@ use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, Expression,
     ExpressionContent, ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode,
-    Name, NameParent, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
-    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression,
-    StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
+    Name, NameParent, NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent,
+    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
+    StarLikeExpression, StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::FastHashMap;
@@ -34,7 +34,7 @@ use crate::{
     result_context::ResultContext,
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
-        GenericsList, IterCause, IterInfos, LookupResult, Tuple, Type, TypedDict,
+        GenericsList, IterCause, IterInfos, LiteralValue, LookupResult, Tuple, Type, TypedDict,
         TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
@@ -837,7 +837,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         self.create_heuristic_if_necessary(inf, |slf| match atom.unpack() {
             AtomContent::Name(name) => slf.infer_name_reference(name),
             AtomContent::NamedExpression(named_expr) => {
-                Some(slf.infer_expression(named_expr.expression()))
+                Some(slf.infer_named_expression(named_expr))
             }
             AtomContent::Tuple(tuple) => slf.infer_tuple(tuple.iter()),
             AtomContent::GeneratorComprehension(comp) => slf.infer_generator_comprehension(comp),
@@ -960,16 +960,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     ) -> Option<Heuristic> {
         match content {
             PrimaryContent::Attribute(attr_name) => {
-                let base_is_heuristic = !matches!(base, Heuristic::WellKnown(_));
-                let base: Inferred = base.into();
-                let base_t = base.as_cow_type(self.inference.i_s);
-                let mut result = None;
-                for base_t in base_t.iter_with_unpacked_unions(self.inference.i_s.db) {
-                    let inf =
-                        self.infer_attr(primary_node_index, attr_name, base_t, base_is_heuristic);
-                    result = self.union_both_sides(result, inf)
-                }
-                result
+                self.infer_attr(primary_node_index, base, attr_name.as_code())
             }
             PrimaryContent::Execution(details) => {
                 let args_frame = ArgsFrame::new(self.inference.file, primary_node_index, details);
@@ -1011,9 +1002,26 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn infer_attr(
         &mut self,
-        primary_node_index: NodeIndex,
-        attr_name: Name,
+        from_node_index: NodeIndex,
+        base: Heuristic,
+        name: &str,
+    ) -> Option<Heuristic> {
+        let base_is_heuristic = !matches!(base, Heuristic::WellKnown(_));
+        let base: Inferred = base.into();
+        let base_t = base.as_cow_type(self.inference.i_s);
+        let mut result = None;
+        for base_t in base_t.iter_with_unpacked_unions(self.inference.i_s.db) {
+            let inf = self.infer_attr_part2(from_node_index, base_t, name, base_is_heuristic);
+            result = self.union_both_sides(result, inf)
+        }
+        result
+    }
+
+    fn infer_attr_part2(
+        &mut self,
+        from_node_index: NodeIndex,
         base_t: &Type,
+        attr_name: &str,
         base_is_heuristic: bool,
     ) -> Option<Heuristic> {
         let mut added_to_stack = false;
@@ -1025,7 +1033,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let (result, attr_kind) = base_t.lookup_with_first_attr_kind(
             self.inference.i_s,
             file,
-            attr_name.as_code(),
+            attr_name,
             LookupKind::Normal,
             &mut ResultContext::Unknown,
             &|_| false,
@@ -1046,7 +1054,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 out = self.heuristic_return_type(
                     FuncNodeRef::new(directed_to.file, func.index()),
                     ArgsFrame {
-                        call_site: NodeRef::new(self.inference.file, attr_name.index()),
+                        call_site: NodeRef::new(self.inference.file, from_node_index),
                         kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),
                     },
                 );
@@ -1076,7 +1084,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         out = self.execute(
                             descriptor,
                             ArgsFrame {
-                                call_site: NodeRef::new(file, primary_node_index),
+                                call_site: NodeRef::new(file, from_node_index),
                                 kind: SavedArgsKind::Known(self_t.clone(), Type::ERROR),
                             },
                         );
@@ -1212,15 +1220,22 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
         let func_node_ref = FuncNodeRef::from_node_ref(node_ref);
         if func_node_ref.return_annotation().is_some() {
+            if func_node_ref.name() == "getattr"
+                && func_node_ref.file.is_builtins(i_s.db)
+                && let Some(args) = args_frame.maybe_simple_args(i_s)
+            {
+                return self.execute_getattr(args);
+            }
+
             let ret = func_node_ref.return_annotation_type(i_s);
             if !ret.is_any_or_any_in_union(db) {
                 if let Some(overload) = func_node_ref.maybe_overload()
                     && let Some(args) = args_frame.maybe_simple_args(i_s)
                     && let Some(arg) = args.maybe_single_arg(i_s)
-                    && let ArgKind::Positional(positional) = &arg.kind
+                    && let Some(positional) = &arg.maybe_positional_expr()
                     && bound_to.is_none()
                 {
-                    let inf = self.infer_expression(positional.named_expr.expression());
+                    let inf = self.infer_named_expression(*positional);
                     return Some(Heuristic::Guess(
                         OverloadedFunction::new(&overload.functions, None).execute(
                             i_s,
@@ -1263,6 +1278,28 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             self.state.self_stack.pop();
         }
         result
+    }
+
+    fn execute_getattr(&mut self, args: SimpleArgs) -> Option<Heuristic> {
+        let mut iterator = args.iter(self.inference.i_s.mode);
+        let obj = iterator.next()?.maybe_positional_expr()?;
+        let wanted_name = iterator.next()?.maybe_positional_expr()?;
+        let maybe_default = iterator.next();
+        let wanted = Inferred::from(self.infer_named_expression(wanted_name));
+        if let Type::Literal(literal) = wanted.as_cow_type(self.inference.i_s).as_ref()
+            && let LiteralValue::String(name) = literal.value(self.inference.i_s.db)
+        {
+            let obj = self.infer_named_expression(obj);
+            let result = self.infer_attr(wanted_name.index(), obj, name);
+            if let Some(default) = maybe_default {
+                let default = self.infer_named_expression(default.maybe_positional_expr()?);
+                self.union_both_sides(result, Some(default))
+            } else {
+                result
+            }
+        } else {
+            None
+        }
     }
 
     fn heuristic_return_type(
@@ -1368,9 +1405,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 .map(|s| {
                     let inf: Inferred = match s {
                         StarLikeExpression::Expression(e) => self.infer_expression(e),
-                        StarLikeExpression::NamedExpression(ne) => {
-                            self.infer_expression(ne.expression())
-                        }
+                        StarLikeExpression::NamedExpression(ne) => self.infer_named_expression(ne),
                         StarLikeExpression::StarExpression(_)
                         | StarLikeExpression::StarNamedExpression(_) => {
                             debug!("Heuristics: TODO star exprs tuple calculation");
@@ -1390,6 +1425,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             PrimaryOrAtom::Primary(p) => self.infer_primary(p),
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         }
+    }
+
+    fn infer_named_expression(&mut self, named: NamedExpression) -> Heuristic {
+        self.infer_expression(named.expression())
     }
 
     fn infer_expression(&mut self, expr: Expression) -> Heuristic {
@@ -1480,7 +1519,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         for item in items.take(CONTAINER_INFER_LIMIT) {
             match item {
                 StarLikeExpression::NamedExpression(named_expr) => {
-                    let inf = self.infer_expression(named_expr.expression());
+                    let inf = self.infer_named_expression(named_expr);
                     result = self.union_both_sides(result, Some(inf));
                 }
                 StarLikeExpression::StarNamedExpression(_) => return None,
@@ -1504,7 +1543,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let (named_expr, for_if_clauses) = comp.unpack();
         let t = self
             .infer_comprehension_recursively(for_if_clauses.iter(), |slf| {
-                slf.infer_expression(named_expr.expression())
+                slf.infer_named_expression(named_expr)
             })
             .map(|i| i.into())
             .unwrap_or_else(Inferred::new_any_from_error)
@@ -1528,7 +1567,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 let (named_expr, for_if_clauses) = comprehension.unpack();
                 if let Some(inf) = self
                     .infer_comprehension_recursively(for_if_clauses.iter(), |slf| {
-                        slf.infer_expression(named_expr.expression())
+                        slf.infer_named_expression(named_expr)
                     })
                 {
                     inf.into()

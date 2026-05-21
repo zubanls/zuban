@@ -427,6 +427,14 @@ class WeirdGetattr:
 #? []
 WeirdGetattr().something
 
+class GetattrHelper:
+    x = 1
+
+#? int()
+getattr(GetattrHelper, "x")
+#? int() bytes()
+getattr(GetattrHelper, "x", b'')
+
 
 # -----------------
 # private vars

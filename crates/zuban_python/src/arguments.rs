@@ -490,7 +490,7 @@ pub(crate) struct Arg<'db, 'a> {
     pub index: usize,
 }
 
-impl<'db> Arg<'db, '_> {
+impl<'db, 'a> Arg<'db, 'a> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
         match &self.kind {
             ArgKind::Inferred {
@@ -678,6 +678,13 @@ impl<'db> Arg<'db, '_> {
                 is_keyword: Some(Some(key)),
                 ..
             } => Some(key.as_str(db)),
+            _ => None,
+        }
+    }
+
+    pub fn maybe_positional_expr(&self) -> Option<NamedExpression<'a>> {
+        match &self.kind {
+            ArgKind::Positional(positional) => Some(positional.named_expr),
             _ => None,
         }
     }
