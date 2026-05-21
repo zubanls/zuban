@@ -688,12 +688,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             let mut slf = slf.borrow_mut();
 
             let inferred_default: Inferred = slf.infer_expression(default).into();
-            /*
-             * TODO use this
-            let inferred_default: Inferred = slf
-                .with_different_file(param.param.file, |h| h.infer_expression(default))
-                .into();
-            */
             if let Some(result) = result {
                 return Some(Inferred::from_type(
                     result
@@ -741,11 +735,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         Some(h.infer_generator_comprehension(comprehension)?.into())
                     })
                 }
-                ArgKind::StarredWithUnpack { .. } => todo!(),
-                ArgKind::ParamSpec { .. } => None,
+                ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => None,
             },
-            ParamArgument::TupleUnpack(_args) => todo!(),
-            ParamArgument::MatchedUnpackedTypedDictMember { .. } => todo!(),
+            ParamArgument::TupleUnpack(_) => None,
+            ParamArgument::MatchedUnpackedTypedDictMember { .. } => None,
             ParamArgument::ParamSpecArgs(..) => None,
         };
         match param.kind(i_s.db) {
@@ -776,7 +769,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         let inner = match &arg {
                             ParamArgument::Argument(arg) => arg,
                             ParamArgument::MatchedUnpackedTypedDictMember { .. } => {
-                                return None; // TODO?
+                                return None;
                             }
                             // Not sure if this even happens
                             _ => return None,
@@ -1159,22 +1152,26 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     NodeRef::new(node_ref.file, func.index()),
                 );
 
-                let slf = &RefCell::new(self);
-                let mut matched_arg_iterator =
-                    Self::arg_param_iterator(db, slf, &func, args.file, &args, true).peekable();
                 let mut generics = vec![];
-                while let Some(param) = matched_arg_iterator.next() {
-                    let found = Self::infer_param(
-                        db,
-                        slf,
-                        args_frame.call_site,
-                        param,
-                        matched_arg_iterator.by_ref(),
-                        false,
+                self.with_different_file(func.file, |h| {
+                    let slf = &RefCell::new(h);
+                    let mut matched_arg_iterator = HeuristicInference::arg_param_iterator(
+                        db, slf, &func, args.file, &args, true,
                     )
-                    .unwrap_or_else(Inferred::new_any_from_error);
-                    generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
-                }
+                    .peekable();
+                    while let Some(param) = matched_arg_iterator.next() {
+                        let found = HeuristicInference::infer_param(
+                            db,
+                            slf,
+                            args_frame.call_site,
+                            param,
+                            matched_arg_iterator.by_ref(),
+                            false,
+                        )
+                        .unwrap_or_else(Inferred::new_any_from_error);
+                        generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
+                    }
+                });
                 debug!(
                     "Heuristics: Inferred param generics as {:?}",
                     generics
@@ -1200,7 +1197,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }));
                 return Some(Heuristic::Guess(inf));
             }
-            debug!("Heuristics: class has no untyped params, TODO is this ok?");
+            debug!("Heuristics: class has no untyped params");
             return None;
         }
         if node_ref.maybe_function().is_none() {
