@@ -366,7 +366,7 @@ m1[index2]
 index3 = 'asdf'
 
 dic2 = {'asdf': 3, 'b': 'str'}
-#? int()
+#? int() str()
 dic2[index3]
 
 # -----------------
