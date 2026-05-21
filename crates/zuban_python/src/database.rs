@@ -1474,6 +1474,10 @@ impl Database {
         self.loaded_python_file(file_index)
     }
 
+    pub fn is_file_index_loaded(&self, index: FileIndex) -> bool {
+        self.vfs.file(index).is_some()
+    }
+
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
         self.vfs.file(index).unwrap_or_else(|| {
             panic!(

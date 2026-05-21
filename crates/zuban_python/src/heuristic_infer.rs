@@ -9,7 +9,8 @@ use parsa_python_cst::{
     StarLikeExpression, StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
-use utils::FastHashMap;
+use utils::{FastHashMap, FastHashSet};
+use vfs::{FileEntry, FileIndex};
 
 use crate::{
     arguments::{
@@ -44,8 +45,9 @@ use crate::{
 // Stats from a 2016 Lenovo Notebook running Linux:
 // With os.walk, it takes about 10s to scan 11'000 files (without filesystem
 // caching). Once cached it only takes 5s.
-// const OPENED_FILE_LIMIT: usize = 100;
-// const PARSED_FILE_LIMIT: usize = 10000;
+const OPENED_FILES_LIMIT: usize = 100;
+const TYPE_CHECKED_FILES_LIMIT: usize = 10;
+const SEARCHED_FILES_LIMIT: usize = 1000;
 const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 const CONTAINER_INFER_LIMIT: usize = 4;
@@ -1764,14 +1766,60 @@ impl<'db, T> PositionalDocument<'db, T> {
 }
 
 struct PotentialFileIterator<'db> {
-    file: &'db PythonFile,
-    //already_checked: HashSet<Arc<FileEntry>>,
+    db: &'db Database,
+    in_memory_file_ids: Box<dyn Iterator<Item = FileIndex> + 'db>,
+    loaded_type_checked_file_entries: Option<std::vec::IntoIter<Arc<FileEntry>>>,
+    closed_type_checked_file_entries: Option<std::vec::IntoIter<Arc<FileEntry>>>,
+    already_checked: FastHashSet<FileIndex>,
 }
 
 impl<'db> Iterator for PotentialFileIterator<'db> {
     type Item = &'db PythonFile;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.already_checked.len() >= SEARCHED_FILES_LIMIT {
+            return None;
+        }
+        // The first priority is to check loaded in memory files, since they are likely to be open
+        // in the editor and therefore more likely to contain related code since users tend to work
+        // on related files.
+        if let Some(file_index) = self.in_memory_file_ids.next() {
+            self.already_checked.insert(file_index);
+            return Some(self.db.loaded_python_file(file_index));
+        }
+        let mut loaded_entries = vec![];
+        let mut closed_entries = vec![];
+        if self.loaded_type_checked_file_entries.is_none() {
+            for entries in self.db.vfs.workspaces.load().entries_to_type_check() {
+                entries.walk_entries(&self.db.vfs, &mut |_, entry| {
+                    match entry {
+                        vfs::DirectoryEntry::File(file_entry) => {
+                            if let Some(file_index) = file_entry.get_file_index()
+                                && self.db.is_file_index_loaded(file_index)
+                            {
+                                loaded_entries.push(file_entry.clone())
+                            } else if closed_entries.len() < OPENED_FILES_LIMIT {
+                                closed_entries.push(file_entry.clone())
+                            }
+                        }
+                        _ => (),
+                    }
+                    true
+                })
+            }
+            self.loaded_type_checked_file_entries = Some(loaded_entries.into_iter());
+            self.closed_type_checked_file_entries = Some(closed_entries.into_iter());
+        }
+        for file_entry in self.loaded_type_checked_file_entries.as_mut().unwrap() {
+            if let Some(file_index) = self.db.load_file_index_from_workspace(&file_entry, false) {
+                return Some(self.db.loaded_python_file(file_index));
+            }
+        }
+        for file_entry in self.closed_type_checked_file_entries.as_mut().unwrap() {
+            if let Some(file_index) = self.db.load_file_index_from_workspace(&file_entry, false) {
+                return Some(self.db.loaded_python_file(file_index));
+            }
+        }
         None
     }
 }
@@ -1784,6 +1832,7 @@ struct FileNameSearcher<'db, 'regex> {
     wanted_name: PointLink,
     matches: std::iter::Take<Matches<'regex, 'db>>,
     found_in_current_file: bool,
+    type_checked_files_count: usize,
 }
 
 impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
@@ -1795,7 +1844,13 @@ impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
     ) -> Self {
         Self {
             db,
-            potential_files: PotentialFileIterator { file },
+            potential_files: PotentialFileIterator {
+                db,
+                in_memory_file_ids: Box::new(db.vfs.in_memory_file_ids()),
+                loaded_type_checked_file_entries: None,
+                closed_type_checked_file_entries: None,
+                already_checked: [file.file_index].into_iter().collect(),
+            },
             regex,
             current_file: file,
             wanted_name,
@@ -1803,6 +1858,7 @@ impl<'db, 'regex> FileNameSearcher<'db, 'regex> {
                 .find_iter(file.tree.code())
                 .take(PER_FILE_SEARCH_NAME_LIMIT),
             found_in_current_file: false,
+            type_checked_files_count: 1,
         }
     }
 }
@@ -1830,8 +1886,14 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                 if matches!(details, ArgumentsDetails::None) {
                     continue;
                 }
-                let result = self.current_file.ensure_calculated_diagnostics(self.db);
-                debug_assert!(result.is_ok());
+                if !self.current_file.has_calculated_diagnostics() {
+                    if self.type_checked_files_count >= TYPE_CHECKED_FILES_LIMIT {
+                        return None;
+                    }
+                    self.type_checked_files_count += 1;
+                    let result = self.current_file.ensure_calculated_diagnostics(self.db);
+                    debug_assert!(result.is_ok());
+                }
                 let point = self.current_file.points.get(name.index());
                 if point.calculated() && point.kind() == PointKind::Redirect {
                     let node_ref = point.as_redirected_node_ref(self.db);

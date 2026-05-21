@@ -460,6 +460,10 @@ impl<'db> PythonFile {
         (entry, is_package_name(entry))
     }
 
+    pub fn has_calculated_diagnostics(&self) -> bool {
+        self.points.get(0).calculated() && self.delayed_diagnostics.read().unwrap().is_empty()
+    }
+
     pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {
         self.inference(&InferenceState::new(db, self))
             .calculate_module_diagnostics()
