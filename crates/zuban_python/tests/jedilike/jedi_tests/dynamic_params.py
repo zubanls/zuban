@@ -107,7 +107,10 @@ class A2():
     def test(self, a):
         #? float()
         a
+        #? int()
         self.c = self.test2()
+        #? int()
+        self.c
 
     def test2(self):
         #? int()
