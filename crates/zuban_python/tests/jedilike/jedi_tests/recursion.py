@@ -145,7 +145,37 @@ def f11(x): return Container(x)
 f1(1).x
 #?
 f1("").x
-#? int()
+
 f2(1).x
 #? str()
 f2("").x
+
+def g1(x): return g2(x)
+def g2(x): return g3(x)
+def g3(x): return g4(x)
+def g4(x): return g5(x)
+def g5(x): return g6(x)
+def g6(x): return g7(x)
+def g7(x): return g8(x)
+def g8(x): return g9(x)
+def g9(x): return g10(x)
+def g10(x): return g11(x)
+def g11(x): return g12(x)
+def g12(x): return g13(x)
+def g13(x): return g14(x)
+def g14(x): return g15(x)
+def g15(x): return g16(x)
+def g16(x): return g17(x)
+def g17(x): return g18(x)
+def g18(x): return g19(x)
+def g19(x): return g20(x)
+#? 24 int() str()
+def g20(x): return g21(x)
+#?
+def g21(x): return g22(x)
+def g22(x): return x
+
+#?
+g1(1)
+#?
+g1("")

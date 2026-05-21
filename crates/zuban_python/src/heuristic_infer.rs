@@ -44,9 +44,9 @@ use crate::{
 // Stats from a 2016 Lenovo Notebook running Linux:
 // With os.walk, it takes about 10s to scan 11'000 files (without filesystem
 // caching). Once cached it only takes 5s.
-// const OPENED_FILE_LIMIT: usize = 200;
-// const PARSED_FILE_LIMIT: usize = 10;
-// const MAX_PARAM_SEARCHES: usize = 20;
+// const OPENED_FILE_LIMIT: usize = 100;
+// const PARSED_FILE_LIMIT: usize = 10000;
+const MAX_PARAM_SEARCHES: usize = 20;
 const PER_FILE_SEARCH_NAME_LIMIT: usize = 20;
 const CONTAINER_INFER_LIMIT: usize = 4;
 const EXECUTION_STACK_LIMIT: usize = 10;
@@ -445,6 +445,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         func: FunctionDef,
         param_name: Name,
     ) -> Option<Inferred> {
+        if self.state.callable_search_cache.len() >= MAX_PARAM_SEARCHES {
+            return None;
+        }
         let func_name = func.name();
         let mut search_name = func_name.as_code();
         let mut skip_first_param = false;

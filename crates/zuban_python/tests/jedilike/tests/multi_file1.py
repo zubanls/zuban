@@ -5,6 +5,8 @@ class Container:
         self.x = x
 
 def recursive_func1(x):
+    #? int()
+    x
     #?
     return recursive_func2(x)
 
