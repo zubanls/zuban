@@ -27,7 +27,7 @@ use crate::{
         FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
         try_to_follow,
     },
-    imports::ImportResult,
+    imports::{ImportResult, namespace_import},
     inference_state::{InferenceState, Mode},
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, LookupKind, OnTypeError},
@@ -430,8 +430,16 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             return None;
         }
 
-        let inf = self.infer_import_dotted_name(dotted_name?)?;
-        match self.infer_attr(imp_name.index(), inf, imp_name.unpack().0.as_code()) {
+        let dotted_name = dotted_name?;
+        let import_name = imp_name.unpack().0.as_code();
+        if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
+            NodeRef::new(self.inference.file, dotted_name.index()).maybe_complex()
+        {
+            let result = namespace_import(self.db(), self.inference.file, ns, import_name)?;
+            return self.infer_import_result(result.into_import_result());
+        };
+        let inf = self.infer_import_dotted_name(dotted_name)?;
+        match self.infer_attr(imp_name.index(), inf, import_name) {
             Some(Heuristic::WellKnown(inf)) => Some(Heuristic::Guess(inf)),
             x => x,
         }
@@ -446,6 +454,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             let _indent = debug_indent();
             self.infer_import_result(self.import_dotted_name(None, dotted)?)
         } else {
+            debug!(
+                "Import did not have a missing py.typed: {}",
+                dotted.as_code()
+            );
             None
         }
     }
