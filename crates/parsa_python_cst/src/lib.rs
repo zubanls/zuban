@@ -3331,6 +3331,24 @@ impl<'db> ImportFromAsName<'db> {
 }
 
 impl<'db> DottedImportName<'db> {
+    pub fn maybe_part_of_import_name(&self) -> Option<NameDef<'db>> {
+        let prev = self.node.previous_leaf()?;
+        if prev.as_code() != "." {
+            return None;
+        }
+        let prev_prev = prev.previous_leaf()?;
+        if prev_prev.is_type(Terminal(TerminalType::Name)) {
+            let result = Name::new(prev_prev).name_def();
+            debug_assert!(matches!(
+                result.as_ref().unwrap().maybe_import().unwrap(),
+                NameImportParent::DottedAsName(_)
+            ));
+            result
+        } else {
+            None
+        }
+    }
+
     pub fn unpack(&self) -> DottedImportNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();

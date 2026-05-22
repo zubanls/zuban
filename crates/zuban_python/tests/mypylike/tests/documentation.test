@@ -947,11 +947,18 @@ def import_as() -> None:
     #? documentation
     import pkg_untyped.b.c
     #? documentation
+    pkg_untyped
+    #? documentation
     pkg_untyped.b
     #? documentation
     pkg_untyped.b.c
     #? documentation
     pkg_untyped.b.c.c_var
+
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c
+    #? --codepoint-column 24 documentation
+    import pkg_untyped.b.c
 
     #? --codepoint-column 15 documentation
     import pkg_untyped.b.c as imp1

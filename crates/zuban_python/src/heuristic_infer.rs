@@ -401,7 +401,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             }
             NameParent::Primary(primary) => Some(self.infer_primary(primary)),
-            NameParent::DottedImportName(dotted) => self.infer_import_dotted_name(dotted),
+            NameParent::DottedImportName(dotted) => {
+                if let Some(name_def) = dotted.maybe_part_of_import_name() {
+                    let base = self
+                        .inference
+                        .file
+                        .global_import(self.db(), name_def.name())?;
+                    self.infer_import_result(self.import_dotted_name(Some(base), dotted)?)
+                } else {
+                    self.infer_import_dotted_name(dotted)
+                }
+            }
             NameParent::ImportFromAsName(imp_name) => self.infer_import_from_name(imp_name),
             /*
             NameParent::PrimaryTarget(primary_target) => (),
@@ -434,23 +444,34 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 dotted.as_code()
             );
             let _indent = debug_indent();
-            self.infer_import_result(self.import_dotted_name(dotted)?)
+            self.infer_import_result(self.import_dotted_name(None, dotted)?)
         } else {
             None
         }
     }
 
-    fn import_dotted_name(&self, dotted: DottedImportName) -> Option<ImportResult> {
+    fn import_dotted_name(
+        &self,
+        base: Option<ImportResult>,
+        dotted: DottedImportName,
+    ) -> Option<ImportResult> {
+        let import_on_result = |mut base: ImportResult, name| {
+            if let ImportResult::PyTypedMissing(file_index) = base {
+                base = ImportResult::File(file_index?)
+            }
+            base.import(self.db(), self.inference.file, name)
+        };
         match dotted.unpack() {
             DottedImportNameContent::DottedName(dotted, name) => {
-                let mut base = self.import_dotted_name(dotted)?;
-                if let ImportResult::PyTypedMissing(file_index) = base {
-                    base = ImportResult::File(file_index?)
-                }
-                base.import(self.db(), self.inference.file, name.as_code())
+                let base = self.import_dotted_name(base, dotted)?;
+                import_on_result(base, name.as_code())
             }
             DottedImportNameContent::Name(name) => {
-                self.inference.file.global_import(self.db(), name)
+                if let Some(base) = base {
+                    import_on_result(base, name.as_code())
+                } else {
+                    self.inference.file.global_import(self.db(), name)
+                }
             }
         }
     }
