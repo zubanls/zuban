@@ -125,12 +125,12 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
     fn infer_position(&self, i_s: &InferenceState) -> Option<Inferred> {
         let result = match &self.node {
-            GotoNode::Name(name) => self.infer_name(*name),
+            GotoNode::Name(name) => self.infer_name(*name)?,
             GotoNode::ImportFromAsName { import_as_name, .. } => {
-                self.infer_name(import_as_name.name_def().name())
+                self.infer_name(import_as_name.name_def().name())?
             }
-            GotoNode::Primary(primary) => Some(self.infer_primary(*primary)),
-            GotoNode::PrimaryTarget(target) => self.infer_primary_target(*target),
+            GotoNode::Primary(primary) => self.infer_primary(*primary),
+            GotoNode::PrimaryTarget(target) => self.infer_primary_target(*target)?,
             GotoNode::Operator {
                 first,
                 magic_method,
@@ -147,7 +147,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                     LookupKind::OnlyType,
                 )
                 .into_maybe_inferred()
-            }),
+            })?,
             GotoNode::AugAssignOperator {
                 target,
                 inplace_magic_method,
@@ -167,23 +167,22 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                     )
                     .into_maybe_inferred()
                 };
-                lookup(inplace_magic_method).or_else(|| lookup(normal_magic_method))
+                lookup(inplace_magic_method).or_else(|| lookup(normal_magic_method))?
             }
-            GotoNode::Atom(atom) => Some(self.infer_atom(*atom)),
+            GotoNode::Atom(atom) => self.infer_atom(*atom),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
-                self.infer_name(name_def.name())
+                self.infer_name(name_def.name())?
             }
-            GotoNode::None => None,
+            GotoNode::None => return None,
         };
-        if let Some(result) = &result
-            && let Some(node_ref) = result.maybe_saved_node_ref(self.db)
+        if let Some(node_ref) = result.maybe_saved_node_ref(self.db)
             && node_ref.point().maybe_calculated_and_specific() == Some(Specific::SimpleGeneric)
         {
             return Some(Inferred::from_type(
                 expect_class_or_simple_generic(self.db, node_ref).into_owned(),
             ));
         }
-        result
+        Some(result)
     }
 }
 
