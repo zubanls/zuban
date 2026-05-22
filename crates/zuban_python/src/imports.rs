@@ -142,6 +142,7 @@ impl std::ops::Deref for LoadedImportResult {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct LoadedImportResult(ImportResult);
 
 impl LoadedImportResult {

@@ -864,3 +864,39 @@ __main__.py:9:documentation -> "```python\n(variable) x1: Any\n\nMight be: float
 __main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
 __main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
 __main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
+
+[case docs_for_untyped_site_packages1]
+# pkgs: modulefinder-site-packages
+# flags: --no-typecheck
+
+def f() -> None:
+    from pkg_untyped import *
+    #? documentation
+    pkg_untyped_var
+
+def g() -> None:
+    #? documentation
+    from pkg_untyped import pkg_untyped_var
+    #? documentation
+    pkg_untyped_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[case docs_for_untyped_site_packages2]
+# pkgs: modulefinder-site-packages
+# flags: --no-typecheck
+
+from ns_pkg_w_stubs.untyped import *
+#? documentation
+ZubanCls
+z: ZubanCls
+
+from ns_pkg_w_stubs import untyped
+#? documentation
+untyped.ZubanCls
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false

@@ -23,7 +23,7 @@ use crate::{
 use super::{PythonFile, python_file::StarImport};
 
 impl PythonFile {
-    pub(super) fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
+    pub fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
         let result = global_import(db, self, name.as_str());
         if let Some(result) = &result {
             debug!(

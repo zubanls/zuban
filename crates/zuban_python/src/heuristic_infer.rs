@@ -2,11 +2,12 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
-    AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, Expression,
-    ExpressionContent, ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode,
-    Name, NameParent, NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent,
-    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
-    StarLikeExpression, StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
+    AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, DottedImportName,
+    DottedImportNameContent, Expression, ExpressionContent, ExpressionPart, ForIfClause,
+    ForIfClauseIterator, FunctionDef, GotoNode, ImportFromAsName, Name, NameParent,
+    NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
+    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression,
+    StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::{FastHashMap, FastHashSet};
@@ -26,6 +27,7 @@ use crate::{
         FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
         try_to_follow,
     },
+    imports::ImportResult,
     inference_state::{InferenceState, Mode},
     inferred::{AttributeKind, Inferred},
     matching::{Generics, IteratorContent, LookupKind, OnTypeError},
@@ -367,6 +369,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         }
                         None
                     }
+                    TypeLike::ImportFromAsName(imp) => self.infer_import_name(imp),
                     _ => {
                         if let DefiningStmt::ForStmt(for_stmt) = name_def.expect_defining_stmt() {
                             let (star_target, star_exprs, _, _) = for_stmt.unpack();
@@ -399,6 +402,37 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             NameParent::FStringConversion(fstring_conversion) => (),
             */
             _ => None,
+        }
+    }
+
+    fn infer_import_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
+        let import_from = imp_name.import_from()?;
+        let (level, dotted_name) = import_from.level_with_dotted_name();
+        if level > 0 {
+            return None;
+        }
+        let inf = self.infer_import_dotted_name(dotted_name?);
+        None
+    }
+
+    fn infer_import_dotted_name(&self, dotted: DottedImportName) -> Option<ImportResult> {
+        if self
+            .inference
+            .file
+            .points
+            .get(dotted.index())
+            .maybe_calculated_and_specific()
+            == Some(Specific::PyTypedMissing)
+        {
+            match dotted.unpack() {
+                DottedImportNameContent::DottedName(..) => None,
+                DottedImportNameContent::Name(name) => self
+                    .inference
+                    .file
+                    .global_import(self.inference.i_s.db, name),
+            }
+        } else {
+            None
         }
     }
 
