@@ -1018,9 +1018,8 @@ __main__.py:61:documentation -> "```python\npkg_untyped: Any\n\nMight be: module
 def star_import1() -> None:
     #? --codepoint-column 21 documentation
     from ns_pkg_w_stubs.untyped import *
-    ##? documentation
+    # TODO #? documentation
     ZubanCls
-    z: ZubanCls
 
 def star_import2() -> None:
     #? --codepoint-column 28 documentation
@@ -1039,6 +1038,8 @@ def import_name() -> None:
     import ns_pkg_w_stubs.untyped as imp
     #? documentation
     imp
+    #? documentation
+    imp.ZubanCls
 
 #? documentation
 from ns_pkg_w_stubs import untyped

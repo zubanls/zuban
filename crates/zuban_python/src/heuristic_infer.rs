@@ -1166,7 +1166,12 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let base_t = base.as_cow_type(self.inference.i_s);
         let mut result = None;
         for base_t in base_t.iter_with_unpacked_unions(self.inference.i_s.db) {
-            let inf = self.infer_attr_part2(from_node_index, base_t, name, base_is_heuristic);
+            let inf = if let Type::Namespace(ns) = base_t {
+                let result = namespace_import(self.db(), self.inference.file, ns, name)?;
+                self.infer_import_result(result.into_import_result())
+            } else {
+                self.infer_attr_part2(from_node_index, base_t, name, base_is_heuristic)
+            };
             result = self.union_both_sides(result, inf)
         }
         result
