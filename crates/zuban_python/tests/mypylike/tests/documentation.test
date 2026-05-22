@@ -1079,3 +1079,14 @@ __main__.py:38:documentation -> "```python\n(namespace) ns_pkg_untyped.b\n```"
 __main__.py:40:documentation -> "```python\n(namespace) ns_pkg_untyped.b\n```"
 __main__.py:43:documentation -> "```python\nimported3: Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
 __main__.py:45:documentation -> "```python\nc: Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+
+[case docs_for_untyped_any]
+def f(x):
+    return x
+
+#? documentation
+f()
+
+[out]
+__main__:5: error: Missing positional argument "x" in call to "f"
+__main__.py:5:documentation -> "```python\nAny\n```"
