@@ -1709,14 +1709,14 @@ pub fn infer_heuristics_if_necessary(
     generate_heuristics: impl FnOnce() -> Option<Inferred>,
 ) -> Option<Inferred> {
     let t = inferred.as_cow_type(i_s);
-    if let Some(mut without_any) = t.maybe_remove_any(i_s.db) {
+    if let Some(without_any) = t.maybe_remove_any(i_s.db) {
         debug!(
             "Needed to infer heuristics, because {:?} contains Any",
             t.format_short(i_s.db)
         );
         if let Some(found) = generate_heuristics() {
-            without_any.union_in_place(found.as_type(i_s));
-            return Some(Inferred::from_type(without_any));
+            let new_t = without_any.simplified_union(i_s, &found.as_cow_type(i_s));
+            return Some(Inferred::from_type(new_t));
         }
     }
     None

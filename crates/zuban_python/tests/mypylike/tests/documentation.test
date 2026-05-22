@@ -809,8 +809,8 @@ __main__.py:24:documentation -> "```python\n(variable) new_var: Self\n```\n---\n
 __main__.py:30:documentation -> "```python\n(class) Self\n```\n---\n*Self is class C*:\ndoc"
 __main__.py:33:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class C*:\ndoc"
 
-[case docs_for_untyped_with_possible_type]
-# flags: --only-language-server
+[case docs_for_untyped_with_possible_type_no_mypy_compatible]
+# flags: --only-language-server --mode default
 class X:
     def __init__(self, x):
         self.x1 = x if bool() else 1
@@ -831,8 +831,36 @@ f(X(""))
 f(X(1))
 
 [out]
-__main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1, ''] | float\n```"
+__main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1] | float\n```"
+__main__.py:9:documentation -> "```python\n(variable) x1: Any | int\n\nMight be: int | float\n```"
+__main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
+__main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
+__main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
+
+[case docs_for_untyped_with_possible_type_mypy_compatible]
+# flags: --only-language-server --mode mypy
+class X:
+    def __init__(self, x):
+        self.x1 = x if bool() else 1
+        #? documentation
+        self.x2 = x
+
+#? documentation
+X(1.0).x1
+#? documentation
+X("").x2
+#? documentation
+X(1).x2
+
+#? documentation
+def f(x): return x
+
+f(X(""))
+f(X(1))
+
+[out]
+__main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1] | float\n```"
 __main__.py:9:documentation -> "```python\n(variable) x1: Any\n\nMight be: float | int\n```"
 __main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
 __main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
-__main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X | X\n```"
+__main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
@@ -81,10 +83,23 @@ impl<'project> Document<'project> {
             }
             let s = pretty_type_formatting(i_s, &t).into_string();
             if let Some(heuristic) = inf.heuristic {
-                format!(
-                    "{s}\n\nMight be: {}",
-                    pretty_type_formatting(i_s, &heuristic.as_cow_type(i_s))
-                )
+                let mut t = heuristic.as_cow_type(i_s);
+                let t = t.to_mut();
+                if let Type::Union(union) = t {
+                    // Here we avoid union entries that have the untyped type vars and therefore show up
+                    // as A | A.
+                    let mut previous_formatting = HashSet::new();
+                    let keep_entries = union
+                        .entries
+                        .iter()
+                        .filter(|entry| {
+                            previous_formatting.insert(entry.type_.format_short(i_s.db))
+                        })
+                        .cloned()
+                        .collect();
+                    *t = Type::from_union_entries(keep_entries, true);
+                }
+                format!("{s}\n\nMight be: {}", pretty_type_formatting(i_s, &t))
             } else {
                 s
             }
