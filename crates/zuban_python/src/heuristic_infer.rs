@@ -434,26 +434,37 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 dotted.as_code()
             );
             let _indent = debug_indent();
-            match dotted.unpack() {
-                DottedImportNameContent::DottedName(..) => None,
-                DottedImportNameContent::Name(name) => self.global_import(name),
-            }
+            self.infer_import_result(self.import_dotted_name(dotted)?)
         } else {
             None
         }
     }
 
-    fn global_import(&self, name: Name) -> Option<Heuristic> {
-        let import_result = self.inference.file.global_import(self.db(), name)?;
+    fn import_dotted_name(&self, dotted: DottedImportName) -> Option<ImportResult> {
+        match dotted.unpack() {
+            DottedImportNameContent::DottedName(dotted, name) => {
+                let mut base = self.import_dotted_name(dotted)?;
+                if let ImportResult::PyTypedMissing(file_index) = base {
+                    base = ImportResult::File(file_index?)
+                }
+                base.import(self.db(), self.inference.file, name.as_code())
+            }
+            DottedImportNameContent::Name(name) => {
+                self.inference.file.global_import(self.db(), name)
+            }
+        }
+    }
+
+    fn infer_import_result(&self, import_result: ImportResult) -> Option<Heuristic> {
         let base = match import_result {
-            ImportResult::File(_) => None,
             ImportResult::Namespace(_) => None,
-            ImportResult::PyTypedMissing(file_index) => self
+            ImportResult::File(file_index) | ImportResult::PyTypedMissing(Some(file_index)) => self
                 .inference
                 .i_s
                 .db
-                .ensure_file_for_file_index(file_index?)
+                .ensure_file_for_file_index(file_index)
                 .ok(),
+            ImportResult::PyTypedMissing(None) => None,
         }?;
         debug!(
             "Found replacement for missing py.typed: {:?}",
@@ -479,7 +490,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         match dotted.unpack() {
             DottedAsNameContent::Simple(name_def, ..) => {
                 if self.is_py_typed_missing(dotted.index()) {
-                    return self.global_import(name_def.name());
+                    return self.infer_import_result(
+                        self.inference
+                            .file
+                            .global_import(self.db(), name_def.name())?,
+                    );
                 }
                 None
             }

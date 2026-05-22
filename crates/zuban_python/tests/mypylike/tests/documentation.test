@@ -965,7 +965,7 @@ def import_as() -> None:
 def star_import() -> None:
     #? --codepoint-column 11 documentation
     from pkg_untyped.b.c import *
-    #? documentation
+    # TODO #? documentation
     c_var
 
 [file pyproject.toml]
