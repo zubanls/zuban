@@ -869,22 +869,110 @@ __main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
 # pkgs: modulefinder-site-packages
 # flags: --no-typecheck
 
-def f() -> None:
-    from pkg_untyped import *
+def import_from() -> None:
+    #? documentation
+    from pkg_untyped import pkg_untyped_var
+
+    #? --codepoint-column 11 documentation
+    from pkg_untyped import pkg_untyped_var
     #? documentation
     pkg_untyped_var
 
-def g() -> None:
     #? documentation
-    from pkg_untyped import pkg_untyped_var
+    from pkg_untyped import pkg_untyped_var as imp1
+    #? --codepoint-column 40 documentation
+    from pkg_untyped import pkg_untyped_var as imp2
+
+def import_as() -> None:
     #? documentation
+    import pkg_untyped
+    #? documentation
+    pkg_untyped
+
+    #? documentation
+    import pkg_untyped as imp1
+    #? --codepoint-column 15 documentation
+    import pkg_untyped as imp2
+
+def star_import() -> None:
+    #? --codepoint-column 11 documentation
+    from pkg_untyped import *
+    # TODO #? documentation
     pkg_untyped_var
 
 [file pyproject.toml]
 [tool.zuban]
 follow_untyped_imports = false
 
+[out]
+__main__.py:6:documentation -> "```python\npkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:9:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:11:documentation -> "```python\n(import) pkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:14:documentation -> "```python\nimp1: Any\n\nMight be: str\n```"
+__main__.py:16:documentation -> "```python\npkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:20:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:22:documentation -> "```python\n(import) pkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:25:documentation -> "```python\nimp1: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:27:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:31:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+
 [case docs_for_untyped_site_packages2]
+# pkgs: modulefinder-site-packages
+# flags: --no-typecheck
+
+def import_from() -> None:
+    #? documentation
+    from pkg_untyped.b.c import c_var
+    #? documentation
+    c_var
+    #? documentation
+    from pkg_untyped.b import c
+    #? documentation
+    c
+    #? documentation
+    from pkg_untyped.b.c import c_var as cvar2
+    #? documentation
+    cvar2
+
+    #? --codepoint-column 15 documentation
+    from pkg_untyped.b.c import c_var as cvar3
+    #? --codepoint-column 22 documentation
+    from pkg_untyped.b.c import c_var as cvar4
+    #? --codepoint-column 23 documentation
+    from pkg_untyped.b.c import c_var as cvar5
+    #? --codepoint-column 35 documentation
+    from pkg_untyped.b.c import c_var as cvar6
+
+def import_as() -> None:
+    #? documentation
+    import pkg_untyped.b.c
+    #? documentation
+    pkg_untyped.b
+    #? documentation
+    pkg_untyped.b.c
+    #? documentation
+    pkg_untyped.b.c.c_var
+
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c as imp1
+    #? --codepoint-column 23 documentation
+    import pkg_untyped.b.c as imp2
+    #? --codepoint-column 26 documentation
+    import pkg_untyped.b.c as imp3
+    #? documentation
+    imp3
+
+def star_import() -> None:
+    #? --codepoint-column 11 documentation
+    from pkg_untyped.b.c import *
+    #? documentation
+    c_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[case docs_for_untyped_site_packages3]
 # pkgs: modulefinder-site-packages
 # flags: --no-typecheck
 

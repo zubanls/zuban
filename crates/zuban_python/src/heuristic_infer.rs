@@ -2,12 +2,12 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
-    AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, DottedImportName,
-    DottedImportNameContent, Expression, ExpressionContent, ExpressionPart, ForIfClause,
-    ForIfClauseIterator, FunctionDef, GotoNode, ImportFromAsName, Name, NameParent,
-    NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
-    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression,
-    StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
+    AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, DottedAsName,
+    DottedAsNameContent, DottedImportName, DottedImportNameContent, Expression, ExpressionContent,
+    ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, ImportFromAsName,
+    Name, NameParent, NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent,
+    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
+    StarLikeExpression, StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::{FastHashMap, FastHashSet};
@@ -191,6 +191,11 @@ impl Heuristic {
 }
 
 impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
+    #[inline]
+    fn db(&self) -> &'db Database {
+        self.inference.i_s.db
+    }
+
     fn with_different_i_s<T>(
         &mut self,
         i_s: InferenceState<'db, '_>,
@@ -369,7 +374,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         }
                         None
                     }
-                    TypeLike::ImportFromAsName(imp) => self.infer_import_name(imp),
+                    TypeLike::ImportFromAsName(imp) => self.infer_import_from_name(imp),
+                    TypeLike::DottedAsName(imp) => self.infer_import_name(imp),
                     _ => {
                         if let DefiningStmt::ForStmt(for_stmt) = name_def.expect_defining_stmt() {
                             let (star_target, star_exprs, _, _) = for_stmt.unpack();
@@ -395,6 +401,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             }
             NameParent::Primary(primary) => Some(self.infer_primary(primary)),
+            NameParent::DottedImportName(dotted) => self.infer_import_dotted_name(dotted),
+            NameParent::ImportFromAsName(imp_name) => self.infer_import_from_name(imp_name),
             /*
             NameParent::PrimaryTarget(primary_target) => (),
             NameParent::KeywordPattern(keyword_pattern) => (),
@@ -405,34 +413,79 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn infer_import_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
+    fn infer_import_from_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
         let import_from = imp_name.import_from()?;
         let (level, dotted_name) = import_from.level_with_dotted_name();
         if level > 0 {
             return None;
         }
-        let inf = self.infer_import_dotted_name(dotted_name?);
-        None
+
+        let inf = self.infer_import_dotted_name(dotted_name?)?;
+        match self.infer_attr(imp_name.index(), inf, imp_name.unpack().0.as_code()) {
+            Some(Heuristic::WellKnown(inf)) => Some(Heuristic::Guess(inf)),
+            x => x,
+        }
     }
 
-    fn infer_import_dotted_name(&self, dotted: DottedImportName) -> Option<ImportResult> {
-        if self
-            .inference
-            .file
-            .points
-            .get(dotted.index())
-            .maybe_calculated_and_specific()
-            == Some(Specific::PyTypedMissing)
-        {
+    fn infer_import_dotted_name(&self, dotted: DottedImportName) -> Option<Heuristic> {
+        if self.is_py_typed_missing(dotted.index()) {
+            debug!(
+                "Found missing py.typed, trying to follow: {}",
+                dotted.as_code()
+            );
+            let _indent = debug_indent();
             match dotted.unpack() {
                 DottedImportNameContent::DottedName(..) => None,
-                DottedImportNameContent::Name(name) => self
-                    .inference
-                    .file
-                    .global_import(self.inference.i_s.db, name),
+                DottedImportNameContent::Name(name) => self.global_import(name),
             }
         } else {
             None
+        }
+    }
+
+    fn global_import(&self, name: Name) -> Option<Heuristic> {
+        let import_result = self.inference.file.global_import(self.db(), name)?;
+        let base = match import_result {
+            ImportResult::File(_) => None,
+            ImportResult::Namespace(_) => None,
+            ImportResult::PyTypedMissing(file_index) => self
+                .inference
+                .i_s
+                .db
+                .ensure_file_for_file_index(file_index?)
+                .ok(),
+        }?;
+        debug!(
+            "Found replacement for missing py.typed: {:?}",
+            base.qualified_name(self.db())
+        );
+        let result = base.ensure_module_symbols_flow_analysis(self.db());
+        debug_assert!(result.is_ok());
+        Some(Heuristic::Guess(Inferred::new_file_reference(
+            base.file_index,
+        )))
+    }
+
+    fn is_py_typed_missing(&self, index: NodeIndex) -> bool {
+        self.inference
+            .file
+            .points
+            .get(index)
+            .maybe_calculated_and_specific()
+            == Some(Specific::PyTypedMissing)
+    }
+
+    fn infer_import_name(&self, dotted: DottedAsName) -> Option<Heuristic> {
+        match dotted.unpack() {
+            DottedAsNameContent::Simple(name_def, ..) => {
+                if self.is_py_typed_missing(dotted.index()) {
+                    return self.global_import(name_def.name());
+                }
+                None
+            }
+            DottedAsNameContent::WithAs(dotted_import_name, _) => {
+                self.infer_import_dotted_name(dotted_import_name)
+            }
         }
     }
 
@@ -1768,9 +1821,9 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             match self.node {
                 GotoNode::Name(name) => heuristic.infer_name(name)?,
                 GotoNode::Primary(primary) => heuristic.infer_primary(primary),
+                GotoNode::ImportFromAsName { on_name, .. } => heuristic.infer_name(on_name)?,
                 /*
                 GotoNode::PrimaryTarget(primary) => (),
-                GotoNode::ImportFromAsName { .. } => (),
                 GotoNode::GlobalName(_) | GotoNode::NonlocalName(_) | GotoNode::Atom(_) => (),
                 GotoNode::Operator { .. } | GotoNode::AugAssignOperator { .. } | GotoNode::None => (),
                 */

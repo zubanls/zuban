@@ -81,7 +81,7 @@ impl<'project> Document<'project> {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
             }
-            let s = pretty_type_formatting(i_s, &t).into_string();
+            let s = pretty_type_formatting(i_s, &t, false).into_string();
             if let Some(heuristic) = inf.heuristic {
                 let mut t = heuristic.as_cow_type(i_s);
                 let t = t.to_mut();
@@ -99,7 +99,7 @@ impl<'project> Document<'project> {
                         .collect();
                     *t = Type::from_union_entries(keep_entries, true);
                 }
-                format!("{s}\n\nMight be: {}", pretty_type_formatting(i_s, &t))
+                format!("{s}\n\nMight be: {}", pretty_type_formatting(i_s, &t, true))
             } else {
                 s
             }
@@ -304,7 +304,7 @@ impl<'project> Document<'project> {
     }
 }
 
-fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
+fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) -> Box<str> {
     let db = i_s.db;
     match t {
         Type::FunctionOverload(o) => format!(
@@ -327,7 +327,13 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
             }
             out.into_boxed_str()
         }
-        Type::Module(m) => db.loaded_python_file(*m).qualified_name(db).into(),
+        Type::Module(m) => {
+            let mut s = db.loaded_python_file(*m).qualified_name(db);
+            if from_heuristic {
+                s.insert_str(0, "module ");
+            }
+            s.into()
+        }
         Type::Namespace(n) => n.qualified_name().into(),
         _ => t.format_short(db),
     }
