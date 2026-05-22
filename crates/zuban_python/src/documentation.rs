@@ -61,7 +61,7 @@ impl<'project> Document<'project> {
                 _ => n.name.documentation().to_string(),
             }
         });
-        let (inf, mut results) = resolver.infer_definition(false);
+        let (inf, mut results) = resolver.infer_definition(true);
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return None;
@@ -79,7 +79,15 @@ impl<'project> Document<'project> {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
             }
-            pretty_type_formatting(i_s, &t).into_string()
+            let s = pretty_type_formatting(i_s, &t).into_string();
+            if let Some(heuristic) = inf.heuristic {
+                format!(
+                    "{s}\n\nMight be: {}",
+                    pretty_type_formatting(i_s, &heuristic.as_cow_type(i_s))
+                )
+            } else {
+                s
+            }
         };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {

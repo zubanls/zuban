@@ -39,7 +39,7 @@ use crate::{
 
 pub(crate) struct FullyInferred {
     pub typed: Inferred,
-    heuristic: Option<Inferred>,
+    pub heuristic: Option<Inferred>,
 }
 
 pub(crate) struct PositionalDocument<'db, T> {
