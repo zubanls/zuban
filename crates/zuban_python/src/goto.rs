@@ -125,12 +125,12 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
     fn infer_position(&self, i_s: &InferenceState) -> Option<Inferred> {
         let result = match &self.node {
-            GotoNode::Name(name) => self.infer_name(*name)?,
+            GotoNode::Name(name) => self.infer_name(*name),
             GotoNode::ImportFromAsName { import_as_name, .. } => {
-                self.infer_name(import_as_name.name_def().name())?
+                self.infer_name(import_as_name.name_def().name())
             }
             GotoNode::Primary(primary) => self.infer_primary(*primary),
-            GotoNode::PrimaryTarget(target) => self.infer_primary_target(*target)?,
+            GotoNode::PrimaryTarget(target) => self.infer_primary_target(*target),
             GotoNode::Operator {
                 first,
                 magic_method,
@@ -171,7 +171,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             }
             GotoNode::Atom(atom) => self.infer_atom(*atom),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
-                self.infer_name(name_def.name())?
+                self.infer_name(name_def.name())
             }
             GotoNode::None => return None,
         };
@@ -191,28 +191,28 @@ impl<'db, T> PositionalDocument<'db, T> {
         with_i_s_non_self(self.db, self.file, self.scope, callback)
     }
 
-    pub fn infer_name(&self, name: CSTName) -> Option<Inferred> {
+    fn infer_name(&self, name: CSTName) -> Inferred {
         match name.parent() {
             NameParent::NameDef(name_def) => self
                 .maybe_inferred_node_index(name_def.index())
-                .or_else(|| {
+                .unwrap_or_else(|| {
                     if let DefiningStmt::Walrus(walrus) = name_def.expect_defining_stmt() {
-                        Some(self.with_i_s(|i_s| {
+                        self.with_i_s(|i_s| {
                             self.file
                                 .inference(i_s)
                                 .infer_expression(walrus.expression())
-                        }))
+                        })
                     } else {
-                        None
+                        Inferred::new_any_from_error()
                     }
                 }),
-            NameParent::Atom(atom) => Some(self.infer_atom(atom)),
+            NameParent::Atom(atom) => self.infer_atom(atom),
             NameParent::DottedImportName(dotted_name) => {
-                Some(self.infer_dotted_import_name(0, Some(dotted_name)))
+                self.infer_dotted_import_name(0, Some(dotted_name))
             }
             other => {
                 debug!("TODO infer {other:?}");
-                None
+                Inferred::new_any_from_error()
             }
         }
         /*
@@ -283,15 +283,16 @@ impl<'db, T> PositionalDocument<'db, T> {
         }
     }
 
-    pub fn infer_primary_target_or_atom(&self, p_or_a: PrimaryTargetOrAtom) -> Option<Inferred> {
+    pub fn infer_primary_target_or_atom(&self, p_or_a: PrimaryTargetOrAtom) -> Inferred {
         match p_or_a {
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
-            PrimaryTargetOrAtom::Atom(a) => Some(self.infer_atom(a)),
+            PrimaryTargetOrAtom::Atom(a) => self.infer_atom(a),
         }
     }
 
-    fn infer_primary_target(&self, target: PrimaryTarget) -> Option<Inferred> {
+    fn infer_primary_target(&self, target: PrimaryTarget) -> Inferred {
         self.with_i_s(|i_s| self.file.inference(i_s).infer_primary_target(target, false))
+            .unwrap_or_else(Inferred::new_any_from_error)
     }
 }
 
@@ -503,7 +504,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                                     }
                                 }
                                 TypeLike::DottedAsName(_) => {
-                                    let file_index = self.infos.infer_name(name)?.maybe_file(db)?;
+                                    let file_index = self.infos.infer_name(name).maybe_file(db)?;
                                     return Some(vec![self.goto_on_file(file_index)]);
                                 }
                                 TypeLike::ImportFromAsName(_) => return None,
@@ -528,7 +529,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 }
             } else if let NameParent::DottedImportName(_) = name.parent() {
                 // TODO shouldn't this be pre-calculated?
-                let file_index = self.infos.infer_name(name)?.maybe_file(db)?;
+                let file_index = self.infos.infer_name(name).maybe_file(db)?;
                 return Some(vec![self.goto_on_file(file_index)]);
             }
             None
@@ -546,7 +547,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             },
             GotoNode::PrimaryTarget(target) => match target.second() {
                 PrimaryContent::Attribute(name) => {
-                    let inf = self.infos.infer_primary_target_or_atom(target.first())?;
+                    let inf = self.infos.infer_primary_target_or_atom(target.first());
                     self.goto_primary_attr(inf, name.as_code(), follow_imports)
                 }
                 _ => None,

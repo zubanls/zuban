@@ -969,6 +969,12 @@ def import_as() -> None:
     #? documentation
     imp3
 
+def import_as_with_syntax_error() -> None:
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c.
+    #? --codepoint-column 24 documentation
+    import pkg_untyped.b.c.
+
 def star_import() -> None:
     #? --codepoint-column 11 documentation
     from pkg_untyped.b.c import *
@@ -978,6 +984,32 @@ def star_import() -> None:
 [file pyproject.toml]
 [tool.zuban]
 follow_untyped_imports = false
+
+[out]
+__main__.py:6:documentation -> "```python\nc_var: Any\n\nMight be: str\n```"
+__main__.py:8:documentation -> "```python\n(import) c_var: Any\n\nMight be: str\n```"
+__main__.py:10:documentation -> "```python\nc: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:12:documentation -> "```python\n(import) c: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:14:documentation -> "```python\ncvar2: Any\n\nMight be: str\n```"
+__main__.py:16:documentation -> "```python\n(import) cvar2: Any\n\nMight be: str\n```"
+__main__.py:19:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:21:documentation -> "```python\nb: Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:23:documentation -> "```python\nc: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:25:documentation -> "```python\nc_var: Any\n\nMight be: str\n```"
+__main__.py:29:documentation -> "```python\nc: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:31:documentation -> "```python\n(import) pkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:33:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:35:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:37:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:40:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:42:documentation -> "```python\nb: Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:45:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:47:documentation -> "```python\nb: Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:49:documentation -> "```python\nc: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:51:documentation -> "```python\n(import) imp3: Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:55:documentation -> "```python\n(variable) pkg_untyped: Any\n```"
+__main__.py:57:documentation -> "```python\nb: Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:61:documentation -> "```python\npkg_untyped: Any\n\nMight be: module pkg_untyped\n```"
 
 [case docs_for_untyped_site_packages3]
 # pkgs: modulefinder-site-packages

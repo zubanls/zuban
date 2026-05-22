@@ -149,9 +149,8 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                         );
                     }
                     Some(CompletionContext::PrimaryTargetCall { base, args }) => {
-                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
-                            self.add_keyword_param_completions(inf, *args);
-                        }
+                        let inf = self.infos.infer_primary_target_or_atom(*base);
+                        self.add_keyword_param_completions(inf, *args);
                     }
                     None => (),
                 }
@@ -186,9 +185,8 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                 }
             }
             CompletionNode::PrimaryTarget { base } => {
-                if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
-                    self.add_attribute_completions(inf)
-                }
+                let inf = self.infos.infer_primary_target_or_atom(*base);
+                self.add_attribute_completions(inf)
             }
             CompletionNode::ImportFromTarget { base, dots } => {
                 let inf = self.infos.infer_dotted_import_name(*dots, *base);

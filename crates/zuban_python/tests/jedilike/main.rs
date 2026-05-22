@@ -49,7 +49,7 @@ lazy_static::lazy_static! {
         ("completion.py", 5),
         ("context.py", 4),
         ("docstring.py", 37),
-        ("imports.py", 8),
+        ("imports.py", 4),
         ("inheritance.py", 3),
         ("goto.py", 2),
         ("keywords.py", 7),

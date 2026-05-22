@@ -3338,12 +3338,7 @@ impl<'db> DottedImportName<'db> {
         }
         let prev_prev = prev.previous_leaf()?;
         if prev_prev.is_type(Terminal(TerminalType::Name)) {
-            let result = Name::new(prev_prev).name_def();
-            debug_assert!(matches!(
-                result.as_ref().unwrap().maybe_import().unwrap(),
-                NameImportParent::DottedAsName(_)
-            ));
-            result
+            Name::new(prev_prev).name_def()
         } else {
             None
         }
