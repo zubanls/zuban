@@ -18,7 +18,7 @@ const INIT_PYI: &str = "__init__.pyi";
 pub(crate) enum ImportResult {
     File(FileIndex),
     Namespace(Arc<Namespace>), // A Python Namespace package, i.e. a directory
-    PyTypedMissing,            // Files exist, but the py.typed marker is missing.
+    PyTypedMissing(Option<FileIndex>), // Files exist, but the py.typed marker is missing.
 }
 
 impl ImportResult {
@@ -39,7 +39,7 @@ impl ImportResult {
             ImportResult::Namespace(namespace) => {
                 Inferred::from_type(Type::Namespace(namespace.clone()))
             }
-            Self::PyTypedMissing => Inferred::new_any_from_error(),
+            Self::PyTypedMissing(_) => Inferred::new_any_from_error(),
         }
     }
 
@@ -63,7 +63,7 @@ impl ImportResult {
                     .map(|d| Directory::entries(&db.vfs, d)),
                 name,
             ),
-            Self::PyTypedMissing => unreachable!(),
+            Self::PyTypedMissing(_) => unreachable!(),
         }
     }
 
@@ -129,7 +129,7 @@ impl ImportResult {
             Self::Namespace(namespace) => {
                 format!("namespace {}", namespace.debug_path(db))
             }
-            Self::PyTypedMissing => "<py.typed missing>".into(),
+            Self::PyTypedMissing(_) => "<py.typed missing>".into(),
         }
     }
 }
@@ -150,7 +150,7 @@ impl LoadedImportResult {
         match &self.0 {
             ImportResult::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
             ImportResult::Namespace(ns) => ns.qualified_name(),
-            ImportResult::PyTypedMissing => unreachable!(),
+            ImportResult::PyTypedMissing(_) => unreachable!(),
         }
     }
 
@@ -163,7 +163,7 @@ impl LoadedImportResult {
             ImportResult::Namespace(namespace) => {
                 namespace_has_binary_extension_submodule(db, namespace, name)
             }
-            ImportResult::PyTypedMissing => false,
+            ImportResult::PyTypedMissing(_) => false,
         }
     }
 
@@ -309,7 +309,7 @@ pub fn namespace_import_with_unloaded_file(
                         if workspace.root_path() == parent_workspace.upgrade().unwrap().root_path()
                         {
                             if workspace.part_of_site_packages() {
-                                return Some(ImportResult::PyTypedMissing);
+                                return Some(ImportResult::PyTypedMissing(Some(file_index)));
                             } else {
                                 return result;
                             }
@@ -370,7 +370,7 @@ pub fn python_import_with_needs_exact_case<'x>(
                         .search("py.typed")
                         .is_none()
                 {
-                    return Some(ImportResult::PyTypedMissing);
+                    return Some(ImportResult::PyTypedMissing(Some(file_index)));
                 }
                 return Some(ImportResult::File(file_index));
             }
@@ -379,10 +379,10 @@ pub fn python_import_with_needs_exact_case<'x>(
             None
         };
         let mut file_imports = |file, is_py_file: bool| {
-            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
-                return Some(ImportResult::PyTypedMissing);
-            }
             let file_index = db.vfs.ensure_file_index(file);
+            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
+                return Some(ImportResult::PyTypedMissing(Some(file_index)));
+            }
             if is_py_file {
                 python_file_index = Some((file.clone(), file_index));
             } else {

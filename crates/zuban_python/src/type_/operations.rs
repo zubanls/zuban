@@ -1621,6 +1621,6 @@ fn lookup_in_namespace(
         ImportResult::Namespace(namespace) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
-        ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
+        ImportResult::PyTypedMissing(_) => LookupResult::any(AnyCause::FromError),
     }
 }

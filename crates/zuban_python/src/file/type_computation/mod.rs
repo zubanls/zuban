@@ -1712,7 +1712,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::Module(file)
                         }
                         ImportResult::Namespace(ns) => TypeContent::Namespace(ns),
-                        ImportResult::PyTypedMissing => TypeContent::UNKNOWN_REPORTED,
+                        ImportResult::PyTypedMissing(_) => TypeContent::UNKNOWN_REPORTED,
                     }
                 } else {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
