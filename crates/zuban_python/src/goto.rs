@@ -527,9 +527,13 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     }
                     _ => (),
                 }
-            } else if let NameParent::DottedImportName(_) = name.parent() {
+            } else if let NameParent::DottedImportName(dotted) = name.parent() {
                 // TODO shouldn't this be pre-calculated?
-                let file_index = self.infos.infer_name(name).maybe_file(db)?;
+                let file_index = self.infos.infer_name(name).maybe_file(db).or_else(|| {
+                    self.infos
+                        .heuristic_infer_import_dotted(dotted)?
+                        .maybe_file(db)
+                })?;
                 return Some(vec![self.goto_on_file(file_index)]);
             }
             None
@@ -552,10 +556,23 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 }
                 _ => None,
             },
-            GotoNode::ImportFromAsName { import_as_name, .. } => Some(vec![self.try_to_follow(
-                NodeRef::new(file, import_as_name.name_def().index()),
-                follow_imports,
-            )?]),
+            GotoNode::ImportFromAsName { import_as_name, .. } => {
+                if let Some(result) = self.try_to_follow(
+                    NodeRef::new(file, import_as_name.name_def().index()),
+                    follow_imports,
+                ) {
+                    Some(vec![result])
+                } else {
+                    let base = self
+                        .infos
+                        .heuristic_import_from_as_name_base(import_as_name)?;
+                    self.goto_primary_attr(
+                        base,
+                        import_as_name.unpack().0.as_code(),
+                        follow_imports,
+                    )
+                }
+            }
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
                 if let Some(result) = self.try_to_follow(ref_, follow_imports) {
@@ -577,6 +594,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             | GotoNode::None => None,
         }
     }
+
     fn goto_primary_attr(
         &mut self,
         base: Inferred,

@@ -38,7 +38,7 @@ use crate::{
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
         GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue, LookupResult,
-        Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        Namespace, Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -423,7 +423,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn infer_import_from_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
+    fn infer_import_from_base(
+        &mut self,
+        imp_name: ImportFromAsName,
+    ) -> Option<HeuristicImportBase> {
         let import_from = imp_name.import_from()?;
         let (level, dotted_name) = import_from.level_with_dotted_name();
         if level > 0 {
@@ -431,17 +434,28 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
 
         let dotted_name = dotted_name?;
-        let import_name = imp_name.unpack().0.as_code();
         if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
             NodeRef::new(self.inference.file, dotted_name.index()).maybe_complex()
         {
-            let result = namespace_import(self.db(), self.inference.file, ns, import_name)?;
-            return self.infer_import_result(result.into_import_result());
+            return Some(HeuristicImportBase::Namespace(ns.clone()));
         };
-        let inf = self.infer_import_dotted_name(dotted_name)?;
-        match self.infer_attr(imp_name.index(), inf, import_name) {
-            Some(Heuristic::WellKnown(inf)) => Some(Heuristic::Guess(inf)),
-            x => x,
+        self.infer_import_dotted_name(dotted_name)
+            .map(HeuristicImportBase::Heuristic)
+    }
+
+    fn infer_import_from_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
+        let import_name = imp_name.unpack().0.as_code();
+        match self.infer_import_from_base(imp_name)? {
+            HeuristicImportBase::Namespace(ns) => {
+                let result = namespace_import(self.db(), self.inference.file, &ns, import_name)?;
+                self.infer_import_result(result.into_import_result())
+            }
+            HeuristicImportBase::Heuristic(inf) => {
+                match self.infer_attr(imp_name.index(), inf, import_name) {
+                    Some(Heuristic::WellKnown(inf)) => Some(Heuristic::Guess(inf)),
+                    x => x,
+                }
+            }
         }
     }
 
@@ -1843,6 +1857,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 }
 
+enum HeuristicImportBase {
+    Namespace(Arc<Namespace>),
+    Heuristic(Heuristic),
+}
+
 pub fn infer_heuristics_if_necessary(
     i_s: &InferenceState,
     inferred: &Inferred,
@@ -1864,7 +1883,7 @@ pub fn infer_heuristics_if_necessary(
 
 impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     pub fn infer_heuristics_if_possible(&self) -> Option<Inferred> {
-        debug!("Try to find heuristics");
+        debug!("Try to infer heuristics");
         let _indent = debug_indent();
         self.with_i_s(|i_s| {
             let mut heuristic = HeuristicInference {
@@ -1883,6 +1902,34 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 _ => return None,
             }
             .maybe_guessed()
+        })
+    }
+
+    pub fn heuristic_import_from_as_name_base(
+        &mut self,
+        imp_name: ImportFromAsName,
+    ) -> Option<Inferred> {
+        self.with_i_s(|i_s| {
+            let mut heuristic = HeuristicInference {
+                state: &mut HeuristicState::default(),
+                inference: self.file.inference(i_s),
+            };
+            Some(match heuristic.infer_import_from_base(imp_name)? {
+                HeuristicImportBase::Namespace(namespace) => {
+                    Inferred::from_type(Type::Namespace(namespace))
+                }
+                HeuristicImportBase::Heuristic(heuristic) => heuristic.into(),
+            })
+        })
+    }
+
+    pub fn heuristic_infer_import_dotted(&mut self, dotted: DottedImportName) -> Option<Inferred> {
+        self.with_i_s(|i_s| {
+            let mut heuristic = HeuristicInference {
+                state: &mut HeuristicState::default(),
+                inference: self.file.inference(i_s),
+            };
+            Some(heuristic.infer_import_dotted_name(dotted)?.into())
         })
     }
 }
