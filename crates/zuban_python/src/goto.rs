@@ -527,7 +527,8 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     }
                     _ => (),
                 }
-            } else if let NameParent::DottedImportName(dotted) = name.parent() {
+            }
+            if let NameParent::DottedImportName(dotted) = name.parent() {
                 // TODO shouldn't this be pre-calculated?
                 let file_index = self.infos.infer_name(name).maybe_file(db).or_else(|| {
                     self.infos
