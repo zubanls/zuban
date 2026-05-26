@@ -3,11 +3,11 @@ use std::{cell::RefCell, iter::Peekable, rc::Rc, sync::Arc};
 use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, AssignmentContent, AssignmentRightSide, Atom,
     AtomContent, Comprehension, DefiningStmt, DictComprehension, DictElement, DottedAsName,
-    DottedAsNameContent, DottedImportName, DottedImportNameContent, Expression, ExpressionContent,
-    ExpressionPart, ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, ImportFromAsName,
-    Name, NameParent, NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent,
-    PrimaryOrAtom, ReturnOrYield, Scope, StarExpressionContent, StarExpressions,
-    StarLikeExpression, StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
+    DottedAsNameContent, DottedImportName, Expression, ExpressionContent, ExpressionPart,
+    ForIfClause, ForIfClauseIterator, FunctionDef, GotoNode, ImportFromAsName, Name, NameParent,
+    NamedExpression, NodeIndex, Operation, ParamKind, Primary, PrimaryContent, PrimaryOrAtom,
+    ReturnOrYield, Scope, StarExpressionContent, StarExpressions, StarLikeExpression,
+    StarLikeExpressionIterator, Target, TypeLike, YieldExprContent,
 };
 use regex::{Matches, Regex};
 use utils::{FastHashMap, FastHashSet};
@@ -402,15 +402,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             }
             NameParent::Primary(primary) => Some(self.infer_primary(primary)),
             NameParent::DottedImportName(dotted) => {
-                if let Some(name_def) = dotted.maybe_part_of_import_name() {
-                    let base = self
-                        .inference
-                        .file
-                        .global_import(self.db(), name_def.name())?;
-                    self.infer_import_result(self.import_dotted_name(Some(base), dotted)?)
-                } else {
-                    self.infer_import_dotted_name(dotted)
-                }
+                self.maybe_infer_py_typed_missing(dotted.index())
             }
             NameParent::ImportFromAsName(imp_name) => self.infer_import_from_name(imp_name),
             /*
@@ -460,45 +452,18 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn infer_import_dotted_name(&self, dotted: DottedImportName) -> Option<Heuristic> {
-        if self.is_py_typed_missing(dotted.index()) {
+        if let Some(inf) = self.maybe_infer_py_typed_missing(dotted.index()) {
             debug!(
                 "Found missing py.typed, trying to follow: {}",
                 dotted.as_code()
             );
-            let _indent = debug_indent();
-            self.infer_import_result(self.import_dotted_name(None, dotted)?)
+            Some(inf)
         } else {
             debug!(
                 "Import did not have a missing py.typed: {}",
                 dotted.as_code()
             );
             None
-        }
-    }
-
-    fn import_dotted_name(
-        &self,
-        base: Option<ImportResult>,
-        dotted: DottedImportName,
-    ) -> Option<ImportResult> {
-        let import_on_result = |mut base: ImportResult, name| {
-            if let ImportResult::PyTypedMissing(file_index) = base {
-                base = ImportResult::File(file_index)
-            }
-            base.import(self.db(), self.inference.file, name)
-        };
-        match dotted.unpack() {
-            DottedImportNameContent::DottedName(dotted, name) => {
-                let base = self.import_dotted_name(base, dotted)?;
-                import_on_result(base, name.as_code())
-            }
-            DottedImportNameContent::Name(name) => {
-                if let Some(base) = base {
-                    import_on_result(base, name.as_code())
-                } else {
-                    self.inference.file.global_import(self.db(), name)
-                }
-            }
         }
     }
 
@@ -524,25 +489,33 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         )))
     }
 
-    fn is_py_typed_missing(&self, index: NodeIndex) -> bool {
-        matches!(
-            NodeRef::new(self.inference.file, index).maybe_complex(),
-            Some(ComplexPoint::PyTypedMissing(_))
-        )
+    fn maybe_py_typed_missing(&self, index: NodeIndex) -> Option<&'db PythonFile> {
+        match NodeRef::new(self.inference.file, index).maybe_complex()? {
+            ComplexPoint::PyTypedMissing(missing) => {
+                let file = self
+                    .inference
+                    .i_s
+                    .db
+                    .ensure_file_for_file_index(missing.file)
+                    .ok()?;
+                let result = file.ensure_module_symbols_flow_analysis(self.db());
+                debug_assert!(result.is_ok());
+                Some(file)
+            }
+            _ => None,
+        }
+    }
+
+    fn maybe_infer_py_typed_missing(&self, index: NodeIndex) -> Option<Heuristic> {
+        let file = self.maybe_py_typed_missing(index)?;
+        Some(Heuristic::Guess(Inferred::new_file_reference(
+            file.file_index,
+        )))
     }
 
     fn infer_import_name(&self, dotted: DottedAsName) -> Option<Heuristic> {
         match dotted.unpack() {
-            DottedAsNameContent::Simple(name_def, ..) => {
-                if self.is_py_typed_missing(dotted.index()) {
-                    return self.infer_import_result(
-                        self.inference
-                            .file
-                            .global_import(self.db(), name_def.name())?,
-                    );
-                }
-                None
-            }
+            DottedAsNameContent::Simple(..) => self.maybe_infer_py_typed_missing(dotted.index()),
             DottedAsNameContent::WithAs(dotted_import_name, _) => {
                 self.infer_import_dotted_name(dotted_import_name)
             }
@@ -1923,7 +1896,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
     pub fn heuristic_infer_import_dotted(&mut self, dotted: DottedImportName) -> Option<Inferred> {
         self.with_i_s(|i_s| {
-            let mut heuristic = HeuristicInference {
+            let heuristic = HeuristicInference {
                 state: &mut HeuristicState::default(),
                 inference: self.file.inference(i_s),
             };
