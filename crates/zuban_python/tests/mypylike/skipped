@@ -10,6 +10,7 @@ goto_doc_contains_stdlib_compiled
 
 completion_no_wrong_range_in_strings
 
+# module_finding_with_py_typed
 goto_for_untyped_site_packages1
 goto_for_untyped_site_packages2
 goto_for_untyped_site_packages3

@@ -32,7 +32,7 @@ impl PythonFile {
                 result.debug_info(db),
             );
         } else if is_global_binary_extension(db, name) {
-            return Some(ImportResult::PyTypedMissing(None));
+            return Some(ImportResult::BinaryExtension);
         } else if !self.flags(db).ignore_missing_imports {
             NodeRef::new(self, name.index()).add_type_issue(
                 db,
@@ -78,7 +78,16 @@ impl PythonFile {
                 ImportResult::Namespace(namespace) => {
                     namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
                 }
-                ImportResult::PyTypedMissing(_) => Some(ImportResult::PyTypedMissing(None)),
+                ImportResult::PyTypedMissing(file_index) => {
+                    /*
+                    let file_entry = db.vfs.file_entry(*file_index);
+                    match sub_module_import(db, self, file_entry, name.as_code()) {
+                        Some(ImportResult::File(file)) => Some(ImportResult::PyTypedMissing(file)),
+                        result => result,
+                    }
+                    */
+                    Some(ImportResult::BinaryExtension)
+                }
                 ImportResult::BinaryExtension => Some(ImportResult::BinaryExtension),
             };
             if let Some(imported) = &result {
@@ -491,16 +500,12 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
             node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
         }
         Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-        Some(ImportResult::PyTypedMissing(Some(file_index))) => node_ref.insert_complex(
+        Some(ImportResult::PyTypedMissing(file_index)) => node_ref.insert_complex(
             ComplexPoint::PyTypedMissing(PyTypedMissing { file: *file_index }),
             Locality::Complex,
         ),
-        Some(ImportResult::PyTypedMissing(None)) => node_ref.set_point(Point::new_specific(
-            Specific::PyTypedMissing,
-            Locality::Complex,
-        )),
         Some(ImportResult::BinaryExtension) => node_ref.set_point(Point::new_specific(
-            Specific::PyTypedMissing,
+            Specific::BinaryExtension,
             Locality::Complex,
         )),
         None => node_ref.set_point(Point::new_specific(
@@ -521,8 +526,8 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
     match p.kind() {
         PointKind::FileReference => Some(ImportResult::File(p.file_index())),
         PointKind::Specific => {
-            if p.specific() == Specific::PyTypedMissing {
-                Some(ImportResult::PyTypedMissing(None))
+            if p.specific() == Specific::BinaryExtension {
+                Some(ImportResult::BinaryExtension)
             } else {
                 debug_assert!(matches!(
                     p.specific(),
@@ -536,7 +541,7 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
                 Some(ImportResult::Namespace(ns.clone()))
             }
             ComplexPoint::PyTypedMissing(py_typed) => {
-                Some(ImportResult::PyTypedMissing(Some(py_typed.file)))
+                Some(ImportResult::PyTypedMissing(py_typed.file))
             }
             _ => unreachable!(),
         },

@@ -4981,7 +4981,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::AnyDueToError
         | Specific::Function
         | Specific::ModuleNotFound
-        | Specific::PyTypedMissing
+        | Specific::BinaryExtension
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithTypeVars
         | Specific::AnnotationOrTypeCommentWithoutTypeVars => return None,

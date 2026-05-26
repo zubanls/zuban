@@ -1981,7 +1981,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Specific::AnyDueToError
             | Specific::Cycle
             | Specific::InvalidTypeDefinition
-            | Specific::PyTypedMissing => Some(AnyCause::FromError),
+            | Specific::BinaryExtension => Some(AnyCause::FromError),
             Specific::AnnotationOrTypeCommentWithoutTypeVars => Some(AnyCause::FromError),
             Specific::ModuleNotFound => Some(AnyCause::ModuleNotFound),
             _ => None,
@@ -2958,7 +2958,7 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::AnyDueToError | Specific::InvalidTypeDefinition | Specific::PyTypedMissing => {
+        Specific::AnyDueToError | Specific::InvalidTypeDefinition | Specific::BinaryExtension => {
             Cow::Borrowed(&Type::ERROR)
         }
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),

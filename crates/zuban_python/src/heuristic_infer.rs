@@ -483,7 +483,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     ) -> Option<ImportResult> {
         let import_on_result = |mut base: ImportResult, name| {
             if let ImportResult::PyTypedMissing(file_index) = base {
-                base = ImportResult::File(file_index?)
+                base = ImportResult::File(file_index)
             }
             base.import(self.db(), self.inference.file, name)
         };
@@ -505,13 +505,12 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     fn infer_import_result(&self, import_result: ImportResult) -> Option<Heuristic> {
         let base = match import_result {
             ImportResult::Namespace(_) => None,
-            ImportResult::File(file_index) | ImportResult::PyTypedMissing(Some(file_index)) => self
+            ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index) => self
                 .inference
                 .i_s
                 .db
                 .ensure_file_for_file_index(file_index)
                 .ok(),
-            ImportResult::PyTypedMissing(None) => None,
             ImportResult::BinaryExtension => None,
         }?;
         debug!(
