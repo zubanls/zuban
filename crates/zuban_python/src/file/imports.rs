@@ -79,14 +79,14 @@ impl PythonFile {
                     namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
                 }
                 ImportResult::PyTypedMissing(file_index) => {
-                    /*
                     let file_entry = db.vfs.file_entry(*file_index);
                     match sub_module_import(db, self, file_entry, name.as_code()) {
                         Some(ImportResult::File(file)) => Some(ImportResult::PyTypedMissing(file)),
-                        result => result,
+                        // This is not really correct, we are not dealing with a binary extension,
+                        // but something similar: non py.typed modules are considered Any and they
+                        // might execute arbitrary code includig sys.modules changes.
+                        _ => Some(ImportResult::BinaryExtension),
                     }
-                    */
-                    Some(ImportResult::BinaryExtension)
                 }
                 ImportResult::BinaryExtension => Some(ImportResult::BinaryExtension),
             };
