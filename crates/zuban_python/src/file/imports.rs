@@ -5,7 +5,7 @@ use parsa_python_cst::{
 use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
 use crate::{
-    database::{Database, Locality, Point, PointKind, Specific},
+    database::{ComplexPoint, Database, Locality, Point, PointKind, PyTypedMissing, Specific},
     debug,
     diagnostics::IssueKind,
     file::{inference::Inference, name_resolution::StarImportError},
@@ -487,7 +487,11 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
             node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
         }
         Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-        Some(ImportResult::PyTypedMissing(_)) => node_ref.set_point(Point::new_specific(
+        Some(ImportResult::PyTypedMissing(Some(file_index))) => node_ref.insert_complex(
+            ComplexPoint::PyTypedMissing(PyTypedMissing { file: *file_index }),
+            Locality::Complex,
+        ),
+        Some(ImportResult::PyTypedMissing(None)) => node_ref.set_point(Point::new_specific(
             Specific::PyTypedMissing,
             Locality::Complex,
         )),
@@ -519,8 +523,13 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
                 None
             }
         }
-        PointKind::Complex => match node_ref.maybe_type().unwrap() {
-            Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
+        PointKind::Complex => match node_ref.maybe_complex().unwrap() {
+            ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
+                Some(ImportResult::Namespace(ns.clone()))
+            }
+            ComplexPoint::PyTypedMissing(py_typed) => {
+                Some(ImportResult::PyTypedMissing(Some(py_typed.file)))
+            }
             _ => unreachable!(),
         },
         _ => unreachable!(),

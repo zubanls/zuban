@@ -697,7 +697,10 @@ pub(crate) enum ComplexPoint {
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Arc<Type>),
     WidenedType(Arc<WidenedType>),
+    // Only used for heuristics, this is not relevant for non-heuristic inference
     HeuristicBound(Arc<HeuristicBound>),
+    // If a third-party library is missing a py.typed, this is the resulting location redirect.
+    PyTypedMissing(PyTypedMissing),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -1865,6 +1868,11 @@ impl std::cmp::PartialEq for ClassStorage {
         recoverable_error!("Should never compare  class storage with ==");
         false
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PyTypedMissing {
+    pub file: FileIndex,
 }
 
 #[derive(Debug, Clone, PartialEq)]

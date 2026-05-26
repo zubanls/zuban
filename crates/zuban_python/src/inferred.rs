@@ -1920,6 +1920,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         widened.widened.format_short(db)
                     )
                 }
+                ComplexPoint::PyTypedMissing(_) => "PyTypedMissing(...)".into(),
                 ComplexPoint::HeuristicBound(heuristic) => {
                     format!(
                         "HeuristicBound(type={}, bound={})",
@@ -2930,6 +2931,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
         ComplexPoint::WidenedType(widened) => type_of_complex(i_s, &widened.original, definition),
+        ComplexPoint::PyTypedMissing(_) => Cow::Borrowed(&Type::ERROR),
         ComplexPoint::HeuristicBound(b) => Cow::Borrowed(&b.type_),
         ComplexPoint::ClassInfos(_) => unreachable!("Classes are handled earlier {complex:?}"),
         ComplexPoint::TypeVarLikes(_) => unreachable!("TypeVarLikes should never be accessed"),

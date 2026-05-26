@@ -525,12 +525,10 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn is_py_typed_missing(&self, index: NodeIndex) -> bool {
-        self.inference
-            .file
-            .points
-            .get(index)
-            .maybe_calculated_and_specific()
-            == Some(Specific::PyTypedMissing)
+        matches!(
+            NodeRef::new(self.inference.file, index).maybe_complex(),
+            Some(ComplexPoint::PyTypedMissing(_))
+        )
     }
 
     fn infer_import_name(&self, dotted: DottedAsName) -> Option<Heuristic> {
