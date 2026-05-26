@@ -392,7 +392,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                 }
             }
             Some(ImportResult::Namespace(namespace)) => self.add_namespace_completions(&namespace),
-            None | Some(ImportResult::PyTypedMissing(_)) => (),
+            None | Some(ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension) => (),
         }
     }
 

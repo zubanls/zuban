@@ -247,7 +247,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             |imp_result: LoadedImportResult| match imp_result.into_import_result() {
                 ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
                 ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
-                ImportResult::PyTypedMissing(_) => Inferred::new_any_from_error(),
+                ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
+                    Inferred::new_any_from_error()
+                }
             };
         Some(match from_first_part {
             ImportResult::File(file_index) => {
@@ -273,7 +275,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 )?)),
                 None,
             ),
-            ImportResult::PyTypedMissing(_) => (
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => (
                 PointResolution::Inferred(Inferred::new_any_from_error()),
                 None,
             ),

@@ -79,6 +79,7 @@ impl PythonFile {
                     namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
                 }
                 ImportResult::PyTypedMissing(_) => Some(ImportResult::PyTypedMissing(None)),
+                ImportResult::BinaryExtension => Some(ImportResult::BinaryExtension),
             };
             if let Some(imported) = &result {
                 debug!(
@@ -233,6 +234,9 @@ impl PythonFile {
             Some(ImportResult::PyTypedMissing(_)) => {
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
+            Some(ImportResult::BinaryExtension) => {
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            }
             None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
         };
         self.points.set(star_index, point);
@@ -269,7 +273,7 @@ impl PythonFile {
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
             }
-            ImportResult::PyTypedMissing(_) => unreachable!(),
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => unreachable!(),
         })
     }
 
@@ -353,7 +357,7 @@ impl PythonFile {
                         }
                     }
                 }
-                ImportResult::PyTypedMissing(_) => (),
+                ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => (),
             },
         }
     }
@@ -492,6 +496,10 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
             Locality::Complex,
         ),
         Some(ImportResult::PyTypedMissing(None)) => node_ref.set_point(Point::new_specific(
+            Specific::PyTypedMissing,
+            Locality::Complex,
+        )),
+        Some(ImportResult::BinaryExtension) => node_ref.set_point(Point::new_specific(
             Specific::PyTypedMissing,
             Locality::Complex,
         )),

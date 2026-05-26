@@ -512,6 +512,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 .ensure_file_for_file_index(file_index)
                 .ok(),
             ImportResult::PyTypedMissing(None) => None,
+            ImportResult::BinaryExtension => None,
         }?;
         debug!(
             "Found replacement for missing py.typed: {:?}",

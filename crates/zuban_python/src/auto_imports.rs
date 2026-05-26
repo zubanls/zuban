@@ -383,7 +383,9 @@ impl FileImport {
             ImportResult::File(file_index) => {
                 Some(file_to_kind(db, db.loaded_python_file(file_index)))
             }
-            ImportResult::PyTypedMissing(_) => Some(ImportKind::ThirdParty),
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
+                Some(ImportKind::ThirdParty)
+            }
             ImportResult::Namespace(_) => None,
         };
         let node_ref = NodeRef::new(from_file, self.node_index);
@@ -636,7 +638,7 @@ fn has_import_of_file(db: &Database, file: &PythonFile, dotted: DottedImportName
         match result {
             ImportResult::File(file_index) => file_index == file.file_index,
             ImportResult::Namespace(_) => false,
-            ImportResult::PyTypedMissing(_) => false,
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => false,
         }
     } else {
         false

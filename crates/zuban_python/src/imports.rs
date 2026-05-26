@@ -19,6 +19,7 @@ pub(crate) enum ImportResult {
     File(FileIndex),
     Namespace(Arc<Namespace>), // A Python Namespace package, i.e. a directory
     PyTypedMissing(Option<FileIndex>), // Files exist, but the py.typed marker is missing.
+    BinaryExtension,
 }
 
 impl ImportResult {
@@ -35,11 +36,9 @@ impl ImportResult {
             return Inferred::new_module_not_found();
         };
         match result.0 {
-            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-            ImportResult::Namespace(namespace) => {
-                Inferred::from_type(Type::Namespace(namespace.clone()))
-            }
-            Self::PyTypedMissing(_) => Inferred::new_any_from_error(),
+            Self::File(file_index) => Inferred::new_file_reference(file_index),
+            Self::Namespace(namespace) => Inferred::from_type(Type::Namespace(namespace.clone())),
+            Self::BinaryExtension | Self::PyTypedMissing(_) => Inferred::new_any_from_error(),
         }
     }
 
@@ -63,7 +62,7 @@ impl ImportResult {
                     .map(|d| Directory::entries(&db.vfs, d)),
                 name,
             ),
-            Self::PyTypedMissing(_) => unreachable!(),
+            Self::PyTypedMissing(_) | Self::BinaryExtension => unreachable!(),
         }
     }
 
@@ -130,6 +129,7 @@ impl ImportResult {
                 format!("namespace {}", namespace.debug_path(db))
             }
             Self::PyTypedMissing(_) => "<py.typed missing>".into(),
+            Self::BinaryExtension => "<binary extension>".into(),
         }
     }
 }
@@ -150,7 +150,7 @@ impl LoadedImportResult {
         match &self.0 {
             ImportResult::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
             ImportResult::Namespace(ns) => ns.qualified_name(),
-            ImportResult::PyTypedMissing(_) => unreachable!(),
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => unreachable!(),
         }
     }
 
@@ -164,6 +164,7 @@ impl LoadedImportResult {
                 namespace_has_binary_extension_submodule(db, namespace, name)
             }
             ImportResult::PyTypedMissing(_) => false,
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => false,
         }
     }
 

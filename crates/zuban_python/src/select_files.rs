@@ -313,7 +313,7 @@ fn find_imports_and_preload_files(
                     }
                 }
                 ImportResult::Namespace(_) => (),
-                ImportResult::PyTypedMissing(_) => (),
+                ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => (),
             },
         )
     }

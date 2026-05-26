@@ -569,8 +569,7 @@ impl<'db> PythonFile {
                     assert_ne!(file_index, self.file_index);
                     Some(file_index)
                 }
-                ImportResult::Namespace(_) => None,
-                ImportResult::PyTypedMissing(_) => unreachable!(),
+                _ => None,
             }
         });
         db.ensure_file_for_file_index(file_index?).ok()
@@ -594,8 +593,7 @@ impl<'db> PythonFile {
         } else {
             match ImportResult::import_stub_for_non_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => file_index,
-                ImportResult::Namespace(_) => return None,
-                ImportResult::PyTypedMissing(_) => unreachable!(),
+                _ => return None,
             }
         };
         let loaded = db.ensure_file_for_file_index(file_index).ok()?;
