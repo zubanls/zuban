@@ -433,7 +433,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         {
             return Some(HeuristicImportBase::Namespace(ns.clone()));
         };
-        self.infer_import_dotted_name(dotted_name)
+        self.maybe_infer_py_typed_missing(dotted_name.index())
             .map(HeuristicImportBase::Heuristic)
     }
 
@@ -453,51 +453,40 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn infer_import_dotted_name(&self, dotted: DottedImportName) -> Option<Heuristic> {
-        if let Some(inf) = self.maybe_infer_py_typed_missing(dotted.index()) {
-            debug!(
-                "Found missing py.typed, trying to follow: {}",
-                dotted.as_code()
-            );
-            Some(inf)
+    fn maybe_infer_py_typed_missing(&mut self, index: NodeIndex) -> Option<Heuristic> {
+        let ref_ = NodeRef::new(self.inference.file, index);
+        if let Some(ComplexPoint::PyTypedMissing(py_typed_missing)) = ref_.maybe_complex() {
+            debug!("Found missing py.typed, trying to follow: {ref_:?}");
+            match py_typed_missing {
+                PyTypedMissing::File(file) => {
+                    let file = self
+                        .inference
+                        .i_s
+                        .db
+                        .ensure_file_for_file_index(*file)
+                        .ok()?;
+                    let result = file.ensure_module_symbols_flow_analysis(self.db());
+                    debug_assert!(result.is_ok());
+                    Some(Heuristic::Guess(Inferred::new_file_reference(
+                        file.file_index,
+                    )))
+                }
+                PyTypedMissing::Link(link) => {
+                    let ref_ = NodeRef::from_link(self.db(), *link);
+                    self.with_different_file(ref_.file, |h| h.infer_name(ref_.maybe_name()?))
+                }
+            }
         } else {
-            debug!(
-                "Import did not have a missing py.typed: {}",
-                dotted.as_code()
-            );
+            debug!("Did not have a missing py.typed: {ref_:?}");
             None
         }
     }
 
-    fn maybe_py_typed_missing(&self, index: NodeIndex) -> Option<&'db PythonFile> {
-        match NodeRef::new(self.inference.file, index).maybe_complex()? {
-            ComplexPoint::PyTypedMissing(PyTypedMissing::File(missing_file)) => {
-                let file = self
-                    .inference
-                    .i_s
-                    .db
-                    .ensure_file_for_file_index(*missing_file)
-                    .ok()?;
-                let result = file.ensure_module_symbols_flow_analysis(self.db());
-                debug_assert!(result.is_ok());
-                Some(file)
-            }
-            _ => None,
-        }
-    }
-
-    fn maybe_infer_py_typed_missing(&self, index: NodeIndex) -> Option<Heuristic> {
-        let file = self.maybe_py_typed_missing(index)?;
-        Some(Heuristic::Guess(Inferred::new_file_reference(
-            file.file_index,
-        )))
-    }
-
-    fn infer_import_name(&self, dotted: DottedAsName) -> Option<Heuristic> {
+    fn infer_import_name(&mut self, dotted: DottedAsName) -> Option<Heuristic> {
         match dotted.unpack() {
             DottedAsNameContent::Simple(..) => self.maybe_infer_py_typed_missing(dotted.index()),
             DottedAsNameContent::WithAs(dotted_import_name, _) => {
-                self.infer_import_dotted_name(dotted_import_name)
+                self.maybe_infer_py_typed_missing(dotted_import_name.index())
             }
         }
     }
@@ -1895,11 +1884,15 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
     pub fn heuristic_infer_import_dotted(&mut self, dotted: DottedImportName) -> Option<Inferred> {
         self.with_i_s(|i_s| {
-            let heuristic = HeuristicInference {
+            let mut heuristic = HeuristicInference {
                 state: &mut HeuristicState::default(),
                 inference: self.file.inference(i_s),
             };
-            Some(heuristic.infer_import_dotted_name(dotted)?.into())
+            Some(
+                heuristic
+                    .maybe_infer_py_typed_missing(dotted.index())?
+                    .into(),
+            )
         })
     }
 }
@@ -1924,7 +1917,7 @@ impl<'db, T> PositionalDocument<'db, T> {
 
     pub fn infer_import_name_with_heuristics(&self, dotted: DottedAsName) -> Option<Inferred> {
         self.with_i_s(|i_s| {
-            let heuristic = HeuristicInference {
+            let mut heuristic = HeuristicInference {
                 state: &mut HeuristicState::default(),
                 inference: self.file.inference(i_s),
             };
