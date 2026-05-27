@@ -938,8 +938,8 @@ impl<'db> Completion for CompletionTreeName<'db> {
             && let Some(r) = try_to_follow_imports(self.db, self.file, self.name)
         {
             return Some(match r {
-                FollowImportResult::File(file_index) => {
-                    let file = self.db.loaded_python_file(file_index);
+                FollowImportResult::File { file, .. } => {
+                    let file = self.db.loaded_python_file(file);
                     ModuleName { db: self.db, file }.documentation()
                 }
                 FollowImportResult::TreeName(tree_name) => tree_name.documentation(),

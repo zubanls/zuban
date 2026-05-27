@@ -14,7 +14,6 @@ goto_for_untyped_site_packages2
 goto_for_untyped_site_packages3
 docs_for_untyped_site_packages1
 docs_for_untyped_site_packages2
-docs_for_untyped_site_packages3
 non_py_typed_site_packages_dependency
 
 narrow_literals_locally_for_assignments

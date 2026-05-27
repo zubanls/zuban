@@ -187,6 +187,12 @@ impl Heuristic {
         }
     }
 
+    fn into_guess(self) -> Self {
+        match self {
+            Heuristic::WellKnown(inf) | Heuristic::Guess(inf) => Heuristic::Guess(inf),
+        }
+    }
+
     fn as_type(&self, i_s: &InferenceState) -> Type {
         self.as_inferred().as_type(i_s)
     }
@@ -230,6 +236,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
             NameParent::NameDef(name_def) => {
+                if let inf @ Some(_) = self.maybe_infer_py_typed_missing(name_def.index()) {
+                    return inf;
+                }
                 let link = PointLink::new(self.inference.file.file_index, name_def.index());
                 for (name_def_link, known) in &self.state.known_name_stack {
                     if *name_def_link == link {
@@ -473,11 +482,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
                 PyTypedMissing::Link(link) => {
                     let ref_ = NodeRef::from_link(self.db(), *link);
-                    self.with_different_file(ref_.file, |h| h.infer_name(ref_.maybe_name()?))
+                    Some(
+                        self.with_different_file(ref_.file, |h| h.infer_name(ref_.maybe_name()?))?
+                            .into_guess(),
+                    )
                 }
             }
         } else {
-            debug!("Did not have a missing py.typed: {ref_:?}");
             None
         }
     }
@@ -516,9 +527,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             NodeRef::new(self.inference.file, name.index()),
             true,
         )?? {
-            FollowImportResult::File(file_index) => Some(Heuristic::WellKnown(
-                Inferred::new_file_reference(file_index),
-            )),
+            FollowImportResult::File {
+                file,
+                from_missing_py_typed,
+            } => Some(match from_missing_py_typed {
+                false => Heuristic::WellKnown(Inferred::new_file_reference(file)),
+                true => Heuristic::Guess(Inferred::new_file_reference(file)),
+            }),
             FollowImportResult::TreeName(tree_name) => {
                 if !matches!(tree_name.parent_scope, Scope::Module)
                     && tree_name.file.file_index == self.inference.file.file_index
