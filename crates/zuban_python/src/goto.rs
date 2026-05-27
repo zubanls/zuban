@@ -576,14 +576,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 ) {
                     Some(vec![result])
                 } else {
-                    let base = self
-                        .infos
-                        .heuristic_import_from_as_name_base(import_as_name)?;
-                    self.goto_primary_attr(
-                        base,
-                        import_as_name.unpack().0.as_code(),
-                        follow_imports,
-                    )
+                    None
                 }
             }
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {

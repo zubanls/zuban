@@ -40,7 +40,7 @@ use crate::{
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
         GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue, LookupResult,
-        Namespace, Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -426,40 +426,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
     }
 
-    fn infer_import_from_base(
-        &mut self,
-        imp_name: ImportFromAsName,
-    ) -> Option<HeuristicImportBase> {
-        let import_from = imp_name.import_from()?;
-        let (level, dotted_name) = import_from.level_with_dotted_name();
-        if level > 0 {
-            return None;
-        }
-
-        let dotted_name = dotted_name?;
-        if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
-            NodeRef::new(self.inference.file, dotted_name.index()).maybe_complex()
-        {
-            return Some(HeuristicImportBase::Namespace(ns.clone()));
-        };
-        self.maybe_infer_py_typed_missing(dotted_name.index())
-            .map(HeuristicImportBase::Heuristic)
-    }
-
     fn infer_import_from_name(&mut self, imp_name: ImportFromAsName) -> Option<Heuristic> {
-        let import_name = imp_name.unpack().0.as_code();
-        match self.infer_import_from_base(imp_name)? {
-            HeuristicImportBase::Namespace(ns) => {
-                let result = namespace_import(self.db(), self.inference.file, &ns, import_name)?;
-                infer_import_result(self.db(), &result.into_import_result())
-            }
-            HeuristicImportBase::Heuristic(inf) => {
-                match self.infer_attr(imp_name.index(), inf, import_name) {
-                    Some(Heuristic::WellKnown(inf)) => Some(Heuristic::Guess(inf)),
-                    x => x,
-                }
-            }
-        }
+        self.maybe_infer_py_typed_missing(imp_name.name_def().index())
     }
 
     fn maybe_infer_py_typed_missing(&mut self, index: NodeIndex) -> Option<Heuristic> {
@@ -1813,11 +1781,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 }
 
-enum HeuristicImportBase {
-    Namespace(Arc<Namespace>),
-    Heuristic(Heuristic),
-}
-
 fn infer_import_result(db: &Database, import_result: &ImportResult) -> Option<Heuristic> {
     let base = match import_result {
         ImportResult::Namespace(_) => None,
@@ -1877,24 +1840,6 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 _ => return None,
             }
             .maybe_guessed()
-        })
-    }
-
-    pub fn heuristic_import_from_as_name_base(
-        &mut self,
-        imp_name: ImportFromAsName,
-    ) -> Option<Inferred> {
-        self.with_i_s(|i_s| {
-            let mut heuristic = HeuristicInference {
-                state: &mut HeuristicState::default(),
-                inference: self.file.inference(i_s),
-            };
-            Some(match heuristic.infer_import_from_base(imp_name)? {
-                HeuristicImportBase::Namespace(namespace) => {
-                    Inferred::from_type(Type::Namespace(namespace))
-                }
-                HeuristicImportBase::Heuristic(heuristic) => heuristic.into(),
-            })
         })
     }
 
