@@ -16,7 +16,7 @@ use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
 use crate::{
     InputPosition, ValueName,
     completion::ScopesIterator,
-    database::{Database, ParentScope, PointKind, Specific},
+    database::{ComplexPoint, Database, ParentScope, PointKind, PyTypedMissing, Specific},
     debug,
     file::{
         ClassInitializer, ClassNodeRef, File, FuncNodeRef, OtherDefinitionIterator, PythonFile,
@@ -650,16 +650,10 @@ pub(crate) fn try_to_follow_imports<'db>(
 ) -> Option<FollowImportResult<'db>> {
     let name_def = n.name_def()?;
     match name_def.maybe_import() {
-        Some(NameImportParent::ImportFromAsName(_)) => {
+        Some(NameImportParent::ImportFromAsName(_) | NameImportParent::DottedAsName(_)) => {
             let ref_ = NodeRef::new(file, name_def.index());
             if let Some(result) = try_to_follow(db, ref_, true) {
                 return result;
-            }
-        }
-        Some(NameImportParent::DottedAsName(_)) => {
-            let p = NodeRef::new(file, name_def.index()).point();
-            if p.kind() == PointKind::FileReference {
-                return Some(FollowImportResult::File(p.file_index()));
             }
         }
         None => {
@@ -693,7 +687,20 @@ pub(crate) fn try_to_follow<'db>(
             follow_imports,
         )),
         PointKind::FileReference => Some(Some(FollowImportResult::File(p.file_index()))),
-        _ => None,
+        _ => {
+            if let ComplexPoint::PyTypedMissing(missing) = n.maybe_complex()? {
+                Some(match missing {
+                    PyTypedMissing::File(file_index) => Some(FollowImportResult::File(*file_index)),
+                    PyTypedMissing::Link(link) => check_node_ref_and_maybe_follow_import(
+                        db,
+                        NodeRef::from_link(db, *link),
+                        follow_imports,
+                    ),
+                })
+            } else {
+                None
+            }
+        }
     }
 }
 

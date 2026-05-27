@@ -501,7 +501,7 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
         }
         Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
         Some(ImportResult::PyTypedMissing(file_index)) => node_ref.insert_complex(
-            ComplexPoint::PyTypedMissing(PyTypedMissing { file: *file_index }),
+            ComplexPoint::PyTypedMissing(PyTypedMissing::File(*file_index)),
             Locality::Complex,
         ),
         Some(ImportResult::BinaryExtension) => node_ref.set_point(Point::new_specific(
@@ -540,8 +540,8 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
             ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
                 Some(ImportResult::Namespace(ns.clone()))
             }
-            ComplexPoint::PyTypedMissing(py_typed) => {
-                Some(ImportResult::PyTypedMissing(py_typed.file))
+            ComplexPoint::PyTypedMissing(PyTypedMissing::File(file)) => {
+                Some(ImportResult::PyTypedMissing(*file))
             }
             _ => unreachable!(),
         },

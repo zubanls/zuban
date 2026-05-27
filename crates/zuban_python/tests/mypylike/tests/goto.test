@@ -1253,7 +1253,7 @@ __main__.py:12:infer -> __main__.py:12:4:TypedDict({'x'?: int, 'y'?: str}, extra
 
 [case goto_for_untyped_site_packages1]
 # pkgs: modulefinder-site-packages
-# flags: --no-typecheck
+# flags: --only-language-server --no-typecheck
 
 def import_from() -> None:
     #? goto
@@ -1262,6 +1262,8 @@ def import_from() -> None:
     #? --codepoint-column 11 goto
     from pkg_untyped import pkg_untyped_var
     #? goto --follow-imports
+    pkg_untyped_var
+    #? goto
     pkg_untyped_var
 
     #? goto
@@ -1273,6 +1275,8 @@ def import_as() -> None:
     #? goto
     import pkg_untyped
     #? goto --follow-imports
+    pkg_untyped
+    #? goto
     pkg_untyped
 
     #? goto
@@ -1293,18 +1297,20 @@ follow_untyped_imports = false
 [out]
 __main__.py:6:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
 __main__.py:9:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
-__main__.py:11:goto -> __main__.py:6:28:__main__.pkg_untyped_var@6
-__main__.py:14:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:11:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:13:goto -> __main__.py:6:28:__main__.pkg_untyped_var@6
 __main__.py:16:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
-__main__.py:20:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
-__main__.py:22:goto -> __main__.py:20:11:__main__.pkg_untyped@20
-__main__.py:25:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
-__main__.py:27:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:18:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:22:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:24:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:26:goto -> __main__.py:22:11:__main__.pkg_untyped@22
+__main__.py:29:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
 __main__.py:31:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:35:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
 
 [case goto_for_untyped_site_packages2]
 # pkgs: modulefinder-site-packages
-# flags: --no-typecheck
+# flags: --only-language-server --no-typecheck
 
 def import_from() -> None:
     #? goto
@@ -1375,7 +1381,7 @@ follow_untyped_imports = false
 
 [case goto_for_untyped_site_packages3]
 # pkgs: modulefinder-site-packages
-# flags: --no-typecheck
+# flags: --only-language-server --no-typecheck
 
 def star_import1() -> None:
     #? --codepoint-column 21 goto

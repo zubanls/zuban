@@ -7,7 +7,10 @@ use utils::AlreadySeen;
 use vfs::FileIndex;
 
 use crate::{
-    database::{Database, Locality, Point, PointKind, PointLink, Specific},
+    RunCause,
+    database::{
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, PyTypedMissing, Specific,
+    },
     debug,
     diagnostics::IssueKind,
     file::{File, python_file::DunderAllState},
@@ -275,7 +278,35 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 )?)),
                 None,
             ),
-            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => (
+            ImportResult::PyTypedMissing(file_index) => {
+                if matches!(self.i_s.db.run_cause, RunCause::LanguageServer)
+                    && self.file.file_index != *file_index
+                    && let import_file = self.i_s.db.loaded_python_file(*file_index)
+                    && let Some((_, Some(access))) = self
+                        .with_new_file(import_file)
+                        .resolve_module_access(name, |kind| {
+                            self.add_issue(import_name.index(), kind)
+                        })
+                {
+                    (
+                        PointResolution::Inferred(Inferred::new_unsaved_complex(
+                            ComplexPoint::PyTypedMissing(match access {
+                                ModuleAccessDetail::OnName(link) => PyTypedMissing::Link(link),
+                                ModuleAccessDetail::OnFile(file_index) => {
+                                    PyTypedMissing::File(file_index)
+                                }
+                            }),
+                        )),
+                        None,
+                    )
+                } else {
+                    (
+                        PointResolution::Inferred(Inferred::new_any_from_error()),
+                        None,
+                    )
+                }
+            }
+            ImportResult::BinaryExtension => (
                 PointResolution::Inferred(Inferred::new_any_from_error()),
                 None,
             ),

@@ -4,7 +4,7 @@ use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
 
 use crate::{
-    database::Database,
+    database::{ComplexPoint, Database, PyTypedMissing},
     file::PythonFile,
     inferred::Inferred,
     type_::{Namespace, Type},
@@ -38,7 +38,10 @@ impl ImportResult {
         match result.0 {
             Self::File(file_index) => Inferred::new_file_reference(file_index),
             Self::Namespace(namespace) => Inferred::from_type(Type::Namespace(namespace.clone())),
-            Self::BinaryExtension | Self::PyTypedMissing(_) => Inferred::new_any_from_error(),
+            Self::PyTypedMissing(file) => Inferred::new_unsaved_complex(
+                ComplexPoint::PyTypedMissing(PyTypedMissing::File(file)),
+            ),
+            Self::BinaryExtension => Inferred::new_any_from_error(),
         }
     }
 

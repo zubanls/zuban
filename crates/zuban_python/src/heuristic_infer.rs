@@ -18,7 +18,9 @@ use crate::{
         ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
         KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
     },
-    database::{ComplexPoint, Database, HeuristicBound, PointKind, PointLink, Specific},
+    database::{
+        ComplexPoint, Database, HeuristicBound, PointKind, PointLink, PyTypedMissing, Specific,
+    },
     debug,
     file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next},
     format_data::FormatData,
@@ -469,12 +471,12 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn maybe_py_typed_missing(&self, index: NodeIndex) -> Option<&'db PythonFile> {
         match NodeRef::new(self.inference.file, index).maybe_complex()? {
-            ComplexPoint::PyTypedMissing(missing) => {
+            ComplexPoint::PyTypedMissing(PyTypedMissing::File(missing_file)) => {
                 let file = self
                     .inference
                     .i_s
                     .db
-                    .ensure_file_for_file_index(missing.file)
+                    .ensure_file_for_file_index(*missing_file)
                     .ok()?;
                 let result = file.ensure_module_symbols_flow_analysis(self.db());
                 debug_assert!(result.is_ok());

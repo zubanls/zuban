@@ -1871,8 +1871,9 @@ impl std::cmp::PartialEq for ClassStorage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PyTypedMissing {
-    pub file: FileIndex,
+pub enum PyTypedMissing {
+    File(FileIndex),
+    Link(PointLink),
 }
 
 #[derive(Debug, Clone, PartialEq)]
