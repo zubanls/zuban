@@ -721,11 +721,13 @@ pub(crate) fn check_node_ref_and_maybe_follow_import<'db>(
     )
 }
 
+#[derive(Debug)]
 pub(crate) struct FollowImportResult<'db> {
     pub kind: FollowImportResultKind<'db>,
     pub from_missing_py_typed: bool,
 }
 
+#[derive(Debug)]
 pub(crate) enum FollowImportResultKind<'db> {
     File(FileIndex),
     TreeName(TreeName<'db>),

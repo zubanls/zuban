@@ -434,6 +434,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let ref_ = NodeRef::new(self.inference.file, index);
         if let Some(ComplexPoint::PyTypedMissing(py_typed_missing)) = ref_.maybe_complex() {
             debug!("Found missing py.typed, trying to follow: {ref_:?}");
+            let _indent = debug_indent();
             match py_typed_missing {
                 PyTypedMissing::File(file) => {
                     let file = self
@@ -500,12 +501,34 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 Some(Heuristic::WellKnown(Inferred::new_file_reference(file)))
             }
             FollowImportResultKind::TreeName(tree_name) => {
-                if !matches!(tree_name.parent_scope, Scope::Module)
-                    && tree_name.file.file_index == self.inference.file.file_index
+                let infer_heuristic = |slf: &mut Self| {
+                    if !matches!(tree_name.parent_scope, Scope::Module)
+                        && tree_name.file.file_index == slf.inference.file.file_index
+                    {
+                        slf.infer_name(tree_name.cst_name)
+                    } else {
+                        slf.with_different_file(tree_name.file, |h| {
+                            h.infer_name(tree_name.cst_name)
+                        })
+                    }
+                };
+                if followed.from_missing_py_typed
+                    && let Some(name_def) = tree_name.cst_name.name_def()
                 {
-                    self.infer_name(tree_name.cst_name)
+                    // We need to make sure that we try to infer the name the normal way first,
+                    // because we are in a file that is not part of normal type checking, so we
+                    // "simulate" that.
+                    let inf = self.with_different_file(tree_name.file, |h| {
+                        let result = h
+                            .inference
+                            .file
+                            .ensure_module_symbols_flow_analysis(h.inference.i_s.db);
+                        debug_assert!(result.is_ok());
+                        h.inference.infer_name_def(name_def)
+                    });
+                    Some(self.create_heuristic_if_necessary(inf, |slf| infer_heuristic(slf)))
                 } else {
-                    self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
+                    infer_heuristic(self)
                 }
             }
         };
@@ -1250,11 +1273,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 if let Some(ComplexPoint::HeuristicBound(b)) = base.maybe_complex_point(db) {
                     bound_to = Some(&b.bound_to);
                 }
-                let t = base.as_cow_type(i_s);
-                if let Type::Callable(c) = &*t {
-                    return Some(NodeRef::from_link(db, c.defined_at));
+                match &*base.as_cow_type(i_s) {
+                    Type::Callable(c) => Some(NodeRef::from_link(db, c.defined_at)),
+                    Type::Type(inner) => Some(*inner.maybe_class(db)?.node_ref.to_db_lifetime(db)),
+                    _ => None,
                 }
-                None
             })
         else {
             debug!(
