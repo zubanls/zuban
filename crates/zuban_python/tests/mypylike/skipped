@@ -10,8 +10,6 @@ goto_doc_contains_stdlib_compiled
 
 completion_no_wrong_range_in_strings
 
-goto_for_untyped_site_packages3
-docs_for_untyped_site_packages3
 docs_for_untyped_site_packages4
 
 narrow_literals_locally_for_assignments

@@ -1449,9 +1449,28 @@ from ns_pkg_untyped import b as imported2
 from ns_pkg_untyped.b import c as imported3
 #? --codepoint-column 30 goto
 from ns_pkg_untyped.b import c as imported4
+#? goto
+from ns_pkg_untyped.b.c import c_var
 
 [file pyproject.toml]
 [tool.zuban]
 follow_untyped_imports = false
 
 [out]
+__main__.py:6:goto -> ()
+__main__.py:12:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:14:goto -> ()
+__main__.py:18:goto -> ()
+__main__.py:20:goto -> ()
+__main__.py:22:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:24:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:26:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:28:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:30:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:33:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:35:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:38:goto -> ()
+__main__.py:40:goto -> ()
+__main__.py:43:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:45:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:47:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var

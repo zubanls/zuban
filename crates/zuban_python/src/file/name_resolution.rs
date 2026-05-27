@@ -19,7 +19,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     recoverable_error,
-    type_::{LookupResult, Type},
+    type_::LookupResult,
     utils::is_magic_method,
 };
 
@@ -246,14 +246,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         import_name: Name,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let name = import_name.as_str();
-        let convert_imp_result =
-            |imp_result: LoadedImportResult| match imp_result.into_import_result() {
-                ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-                ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
-                ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
-                    Inferred::new_any_from_error()
-                }
-            };
+        let convert_imp_result = |imp_result: LoadedImportResult| {
+            imp_result.into_import_result().into_inferred(self.i_s.db)
+        };
         Some(match from_first_part {
             ImportResult::File(file_index) => {
                 // Coming from an import we need to make sure that we do not create loops for imports
