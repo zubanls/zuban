@@ -3566,10 +3566,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(file) = inferred.maybe_file(i_s.db) {
                     return Lookup::T(TypeContent::Module(i_s.db.loaded_python_file(file)));
                 }
-                if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
-                    inferred.maybe_complex_point(i_s.db)
-                {
-                    return Lookup::T(TypeContent::Namespace(ns.clone()));
+                match inferred.maybe_complex_point(i_s.db) {
+                    Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) => {
+                        return Lookup::T(TypeContent::Namespace(ns.clone()));
+                    }
+                    Some(ComplexPoint::PyTypedMissing(_)) => return Lookup::UNKNOWN_REPORTED,
+                    _ => (),
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
                     return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(
