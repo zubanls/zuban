@@ -456,11 +456,9 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     }
 
     fn process_follow_import_result(&mut self, r: Option<FollowImportResult<'db>>) -> Option<T> {
-        Some(match r? {
-            FollowImportResult::File {
-                file: file_index, ..
-            } => self.goto_on_file(file_index),
-            FollowImportResult::TreeName(n) => self.calculate_return(Name::TreeName(n)),
+        Some(match r?.kind {
+            FollowImportResultKind::File(file_index) => self.goto_on_file(file_index),
+            FollowImportResultKind::TreeName(n) => self.calculate_return(Name::TreeName(n)),
         })
     }
 
@@ -688,23 +686,25 @@ pub(crate) fn try_to_follow<'db>(
             p.as_redirected_node_ref(db),
             follow_imports,
         )),
-        PointKind::FileReference => Some(Some(FollowImportResult::File {
-            file: p.file_index(),
-            from_missing_py_typed: false,
-        })),
+        PointKind::FileReference => Some(Some(FollowImportResultKind::File(p.file_index()).into())),
         _ => {
             if let ComplexPoint::PyTypedMissing(missing) = n.maybe_complex()? {
                 debug!("Followed name, found missing py.typed {:?}", missing);
                 Some(match missing {
-                    PyTypedMissing::File(file_index) => Some(FollowImportResult::File {
-                        file: *file_index,
+                    PyTypedMissing::File(file_index) => Some(FollowImportResult {
+                        kind: FollowImportResultKind::File(*file_index),
                         from_missing_py_typed: true,
                     }),
-                    PyTypedMissing::Link(link) => check_node_ref_and_maybe_follow_import(
-                        db,
-                        NodeRef::from_link(db, *link),
-                        follow_imports,
-                    ),
+                    PyTypedMissing::Link(link) => {
+                        let result = check_node_ref_and_maybe_follow_import(
+                            db,
+                            NodeRef::from_link(db, *link),
+                            follow_imports,
+                        );
+                        let mut result = result?;
+                        result.from_missing_py_typed = true;
+                        Some(result)
+                    }
                 })
             } else {
                 None
@@ -722,17 +722,29 @@ pub(crate) fn check_node_ref_and_maybe_follow_import<'db>(
     if follow_imports && let result @ Some(_) = try_to_follow_imports(db, node_ref.file, n) {
         return result;
     }
-    Some(FollowImportResult::TreeName(
-        TreeName::with_unknown_parent_scope(db, node_ref.file, n),
-    ))
+    Some(
+        FollowImportResultKind::TreeName(TreeName::with_unknown_parent_scope(db, node_ref.file, n))
+            .into(),
+    )
 }
 
-pub(crate) enum FollowImportResult<'db> {
-    File {
-        file: FileIndex,
-        from_missing_py_typed: bool,
-    },
+pub(crate) struct FollowImportResult<'db> {
+    pub kind: FollowImportResultKind<'db>,
+    pub from_missing_py_typed: bool,
+}
+
+pub(crate) enum FollowImportResultKind<'db> {
+    File(FileIndex),
     TreeName(TreeName<'db>),
+}
+
+impl<'db> From<FollowImportResultKind<'db>> for FollowImportResult<'db> {
+    fn from(kind: FollowImportResultKind<'db>) -> Self {
+        Self {
+            kind,
+            from_missing_py_typed: false,
+        }
+    }
 }
 
 pub(crate) struct ReferencesResolver<'db, C, T> {

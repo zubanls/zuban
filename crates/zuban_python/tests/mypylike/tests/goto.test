@@ -1378,6 +1378,30 @@ def star_import() -> None:
 follow_untyped_imports = false
 
 [out]
+__main__.py:6:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:8:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:10:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:12:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:14:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:16:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:19:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:21:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:23:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:25:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:29:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:31:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:33:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:35:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:37:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:40:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:42:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:45:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:47:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:49:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:51:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:55:goto -> __main__.py:55:11:__main__.pkg_untyped@55
+__main__.py:57:goto -> ()
+__main__.py:61:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
 
 [case goto_for_untyped_site_packages3]
 # pkgs: modulefinder-site-packages

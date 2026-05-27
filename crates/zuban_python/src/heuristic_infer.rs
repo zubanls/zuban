@@ -26,7 +26,7 @@ use crate::{
     format_data::FormatData,
     getitem::SliceType,
     goto::{
-        FollowImportResult, PositionalDocument, check_node_ref_and_maybe_follow_import,
+        FollowImportResultKind, PositionalDocument, check_node_ref_and_maybe_follow_import,
         try_to_follow,
     },
     imports::{ImportResult, namespace_import},
@@ -522,19 +522,16 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn infer_name_reference(&mut self, name: Name) -> Option<Heuristic> {
         debug!("Heuristic follow name: {}", name.as_code());
-        match try_to_follow(
+        let followed = try_to_follow(
             self.inference.i_s.db,
             NodeRef::new(self.inference.file, name.index()),
             true,
-        )?? {
-            FollowImportResult::File {
-                file,
-                from_missing_py_typed,
-            } => Some(match from_missing_py_typed {
-                false => Heuristic::WellKnown(Inferred::new_file_reference(file)),
-                true => Heuristic::Guess(Inferred::new_file_reference(file)),
-            }),
-            FollowImportResult::TreeName(tree_name) => {
+        )??;
+        let result = match followed.kind {
+            FollowImportResultKind::File(file) => {
+                Some(Heuristic::WellKnown(Inferred::new_file_reference(file)))
+            }
+            FollowImportResultKind::TreeName(tree_name) => {
                 if !matches!(tree_name.parent_scope, Scope::Module)
                     && tree_name.file.file_index == self.inference.file.file_index
                 {
@@ -543,7 +540,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     self.with_different_file(tree_name.file, |h| h.infer_name(tree_name.cst_name))
                 }
             }
+        };
+        if followed.from_missing_py_typed {
+            return Some(result?.into_guess());
         }
+        result
     }
 
     fn search_callable_arguments(
@@ -2073,8 +2074,9 @@ impl<'db> Iterator for FileNameSearcher<'db, '_> {
                 let point = self.current_file.points.get(name.index());
                 if point.calculated() && point.kind() == PointKind::Redirect {
                     let node_ref = point.as_redirected_node_ref(self.db);
-                    if let Some(FollowImportResult::TreeName(tree_name)) =
+                    if let Some(followed) =
                         check_node_ref_and_maybe_follow_import(self.db, node_ref, true)
+                        && let FollowImportResultKind::TreeName(tree_name) = followed.kind
                         && tree_name.file.file_index == self.wanted_name.file
                         && tree_name.cst_name.index() == self.wanted_name.node_index
                     {
