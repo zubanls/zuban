@@ -193,9 +193,16 @@ impl<'db, T> PositionalDocument<'db, T> {
 
     fn infer_name(&self, name: CSTName) -> Inferred {
         match name.parent() {
-            NameParent::NameDef(name_def) => self
-                .maybe_inferred_node_index(name_def.index())
-                .unwrap_or_else(|| {
+            NameParent::NameDef(name_def) => {
+                let inf = self.maybe_inferred_node_index(name_def.index());
+                if let Some(inf) = &inf {
+                    debug!(
+                        "Found an inferred node index for name {}: {}",
+                        name.as_code(),
+                        inf.debug_info(self.db)
+                    );
+                }
+                inf.unwrap_or_else(|| {
                     if let DefiningStmt::Walrus(walrus) = name_def.expect_defining_stmt() {
                         self.with_i_s(|i_s| {
                             self.file
@@ -205,7 +212,8 @@ impl<'db, T> PositionalDocument<'db, T> {
                     } else {
                         Inferred::new_any_from_error()
                     }
-                }),
+                })
+            }
             NameParent::Atom(atom) => self.infer_atom(atom),
             NameParent::DottedImportName(dotted_name) => {
                 self.infer_dotted_import_name(0, Some(dotted_name))
@@ -503,8 +511,12 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                                         ))]);
                                     }
                                 }
-                                TypeLike::DottedAsName(_) => {
-                                    let file_index = self.infos.infer_name(name).maybe_file(db)?;
+                                TypeLike::DottedAsName(dotted) => {
+                                    let inf = self
+                                        .infos
+                                        .infer_import_name_with_heuristics(dotted)
+                                        .unwrap_or_else(|| self.infos.infer_name(name));
+                                    let file_index = inf.maybe_file(db)?;
                                     return Some(vec![self.goto_on_file(file_index)]);
                                 }
                                 TypeLike::ImportFromAsName(_) => return None,

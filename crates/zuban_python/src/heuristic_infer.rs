@@ -440,7 +440,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         match self.infer_import_from_base(imp_name)? {
             HeuristicImportBase::Namespace(ns) => {
                 let result = namespace_import(self.db(), self.inference.file, &ns, import_name)?;
-                self.infer_import_result(result.into_import_result())
+                infer_import_result(self.db(), &result.into_import_result())
             }
             HeuristicImportBase::Heuristic(inf) => {
                 match self.infer_attr(imp_name.index(), inf, import_name) {
@@ -465,28 +465,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             );
             None
         }
-    }
-
-    fn infer_import_result(&self, import_result: ImportResult) -> Option<Heuristic> {
-        let base = match import_result {
-            ImportResult::Namespace(_) => None,
-            ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index) => self
-                .inference
-                .i_s
-                .db
-                .ensure_file_for_file_index(file_index)
-                .ok(),
-            ImportResult::BinaryExtension => None,
-        }?;
-        debug!(
-            "Found replacement for missing py.typed: {:?}",
-            base.qualified_name(self.db())
-        );
-        let result = base.ensure_module_symbols_flow_analysis(self.db());
-        debug_assert!(result.is_ok());
-        Some(Heuristic::Guess(Inferred::new_file_reference(
-            base.file_index,
-        )))
     }
 
     fn maybe_py_typed_missing(&self, index: NodeIndex) -> Option<&'db PythonFile> {
@@ -1153,7 +1131,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         for base_t in base_t.iter_with_unpacked_unions(self.inference.i_s.db) {
             let inf = if let Type::Namespace(ns) = base_t {
                 let result = namespace_import(self.db(), self.inference.file, ns, name)?;
-                self.infer_import_result(result.into_import_result())
+                infer_import_result(self.db(), &result.into_import_result())
             } else {
                 self.infer_attr_part2(from_node_index, base_t, name, base_is_heuristic)
             };
@@ -1833,6 +1811,25 @@ enum HeuristicImportBase {
     Heuristic(Heuristic),
 }
 
+fn infer_import_result(db: &Database, import_result: &ImportResult) -> Option<Heuristic> {
+    let base = match import_result {
+        ImportResult::Namespace(_) => None,
+        ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index) => {
+            db.ensure_file_for_file_index(*file_index).ok()
+        }
+        ImportResult::BinaryExtension => None,
+    }?;
+    debug!(
+        "Found replacement for missing py.typed: {:?}",
+        base.qualified_name(db)
+    );
+    let result = base.ensure_module_symbols_flow_analysis(db);
+    debug_assert!(result.is_ok());
+    Some(Heuristic::Guess(Inferred::new_file_reference(
+        base.file_index,
+    )))
+}
+
 pub fn infer_heuristics_if_necessary(
     i_s: &InferenceState,
     inferred: &Inferred,
@@ -1921,6 +1918,16 @@ impl<'db, T> PositionalDocument<'db, T> {
             })
         })
         .unwrap_or(inf)
+    }
+
+    pub fn infer_import_name_with_heuristics(&self, dotted: DottedAsName) -> Option<Inferred> {
+        self.with_i_s(|i_s| {
+            let heuristic = HeuristicInference {
+                state: &mut HeuristicState::default(),
+                inference: self.file.inference(i_s),
+            };
+            Some(heuristic.infer_import_name(dotted)?.into())
+        })
     }
 }
 
