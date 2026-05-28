@@ -1137,7 +1137,7 @@ __main__.py:35:documentation -> "```python\nAny\n\nMight be: tuple[bytes, int]\n
 __main__.py:37:documentation -> "```python\nAny\n\nMight be: str\n```"
 
 [case docs_for_untyped_defs_functions]
-# flags: --no-check-untyped-defs
+# flags: --allow-redefinition --no-check-untyped-defs
 
 def foo1(a):
     1()
@@ -1170,9 +1170,9 @@ empty_end("")
 no_return(1)
 
 [out]
-__main__.py:16:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
-__main__.py:18:documentation -> "```python\nAny\n\nMight be: tuple[Any, int, int | str]\n```"
-__main__.py:20:documentation -> "```python\nAny\n\nMight be: tuple[Any, str, int | str]\n```"
+__main__.py:23:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:25:documentation -> "```python\nAny\n\nMight be: tuple[Any, int, int | str]\n```"
+__main__.py:27:documentation -> "```python\nAny\n\nMight be: tuple[Any, str, int | str]\n```"
 __main__.py:29:documentation -> "```python\nAny\n\nMight be: str\n```"
 __main__.py:31:documentation -> "```python\nAny\n```"
 
@@ -1209,6 +1209,13 @@ D("").x
 D(1.0).f(1)
 #? documentation
 D(1.0).f("s")
+
+[out]
+__main__.py:24:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:26:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, Any]\n```"
+__main__.py:28:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, Any]\n```"
+__main__.py:30:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, Any], Any, Any]\n```"
+__main__.py:32:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, Any], str, Any]\n```"
 
 [case docs_for_untyped_any]
 def f(x):

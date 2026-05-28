@@ -10,7 +10,6 @@ goto_doc_contains_stdlib_compiled
 
 completion_no_wrong_range_in_strings
 
-docs_for_untyped_defs_functions
 docs_for_untyped_defs_methods
 
 narrow_literals_locally_for_assignments

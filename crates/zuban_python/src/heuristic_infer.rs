@@ -23,7 +23,8 @@ use crate::{
     },
     debug,
     file::{
-        ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next, func_of_self_symbol,
+        ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next,
+        maybe_func_of_self_symbol,
     },
     format_data::FormatData,
     getitem::SliceType,
@@ -1221,9 +1222,19 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     }
                 }
             } else if matches!(base_t, Type::Self_) {
+                if let Some(func_def) =
+                    maybe_func_of_self_symbol(directed_to.file, new_name.index())
+                {
+                    let body = self.inference.file.points.get(func_def.body().index());
+                    if !body.function_was_checked() {
+                        let func = Function::new_with_unknown_parent(
+                            self.db(),
+                            NodeRef::new(self.inference.file, func_def.index()),
+                        );
+                        func.ensure_checked_untyped_function_for_heuristics(self.db());
+                    }
+                }
                 // TODO this might be the wrong function context
-                let func_def = func_of_self_symbol(self.inference.file, new_name.index());
-                let body = self.inference.file.points.get(func_def.body().index());
                 out = self.infer_name(new_name)
             } else {
                 out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))
@@ -1473,6 +1484,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn heuristic_return_type_part2(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
+        if !NodeRef::new(func_node_ref.file, func_node_ref.node().body().index())
+            .point()
+            .function_was_checked()
+        {
+            let func = Function::new_with_unknown_parent(self.db(), *func_node_ref);
+            func.ensure_checked_untyped_function_for_heuristics(self.db());
+        }
+
         let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
         let mut return_t = Type::NEVER;

@@ -318,6 +318,34 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result.save_redirect(i_s, reference.file, reference.node_index)
     }
 
+    pub fn ensure_checked_untyped_function_for_heuristics(&self, db: &Database) {
+        // This is specifically here to be called from heuristics to ensure that the names in an
+        // unchecked function are properly initialized. This typically happens with
+        // --no-check-untyped-defs, which is the mypy default.
+
+        let body = self.node().body();
+        let body_ref = NodeRef::new(self.file, body.index());
+        let point = body_ref.point();
+        if point.function_was_checked() {
+            debug!("Function {} is already checked", self.qualified_name(db));
+            return;
+        }
+        debug!(
+            "Ensure checked untyped function {}",
+            self.qualified_name(db)
+        );
+        FLOW_ANALYSIS.with(|fa| {
+            fa.with_new_func_frame_and_return_unreachable(db, || {
+                InferenceState::from_func(db, self).avoid_errors_within(|i_s| {
+                    self.file
+                        .inference(i_s)
+                        .calc_block_diagnostics(body, None, Some(self))
+                });
+            });
+            body_ref.set_point(point.set_checked_function());
+        })
+    }
+
     pub fn parent_class(&self, db: &'db Database) -> Option<Class<'class>> {
         if let Some(cls) = self.class {
             return Some(cls);

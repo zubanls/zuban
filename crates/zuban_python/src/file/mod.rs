@@ -39,6 +39,6 @@ pub(crate) use type_computation::{
 };
 pub(crate) use type_var_finder::TypeVarFinder;
 pub(crate) use utils::{
-    func_of_self_symbol, infer_index, infer_string_index, on_argument_type_error,
+    infer_index, infer_string_index, maybe_func_of_self_symbol, on_argument_type_error,
     should_add_deprecated,
 };
