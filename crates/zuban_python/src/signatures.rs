@@ -32,18 +32,18 @@ impl<'db> PositionalDocument<'db, SignatureInfo<'db>> {
         let Some((scope, base, args)) = file.tree.signature_node(cursor_position.byte) else {
             return Ok(None);
         };
-        let result = file.ensure_calculated_diagnostics(db);
-        debug!(
-            "Signature on position {}->{pos:?} on node {base:?}",
-            file.file_path(db),
-        );
-        debug_assert!(result.is_ok());
-        Ok(Some(Self {
+        let doc = Self {
             db,
             file,
             scope,
             node: SignatureInfo { base, args },
-        }))
+        };
+        doc.ensure_scope_diagnostics();
+        debug!(
+            "Signature on position {}->{pos:?} on node {base:?}",
+            file.file_path(db),
+        );
+        Ok(Some(doc))
     }
 }
 

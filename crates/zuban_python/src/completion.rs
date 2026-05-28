@@ -57,14 +57,8 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     ) -> anyhow::Result<Self> {
         let cursor_position = file.line_column_to_byte(pos)?;
         let (scope, node, rest) = file.tree.completion_node(cursor_position.byte);
-        let result = file.ensure_calculated_diagnostics(db);
-        debug!(
-            "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
-            file.file_path(db),
-            rest.as_code()
-        );
-        debug_assert!(result.is_ok());
-        Ok(Self {
+
+        let doc = Self {
             db,
             file,
             scope,
@@ -74,7 +68,14 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
                 cursor_position,
             }
             .fix_for_invalid_columns(),
-        })
+        };
+        doc.ensure_scope_diagnostics();
+        debug!(
+            "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
+            file.file_path(db),
+            rest.as_code()
+        );
+        Ok(doc)
     }
 }
 

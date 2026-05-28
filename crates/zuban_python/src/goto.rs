@@ -79,14 +79,14 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
                 scope.short_debug_info()
             );
         }
-        let result = file.ensure_calculated_diagnostics(db);
-        debug_assert!(result.is_ok());
-        Ok(Self {
+        let doc = Self {
             db,
             file,
             scope,
             node,
-        })
+        };
+        doc.ensure_scope_diagnostics();
+        Ok(doc)
     }
 
     fn lookup_without_errors(
@@ -187,6 +187,16 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 }
 
 impl<'db, T> PositionalDocument<'db, T> {
+    pub fn ensure_scope_diagnostics(&self) {
+        let result = self.file.ensure_calculated_diagnostics(self.db);
+        debug_assert!(result.is_ok());
+        if let Some(func) = self.scope.most_outer_function() {
+            let func =
+                Function::new_with_unknown_parent(self.db, NodeRef::new(self.file, func.index()));
+            func.ensure_checked_untyped_function_for_heuristics(self.db);
+        }
+    }
+
     pub fn with_i_s<R>(&self, callback: impl FnOnce(&InferenceState) -> R) -> R {
         with_i_s_non_self(self.db, self.file, self.scope, callback)
     }

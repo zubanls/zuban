@@ -2400,6 +2400,10 @@ impl<'db> ClassDef<'db> {
         let closing_paren = iterator.skip(1).next().unwrap();
         Some(opening_paren.start()..closing_paren.end())
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);

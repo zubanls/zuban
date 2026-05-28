@@ -1136,7 +1136,7 @@ __main__.py:32:documentation -> "```python\n(variable) x: Any\n\nMight be: float
 __main__.py:35:documentation -> "```python\nAny\n\nMight be: tuple[bytes, int]\n```"
 __main__.py:37:documentation -> "```python\nAny\n\nMight be: str\n```"
 
-[case docs_for_untyped_defs_functions]
+[case docs_for_unchecked_functions]
 # flags: --allow-redefinition --no-check-untyped-defs
 
 def foo1(a):
@@ -1176,8 +1176,46 @@ __main__.py:27:documentation -> "```python\nAny\n\nMight be: tuple[Any, str, int
 __main__.py:29:documentation -> "```python\nAny\n\nMight be: str\n```"
 __main__.py:31:documentation -> "```python\nAny\n```"
 
-[case docs_for_untyped_defs_methods]
-# flags: --no-check-untyped-defs
+[case docs_in_unchecked_functions]
+# flags: --only-language-server --allow-redefinition --no-check-untyped-defs
+def foo1(a):
+    1()
+    x = 1()
+    #? documentation
+    x
+    #? documentation
+    return x, a
+
+def foo2(a):
+    if bool():
+        x = 1
+    else:
+        x = ""
+    #? documentation
+    return x
+
+def empty_end(a):
+    if bool():
+        #? documentation
+        return a
+
+def no_return(a):
+    #? documentation
+    raise NotImplementedError
+
+foo1(1)
+empty_end("")
+empty_end(1)
+
+[out]
+__main__.py:6:documentation -> "```python\n(variable) x: Any\n```"
+__main__.py:8:documentation -> "```python\n(param) a: Any\n\nMight be: int\n```"
+__main__.py:16:documentation -> "```python\n(variable) x: int | str\n```"
+__main__.py:21:documentation -> "```python\n(param) a: Any\n\nMight be: Literal['', 1]\n```"
+__main__.py:25:documentation -> "```python\n(class) NotImplementedError(*args: object) -> NotImplementedError\n```"
+
+[case docs_for_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
 
 class C:
     def f(self, a):
@@ -1220,6 +1258,36 @@ __main__.py:29:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple
 __main__.py:31:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], Any, Any]\n```"
 __main__.py:33:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], str, Any]\n```"
 __main__.py:35:documentation -> "```python\n(variable) a: Any\n\nMight be: int\n```"
+
+[case docs_in_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
+
+class C:
+    def __init__(self, a):
+        1()
+        first = 1(), 1
+        #? documentation
+        first
+        self.a = a
+
+    def g(self):
+        #? documentation
+        self.a
+        self.in_g = b''
+
+    def f(self, a):
+        this = 1()
+        x = (self.in_g, a, this)
+        #? documentation
+        return x
+
+C(1.0).f(1)
+C(1.0).f("s")
+
+[out]
+__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n```"
+__main__.py:13:documentation -> "```python\n(variable) a: Any\n\nMight be: float\n```"
+__main__.py:20:documentation -> "```python\n(variable) x: tuple[Any, Any, Any]\n```"
 
 [case docs_for_untyped_any]
 def f(x):
