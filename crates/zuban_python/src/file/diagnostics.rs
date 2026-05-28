@@ -1490,7 +1490,7 @@ impl Inference<'_, '_, '_> {
             let specific = if unreachable {
                 Specific::FunctionEndIsUnreachable
             } else {
-                Specific::Analyzed
+                Specific::FunctionEndIsReachable
             };
             body_ref.set_point(Point::new_specific(specific, Locality::Todo));
         });
@@ -1626,7 +1626,7 @@ impl Inference<'_, '_, '_> {
         }
 
         if NodeRef::new(self.file, body.index()).point().specific()
-            != Specific::FunctionEndIsUnreachable
+            == Specific::FunctionEndIsReachable
             && !is_overload_member
             && !self.file.is_stub()
             && function.return_annotation().is_some()

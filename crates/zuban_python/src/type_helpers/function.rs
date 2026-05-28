@@ -262,7 +262,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 // When an untyped method returns None, it typically means that a subclass will
                 // return None | Any.
                 *result = Inferred::from_type(Type::ERROR.union(Type::None))
-            } else if body_node_ref.point().specific() != Specific::FunctionEndIsUnreachable {
+            } else if body_node_ref.point().specific() == Specific::FunctionEndIsReachable {
                 // None can be an implicit return
                 *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
             }
