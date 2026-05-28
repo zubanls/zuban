@@ -42,6 +42,11 @@ pub(crate) struct FullyInferred {
     pub heuristic: Option<Inferred>,
 }
 
+pub(crate) enum HeuristicDetail {
+    Deep,
+    Shallow,
+}
+
 pub(crate) struct PositionalDocument<'db, T> {
     pub db: &'db Database,
     pub file: &'db PythonFile,
@@ -111,12 +116,14 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
     fn infer_position_maybe_with_heuristics(
         &self,
         i_s: &InferenceState,
-        use_heuristics: bool,
+        use_heuristics: Option<HeuristicDetail>,
     ) -> Option<FullyInferred> {
         let typed = self.infer_position(i_s)?;
         Some(FullyInferred {
-            heuristic: if use_heuristics {
-                infer_heuristics_if_necessary(i_s, &typed, || self.infer_heuristics_if_possible())
+            heuristic: if let Some(detail) = use_heuristics {
+                infer_heuristics_if_necessary(i_s, &typed, detail, || {
+                    self.infer_heuristics_if_possible()
+                })
             } else {
                 None
             },
@@ -448,7 +455,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             goal: self.goal,
             on_result: &mut |n: ValueName<'db, '_>| callback(n.name),
         }
-        .infer_definition(false)
+        .infer_definition(None)
         .1
     }
 
@@ -1036,7 +1043,10 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
 }
 
 impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
-    pub fn infer_definition(&mut self, use_heuristics: bool) -> (FullyInferred, Vec<T>) {
+    pub fn infer_definition(
+        &mut self,
+        use_heuristics: Option<HeuristicDetail>,
+    ) -> (FullyInferred, Vec<T>) {
         let mut result = vec![];
         let file = self.infos.file;
         let db = self.infos.db;

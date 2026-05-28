@@ -832,7 +832,7 @@ f(X(1))
 
 [out]
 __main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1] | float\n```"
-__main__.py:9:documentation -> "```python\n(variable) x1: Any | int\n\nMight be: int | float\n```"
+__main__.py:9:documentation -> "```python\n(variable) x1: Any | int\n\nMight be: float | int\n```"
 __main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
 __main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
 __main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
@@ -1285,9 +1285,9 @@ C(1.0).f(1)
 C(1.0).f("s")
 
 [out]
-__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n```"
+__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n\nMight be: tuple[Any, int]\n```"
 __main__.py:13:documentation -> "```python\n(variable) a: Any\n\nMight be: float\n```"
-__main__.py:20:documentation -> "```python\n(variable) x: tuple[Any, Any, Any]\n```"
+__main__.py:20:documentation -> "```python\n(variable) x: tuple[Any, Any, Any]\n\nMight be: tuple[bytes, Literal[1, 's'], Any]\n```"
 
 [case docs_for_untyped_any]
 def f(x):

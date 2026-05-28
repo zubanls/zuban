@@ -29,8 +29,8 @@ use crate::{
     format_data::FormatData,
     getitem::SliceType,
     goto::{
-        FollowImportResultKind, PositionalDocument, check_node_ref_and_maybe_follow_import,
-        try_to_follow,
+        FollowImportResultKind, HeuristicDetail, PositionalDocument,
+        check_node_ref_and_maybe_follow_import, try_to_follow,
     },
     imports::{ImportResult, namespace_import},
     inference_state::{InferenceState, Mode},
@@ -1849,17 +1849,27 @@ fn infer_import_result(db: &Database, import_result: &ImportResult) -> Option<He
 pub fn infer_heuristics_if_necessary(
     i_s: &InferenceState,
     inferred: &Inferred,
+    detail: HeuristicDetail,
     generate_heuristics: impl FnOnce() -> Option<Inferred>,
 ) -> Option<Inferred> {
     let t = inferred.as_cow_type(i_s);
-    if let Some(without_any) = t.maybe_remove_any(i_s.db) {
-        debug!(
-            "Needed to infer heuristics, because {:?} contains Any",
-            t.format_short(i_s.db)
-        );
-        if let Some(found) = generate_heuristics() {
-            let new_t = without_any.simplified_union(i_s, &found.as_cow_type(i_s));
-            return Some(Inferred::from_type(new_t));
+    match detail {
+        HeuristicDetail::Deep => {
+            if t.has_any(i_s) {
+                return generate_heuristics();
+            }
+        }
+        HeuristicDetail::Shallow => {
+            if let Some(without_any) = t.maybe_remove_any(i_s.db) {
+                debug!(
+                    "Needed to infer heuristics, because {:?} contains Any",
+                    t.format_short(i_s.db)
+                );
+                if let Some(found) = generate_heuristics() {
+                    let new_t = without_any.simplified_union(i_s, &found.as_cow_type(i_s));
+                    return Some(Inferred::from_type(new_t));
+                }
+            }
         }
     }
     None
@@ -1911,7 +1921,7 @@ impl<'db, T> PositionalDocument<'db, T> {
             PrimaryOrAtom::Atom(a) => self.infer_atom(a),
         };
         self.with_i_s(|i_s| {
-            infer_heuristics_if_necessary(i_s, &inf, || {
+            infer_heuristics_if_necessary(i_s, &inf, HeuristicDetail::Shallow, || {
                 let mut heuristic = HeuristicInference {
                     state: &mut HeuristicState::default(),
                     inference: self.file.inference(i_s),

@@ -7,7 +7,7 @@ use crate::{
     database::ComplexPoint,
     file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     format_data::FormatData,
-    goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
+    goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::{Range, TreeName},
     node_ref::NodeRef,
@@ -65,7 +65,7 @@ impl<'project> Document<'project> {
                 _ => n.name.documentation().to_string(),
             }
         });
-        let (inf, mut results) = resolver.infer_definition(true);
+        let (inf, mut results) = resolver.infer_definition(Some(HeuristicDetail::Deep));
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return None;

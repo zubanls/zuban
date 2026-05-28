@@ -65,7 +65,7 @@ use matching::invalidate_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::{node_ref::NodeRef, select_files::all_typechecked_files};
+use crate::{goto::HeuristicDetail, node_ref::NodeRef, select_files::all_typechecked_files};
 
 pub struct Project {
     db: Database,
@@ -298,7 +298,7 @@ impl<'project> Document<'project> {
     ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
-                .infer_definition(use_heuristics)
+                .infer_definition(use_heuristics.then_some(HeuristicDetail::Shallow))
                 .1,
         )
     }
