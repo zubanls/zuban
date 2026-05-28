@@ -58,6 +58,9 @@ const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const KIND_MASK: u32 = 0b111 << KIND_BIT_INDEX;
 
+const FUNCTION_CHECKED_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
+const FUNCTION_CHECKED_MASK: u32 = 1 << FUNCTION_CHECKED_INDEX;
+
 const PARTIAL_NULLABLE_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
 const PARTIAL_NULLABLE_MASK: u32 = 1 << PARTIAL_NULLABLE_INDEX;
 const PARTIAL_REPORTED_ERROR_INDEX: u32 = SPECIFIC_BIT_LEN + 2;
@@ -310,6 +313,23 @@ impl Point {
     pub fn specific(self) -> Specific {
         debug_assert!(self.kind() == PointKind::Specific, "{:?}", self);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
+    }
+
+    pub fn is_checked_function(self) -> bool {
+        debug_assert!(matches!(
+            self.specific(),
+            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
+        ));
+        (self.flags & FUNCTION_CHECKED_MASK) > 0
+    }
+
+    pub fn set_checked_function(mut self) -> Self {
+        debug_assert!(matches!(
+            self.specific(),
+            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
+        ));
+        self.flags |= 1 << FUNCTION_CHECKED_INDEX;
+        self
     }
 
     pub fn partial_flags(self) -> PartialFlags {
