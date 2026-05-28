@@ -1474,14 +1474,18 @@ impl Inference<'_, '_, '_> {
         }
         body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
+            let mut untyped = false;
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if self.is_empty_generator_function(func_node) {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 let flags = self.flags();
-                self.file
+                untyped = self
+                    .file
                     .inference(&self.i_s.with_func_context(&function))
-                    .function_diagnostics_with_correct_i_s(function, flags, name_def, params, body);
+                    .function_diagnostics_with_correct_i_s_and_return_untyped(
+                        function, flags, name_def, params, body,
+                    );
             });
             let specific = if unreachable {
                 Specific::FunctionEndIsUnreachable
@@ -1900,19 +1904,20 @@ impl Inference<'_, '_, '_> {
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.
     #[inline]
-    fn function_diagnostics_with_correct_i_s(
+    fn function_diagnostics_with_correct_i_s_and_return_untyped(
         &self,
         function: Function,
         flags: &TypeCheckerFlags,
         name: NameDef,
         params: FunctionDefParameters,
         block: Block,
-    ) {
+    ) -> bool {
         for param in params.iter() {
             self.add_initial_name_definition(param.name_def());
         }
         let i_s = self.i_s;
         let is_typed = function.is_typed();
+        let mut was_checked = true;
         if is_typed || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).has_constraints(i_s.db)
@@ -1920,6 +1925,7 @@ impl Inference<'_, '_, '_> {
                     .class
                     .is_some_and(|c| c.type_vars(i_s).has_constraints(i_s.db))
             {
+                was_checked = false;
                 // For now simply assign any everywhere
                 self.calc_untyped_block_diagnostics(block, true);
                 self.mark_current_frame_unreachable()
@@ -1927,11 +1933,11 @@ impl Inference<'_, '_, '_> {
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
             if !is_typed {
-                return;
+                return true;
             }
         } else {
             self.calc_untyped_block_diagnostics(block, false);
-            return;
+            return true;
         }
 
         if let Some(return_annotation) = function.return_annotation()
@@ -2035,6 +2041,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+        !was_checked
     }
 
     fn calc_overload_implementation_diagnostics(

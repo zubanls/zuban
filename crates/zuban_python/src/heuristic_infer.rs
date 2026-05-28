@@ -22,7 +22,9 @@ use crate::{
         ComplexPoint, Database, HeuristicBound, PointKind, PointLink, PyTypedMissing, Specific,
     },
     debug,
-    file::{ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next},
+    file::{
+        ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next, func_of_self_symbol,
+    },
     format_data::FormatData,
     getitem::SliceType,
     goto::{
@@ -1220,6 +1222,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 }
             } else if matches!(base_t, Type::Self_) {
                 // TODO this might be the wrong function context
+                let func_def = func_of_self_symbol(self.inference.file, new_name.index());
+                let body = self.inference.file.points.get(func_def.body().index());
                 out = self.infer_name(new_name)
             } else {
                 out = self.with_different_file(directed_to.file, |h| h.infer_name(new_name))

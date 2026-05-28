@@ -1136,6 +1136,79 @@ __main__.py:32:documentation -> "```python\n(variable) x: Any\n\nMight be: float
 __main__.py:35:documentation -> "```python\nAny\n\nMight be: tuple[bytes, int]\n```"
 __main__.py:37:documentation -> "```python\nAny\n\nMight be: str\n```"
 
+[case docs_for_untyped_defs_functions]
+# flags: --no-check-untyped-defs
+
+def foo1(a):
+    1()
+    x = 1()
+    return x, a
+
+def foo2(a):
+    if bool():
+        x = 1
+    else:
+        x = ""
+    return 1(), a, x
+
+def empty_end(a):
+    if bool():
+        return a
+
+def no_return(a):
+    raise NotImplementedError
+
+#? documentation
+foo1(1)
+#? documentation
+foo2(1)
+#? documentation
+foo2("")
+#? documentation
+empty_end("")
+#? documentation
+no_return(1)
+
+[out]
+__main__.py:16:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:18:documentation -> "```python\nAny\n\nMight be: tuple[Any, int, int | str]\n```"
+__main__.py:20:documentation -> "```python\nAny\n\nMight be: tuple[Any, str, int | str]\n```"
+__main__.py:29:documentation -> "```python\nAny\n\nMight be: str\n```"
+__main__.py:31:documentation -> "```python\nAny\n```"
+
+[case docs_for_untyped_defs_methods]
+# flags: --no-check-untyped-defs
+
+class C:
+    def f(self, a):
+        1()
+        x = 1()
+        return x, a
+
+class D:
+    def __init__(self, a):
+        1()
+        first = 1()
+        self.x = 1(), self.other, first, a
+
+    def g(self):
+        other = 1
+        self.other = 1(), other
+
+    def f(self, a):
+        this = 1()
+        return 1(), self.x, "" + a, this
+
+#? documentation
+C().f(1)
+#? documentation
+D(1).x
+#? documentation
+D("").x
+#? documentation
+D(1.0).f(1)
+#? documentation
+D(1.0).f("s")
 
 [case docs_for_untyped_any]
 def f(x):
