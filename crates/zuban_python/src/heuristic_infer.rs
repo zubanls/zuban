@@ -1168,6 +1168,16 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         if let LookupResult::GotoName { name, ref inf } = result {
             let directed_to = NodeRef::from_link(db, name);
             let new_name = directed_to.expect_name();
+            if let Some(func_def) = maybe_func_of_self_symbol(directed_to.file, new_name.index()) {
+                let body = self.inference.file.points.get(func_def.body().index());
+                if !body.function_was_checked() {
+                    let func = Function::new_with_unknown_parent(
+                        self.db(),
+                        NodeRef::new(self.inference.file, func_def.index()),
+                    );
+                    func.ensure_checked_untyped_function_for_heuristics(self.db());
+                }
+            }
             if inf.maybe_specific(db) == Some(Specific::Cycle) {
                 // We need to ensure that cycles are not executed in some way
                 out = Some(Heuristic::Guess(inf.clone()))
@@ -1222,18 +1232,6 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     }
                 }
             } else if matches!(base_t, Type::Self_) {
-                if let Some(func_def) =
-                    maybe_func_of_self_symbol(directed_to.file, new_name.index())
-                {
-                    let body = self.inference.file.points.get(func_def.body().index());
-                    if !body.function_was_checked() {
-                        let func = Function::new_with_unknown_parent(
-                            self.db(),
-                            NodeRef::new(self.inference.file, func_def.index()),
-                        );
-                        func.ensure_checked_untyped_function_for_heuristics(self.db());
-                    }
-                }
                 // TODO this might be the wrong function context
                 out = self.infer_name(new_name)
             } else {

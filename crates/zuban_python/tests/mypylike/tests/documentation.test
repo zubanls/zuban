@@ -1190,6 +1190,7 @@ class D:
         1()
         first = 1()
         self.x = 1(), self.other, first, a
+        self.a = a
 
     def g(self):
         other = 1
@@ -1209,13 +1210,16 @@ D("").x
 D(1.0).f(1)
 #? documentation
 D(1.0).f("s")
+#? documentation
+D(1).a
 
 [out]
-__main__.py:24:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
-__main__.py:26:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, Any]\n```"
-__main__.py:28:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, Any]\n```"
-__main__.py:30:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, Any], Any, Any]\n```"
-__main__.py:32:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, Any], str, Any]\n```"
+__main__.py:25:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:27:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, int]\n```"
+__main__.py:29:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, str]\n```"
+__main__.py:31:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], Any, Any]\n```"
+__main__.py:33:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], str, Any]\n```"
+__main__.py:35:documentation -> "```python\n(variable) a: Any\n\nMight be: int\n```"
 
 [case docs_for_untyped_any]
 def f(x):

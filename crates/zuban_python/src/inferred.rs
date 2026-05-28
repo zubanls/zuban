@@ -2948,7 +2948,12 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> C
             type_of_complex(i_s, complex, Some(definition))
         }
         PointKind::FileReference => Cow::Owned(Type::Module(point.file_index())),
-        x => unreachable!("{x:?}"),
+        x => {
+            if cfg!(debug_assertions) {
+                unreachable!("{x:?}")
+            }
+            Cow::Borrowed(&Type::ERROR)
+        }
     }
 }
 
@@ -2962,7 +2967,9 @@ pub fn specific_to_type<'db>(
             Cow::Borrowed(&Type::ERROR)
         }
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
-        Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
+        Specific::Cycle | Specific::UntypedFunctionSelfAssignment => {
+            Cow::Borrowed(&Type::Any(AnyCause::Todo))
+        }
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse()),
             implicit: true,

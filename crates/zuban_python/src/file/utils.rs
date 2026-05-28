@@ -789,7 +789,9 @@ pub(crate) fn maybe_func_of_self_symbol(
     // name_definition, `.` and then finally `self`.
     let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
     let self_point = file.points.get(self_index);
-    debug_assert!(self_point.kind() == PointKind::Redirect);
+    if self_point.kind() != PointKind::Redirect {
+        return None;
+    }
     let param_name_node_ref = NodeRef::new(file, self_point.node_index());
     (param_name_node_ref
         .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))

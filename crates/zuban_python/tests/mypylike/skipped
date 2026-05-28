@@ -10,7 +10,7 @@ goto_doc_contains_stdlib_compiled
 
 completion_no_wrong_range_in_strings
 
-docs_for_untyped_defs_methods
+docs_for_untyped_site_packages4
 
 narrow_literals_locally_for_assignments
 pydantic_mre_fix_non_deterministic_errors

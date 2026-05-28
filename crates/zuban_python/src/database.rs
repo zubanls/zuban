@@ -480,6 +480,7 @@ pub(crate) enum Specific {
     Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
+    UntypedFunctionSelfAssignment,
     FirstNameOfNameDef, // Cycles for the same name definition in e.g. different branches
     NameOfNameDef,      // Cycles for the same name definition in e.g. different branches
     Parent,             // Has a link to the parent scope

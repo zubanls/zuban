@@ -778,7 +778,10 @@ impl Inference<'_, '_, '_> {
         match target {
             Target::NameExpression(_, n) => {
                 // Assign any to potential self assignments
-                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
+                NodeRef::new(self.file, n.index()).set_point(Point::new_specific(
+                    Specific::UntypedFunctionSelfAssignment,
+                    Locality::File,
+                ));
             }
             Target::Tuple(targets) => {
                 for target in targets {

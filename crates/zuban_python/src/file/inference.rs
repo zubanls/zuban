@@ -272,8 +272,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     pub(super) fn set_calculating_on_target(&self, target: Target) {
         match target {
-            Target::Name(name_def) | Target::NameExpression(_, name_def) => {
+            Target::Name(name_def) => {
                 self.set_point(name_def.index(), Point::new_calculating());
+            }
+            Target::NameExpression(_, name_def) => {
+                if !matches!(
+                    self.file
+                        .points
+                        .get(name_def.index())
+                        .maybe_calculated_and_specific(),
+                    Some(Specific::UntypedFunctionSelfAssignment)
+                ) {
+                    self.set_point(name_def.index(), Point::new_calculating());
+                }
             }
             Target::IndexExpression(_) => (),
             Target::Tuple(targets) => {
