@@ -315,19 +315,13 @@ impl Point {
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
 
-    pub fn is_checked_function(self) -> bool {
-        debug_assert!(matches!(
-            self.specific(),
-            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
-        ));
+    pub fn function_was_checked(self) -> bool {
+        debug_assert!(self.specific().is_function_state());
         (self.flags & FUNCTION_CHECKED_MASK) > 0
     }
 
     pub fn set_checked_function(mut self) -> Self {
-        debug_assert!(matches!(
-            self.specific(),
-            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
-        ));
+        debug_assert!(self.specific().is_function_state());
         self.flags |= 1 << FUNCTION_CHECKED_INDEX;
         self
     }
@@ -387,6 +381,9 @@ impl fmt::Debug for Point {
                     s.field("partial: nullable", &partial.nullable);
                     s.field("partial: reported_error", &partial.reported_error);
                     s.field("partial: finished", &partial.finished);
+                }
+                if specific.is_function_state() {
+                    s.field("function_was_checked", &self.function_was_checked());
                 }
             }
             if self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference {
@@ -610,6 +607,13 @@ impl Specific {
                 | Specific::PartialDefaultDict
                 | Specific::PartialDefaultDictWithList
                 | Specific::PartialDefaultDictWithSet
+        )
+    }
+
+    pub fn is_function_state(self) -> bool {
+        matches!(
+            self,
+            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
         )
     }
 

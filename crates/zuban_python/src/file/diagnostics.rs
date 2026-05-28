@@ -1474,13 +1474,13 @@ impl Inference<'_, '_, '_> {
         }
         body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
-            let mut unchecked = false;
+            let mut checked = false;
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if self.is_empty_generator_function(func_node) {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 let flags = self.flags();
-                unchecked = self
+                checked = self
                     .file
                     .inference(&self.i_s.with_func_context(&function))
                     .function_diagnostics_with_correct_i_s_and_return_checked(
@@ -1493,7 +1493,7 @@ impl Inference<'_, '_, '_> {
                 Specific::FunctionEndIsReachable
             };
             let mut point = Point::new_specific(specific, Locality::Todo);
-            if !unchecked {
+            if checked {
                 point = point.set_checked_function()
             }
             body_ref.set_point(point);
