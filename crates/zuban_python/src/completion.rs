@@ -31,7 +31,7 @@ use crate::{
         FunctionKind, Namespace, ParamType, Type,
     },
     type_helpers::{Class, Function, TypeOrClass, is_private},
-    utils::is_magic_method,
+    utils::{debug_indent, is_magic_method},
 };
 
 struct CompletionInfo<'db> {
@@ -100,6 +100,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
             "completions for {} position {position:?}",
             file.file_path(db)
         ));
+        let _indent = debug_indent();
         let mut slf =
             Self::complete_inner(db, file, position, filter_with_name_under_cursor, on_result)?;
         slf.items.sort_by_key(|item| item.0);

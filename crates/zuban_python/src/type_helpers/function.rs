@@ -334,6 +334,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             "Ensure checked untyped function {}",
             self.qualified_name(db)
         );
+        let _indent = debug_indent();
         FLOW_ANALYSIS.with(|fa| {
             fa.with_new_func_frame_and_return_unreachable(db, || {
                 InferenceState::from_func(db, self).avoid_errors_within(|i_s| {

@@ -34,7 +34,7 @@ use crate::{
     result_context::ResultContext,
     type_::{LookupResult, Type, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
-    utils::is_file_with_python_ending,
+    utils::{debug_indent, is_file_with_python_ending},
 };
 
 pub(crate) struct FullyInferred {
@@ -413,6 +413,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     }
 
     pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
+        let _indent = debug_indent();
         if let GotoNode::Name(name) = self.infos.node
             && let Some(name_def) = name.name_def()
         {

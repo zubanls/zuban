@@ -14,6 +14,7 @@ use crate::{
     recoverable_error,
     type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 impl<'project> Document<'project> {
@@ -23,6 +24,7 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let document = self.positional_document(position)?;
+        let _indent = debug_indent();
         Ok(with_i_s_non_self(
             document.db,
             document.file,

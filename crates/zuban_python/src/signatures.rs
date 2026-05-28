@@ -15,6 +15,7 @@ use crate::{
         CallableContent, CallableLike, CallableParam, CallableParams, ParamType, ParamTypeDetails,
         Type,
     },
+    utils::debug_indent,
 };
 
 struct SignatureInfo<'db> {
@@ -63,6 +64,7 @@ impl<'db> SignatureResolver<'db> {
             file.file_path(db)
         ));
         let infos = PositionalDocument::for_signature(db, file, position)?;
+        let _indent = debug_indent();
         Ok(infos.map(|infos| {
             with_i_s_non_self(db, file, infos.scope, |i_s| {
                 let base = file.inference(i_s).infer_expression_part(infos.node.base);
