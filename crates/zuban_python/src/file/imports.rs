@@ -240,8 +240,12 @@ impl PythonFile {
             Some(ImportResult::Namespace { .. }) => {
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
-            Some(ImportResult::PyTypedMissing(_)) => {
-                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
+            Some(ImportResult::PyTypedMissing(file)) => {
+                NodeRef::new(self, star_index).insert_complex(
+                    ComplexPoint::PyTypedMissing(PyTypedMissing::File(*file)),
+                    Locality::Todo,
+                );
+                return;
             }
             Some(ImportResult::BinaryExtension) => {
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
@@ -259,7 +263,14 @@ impl PythonFile {
     ) -> Result<&'db PythonFile, StarImportError> {
         let point = self.points.get(star_import.star_node);
         if point.calculated() {
-            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
+            return if matches!(point.kind(), PointKind::Specific | PointKind::Complex) {
+                debug_assert!(
+                    point.maybe_specific() == Some(Specific::ModuleNotFound)
+                        || matches!(
+                            NodeRef::new(self, star_import.star_node).maybe_complex(),
+                            Some(ComplexPoint::PyTypedMissing(_))
+                        )
+                );
                 Err(StarImportError::ImportNotResolvable)
             } else {
                 Ok(db.loaded_python_file(point.file_index()))
