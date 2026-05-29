@@ -873,6 +873,17 @@ f(undefined)  # E: Name "undefined" is not defined
 [out]
 __main__.py:2:documentation -> "```python\n(param) x: Any\n```"
 
+[case docs_for_untyped_with_possible_type_should_not_be_the_same_as_previously]
+def f(x):
+    y = [x]
+    #? documentation
+    return y
+f(undefined)  # E: Name "undefined" is not defined
+
+[out]
+__main__.py:4:documentation -> "```python\n(variable) y: list[Any]\n```"
+
+
 [case docs_for_untyped_site_packages1]
 # pkgs: modulefinder-site-packages
 # flags: --only-language-server --no-typecheck
@@ -1268,7 +1279,7 @@ __main__.py:33:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[An
 __main__.py:35:documentation -> "```python\n(variable) a: Any\n\nMight be: int\n```"
 
 [case docs_in_unchecked_methods]
-# flags: --only-language-server --no-check-untyped-defs
+# flags: --only-language-server --no-check-untyped-defs --mode default
 
 class C:
     def __init__(self, a):

@@ -1856,10 +1856,13 @@ pub fn infer_heuristics_if_necessary(
     match detail {
         HeuristicDetail::Deep => {
             if t.has_any(i_s)
-                && let inf = generate_heuristics()?
-                && inf.maybe_any(i_s.db).is_none()
+                && let heuristic = generate_heuristics()?
+                && heuristic.maybe_any(i_s.db).is_none()
+                && !heuristic
+                    .as_cow_type(i_s)
+                    .is_equal_type(i_s.db, &inferred.as_cow_type(i_s))
             {
-                return Some(inf);
+                return Some(heuristic);
             }
         }
         HeuristicDetail::Shallow => {
