@@ -805,8 +805,25 @@ pub(crate) fn maybe_func_of_self_symbol(
         })
 }
 
-pub(crate) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef<'_> {
-    maybe_func_of_self_symbol(file, self_symbol).unwrap()
+// Implement this function essentially twice, because if we just unwrap here we lose valuable debug
+// information, and this one is also faster without a lot of branches.
+pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef<'_> {
+    // This is due to the fact that the nodes before <name> in self.<name> are
+    // name_definition, `.` and then finally `self`.
+    let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
+    let self_point = file.points.get(self_index);
+    debug_assert!(self_point.kind() == PointKind::Redirect);
+    let param_name_node_ref = NodeRef::new(file, self_point.node_index());
+    debug_assert_eq!(
+        param_name_node_ref
+            .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+            .point()
+            .specific(),
+        Specific::MaybeSelfParam
+    );
+    param_name_node_ref
+        .expect_name()
+        .expect_as_param_of_function()
 }
 
 pub fn should_add_deprecated(
