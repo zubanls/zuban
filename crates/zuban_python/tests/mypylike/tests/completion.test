@@ -656,3 +656,170 @@ __main__.py:11:complete -> [c]
 __main__.py:13:complete -> [c]
 __main__.py:15:complete -> [c_var]
 __main__.py:17:complete -> [c_var]
+
+[case complete_for_unchecked_functions]
+# flags: --allow-redefinition --no-check-untyped-defs --no-typecheck
+
+def foo1(a):
+    x = ""()
+    return x, a
+
+def foo2(a):
+    if bool():
+        x = list
+    else:
+        x = ""
+    return 1(), a, x
+
+def empty_end(a):
+    if bool():
+        return a
+
+def no_return(a):
+    raise NotImplementedError
+
+#? complete
+foo1("")[0].uppe
+#? complete
+foo1("")[1].uppe
+#? complete
+foo2("")[1].u
+#? complete
+foo2("")[2].appen
+#? complete
+foo2("")[2].up
+#? complete --filter upper
+empty_end("").
+#? complete
+no_return(1).
+
+[out]
+__main__.py:22:complete -> []
+__main__.py:24:complete -> [upper]
+__main__.py:26:complete -> [upper]
+__main__.py:28:complete -> [append]
+__main__.py:30:complete -> [upper]
+__main__.py:32:complete -> [upper]
+__main__.py:34:complete -> []
+
+[case complete_in_unchecked_functions]
+# flags: --only-language-server --allow-redefinition --no-check-untyped-defs
+def foo1(a):
+    1()
+    asdf = 1()
+    #? complete
+    asd
+    #? complete
+    a.upp
+
+def foo2(a):
+    if bool():
+        my_var = []
+    else:
+        my_var = ""
+    #? complete
+    my_va
+    #? complete
+    my_var.e
+    return my_var
+
+def empty_end(a):
+    #? complete
+    return a.uppe
+    if bool():
+        #? complete
+        return a.appen
+
+def no_return(a):
+    #? complete
+    raise NotImplementedErro
+
+foo1(b'')
+empty_end("")
+empty_end([])
+
+[out]
+__main__.py:6:complete -> [asdf]
+__main__.py:8:complete -> [upper]
+__main__.py:16:complete -> [my_var]
+__main__.py:18:complete -> [encode, endswith, expandtabs, extend]
+__main__.py:23:complete -> [upper]
+__main__.py:26:complete -> [append]
+__main__.py:30:complete -> [NotImplementedError]
+
+[case complete_for_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
+
+class C:
+    def __init__(self, a):
+        1()
+        first = 1()
+        self.my_x = self.other, first, a
+        self.my_a = a
+
+    def g(self):
+        other = 1
+        self.my_other = other
+
+    def my_f(self, a):
+        this = 1()
+        self.my_b = []
+        return self.my_a, "" + a, this
+
+#? complete
+C.my_
+#? complete
+C(1).my_
+#? complete
+C("").my_b.append
+#? complete
+C("").my_a.up
+#? complete
+C(list).my_f(1)[0].appe
+#? complete
+C(1.0).my_f("s")[1].up
+
+[out]
+__main__:20: error: "type[C]" has no attribute "my_"
+__main__:22: error: "C" has no attribute "my_"
+__main__.py:20:complete -> [my_f]
+__main__.py:22:complete -> [my_a, my_b, my_f, my_other, my_x]
+__main__.py:24:complete -> [append]
+__main__.py:26:complete -> [upper]
+__main__.py:28:complete -> [append]
+__main__.py:30:complete -> [upper]
+
+[case complete_in_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
+
+class C:
+    def __init__(self, a):
+        1()
+        first = 1(), 1
+        #? complete
+        firs
+        self.my_init = a
+
+    def g(self):
+        #? complete
+        self.my_init.e
+        #? complete
+        self.my_
+        self.my_in_g = b''
+
+    def my_f(self, my_param):
+        this = 1()
+        #? complete
+        my_param.i
+        #? complete
+        return self.my_
+
+C(list).my_f(set())
+C("s").my_f((1,))
+
+[out]
+__main__.py:8:complete -> [first]
+__main__.py:13:complete -> [encode, endswith, expandtabs, extend]
+__main__.py:15:complete -> [my_f, my_in_g, my_init]
+__main__.py:21:complete -> [index, intersection, intersection_update, isdisjoint, issubset, issuperset]
+__main__.py:23:complete -> [my_f, my_in_g, my_init]
