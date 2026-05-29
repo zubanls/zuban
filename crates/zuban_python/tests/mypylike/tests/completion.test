@@ -549,3 +549,110 @@ some_function(FooStr.SOME
 [out]
 __main__.py:13:complete -> [ANOTHER_FIELD, SOME_FIELD, strip, value]
 __main__.py:15:complete -> [SOME_FIELD]
+
+[case complete_for_untyped_site_packages1]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+#? complete
+from pkg_untyped import pkg_untyped_va
+#? --codepoint-column 15 complete
+from pkg_untyped import pkg_untyped_var
+#? complete
+from pkg_untype
+#? complete --filter pkg_untyped_var --filter a --filter b
+from pkg_untyped import 
+#? complete
+import pkg_untyped
+
+#? complete
+pkg_untyped.pkg_untyped_va
+
+def star_import() -> None:
+    #? --codepoint-column 19 complete
+    from pkg_untyped import *
+    # TODO #? complete
+    pkg_untyped_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:5:complete -> [pkg_untyped_var]
+__main__.py:7:complete -> [pkg_untyped]
+__main__.py:9:complete -> [pkg_untyped]
+__main__.py:11:complete -> [a, b, pkg_untyped_var]
+__main__.py:13:complete -> [pkg_untyped]
+__main__.py:16:complete -> [pkg_untyped_var]
+__main__.py:20:complete -> [pkg_untyped]
+
+
+[case complete_for_untyped_site_packages2]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+#? complete
+from pkg_untyped.b.c import c_va
+#? complete
+from pkg_untyped.b
+#? complete
+from pkg_untyped.b.c
+#? complete
+from pkg_untyped.b import c
+#? complete
+from pkg_untyped import b
+
+#? complete
+import pkg_untyped.b
+#? complete
+import pkg_untyped.b.c
+
+#? complete
+pkg_untyped.b.c.c_va
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:5:complete -> [c_var]
+__main__.py:7:complete -> [b]
+__main__.py:9:complete -> [c]
+__main__.py:11:complete -> [c]
+__main__.py:13:complete -> [b]
+__main__.py:16:complete -> [b]
+__main__.py:18:complete -> [c]
+__main__.py:21:complete -> [c_var]
+
+[case complete_for_untyped_site_packages3]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+#? complete
+import ns_pkg_untyped
+#? complete
+ns_pkg_untyped.b
+#? complete
+ns_pkg_untyped.b.c.c_var
+#? complete
+import ns_pkg_untyped.b.c
+#? complete
+from ns_pkg_untyped.b import c
+#? complete
+c.c_var
+#? complete
+from ns_pkg_untyped.b.c import c_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:5:complete -> [ns_pkg_untyped]
+__main__.py:7:complete -> [b]
+__main__.py:9:complete -> [c_var]
+__main__.py:11:complete -> [c]
+__main__.py:13:complete -> [c]
+__main__.py:15:complete -> [c_var]
+__main__.py:17:complete -> [c_var]

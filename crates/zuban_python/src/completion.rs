@@ -9,7 +9,7 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
     InputPosition,
-    database::{ClassKind, Database, ParentScope, PointKind},
+    database::{ClassKind, ComplexPoint, Database, ParentScope, PointKind, PyTypedMissing},
     debug,
     file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile, is_reexport_issue},
     goto::{
@@ -388,13 +388,13 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
 
     fn add_import_result_completions(&mut self, import_result: Option<ImportResult>) {
         match import_result {
-            Some(ImportResult::File(file_index)) => {
+            Some(ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index)) => {
                 if let Ok(file) = self.infos.db.ensure_file_for_file_index(file_index) {
                     self.add_submodule_completions(file)
                 }
             }
             Some(ImportResult::Namespace(namespace)) => self.add_namespace_completions(&namespace),
-            None | Some(ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension) => (),
+            None | Some(ImportResult::BinaryExtension) => (),
         }
     }
 
@@ -536,7 +536,14 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
         let db = self.infos.db;
         let file = self.infos.file;
         with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-            self.add_attribute_completions_for_type(i_s, &inf.as_cow_type(i_s))
+            let t = if let Some(ComplexPoint::PyTypedMissing(PyTypedMissing::File(file))) =
+                inf.maybe_complex_point(db)
+            {
+                Cow::Owned(Type::Module(*file))
+            } else {
+                inf.as_cow_type(i_s)
+            };
+            self.add_attribute_completions_for_type(i_s, &t)
         })
     }
 
