@@ -2,7 +2,10 @@ use std::{
     collections::HashMap,
     io::Write,
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use colored::{ColoredString, Colorize as _};
@@ -2379,7 +2382,7 @@ pub(crate) struct Diagnostics {
     issues: InsertOnlyVec<Issue>,
     // Issues can be finished once the whole file is checked to avoid some completion/goto add
     // issues, especially when checking code that should not be checked in Mypy.
-    diagnostics_are_complete: Mutex<bool>,
+    diagnostics_are_complete: AtomicBool,
 }
 
 impl Diagnostics {
@@ -2458,7 +2461,7 @@ impl Diagnostics {
     }
 
     pub fn add_with_result(&self, issue: Issue) -> Result<(), Issue> {
-        if *self.diagnostics_are_complete.lock().unwrap() {
+        if self.diagnostics_are_complete.load(Ordering::Relaxed) {
             Err(issue)
         } else {
             self.issues.push(Box::pin(issue));
@@ -2471,14 +2474,14 @@ impl Diagnostics {
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
-        *self.diagnostics_are_complete.lock().unwrap() = false;
+        self.diagnostics_are_complete.store(false, Ordering::SeqCst);
         self.issues
             .as_vec_mut()
             .retain(|issue| issue.from_name_binder)
     }
 
     pub fn set_complete_diagnostics(&self) {
-        *self.diagnostics_are_complete.lock().unwrap() = true;
+        self.diagnostics_are_complete.store(true, Ordering::SeqCst);
     }
 }
 
@@ -2486,8 +2489,8 @@ impl Clone for Diagnostics {
     fn clone(&self) -> Self {
         Self {
             issues: self.issues.clone(),
-            diagnostics_are_complete: Mutex::new(
-                self.diagnostics_are_complete.lock().unwrap().clone(),
+            diagnostics_are_complete: AtomicBool::new(
+                self.diagnostics_are_complete.load(Ordering::SeqCst).clone(),
             ),
         }
     }
