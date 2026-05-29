@@ -144,6 +144,7 @@ impl Inference<'_, '_, '_> {
     pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
         let result = self.ensure_module_symbols_flow_analysis();
         self.file.process_delayed_diagnostics(self.i_s.db);
+        self.file.issues.set_complete_diagnostics();
         result
     }
 

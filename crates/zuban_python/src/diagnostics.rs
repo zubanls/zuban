@@ -1,4 +1,9 @@
-use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::Write,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
@@ -2369,9 +2374,12 @@ impl std::fmt::Debug for Diagnostic<'_> {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub(crate) struct Diagnostics {
     issues: InsertOnlyVec<Issue>,
+    // Issues can be finished once the whole file is checked to avoid some completion/goto add
+    // issues, especially when checking code that should not be checked in Mypy.
+    diagnostics_are_complete: Mutex<bool>,
 }
 
 impl Diagnostics {
@@ -2386,7 +2394,8 @@ impl Diagnostics {
             return Err(issue);
         }
         let from_name_binder = issue.from_name_binder;
-        let result = self.add(issue);
+        self.add_with_result(issue)?;
+        let last = self.issues.last().unwrap();
         if let Some(s) = add_not_covered_note {
             let rest = if in_brackets.is_empty() {
                 "".into()
@@ -2394,8 +2403,8 @@ impl Diagnostics {
                 format!("[{}]", in_brackets.trim())
             };
             self.issues.push(Box::pin(Issue::from_start_stop(
-                result.start_position,
-                result.end_position,
+                last.start_position,
+                last.end_position,
                 IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore{rest}" comment"#)
                         .into(),
@@ -2403,7 +2412,7 @@ impl Diagnostics {
                 from_name_binder,
             )));
         }
-        Ok(result)
+        Ok(last)
     }
 
     pub fn is_ignored_and_return_non_covered_error_code<'type_ignore>(
@@ -2444,9 +2453,17 @@ impl Diagnostics {
         (false, add_not_covered_note, in_brackets)
     }
 
-    pub fn add(&self, issue: Issue) -> &Issue {
-        self.issues.push(Box::pin(issue));
-        self.issues.last().unwrap()
+    pub fn add(&self, issue: Issue) {
+        let _ = self.add_with_result(issue);
+    }
+
+    pub fn add_with_result(&self, issue: Issue) -> Result<(), Issue> {
+        if *self.diagnostics_are_complete.lock().unwrap() {
+            Err(issue)
+        } else {
+            self.issues.push(Box::pin(issue));
+            Ok(())
+        }
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
@@ -2454,9 +2471,25 @@ impl Diagnostics {
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
+        *self.diagnostics_are_complete.lock().unwrap() = false;
         self.issues
             .as_vec_mut()
             .retain(|issue| issue.from_name_binder)
+    }
+
+    pub fn set_complete_diagnostics(&self) {
+        *self.diagnostics_are_complete.lock().unwrap() = true;
+    }
+}
+
+impl Clone for Diagnostics {
+    fn clone(&self) -> Self {
+        Self {
+            issues: self.issues.clone(),
+            diagnostics_are_complete: Mutex::new(
+                self.diagnostics_are_complete.lock().unwrap().clone(),
+            ),
+        }
     }
 }
 
