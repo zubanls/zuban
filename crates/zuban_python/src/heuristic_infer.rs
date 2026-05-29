@@ -1855,8 +1855,11 @@ pub fn infer_heuristics_if_necessary(
     let t = inferred.as_cow_type(i_s);
     match detail {
         HeuristicDetail::Deep => {
-            if t.has_any(i_s) {
-                return generate_heuristics();
+            if t.has_any(i_s)
+                && let inf = generate_heuristics()?
+                && inf.maybe_any(i_s.db).is_none()
+            {
+                return Some(inf);
             }
         }
         HeuristicDetail::Shallow => {
