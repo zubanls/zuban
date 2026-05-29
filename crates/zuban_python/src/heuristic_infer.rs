@@ -1484,13 +1484,13 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
     }
 
     fn heuristic_return_type_part2(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
-        if !NodeRef::new(func_node_ref.file, func_node_ref.node().body().index())
-            .point()
-            .function_was_checked()
-        {
-            let func = Function::new_with_unknown_parent(self.db(), *func_node_ref);
-            func.ensure_checked_untyped_function_for_heuristics(self.db());
-        }
+        let func = Function::new_with_unknown_parent(self.db(), *func_node_ref);
+        let result = func
+            .file
+            .inference(self.inference.i_s)
+            .ensure_func_diagnostics(func);
+        debug_assert!(result.is_ok());
+        func.ensure_checked_untyped_function_for_heuristics(self.db());
 
         let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
