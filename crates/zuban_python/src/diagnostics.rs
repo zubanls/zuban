@@ -2370,7 +2370,9 @@ impl std::fmt::Debug for Diagnostic<'_> {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct Diagnostics(InsertOnlyVec<Issue>);
+pub(crate) struct Diagnostics {
+    issues: InsertOnlyVec<Issue>,
+}
 
 impl Diagnostics {
     pub fn add_if_not_ignored(
@@ -2391,7 +2393,7 @@ impl Diagnostics {
             } else {
                 format!("[{}]", in_brackets.trim())
             };
-            self.0.push(Box::pin(Issue::from_start_stop(
+            self.issues.push(Box::pin(Issue::from_start_stop(
                 result.start_position,
                 result.end_position,
                 IssueKind::Note(
@@ -2443,16 +2445,18 @@ impl Diagnostics {
     }
 
     pub fn add(&self, issue: Issue) -> &Issue {
-        self.0.push(Box::pin(issue));
-        self.0.last().unwrap()
+        self.issues.push(Box::pin(issue));
+        self.issues.last().unwrap()
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
-        unsafe { self.0.iter() }
+        unsafe { self.issues.iter() }
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
-        self.0.as_vec_mut().retain(|issue| issue.from_name_binder)
+        self.issues
+            .as_vec_mut()
+            .retain(|issue| issue.from_name_binder)
     }
 }
 
