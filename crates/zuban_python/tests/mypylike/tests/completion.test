@@ -724,6 +724,7 @@ def foo2(a):
     return my_var
 
 def empty_end(a):
+    def non_sensical_return_annotation() -> 1: ...
     #? complete
     return a.uppe
     if bool():
@@ -743,9 +744,9 @@ __main__.py:6:complete -> [asdf]
 __main__.py:8:complete -> [upper]
 __main__.py:16:complete -> [my_var]
 __main__.py:18:complete -> [encode, endswith, expandtabs, extend]
-__main__.py:23:complete -> [upper]
-__main__.py:26:complete -> [append]
-__main__.py:30:complete -> [NotImplementedError]
+__main__.py:24:complete -> [upper]
+__main__.py:27:complete -> [append]
+__main__.py:31:complete -> [NotImplementedError]
 
 [case complete_for_unchecked_methods]
 # flags: --only-language-server --no-check-untyped-defs
