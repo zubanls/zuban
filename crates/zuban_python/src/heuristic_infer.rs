@@ -19,7 +19,8 @@ use crate::{
         KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
     },
     database::{
-        ComplexPoint, Database, HeuristicBound, PointKind, PointLink, PyTypedMissing, Specific,
+        ComplexPoint, Database, HeuristicBound, ParentScope, PointKind, PointLink, PyTypedMissing,
+        Specific,
     },
     debug,
     file::{
@@ -43,7 +44,8 @@ use crate::{
     type_::{
         ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
         GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue, LookupResult,
-        Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        ReplaceTypeVarLikes as _, Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember,
+        TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -607,20 +609,31 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let result = executions
             .iter()
             .filter_map(|execution| {
-                let args = SimpleArgs::new(
-                    InferenceState::new(db, execution.file),
-                    execution.file,
-                    execution.primary.index(),
-                    execution.details,
-                );
-                self.infer_param_with_args(
-                    &func,
-                    NodeRef::new(execution.file, execution.primary.index()),
-                    &args,
-                    skip_first_param,
-                    param_name,
-                    true,
-                )
+                let scope = ParentScope::from_scope(execution.primary.parent_scope());
+                InferenceState::run_with_parent_scope(self.db(), execution.file, scope, |i_s| {
+                    let args = SimpleArgs::new(
+                        i_s,
+                        execution.file,
+                        execution.primary.index(),
+                        execution.details,
+                    );
+                    let inf = self.infer_param_with_args(
+                        &func,
+                        NodeRef::new(execution.file, execution.primary.index()),
+                        &args,
+                        skip_first_param,
+                        param_name,
+                        true,
+                    )?;
+                    if let Some(cls) = i_s.current_class()
+                        && let Some(replaced) = inf
+                            .as_cow_type(&i_s)
+                            .replace_self(db, &|| Some(cls.as_type(db)))
+                    {
+                        return Some(Inferred::from_type(replaced));
+                    }
+                    Some(inf)
+                })
                 /*
                 // The deeper we're in the recursion, the less code should be inferred.
                 if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {

@@ -3594,6 +3594,10 @@ impl<'db> Primary<'db> {
         debug_assert_eq!(last.as_code(), ")");
         last.index
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 pub enum PrimaryParent<'db> {

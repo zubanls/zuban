@@ -883,6 +883,17 @@ f(undefined)  # E: Name "undefined" is not defined
 [out]
 __main__.py:4:documentation -> "```python\n(variable) y: list[Any]\n```"
 
+[case docs_for_untyped_with_possible_type_should_not_self]
+class C:
+    def f(self):
+        g(self)
+
+def g(x):
+    #? documentation
+    x
+
+[out]
+__main__.py:7:documentation -> "```python\n(param) x: Any\n\nMight be: C\n```"
 
 [case docs_for_untyped_site_packages1]
 # pkgs: modulefinder-site-packages

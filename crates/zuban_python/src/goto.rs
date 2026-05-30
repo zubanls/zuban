@@ -6,9 +6,9 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, FunctionDef, GotoNode,
-    Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
-    PrimaryContent, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName,
+    NameDefParent, NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryTarget,
+    PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
