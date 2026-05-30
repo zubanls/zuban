@@ -7,7 +7,7 @@ use std::{
 };
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
-use parsa_python_cst::{NodeIndex, Tree};
+use parsa_python_cst::{NodeIndex, Scope, Tree};
 use rayon::prelude::*;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
@@ -1749,6 +1749,15 @@ impl ParentScope {
             .line_one_based();
         // Add the position like `foo.Bar@7`
         format!("{}.{name}@{line}", defined_at.file.qualified_name(db))
+    }
+
+    pub fn from_scope(scope: Scope) -> Self {
+        match scope {
+            Scope::Module => Self::Module,
+            Scope::Class(class_def) => Self::Class(class_def.index()),
+            Scope::Function(function_def) => Self::Function(function_def.index()),
+            Scope::Lambda(lambda) => Self::from_scope(lambda.parent_scope()),
+        }
     }
 }
 

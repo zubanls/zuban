@@ -329,27 +329,10 @@ pub(crate) fn with_i_s_non_self<'db, R>(
     callback: impl FnOnce(&InferenceState<'db, '_>) -> R,
 ) -> R {
     let had_error = &Cell::new(false);
-    let parent_scope = match scope {
-        Scope::Module => ParentScope::Module,
-        Scope::Function(f) => {
-            ensure_cached_func(db, file, f);
-            ParentScope::Function(f.index())
-        }
-        Scope::Class(c) => ParentScope::Class(c.index()),
-        Scope::Lambda(lambda) => {
-            return with_i_s_non_self(db, file, lambda.parent_scope(), callback);
-        }
-    };
+    let parent_scope = ParentScope::from_scope(scope);
     InferenceState::run_with_parent_scope(db, file, parent_scope, |i_s| {
         callback(&i_s.with_mode(Mode::AvoidErrors { had_error }))
     })
-}
-
-fn ensure_cached_func(db: &Database, file: &PythonFile, f: FunctionDef) {
-    with_i_s_non_self(db, file, f.parent_scope(), |i_s| {
-        let func = Function::new_with_unknown_parent(db, NodeRef::new(file, f.index()));
-        func.ensure_cached_func(i_s);
-    });
 }
 
 #[derive(Copy, Clone, Debug)]
