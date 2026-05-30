@@ -1279,7 +1279,7 @@ __main__.py:33:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[An
 __main__.py:35:documentation -> "```python\n(variable) a: Any\n\nMight be: int\n```"
 
 [case docs_in_unchecked_methods]
-# flags: --only-language-server --no-check-untyped-defs --mode default
+# flags: --only-language-server --no-check-untyped-defs
 
 class C:
     def __init__(self, a):
@@ -1304,7 +1304,7 @@ C(1.0).f(1)
 C(1.0).f("s")
 
 [out]
-__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n\nMight be: tuple[Any, int]\n```"
+__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n```"
 __main__.py:13:documentation -> "```python\n(variable) a: Any\n\nMight be: float\n```"
 __main__.py:20:documentation -> "```python\n(variable) x: tuple[Any, Any, Any]\n\nMight be: tuple[bytes, Literal[1, 's'], Any]\n```"
 

@@ -83,7 +83,7 @@ impl<'project> Document<'project> {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
             }
-            let s = pretty_type_formatting(i_s, &t, false).into_string();
+            let mut s = pretty_type_formatting(i_s, &t, false).into_string();
             if let Some(heuristic) = inf.heuristic {
                 let mut t = heuristic.as_cow_type(i_s);
                 let t = t.to_mut();
@@ -101,10 +101,12 @@ impl<'project> Document<'project> {
                         .collect();
                     *t = Type::from_union_entries(keep_entries, true);
                 }
-                format!("{s}\n\nMight be: {}", pretty_type_formatting(i_s, &t, true))
-            } else {
-                s
+                let heuristic = pretty_type_formatting(i_s, &t, true).into_string();
+                if s != heuristic {
+                    s = format!("{s}\n\nMight be: {heuristic}")
+                }
             }
+            s
         };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
