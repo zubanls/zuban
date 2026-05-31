@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use arc_swap::{ArcSwap, Guard};
 use utils::match_case;
@@ -513,7 +516,7 @@ impl Workspace {
     }
 
     pub fn root_path_starts_with(&self, path: &NormalizedPath) -> bool {
-        let path = path.as_ref();
+        let path: &Path = path.as_ref();
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
             if self.canonicalized_path.as_ref().as_ref().starts_with(path) {

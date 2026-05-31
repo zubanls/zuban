@@ -294,7 +294,7 @@ impl<'sender> GlobalState<'sender> {
                 .first()
                 .expect("There should always be at least one root at this point");
             let first_root = vfs_handler.unchecked_abs_path(first_root);
-            let mut config = config::find_workspace_config(&vfs_handler, first_root.clone(), |path| {
+            let mut config = config::find_config(&vfs_handler, first_root.clone(), None, None, |path| {
                 // Watch the file itself to make sure that we can invalidate when it changes.
                 let path = Path::new(&**path);
                 vfs_handler.watch(path);
@@ -318,6 +318,12 @@ impl<'sender> GlobalState<'sender> {
                         "Canonicalizing of path that invalidates the whole project failed: {err}"
                     ),
                 }
+            }).map(|mut found| {
+                found.project_options
+                    .settings
+                    .mypy_path
+                    .push(vfs_handler.normalize_rc_path(found.most_probable_base));
+                found.project_options
             })
             .unwrap_or_else(|err| {
                 use lsp_types::{
@@ -347,11 +353,26 @@ impl<'sender> GlobalState<'sender> {
             //
             // It's questionable that we want those two things. And maybe there will also be a need
             // for the type checker to understand what the mypy_path originally was.
-            config.settings.mypy_path.extend(
-                self.roots
+
+            // For now we simply add paths if they are not a subfolder of the found mypy_path. We
+            // could do this in different ways, but we don't really trust that the workspace folder
+            // provided by LSP is correct. VSCode might be better than other clients, but I have
+            // seen cases where it's definitely wrong, so we prefer our own mechanism over LSP.
+            for root in self.roots.iter() {
+                let new_path = vfs_handler.normalize_unchecked_abs_path(root);
+                if config
+                    .settings
+                    .mypy_path
                     .iter()
-                    .map(|p| vfs_handler.normalize_unchecked_abs_path(p)),
-            );
+                    .any(|p| p.contains_sub_file(new_path.as_ref()))
+                {
+                    continue;
+                }
+                tracing::info!(
+                    "Added the mypy path {root}, because it's not part of the found paths"
+                );
+                config.settings.mypy_path.push(new_path)
+            }
             if self.typeshed_path.is_some() {
                 config.settings.typeshed_path = self.typeshed_path.clone();
             }

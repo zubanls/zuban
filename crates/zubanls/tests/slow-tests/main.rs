@@ -1338,6 +1338,39 @@ fn test_virtual_env_with_pth_into_working_dir() {
 
 #[test]
 #[serial]
+fn test_lsp_root_path_wrong() {
+    let server = Project::with_fixture(&format!(
+        r#"
+        [file pyproject.toml]
+
+        [file inner/__init__.py]
+
+        [file inner/something.py]
+
+        [file inner/other.py]
+        from inner import something as x
+        import something
+
+        [file outer.py]
+        from inner import something as x
+        import something
+        "#
+    ))
+    .root("inner")
+    .into_server();
+
+    assert_eq!(
+        server.diagnostics_for_file("outer.py"),
+        ["Cannot find implementation or library stub for module named \"something\""]
+    );
+    assert_eq!(
+        server.diagnostics_for_file("inner/other.py"),
+        ["Cannot find implementation or library stub for module named \"something\""]
+    );
+}
+
+#[test]
+#[serial]
 fn remove_directory_of_in_memory_file_without_push() {
     let server = Project::with_fixture(
         r#"

@@ -10,7 +10,7 @@ use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
 use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
-pub use searcher::{find_cli_config, find_workspace_config};
+pub use searcher::find_cli_config as find_config;
 
 type ConfigResult = anyhow::Result<()>;
 

@@ -25,27 +25,12 @@ pub struct FoundConfig {
     pub most_probable_base: Arc<AbsPath>,
 }
 
-pub fn find_workspace_config(
-    vfs: &dyn VfsHandler,
-    workspace_dir: Arc<AbsPath>,
-    on_check_path: impl FnMut(&AbsPath),
-) -> anyhow::Result<ProjectOptions> {
-    let config = find_mypy_config_file_in_dir(vfs, workspace_dir, None, on_check_path)?;
-
-    Ok(match config {
-        Some(config) => config.project_options,
-        None => {
-            tracing::info!("No relevant config found");
-            ProjectOptions::default_for_mode(Mode::Default)
-        }
-    })
-}
-
 pub fn find_cli_config(
     vfs: &dyn VfsHandler,
     current_dir: Arc<AbsPath>,
     config_file: Option<&Path>,
     mode: Option<Mode>,
+    mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
         let Some(config_path) = config_file.as_os_str().to_str() else {
@@ -67,7 +52,9 @@ pub fn find_cli_config(
     } else {
         let mut current = current_dir.clone();
         loop {
-            if let Some(found) = find_mypy_config_file_in_dir(vfs, current.clone(), mode, |_| ())? {
+            if let Some(found) =
+                find_mypy_config_file_in_dir(vfs, current.clone(), mode, &mut on_check_path)?
+            {
                 return Ok(found);
             }
             if let Some(outer) = vfs.parent_of_absolute_path(&current) {

@@ -7,7 +7,7 @@ use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::find_cli_config;
+use config::find_config;
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
@@ -75,12 +75,13 @@ fn project_from_cli(
 ) -> (Project, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
-    let mut found = find_cli_config(
+    let mut found = find_config(
         &local_fs,
         current_dir.clone(),
         cli.mypy_options.config_file.as_deref(),
         // Set the default to not mypy compatible, at least for now
         cli.mode(),
+        |_| (),
     )
     .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     let mut options = found.project_options;
