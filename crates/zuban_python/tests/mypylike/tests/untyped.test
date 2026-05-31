@@ -442,19 +442,19 @@ def j(x):
     yield str()
     return b''
 
-reveal_type(f(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(f(1))  # N: Revealed type is "types.GeneratorType[int, None, Any]"
 reveal_type(next(f("")))  # N: Revealed type is "str"
 
-reveal_type(g(1))  # N: Revealed type is "typing.Generator[int, None, Any]"
+reveal_type(g(1))  # N: Revealed type is "types.GeneratorType[int, None, Any]"
 reveal_type(next(g("")))  # N: Revealed type is "str"
 
-reveal_type(h())  # N: Revealed type is "typing.Generator[int | None, None, Any]"
+reveal_type(h())  # N: Revealed type is "types.GeneratorType[int | None, None, Any]"
 reveal_type(next(h()))  # N: Revealed type is "int | None"
 
-reveal_type(i())  # N: Revealed type is "typing.Generator[None, None, Any]"
+reveal_type(i())  # N: Revealed type is "types.GeneratorType[None, None, Any]"
 reveal_type(next(i()))  # N: Revealed type is "None"
 
-reveal_type(j(1))  # N: Revealed type is "typing.Generator[int | str, None, Literal[b'']? | Any]"
+reveal_type(j(1))  # N: Revealed type is "types.GeneratorType[int | str, None, Literal[b'']? | Any]"
 
 class C:
     def __init__(self, x):
@@ -463,7 +463,7 @@ class C:
     def foo(self, x):
         yield (self.x, x)
 
-reveal_type(C(1).foo(b""))  # N: Revealed type is "typing.Generator[tuple[int, bytes], None, Any]"
+reveal_type(C(1).foo(b""))  # N: Revealed type is "types.GeneratorType[tuple[int, bytes], None, Any]"
 
 [case untyped_async_generator]
 # flags: --mode default --untyped-function-return-mode advanced
@@ -476,7 +476,7 @@ async def g(x):
     yield 1
 
 async def check():
-    reveal_type(f(1))  # N: Revealed type is "typing.AsyncGenerator[int, None]"
+    reveal_type(f(1))  # N: Revealed type is "types.AsyncGeneratorType[int, None]"
     async for x in f(1):
         reveal_type(x)  # N: Revealed type is "int"
 
@@ -513,7 +513,7 @@ async def check():
     reveal_type(await f(1))  # N: Revealed type is "int"
     reveal_type(await f(""))  # N: Revealed type is "str"
 
-    reveal_type(g(1))  # N: Revealed type is "typing.Coroutine[Any, Any, list[int]]"
+    reveal_type(g(1))  # N: Revealed type is "types.CoroutineType[Any, Any, list[int]]"
     reveal_type(await g(1))  # N: Revealed type is "list[int]"
     reveal_type(await g(""))  # N: Revealed type is "list[str]"
 

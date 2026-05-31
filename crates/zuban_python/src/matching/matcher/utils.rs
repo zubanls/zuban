@@ -25,10 +25,10 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
+        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics, DbString,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
-        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
+        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
+        Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
 };
@@ -75,7 +75,8 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
     calc_dunder_init_type_vars(i_s, class, &function, |matcher, class_type_vars| {
-        if class_type_vars.has_from_untyped_params() {
+        if class_type_vars.has_from_untyped_params() && i_s.db.project.should_infer_untyped_params()
+        {
             let mut result = calc_untyped_func_type_vars_with_matcher(
                 matcher,
                 i_s,
@@ -739,7 +740,7 @@ pub(crate) fn match_arguments_against_params<
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
-    let mut missing_unpacked_typed_dict_names: Option<Vec<(StringSlice, bool)>> = None;
+    let mut missing_unpacked_typed_dict_names: Option<Vec<(DbString, bool)>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     // lambdas are analyzed at the end to improve type inference.
@@ -1131,7 +1132,7 @@ pub(crate) fn match_arguments_against_params<
                                 .named
                                 .iter()
                                 .filter(|m| &m.name != name)
-                                .map(|m| (m.name, m.required))
+                                .map(|m| (m.name.clone(), m.required))
                                 .collect(),
                         );
                     }
@@ -1141,7 +1142,7 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_missing_kw_issue = |param_name| {
+    let add_missing_kw_issue = |param_name: &str| {
         let mut s = format!("Missing named argument {:?}", param_name);
         s += diagnostic_string(" for ").as_deref().unwrap_or("");
         add_issue(IssueKind::ArgumentIssue(s.into()));

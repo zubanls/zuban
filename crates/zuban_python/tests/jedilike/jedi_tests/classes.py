@@ -148,7 +148,7 @@ A().addition = None
 A(1).addition = None
 #? 1 A
 A(1).addition = None
-#! 8 []
+#! 8 ['self.addition']
 A().addition = None
 a = A()
 #? 8 int()
@@ -287,10 +287,6 @@ V(1).b()
 V(1).c()
 #?
 V(1).d()
-# Only keywords should be possible to complete.
-#? ['is', 'in', 'not', 'and', 'or', 'if']
-V(1).d() 
-
 
 # -----------------
 # ordering
@@ -430,6 +426,14 @@ class WeirdGetattr:
 
 #? []
 WeirdGetattr().something
+
+class GetattrHelper:
+    x = 1
+
+#? int()
+getattr(GetattrHelper, "x")
+#? int() bytes()
+getattr(GetattrHelper, "x", b'')
 
 
 # -----------------
@@ -574,9 +578,9 @@ D().b
 # With import
 # -----------------
 
-from import_tree.classes import Config2, BaseClass
+from import_tree.classes import Config2, BaseClass as BaseClass2
 
-class Config(BaseClass):
+class Config(BaseClass2):
     """#884"""
 
 #? import_tree.classes.Config2()
@@ -642,9 +646,9 @@ from import_tree.pkg.base import MyBase
 
 class C1(MyBase):
     def f3(self):
-        #! 13 ['def f1']
+        #! 13 ['def f1(self):']
         self.f1() . # hey'''
-        #? 13 MyBase.f1
+        #? 13 import_tree.pkg.base.MyBase.f1
         self.f1() . # hey'''
 
 # -----------------

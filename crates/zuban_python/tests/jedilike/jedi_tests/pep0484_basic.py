@@ -117,20 +117,16 @@ def function_with_non_pep_0484_annotation(
         y: 3 + 3,
         zz: float) -> int("42"):
     # infers int from function call
-    # zuban-diff: #? int()
-    #?
+    #? int()
     x
     # infers int from function call
-    # zuban-diff: #? int()
-    #?
+    #? int()
     xx
     # infers int from function call
-    # zuban-diff: #? int()
-    #?
+    #? int()
     yy
     # infers str from function call
-    # zuban-diff: #? int()
-    #?
+    #? str()
     y
     #? float()
     zz

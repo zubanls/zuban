@@ -866,6 +866,15 @@ impl<F: VfsFile> Vfs<F> {
         file_state.update(add(file_index));
         file_index
     }
+
+    pub fn in_memory_file_ids(&self) -> impl Iterator<Item = FileIndex> {
+        self.in_memory_files
+            .iter()
+            .filter_map(|(_, in_mem)| match in_mem {
+                InMemoryKind::File(file_index) => Some(*file_index),
+                InMemoryKind::Gitignore(_) => None,
+            })
+    }
 }
 
 #[must_use]

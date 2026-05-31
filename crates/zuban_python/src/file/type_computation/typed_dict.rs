@@ -16,8 +16,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict, TypedDictGenerics,
-        TypedDictMember, TypedDictMembers,
+        DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
 };
 
@@ -41,7 +41,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     ) -> TypedDictMember {
         let tt = self.compute_typed_dict_type(expr);
         TypedDictMember {
-            name,
+            name: DbString::StringSlice(name),
             type_: tt.type_,
             required: tt
                 .required
@@ -196,7 +196,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> TypedDictMember {
         let t = self.compute_class_typed_dict_type(annotation.expression());
         TypedDictMember {
-            name,
+            name: DbString::StringSlice(name),
             type_: t.type_,
             required: t
                 .required

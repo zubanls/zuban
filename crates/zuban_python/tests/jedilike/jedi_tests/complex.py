@@ -10,8 +10,7 @@ def asdfy():
     return Foo
 
 xorz = getattr(asdfy()(), 'asdf')
-# zuban-diff: #? time
-#? 
+#? time
 xorz
 
 
@@ -22,8 +21,7 @@ def args_returner(*args):
 
 #? tuple()
 args_returner(1)[:]
-# zuban-diff #? int()
-#? 
+#? int()
 args_returner(1)[:][0]
 
 

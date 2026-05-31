@@ -7,7 +7,7 @@ use std::{
 };
 
 use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
-use parsa_python_cst::{NodeIndex, Tree};
+use parsa_python_cst::{NodeIndex, Scope, Tree};
 use rayon::prelude::*;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
@@ -57,6 +57,9 @@ const IN_GLOBAL_SCOPE_MASK: u32 = 1 << IN_GLOBAL_SCOPE_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const KIND_MASK: u32 = 0b111 << KIND_BIT_INDEX;
+
+const FUNCTION_CHECKED_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
+const FUNCTION_CHECKED_MASK: u32 = 1 << FUNCTION_CHECKED_INDEX;
 
 const PARTIAL_NULLABLE_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
 const PARTIAL_NULLABLE_MASK: u32 = 1 << PARTIAL_NULLABLE_INDEX;
@@ -312,6 +315,17 @@ impl Point {
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
 
+    pub fn function_was_checked(self) -> bool {
+        debug_assert!(self.specific().is_function_state());
+        (self.flags & FUNCTION_CHECKED_MASK) > 0
+    }
+
+    pub fn set_checked_function(mut self) -> Self {
+        debug_assert!(self.specific().is_function_state());
+        self.flags |= 1 << FUNCTION_CHECKED_INDEX;
+        self
+    }
+
     pub fn partial_flags(self) -> PartialFlags {
         debug_assert!(self.specific().is_partial(), "{:?}", self);
         PartialFlags {
@@ -367,6 +381,9 @@ impl fmt::Debug for Point {
                     s.field("partial: nullable", &partial.nullable);
                     s.field("partial: reported_error", &partial.reported_error);
                     s.field("partial: finished", &partial.finished);
+                }
+                if specific.is_function_state() {
+                    s.field("function_was_checked", &self.function_was_checked());
                 }
             }
             if self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference {
@@ -463,15 +480,17 @@ pub(crate) enum Specific {
     Analyzed, // Signals that a node has been analyzed
     Calculating,
     Cycle,
+    UntypedFunctionSelfAssignment,
     FirstNameOfNameDef, // Cycles for the same name definition in e.g. different branches
     NameOfNameDef,      // Cycles for the same name definition in e.g. different branches
     Parent,             // Has a link to the parent scope
+    FunctionEndIsReachable,
     FunctionEndIsUnreachable,
     OverloadUnreachable,
     AnyDueToError,
     InvalidTypeDefinition,
     ModuleNotFound,
-    PyTypedMissing,
+    BinaryExtension,
     IfBranchAlwaysReachableInNameBinder,
     IfBranchAlwaysReachableInTypeCheckingBlock, // For if TYPE_CHECKING:
     IfBranchAfterAlwaysReachableInNameBinder,
@@ -592,6 +611,13 @@ impl Specific {
         )
     }
 
+    pub fn is_function_state(self) -> bool {
+        matches!(
+            self,
+            Specific::FunctionEndIsReachable | Specific::FunctionEndIsUnreachable
+        )
+    }
+
     pub fn might_be_used_in_alias(self) -> bool {
         matches!(
             self,
@@ -697,6 +723,10 @@ pub(crate) enum ComplexPoint {
     // Sometimes needed when a Final is defined in a class and initialized in __init__.
     IndirectFinal(Arc<Type>),
     WidenedType(Arc<WidenedType>),
+    // Only used for heuristics, this is not relevant for non-heuristic inference
+    HeuristicBound(Arc<HeuristicBound>),
+    // If a third-party library is missing a py.typed, this is the resulting location redirect.
+    PyTypedMissing(PyTypedMissing),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -1473,6 +1503,10 @@ impl Database {
         self.loaded_python_file(file_index)
     }
 
+    pub fn is_file_index_loaded(&self, index: FileIndex) -> bool {
+        self.vfs.file(index).is_some()
+    }
+
     pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
         self.vfs.file(index).unwrap_or_else(|| {
             panic!(
@@ -1716,6 +1750,15 @@ impl ParentScope {
         // Add the position like `foo.Bar@7`
         format!("{}.{name}@{line}", defined_at.file.qualified_name(db))
     }
+
+    pub fn from_scope(scope: Scope) -> Self {
+        match scope {
+            Scope::Module => Self::Module,
+            Scope::Class(class_def) => Self::Class(class_def.index()),
+            Scope::Function(function_def) => Self::Function(function_def.index()),
+            Scope::Lambda(lambda) => Self::from_scope(lambda.parent_scope()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1860,6 +1903,18 @@ impl std::cmp::PartialEq for ClassStorage {
         recoverable_error!("Should never compare  class storage with ==");
         false
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PyTypedMissing {
+    File(FileIndex),
+    Link(PointLink),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeuristicBound {
+    pub type_: Type,
+    pub bound_to: Type,
 }
 
 #[cfg(test)]

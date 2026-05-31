@@ -12,8 +12,8 @@ use crate::{
     matching::Matcher,
     type_::{
         AnyCause, CallableParam, CallableParams, DbString, MaybeUnpackGatherer, ParamSpecUsage,
-        ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack,
-        Type, TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
+        ParamType, StarParamType, StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type,
+        TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
         match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
     },
 };
@@ -1184,7 +1184,7 @@ where
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument: self.unused_keyword_arguments.remove(i),
                                     type_: entry.type_.clone(),
-                                    name: entry.name,
+                                    name: entry.name.cloned(),
                                 },
                             });
                         }
@@ -1199,7 +1199,7 @@ where
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument,
                                     type_: entry.type_.clone(),
-                                    name: entry.name,
+                                    name: entry.name.cloned(),
                                 },
                             });
                         } else {
@@ -1425,7 +1425,7 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
         match self {
             Self::Member(m) => CallableParam {
                 type_: ParamType::KeywordOnly(m.type_.clone()),
-                name: Some(DbString::StringSlice(m.name)),
+                name: Some(m.name.clone()),
                 has_default: self.has_default(),
                 might_have_type_vars: true,
             },
@@ -1454,7 +1454,7 @@ pub(crate) enum ParamArgument<'db, 'a> {
     MatchedUnpackedTypedDictMember {
         argument: Arg<'db, 'a>,
         type_: Type,
-        name: Option<StringSlice>,
+        name: Option<DbString>,
     },
     ParamSpecArgs(ParamSpecUsage, Box<[Arg<'db, 'a>]>),
 }

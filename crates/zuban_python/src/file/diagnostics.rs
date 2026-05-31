@@ -144,6 +144,7 @@ impl Inference<'_, '_, '_> {
     pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
         let result = self.ensure_module_symbols_flow_analysis();
         self.file.process_delayed_diagnostics(self.i_s.db);
+        self.file.issues.set_complete_diagnostics();
         result
     }
 
@@ -778,7 +779,10 @@ impl Inference<'_, '_, '_> {
         match target {
             Target::NameExpression(_, n) => {
                 // Assign any to potential self assignments
-                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
+                NodeRef::new(self.file, n.index()).set_point(Point::new_specific(
+                    Specific::UntypedFunctionSelfAssignment,
+                    Locality::File,
+                ));
             }
             Target::Tuple(targets) => {
                 for target in targets {
@@ -1339,7 +1343,7 @@ impl Inference<'_, '_, '_> {
         Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func_from_diagnostics(i_s);
         // Calculate if there is an @override decorator
         let mut has_override_decorator = false;
-        if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
+        if let Some(overload) = func_node_ref.maybe_overload() {
             has_override_decorator = overload.is_override;
         } else if let Some(decorated) = func_def.maybe_decorated() {
             let decorators = decorated.decorators();
@@ -1474,21 +1478,29 @@ impl Inference<'_, '_, '_> {
         }
         body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
+            let mut checked = false;
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if self.is_empty_generator_function(func_node) {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 let flags = self.flags();
-                self.file
+                checked = self
+                    .file
                     .inference(&self.i_s.with_func_context(&function))
-                    .function_diagnostics_with_correct_i_s(function, flags, name_def, params, body);
+                    .function_diagnostics_with_correct_i_s_and_return_checked(
+                        function, flags, name_def, params, body,
+                    );
             });
             let specific = if unreachable {
                 Specific::FunctionEndIsUnreachable
             } else {
-                Specific::Analyzed
+                Specific::FunctionEndIsReachable
             };
-            body_ref.set_point(Point::new_specific(specific, Locality::Todo));
+            let mut point = Point::new_specific(specific, Locality::Todo);
+            if checked {
+                point = point.set_checked_function()
+            }
+            body_ref.set_point(point);
         });
         Ok(())
     }
@@ -1501,7 +1513,7 @@ impl Inference<'_, '_, '_> {
         let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
 
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
+        if let Some(o) = function.maybe_overload() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
                 let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {
@@ -1622,7 +1634,7 @@ impl Inference<'_, '_, '_> {
         }
 
         if NodeRef::new(self.file, body.index()).point().specific()
-            != Specific::FunctionEndIsUnreachable
+            == Specific::FunctionEndIsReachable
             && !is_overload_member
             && !self.file.is_stub()
             && function.return_annotation().is_some()
@@ -1900,19 +1912,20 @@ impl Inference<'_, '_, '_> {
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.
     #[inline]
-    fn function_diagnostics_with_correct_i_s(
+    fn function_diagnostics_with_correct_i_s_and_return_checked(
         &self,
         function: Function,
         flags: &TypeCheckerFlags,
         name: NameDef,
         params: FunctionDefParameters,
         block: Block,
-    ) {
+    ) -> bool {
         for param in params.iter() {
             self.add_initial_name_definition(param.name_def());
         }
         let i_s = self.i_s;
         let is_typed = function.is_typed();
+        let mut was_checked = false;
         if is_typed || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).has_constraints(i_s.db)
@@ -1924,14 +1937,15 @@ impl Inference<'_, '_, '_> {
                 self.calc_untyped_block_diagnostics(block, true);
                 self.mark_current_frame_unreachable()
             } else {
+                was_checked = true;
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
             if !is_typed {
-                return;
+                return false;
             }
         } else {
             self.calc_untyped_block_diagnostics(block, false);
-            return;
+            return false;
         }
 
         if let Some(return_annotation) = function.return_annotation()
@@ -2035,6 +2049,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+        was_checked
     }
 
     fn calc_overload_implementation_diagnostics(
@@ -2507,7 +2522,11 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
     })
 }
 
-pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
+pub(crate) fn await_aiter_and_next(
+    i_s: &InferenceState,
+    base: Inferred,
+    from: NodeRef,
+) -> Inferred {
     await_(
         i_s,
         base.type_lookup_and_execute(
@@ -3137,7 +3156,7 @@ fn is_async_iterator_without_async(
     let db = i_s.db;
     match override_ {
         Type::Class(c) if c.link == db.python_state.async_iterator_link() => match original {
-            Type::Class(c) if c.link == db.python_state.coroutine_link() => {
+            Type::Class(c) if db.python_state.is_coroutine(c.link) => {
                 let check = c.class(db).nth_type_argument(db, 2);
                 override_.is_simple_same_type(i_s, &check).bool()
             }

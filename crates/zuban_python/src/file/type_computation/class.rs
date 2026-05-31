@@ -6,8 +6,8 @@ use std::{
 use parsa_python_cst::{
     ArgOrComprehension, Argument, ArgumentsDetails, Assignment, AssignmentContent,
     AsyncStmtContent, AtomContent, ClassDef, Decorated, Decoratee, Expression, ExpressionContent,
-    ExpressionPart, Kwarg, Name, NodeIndex, Primary, PrimaryContent, StarLikeExpression,
-    StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
+    ExpressionPart, FunctionDef, Kwarg, Name, NodeIndex, Primary, PrimaryContent,
+    StarLikeExpression, StmtLikeContent, StmtLikeIterator, Target, TrivialBodyState, TypeLike,
 };
 use utils::FastHashSet;
 
@@ -15,7 +15,7 @@ use crate::{
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database,
         DeferredTypedDictMembers, Locality, MetaclassState, ParentScope, Point, PointLink,
-        ProtocolMember, Specific, TypedDictArgs, TypedDictDefinition,
+        ProtocolMember, RunCause, Specific, TypedDictArgs, TypedDictDefinition,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -179,15 +179,12 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 .compute_type_params_definition(i_s.as_parent_scope(), type_params, false)
         } else {
             let mut found = TypeVarFinder::find_class_type_vars(i_s, self);
-            if found.is_empty() && i_s.db.project.should_infer_untyped_params() {
-                let storage = self.class_storage();
-                if let Some(name_index) = storage.class_symbol_table.lookup_symbol("__init__")
-                    && let Some(func) = NodeRef::new(self.file, name_index)
-                        .expect_name()
-                        .name_def()
-                        .unwrap()
-                        .maybe_name_of_func()
-                {
+            if found.is_empty()
+                && (i_s.db.project.should_infer_untyped_params()
+                    // For language servers we need the generics to store heuristics
+                    || i_s.db.run_cause == RunCause::LanguageServer && !self.file.is_stub())
+            {
+                if let Some(func) = self.maybe_init_func() {
                     // Only generate type vars for classes that are not typed at all and have
                     // initialization params.
                     if !func.is_typed() && func.params().iter().nth(1).is_some() {
@@ -204,6 +201,18 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
             node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_var_likes), Locality::Todo);
         }
         self.type_vars(i_s)
+    }
+
+    pub fn maybe_init_func(&self) -> Option<FunctionDef<'file>> {
+        let name_index = self
+            .class_storage()
+            .class_symbol_table
+            .lookup_symbol("__init__")?;
+        NodeRef::new(self.file, name_index)
+            .expect_name()
+            .name_def()
+            .unwrap()
+            .maybe_name_of_func()
     }
 
     pub fn use_cached_type_vars(&self, db: &'file Database) -> &'file TypeVarLikes {
@@ -1873,7 +1882,10 @@ fn find_stmt_typed_dict_types(
                                 TypedDictMember {
                                     type_: Type::Any(AnyCause::Todo),
                                     required: true,
-                                    name: StringSlice::from_name(file.file_index, name_def.name()),
+                                    name: DbString::StringSlice(StringSlice::from_name(
+                                        file.file_index,
+                                        name_def.name(),
+                                    )),
                                     read_only: false,
                                 },
                                 extra_items,
@@ -2331,7 +2343,7 @@ fn maybe_dataclass_transform_func(
     Function::new_with_unknown_parent(db, *func)
         .ensure_cached_func(&InferenceState::new(db, func.file));
     debug_assert!(func.point().calculated());
-    if let Some(ComplexPoint::FunctionOverload(overload)) = func.maybe_complex() {
+    if let Some(overload) = func.maybe_overload() {
         overload.dataclass_transform.clone()
     } else {
         for decorator in decorated.decorators().iter() {

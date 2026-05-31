@@ -29,24 +29,24 @@ def dec(func):
 def fu(a, b, c, *args, **kwargs):
     return a, b, c, args, kwargs
 
-exe = fu(list, c=set, b=3, d='')
+exe2 = fu(list, c=set, b=3, d='')
 
 #? list
-exe[0]
+exe2[0]
 #? int()
-exe[1]
+exe2[1]
 #? set
-exe[2]
+exe2[2]
 #? []
-exe[3][0].
+exe2[3][0].
 #? str()
-exe[4]['d']
+exe2[4]['d']
 
 
-exe = fu(list, set, 3, '', d='')
+exe3 = fu(list, set, 3, '', d='')
 
 #? str()
-exe[3][0]
+exe3[3][0]
 
 # -----------------
 # multiple decorators
@@ -61,18 +61,18 @@ def dec2(func2):
 def fu2(a, b, c, *args, **kwargs):
     return a, b, c, args, kwargs
 
-exe = fu2(list, c=set, b=3, d='str')
+exe4 = fu2(list, c=set, b=3, d='str')
 
 #? list
-exe[0]
+exe4[0]
 #? int()
-exe[1]
+exe4[1]
 #? set
-exe[2]
+exe4[2]
 #? []
-exe[3][0].
+exe4[3][0].
 #? str()
-exe[4]['d']
+exe4[4]['d']
 
 
 # -----------------
@@ -100,11 +100,11 @@ nothing("")[1]
 
 @same_func
 @Decorator
-def nothing(a,b,c):
+def nothing2(a,b,c):
     return a,b,c
 
 #? int()
-nothing("")[0]
+nothing2("")[0]
 
 class MethodDecoratorAsClass():
     class_var = 3
@@ -120,7 +120,8 @@ class MethodDecoratorAsClass():
 MethodDecoratorAsClass().func_without_self('')[0]
 #? str()
 MethodDecoratorAsClass().func_without_self('')[1]
-#? 
+# zuban-diff #? 
+#? int()
 MethodDecoratorAsClass().func_with_self(1)
 
 
@@ -159,8 +160,8 @@ def just_a_func():
 #? int()
 just_a_func()
 
-#? ['__closure__']
-just_a_func.__closure__
+#? ['__call__']
+just_a_func.__call__
 
 
 class JustAClass:
@@ -176,6 +177,34 @@ JustAClass().a()
 JustAClass.a.__call__
 #? int()
 JustAClass.a()
+
+class JustAClass2:
+    def __init__(self, x):
+        self.x = x
+
+    @not_found_decorator2
+    def a(self):
+        return self.x
+
+    @not_found_decorator2
+    def b(self, x):
+        return (self.x, x)
+
+#? int()
+JustAClass2(1).a()
+#? str()
+JustAClass2("").a()
+
+myb1 = JustAClass2("").b(1.0)
+myb2 = JustAClass2(1).b(b'')
+#? str()
+myb1[0]
+#? int()
+myb2[0]
+#? float()
+myb1[1]
+#? bytes()
+myb2[1]
 
 # -----------------
 # illegal decorators
@@ -194,7 +223,8 @@ def f():
 def g():
     return 1
 
-#? 
+# zuban-diff: #? 
+#? int()
 f()
 #? int()
 g()
@@ -226,7 +256,7 @@ function_var_args(1)
 # method decorators
 # -----------------
 
-def dec(f):
+def dec3(f):
     def wrapper(s):
         return f(s)
     return wrapper
@@ -236,15 +266,15 @@ class MethodDecorators():
     def __init__(self):
         self._method_var = ''
 
-    @dec
+    @dec3
     def constant(self):
         return 1.0
 
-    @dec
+    @dec3
     def class_var(self):
         return self._class_var
 
-    @dec
+    @dec3
     def method_var(self):
         return self._method_var
 
@@ -263,7 +293,7 @@ class Base():
     @not_existing
     def b(self):
         return ''
-    @dec
+    @dec3
     def c(self):
         return 1
 

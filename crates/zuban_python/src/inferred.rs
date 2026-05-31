@@ -1920,6 +1920,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         widened.widened.format_short(db)
                     )
                 }
+                ComplexPoint::PyTypedMissing(_) => "PyTypedMissing(...)".into(),
+                ComplexPoint::HeuristicBound(heuristic) => {
+                    format!(
+                        "HeuristicBound(type={}, bound={})",
+                        heuristic.type_.format_short(db),
+                        heuristic.bound_to.format_short(db),
+                    )
+                }
             }
         }
         match &self.state {
@@ -1973,7 +1981,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Specific::AnyDueToError
             | Specific::Cycle
             | Specific::InvalidTypeDefinition
-            | Specific::PyTypedMissing => Some(AnyCause::FromError),
+            | Specific::BinaryExtension => Some(AnyCause::FromError),
             Specific::AnnotationOrTypeCommentWithoutTypeVars => Some(AnyCause::FromError),
             Specific::ModuleNotFound => Some(AnyCause::ModuleNotFound),
             _ => None,
@@ -2923,9 +2931,10 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         ComplexPoint::IndirectFinal(t) => Cow::Borrowed(t),
         ComplexPoint::WidenedType(widened) => type_of_complex(i_s, &widened.original, definition),
-        _ => {
-            unreachable!("Classes are handled earlier {complex:?}")
-        }
+        ComplexPoint::PyTypedMissing(_) => Cow::Borrowed(&Type::ERROR),
+        ComplexPoint::HeuristicBound(b) => Cow::Borrowed(&b.type_),
+        ComplexPoint::ClassInfos(_) => unreachable!("Classes are handled earlier {complex:?}"),
+        ComplexPoint::TypeVarLikes(_) => unreachable!("TypeVarLikes should never be accessed"),
     }
 }
 
@@ -2939,7 +2948,12 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> C
             type_of_complex(i_s, complex, Some(definition))
         }
         PointKind::FileReference => Cow::Owned(Type::Module(point.file_index())),
-        x => unreachable!("{x:?}"),
+        x => {
+            if cfg!(debug_assertions) {
+                unreachable!("{x:?}")
+            }
+            Cow::Borrowed(&Type::ERROR)
+        }
     }
 }
 
@@ -2949,11 +2963,13 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::AnyDueToError | Specific::InvalidTypeDefinition | Specific::PyTypedMissing => {
+        Specific::AnyDueToError | Specific::InvalidTypeDefinition | Specific::BinaryExtension => {
             Cow::Borrowed(&Type::ERROR)
         }
         Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
-        Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
+        Specific::Cycle | Specific::UntypedFunctionSelfAssignment => {
+            Cow::Borrowed(&Type::Any(AnyCause::Todo))
+        }
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse()),
             implicit: true,

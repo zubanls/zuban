@@ -11,10 +11,12 @@ mod type_computation;
 mod type_var_finder;
 mod utils;
 
-pub(crate) use diagnostics::{OVERLAPPING_REVERSE_TO_NORMAL_METHODS, check_multiple_inheritance};
+pub(crate) use diagnostics::{
+    OVERLAPPING_REVERSE_TO_NORMAL_METHODS, await_aiter_and_next, check_multiple_inheritance,
+};
 pub(crate) use file_state::File;
 pub(crate) use flow_analysis::{FLOW_ANALYSIS, RedefinitionResult, process_unfinished_partials};
-use inference::Inference;
+pub(crate) use inference::Inference;
 pub(crate) use inference::{first_defined_name, first_defined_name_of_multi_def};
 pub(crate) use name_binder::{
     FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
@@ -37,5 +39,6 @@ pub(crate) use type_computation::{
 };
 pub(crate) use type_var_finder::TypeVarFinder;
 pub(crate) use utils::{
-    infer_index, infer_string_index, on_argument_type_error, should_add_deprecated,
+    infer_index, infer_string_index, maybe_func_of_self_symbol, on_argument_type_error,
+    should_add_deprecated,
 };

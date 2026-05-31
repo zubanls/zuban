@@ -5,7 +5,7 @@ use parsa_python_cst::{
 use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
 use crate::{
-    database::{Database, Locality, Point, PointKind, Specific},
+    database::{ComplexPoint, Database, Locality, Point, PointKind, PyTypedMissing, Specific},
     debug,
     diagnostics::IssueKind,
     file::{inference::Inference, name_resolution::StarImportError},
@@ -23,7 +23,7 @@ use crate::{
 use super::{PythonFile, python_file::StarImport};
 
 impl PythonFile {
-    pub(super) fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
+    pub fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
         let result = global_import(db, self, name.as_str());
         if let Some(result) = &result {
             debug!(
@@ -32,7 +32,7 @@ impl PythonFile {
                 result.debug_info(db),
             );
         } else if is_global_binary_extension(db, name) {
-            return Some(ImportResult::PyTypedMissing);
+            return Some(ImportResult::BinaryExtension);
         } else if !self.flags(db).ignore_missing_imports {
             NodeRef::new(self, name.index()).add_type_issue(
                 db,
@@ -78,7 +78,17 @@ impl PythonFile {
                 ImportResult::Namespace(namespace) => {
                     namespace_import_with_unloaded_file(db, self, namespace, name.as_str())
                 }
-                ImportResult::PyTypedMissing => Some(ImportResult::PyTypedMissing),
+                ImportResult::PyTypedMissing(file_index) => {
+                    let file_entry = db.vfs.file_entry(*file_index);
+                    match sub_module_import(db, self, file_entry, name.as_code()) {
+                        Some(ImportResult::File(file)) => Some(ImportResult::PyTypedMissing(file)),
+                        // This is not really correct, we are not dealing with a binary extension,
+                        // but something similar: non py.typed modules are considered Any and they
+                        // might execute arbitrary code includig sys.modules changes.
+                        _ => Some(ImportResult::BinaryExtension),
+                    }
+                }
+                ImportResult::BinaryExtension => Some(ImportResult::BinaryExtension),
             };
             if let Some(imported) = &result {
                 debug!(
@@ -230,7 +240,14 @@ impl PythonFile {
             Some(ImportResult::Namespace { .. }) => {
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
-            Some(ImportResult::PyTypedMissing) => {
+            Some(ImportResult::PyTypedMissing(file)) => {
+                NodeRef::new(self, star_index).insert_complex(
+                    ComplexPoint::PyTypedMissing(PyTypedMissing::File(*file)),
+                    Locality::Todo,
+                );
+                return;
+            }
+            Some(ImportResult::BinaryExtension) => {
                 Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
             None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
@@ -246,7 +263,14 @@ impl PythonFile {
     ) -> Result<&'db PythonFile, StarImportError> {
         let point = self.points.get(star_import.star_node);
         if point.calculated() {
-            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
+            return if matches!(point.kind(), PointKind::Specific | PointKind::Complex) {
+                debug_assert!(
+                    point.maybe_specific() == Some(Specific::ModuleNotFound)
+                        || matches!(
+                            NodeRef::new(self, star_import.star_node).maybe_complex(),
+                            Some(ComplexPoint::PyTypedMissing(_))
+                        )
+                );
                 Err(StarImportError::ImportNotResolvable)
             } else {
                 Ok(db.loaded_python_file(point.file_index()))
@@ -269,7 +293,7 @@ impl PythonFile {
             ImportResult::Namespace(ns) => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Namespace(ns.clone())))
             }
-            ImportResult::PyTypedMissing => unreachable!(),
+            ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => unreachable!(),
         })
     }
 
@@ -353,7 +377,7 @@ impl PythonFile {
                         }
                     }
                 }
-                ImportResult::PyTypedMissing => (),
+                ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => (),
             },
         }
     }
@@ -487,8 +511,12 @@ fn cache_import_results(node_ref: NodeRef, result: &Option<ImportResult>) {
             node_ref.set_point(Point::new_file_reference(*f, Locality::Complex))
         }
         Some(ImportResult::Namespace(n)) => node_ref.insert_type(Type::Namespace(n.clone())),
-        Some(ImportResult::PyTypedMissing) => node_ref.set_point(Point::new_specific(
-            Specific::PyTypedMissing,
+        Some(ImportResult::PyTypedMissing(file_index)) => node_ref.insert_complex(
+            ComplexPoint::PyTypedMissing(PyTypedMissing::File(*file_index)),
+            Locality::Complex,
+        ),
+        Some(ImportResult::BinaryExtension) => node_ref.set_point(Point::new_specific(
+            Specific::BinaryExtension,
             Locality::Complex,
         )),
         None => node_ref.set_point(Point::new_specific(
@@ -509,8 +537,8 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
     match p.kind() {
         PointKind::FileReference => Some(ImportResult::File(p.file_index())),
         PointKind::Specific => {
-            if p.specific() == Specific::PyTypedMissing {
-                Some(ImportResult::PyTypedMissing)
+            if p.specific() == Specific::BinaryExtension {
+                Some(ImportResult::BinaryExtension)
             } else {
                 debug_assert!(matches!(
                     p.specific(),
@@ -519,8 +547,13 @@ fn load_saved_results(node_ref: NodeRef, p: Point) -> Option<ImportResult> {
                 None
             }
         }
-        PointKind::Complex => match node_ref.maybe_type().unwrap() {
-            Type::Namespace(ns) => Some(ImportResult::Namespace(ns.clone())),
+        PointKind::Complex => match node_ref.maybe_complex().unwrap() {
+            ComplexPoint::TypeInstance(Type::Namespace(ns)) => {
+                Some(ImportResult::Namespace(ns.clone()))
+            }
+            ComplexPoint::PyTypedMissing(PyTypedMissing::File(file)) => {
+                Some(ImportResult::PyTypedMissing(*file))
+            }
             _ => unreachable!(),
         },
         _ => unreachable!(),

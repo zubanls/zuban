@@ -7,7 +7,10 @@ use parsa_python_cst::{
 use utils::FastHashSet;
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
+    database::{
+        ComplexPoint, Database, Locality, OverloadDefinition, ParentScope, Point, PointLink,
+        Specific,
+    },
     diagnostics::{Issue, IssueKind},
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
@@ -418,6 +421,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         (type_vars, type_guard, star_annotation)
     }
 
+    pub fn maybe_overload(&self) -> Option<&'file OverloadDefinition> {
+        if let ComplexPoint::FunctionOverload(overload) = self.maybe_complex()? {
+            Some(overload)
+        } else {
+            None
+        }
+    }
+
     pub fn return_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {
         self.return_annotation()
             .map(|a| {
@@ -432,7 +443,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let t = self.return_annotation_type(i_s);
         if self.is_async() && !self.is_generator() {
             Cow::Owned(new_class!(
-                i_s.db.python_state.coroutine_link(),
+                i_s.db.python_state.coroutine_type_link(),
                 Type::Any(AnyCause::Todo),
                 Type::Any(AnyCause::Todo),
                 t.into_owned(),

@@ -263,8 +263,7 @@ class DynamicParam():
         return
 
 def check(instance):
-    # zuban-diff: #< 13 (-5,8), (0,13)
-    #< 13
+    #< 13 (-5,8), (0,13)
     instance.foo()
 
 check(DynamicParam())
@@ -363,6 +362,11 @@ class DefinitelyNotGlobal:
     def my_global(self):
         def my_global(self):
             pass
+
+
+def check_global_without_global_definition():
+    #< (0, 11)
+    global my_global2
 
 # -----------------
 # stubs

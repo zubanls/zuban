@@ -1232,3 +1232,245 @@ __main__.py:8:infer -> __main__.py:<MISSING>; builtins.pyi:builtins.int
 __main__.py:10:goto -> __main__.py:<MISSING>; builtins.pyi:builtins.int
 __main__.py:12:goto -> __main__.py:4:0:__main__.MISSING
 __main__.py:14:infer -> __main__.py:4:19:<MISSING>
+
+[case infer_kwargs_heuristics]
+# flags: --mode mypy
+def f(**kwargs):
+    return kwargs
+
+#? infer
+f(x=1, y="")
+
+def check(dct: dict[str, bytes], dct2: dict[str, float]):
+    #? infer
+    f(x=1, y="", **dct)
+    #? infer
+    f(x=1, y="", **dct, **dct2)
+[out]
+__main__.py:6:infer -> __main__.py:6:0:TypedDict({'x'?: int, 'y'?: str})
+__main__.py:10:infer -> __main__.py:10:4:TypedDict({'x'?: int, 'y'?: str}, extra_items=bytes)
+__main__.py:12:infer -> __main__.py:12:4:TypedDict({'x'?: int, 'y'?: str}, extra_items=bytes)
+
+[case goto_for_untyped_site_packages1]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def import_from() -> None:
+    #? goto
+    from pkg_untyped import pkg_untyped_var
+
+    #? --codepoint-column 11 goto
+    from pkg_untyped import pkg_untyped_var
+    #? goto --follow-imports
+    pkg_untyped_var
+    #? goto
+    pkg_untyped_var
+
+    #? goto
+    from pkg_untyped import pkg_untyped_var as imp1
+    #? --codepoint-column 40 goto
+    from pkg_untyped import pkg_untyped_var as imp2
+
+def import_as() -> None:
+    #? goto
+    import pkg_untyped
+    #? goto --follow-imports
+    pkg_untyped
+    #? goto
+    pkg_untyped
+
+    #? goto
+    import pkg_untyped as imp1
+    #? --codepoint-column 15 goto
+    import pkg_untyped as imp2
+
+def star_import() -> None:
+    #? --codepoint-column 11 goto
+    from pkg_untyped import *
+    # TODO #? goto
+    pkg_untyped_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:9:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:11:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:13:goto -> __main__.py:6:28:__main__.pkg_untyped_var@6
+__main__.py:16:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:18:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped.pkg_untyped_var
+__main__.py:22:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:24:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:26:goto -> __main__.py:22:11:__main__.pkg_untyped@22
+__main__.py:29:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:31:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:35:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+
+[case goto_for_untyped_site_packages2]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def import_from() -> None:
+    #? goto
+    from pkg_untyped.b.c import c_var
+    #? goto --follow-imports
+    c_var
+    #? goto
+    from pkg_untyped.b import c
+    #? goto --follow-imports
+    c
+    #? goto
+    from pkg_untyped.b.c import c_var as cvar2
+    #? goto --follow-imports
+    cvar2
+
+    #? --codepoint-column 15 goto
+    from pkg_untyped.b.c import c_var as cvar3
+    #? --codepoint-column 22 goto
+    from pkg_untyped.b.c import c_var as cvar4
+    #? --codepoint-column 23 goto
+    from pkg_untyped.b.c import c_var as cvar5
+    #? --codepoint-column 35 goto
+    from pkg_untyped.b.c import c_var as cvar6
+
+def import_as() -> None:
+    #? goto
+    import pkg_untyped.b.c
+    #? goto --follow-imports
+    pkg_untyped
+    #? goto
+    pkg_untyped.b
+    #? goto
+    pkg_untyped.b.c
+    #? goto
+    pkg_untyped.b.c.c_var
+
+    #? --codepoint-column 15 goto
+    import pkg_untyped.b.c
+    #? --codepoint-column 24 goto
+    import pkg_untyped.b.c
+
+    #? --codepoint-column 15 goto
+    import pkg_untyped.b.c as imp1
+    #? --codepoint-column 23 goto
+    import pkg_untyped.b.c as imp2
+    #? --codepoint-column 26 goto
+    import pkg_untyped.b.c as imp3
+    #? goto --follow-imports
+    imp3
+
+def import_as_with_syntax_error() -> None:
+    #? --codepoint-column 15 goto
+    import pkg_untyped.b.c.
+    #? --codepoint-column 24 goto
+    import pkg_untyped.b.c.
+
+def star_import() -> None:
+    #? --codepoint-column 11 goto
+    from pkg_untyped.b.c import *
+    # TODO #? goto
+    c_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:8:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:10:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:12:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:14:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:16:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:19:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:21:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:23:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:25:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:29:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:31:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:33:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:35:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:37:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c.c_var
+__main__.py:40:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:42:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:45:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+__main__.py:47:goto -> pkg_untyped/b/__init__.py:1:0:pkg_untyped.b
+__main__.py:49:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:51:goto -> pkg_untyped/b/c.py:1:0:pkg_untyped.b.c
+__main__.py:55:goto -> __main__.py:55:11:__main__.pkg_untyped@55
+__main__.py:57:goto -> ()
+__main__.py:61:goto -> pkg_untyped/__init__.py:1:0:pkg_untyped
+
+[case goto_for_untyped_site_packages3]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def star_import1() -> None:
+    #? --codepoint-column 21 goto
+    from ns_pkg_untyped.b import *
+    # TODO #? goto
+    c
+
+def star_import2() -> None:
+    #? --codepoint-column 27 goto
+    from ns_pkg_untyped.b.c import *
+    #? --codepoint-column 10 goto
+    from ns_pkg_untyped.untyped import *
+
+def import_name() -> None:
+    #? goto
+    import ns_pkg_untyped
+    #? goto
+    ns_pkg_untyped.b
+    #? goto
+    ns_pkg_untyped.b.c.c_var
+    #? goto
+    import ns_pkg_untyped.b.c
+    #? goto
+    import ns_pkg_untyped.b.c as imp
+    #? goto --follow-imports
+    imp
+    #? goto
+    imp.c_var
+
+#? goto
+from ns_pkg_untyped.b import c
+#? goto
+c.c_var
+
+#? goto
+from ns_pkg_untyped import b as imported1
+#? --codepoint-column 28 goto
+from ns_pkg_untyped import b as imported2
+
+#? goto
+from ns_pkg_untyped.b import c as imported3
+#? --codepoint-column 30 goto
+from ns_pkg_untyped.b import c as imported4
+#? goto
+from ns_pkg_untyped.b.c import c_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:goto -> ()
+__main__.py:12:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:14:goto -> ()
+__main__.py:18:goto -> ()
+__main__.py:20:goto -> ()
+__main__.py:22:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:24:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:26:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:28:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:30:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:33:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:35:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+__main__.py:38:goto -> ()
+__main__.py:40:goto -> ()
+__main__.py:43:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:45:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
+__main__.py:47:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var

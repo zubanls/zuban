@@ -12,7 +12,8 @@
 [1,""][2]
 #? int() str()
 [1,""][20]
-#? int() str()
+# zuban-diff: #? int() str()
+#?
 [1,""][str(hello)]
 
 a = list()
@@ -75,7 +76,7 @@ for x in b[:]:
     x
 
 for x in b[:, :-1]:
-    #?
+    #? int()
     x
 
 class Foo:
@@ -88,9 +89,9 @@ Foo()[:, :-1][0]
 # -----------------
 # iterable multiplication
 # -----------------
-a = ['']*2
+c = ['']*2
 #? list()
-a
+c
 
 # -----------------
 # tuple assignments
@@ -115,9 +116,9 @@ list1
 list2
 
 [list3, list4] = [1, ""]
-#? int()
+#? int() str()
 list3
-#? str()
+#? str() int()
 list4
 
 # -----------------
@@ -139,17 +140,17 @@ b4
 # -----------------
 # multiple assignments
 # -----------------
-a = b = 1
+f1 = g1 = 1
 #? int()
-a
+f1
 #? int()
-b
+g1
 
-(a, b) = (c, (e, f)) = ('2', (3, 4))
+(f1, g1) = (c, (e, f)) = ('2', (3, 4))
 #? str()
-a
+f1
 #? tuple()
-b
+g1
 #? str()
 c
 #? int()
@@ -161,9 +162,9 @@ f
 # -----------------
 # unnessecary braces
 # -----------------
-a = (1)
+f2 = (1)
 #? int()
-a
+f2
 #? int()
 (1)
 #? int()
@@ -181,15 +182,15 @@ u1
 #? int()
 (u1)
 
-(a), b = 1, ''
+(f3), b = 1, ''
 #? int()
-a
+f3
 
-def a(): return ''
+def new_func(): return ''
 #? str()
-(a)()
+(new_func)()
 #? str()
-(a)().title()
+(new_func)().title()
 #? int()
 (tuple).index()
 #? int()
@@ -205,31 +206,36 @@ C().a
 # -----------------
 # imbalanced sides
 # -----------------
-(f, g) = (1,)
-#? int()
-f
+(f4, g4) = (1,)
+# zuban-diff: #? int()
+#?
+f4
 #? []
-g.
+g4.
 
-(f, g, h) = (1,'')
-#? int()
-f
-#? str()
-g
+(f5, g5, h5) = (1,'')
+# zuban-diff: #? int()
+#?
+f5
+# zuban-diff: #? str()
+#?
+g5
 #? []
-h.
+h5.
 
-(f1, g1) = 1
+(f6, g6) = 1
 #? []
-f1.
+f6.
 #? []
-g1.
+g6.
 
-(f, g) = (1,'',1.0)
-#? int()
-f
-#? str()
-g
+(f7, g7) = (1,'',1.0)
+# zuban-diff: #? int()
+#?
+f7
+# zuban-diff: #? str()
+#?
+g7
 
 # -----------------
 # setitem
@@ -275,14 +281,14 @@ a
 b
 
 
-def f():
+def funcfunc():
     """ github #83 """
     r = {}
     r['status'] = (200, 'ok')
     return r
 
 #? dict()
-f()
+funcfunc()
 
 # completion within dicts
 #? 9 ['str']
@@ -316,13 +322,13 @@ d = dict(a=3, b='')
 x, = d.values()
 #? int() str()
 x
-#? int()
+#? int() str()
 d['a']
-#? int() str() None
+#? int() str() types.NoneType()
 d.get('a')
 
 some_dct = dict({'a': 1, 'b': ''}, a=1.0)
-#? float()
+#? float() str() int()
 some_dct['a']
 #? int() float() str()
 some_dct['b']
@@ -343,25 +349,25 @@ objects['']
 # -----------------
 # with variable as index
 # -----------------
-a = (1, "")
+m1 = (1, "")
 index = 1
 #? str()
-a[index]
+m1[index]
 
 # these should just ouput the whole array
-index = int
+index2 = int
 #? int() str()
-a[index]
+m1[index2]
 index = int()
 #? int() str()
-a[index]
+m1[index2]
 
 # dicts
-index = 'asdf'
+index3 = 'asdf'
 
 dic2 = {'asdf': 3, 'b': 'str'}
-#? int()
-dic2[index]
+#? int() str()
+dic2[index3]
 
 # -----------------
 # __getitem__
@@ -374,7 +380,7 @@ class GetItem():
 #? float()
 GetItem()[0]
 
-class GetItem():
+class GetItem2():
     def __init__(self, el):
         self.el = el
 
@@ -382,7 +388,7 @@ class GetItem():
         return self.el
 
 #? str()
-GetItem("")[1]
+GetItem2("")[1]
 
 class GetItemWithList():
     def __getitem__(self, index):
@@ -410,45 +416,45 @@ SuperYeah()[0]
 # conversions
 # -----------------
 
-a = [1, ""]
+m2 = [1, ""]
 #? int() str()
-list(a)[1]
+list(m2)[1]
 
 #? int() str()
-list(a)[0]
+list(m2)[0]
 #?
-set(a)[0]
+set(m2)[0]
 
 #? int() str()
-list(set(a))[1]
+list(set(m2))[1]
 #? int() str()
-next(iter(set(a)))
+next(iter(set(m2)))
 #? int() str()
-list(list(set(a)))[1]
+list(list(set(m2)))[1]
 
 # does not yet work, because the recursion catching is not good enough (catches # to much)
 #? int() str()
-list(set(list(set(a))))[1]
+list(set(list(set(m2))))[1]
 #? int() str()
-list(set(set(a)))[1]
+list(set(set(m2)))[1]
 
 # frozenset
 #? int() str()
-list(frozenset(a))[1]
+list(frozenset(m2))[1]
 #? int() str()
-list(set(frozenset(a)))[1]
+list(set(frozenset(m2)))[1]
 
 # iter
 #? int() str()
-list(iter(a))[1]
+list(iter(m2))[1]
 #? int() str()
-list(iter(list(set(a))))[1]
+list(iter(list(set(m2))))[1]
 
 # tuple
 #? int() str()
-tuple(a)[1]
+tuple(m2)[1]
 #? int() str()
-tuple(list(set(a)))[1]
+tuple(list(set(m2)))[1]
 
 #? int()
 tuple((1,))[0]
@@ -506,25 +512,26 @@ tuple({1})[0]
 # PEP 3132 Extended Iterable Unpacking (star unpacking)
 # -----------------
 
-a, *b, c = [1, 'b', list, dict]
+a8, *b8, c8 = [1, 'b', list, dict]
 #? str() int() dict list
-a
+a8
 # zuban-diff: #?
 #? list()
-b
+b8
 #? str() int() list dict
-c
+c8
 
 # Not valid syntax
-a, *b, *c = [1, 'd', list]
-#? int()
-a
+a9, *b9, *c9 = [1, 'd', list]
+# zuban-diff: #? int()
+#?
+a9
 # zuban-diff: #?
 #? list()
-b
+b9
 # zuban-diff: #?
 #? list()
-c
+c9
 
 lc = [x for a, *x in [(1, '', 1.0)]]
 

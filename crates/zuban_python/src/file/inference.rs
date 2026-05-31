@@ -54,6 +54,7 @@ use crate::{
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
 
+#[derive(Copy, Clone)]
 pub(crate) struct Inference<'db, 'file, 'i_s>(pub(super) NameResolution<'db, 'file, 'i_s>);
 
 impl<'db: 'file, 'file, 'i_s> std::ops::Deref for Inference<'db, 'file, 'i_s> {
@@ -271,8 +272,19 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     pub(super) fn set_calculating_on_target(&self, target: Target) {
         match target {
-            Target::Name(name_def) | Target::NameExpression(_, name_def) => {
+            Target::Name(name_def) => {
                 self.set_point(name_def.index(), Point::new_calculating());
+            }
+            Target::NameExpression(_, name_def) => {
+                if !matches!(
+                    self.file
+                        .points
+                        .get(name_def.index())
+                        .maybe_calculated_and_specific(),
+                    Some(Specific::UntypedFunctionSelfAssignment)
+                ) {
+                    self.set_point(name_def.index(), Point::new_calculating());
+                }
             }
             Target::IndexExpression(_) => (),
             Target::Tuple(targets) => {
@@ -3112,7 +3124,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.infer_detailed_operation(op.index, op.infos, left, &right, result_context)
     }
 
-    fn infer_detailed_operation(
+    pub fn infer_detailed_operation(
         &self,
         error_index: NodeIndex,
         op_infos: OpInfos,
@@ -4269,18 +4281,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     self.use_cached_param_annotation(annotation)
                 } else {
                     let new_any = |param_index| {
-                        if let Some(usage) = func
-                            .type_vars(self.i_s.db)
-                            .find_untyped_param_type_var(func.as_link(), param_index)
-                        {
-                            return Type::TypeVar(usage);
-                        }
-                        if let Some(cls) = func.class
-                            && let Some(usage) = cls
-                                .type_vars(self.i_s)
-                                .find_untyped_param_type_var(cls.as_link(), param_index)
-                        {
-                            return Type::TypeVar(usage);
+                        if self.i_s.db.project.should_infer_untyped_params() {
+                            if let Some(usage) = func
+                                .type_vars(self.i_s.db)
+                                .find_untyped_param_type_var(func.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
+                            if let Some(cls) = func.class
+                                && let Some(usage) = cls
+                                    .type_vars(self.i_s)
+                                    .find_untyped_param_type_var(cls.as_link(), param_index)
+                            {
+                                return Type::TypeVar(usage);
+                            }
                         }
                         Type::Any(AnyCause::Unannotated)
                     };
@@ -4679,10 +4693,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             comp,
         );
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.list_node_ref().as_link(),
-            t,
-        ))
+        Inferred::from_type(new_class!(self.i_s.db.python_state.list_link(), t,))
     }
 
     fn infer_set_comprehension(
@@ -4699,10 +4710,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             },
             comp,
         );
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.set_node_ref().as_link(),
-            t,
-        ))
+        Inferred::from_type(new_class!(self.i_s.db.python_state.set_link(), t,))
     }
 
     pub fn infer_generator_comprehension(
@@ -4710,15 +4718,25 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         comp: Comprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let t = self.infer_comprehension_expr_with_context(
-            result_context,
-            self.i_s.db.python_state.generator_node_ref(),
-            |error_types| {
-                let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
-                IssueKind::GeneratorComprehensionMismatch { got, expected }
-            },
-            comp,
-        );
+        self.wrap_generator_comprehension_result(comp, || {
+            self.infer_comprehension_expr_with_context(
+                result_context,
+                self.i_s.db.python_state.generator_node_ref(),
+                |error_types| {
+                    let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
+                    IssueKind::GeneratorComprehensionMismatch { got, expected }
+                },
+                comp,
+            )
+        })
+    }
+
+    pub fn wrap_generator_comprehension_result(
+        &self,
+        comp: Comprehension,
+        infer: impl FnOnce() -> Type,
+    ) -> Inferred {
+        let t = infer();
         let (named_expr, for_if_clauses) = comp.unpack();
         let is_async = named_expr.has_await()
             || for_if_clauses
@@ -4959,7 +4977,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
 fn get_generator_return_type(i_s: &InferenceState, had_issue: &impl Fn(), t: &Type) -> Type {
     match t {
         Type::Class(c) => {
-            if c.link == i_s.db.python_state.generator_link() {
+            if i_s.db.python_state.is_generator(c.link) {
                 c.class(i_s.db).nth_type_argument(i_s.db, 2)
             } else {
                 had_issue();

@@ -897,6 +897,17 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_left_of_primary(&self) -> Option<Primary<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) || parent.is_type(Nonterminal(primary)) {
+            let par_par = parent.parent().unwrap();
+            if par_par.is_type(Nonterminal(primary)) {
+                return Some(Primary::new(par_par));
+            }
+        }
+        None
+    }
+
     pub fn maybe_assignment_definition_name(&self) -> Option<Assignment<'db>> {
         self.name_def()?.maybe_assignment_definition()
     }
@@ -938,7 +949,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_as_param_of_function(&self) -> FunctionDef<'db> {
-        let params = self
+        let mut params = self
             .node
             .parent()
             .unwrap()
@@ -946,6 +957,9 @@ impl<'db> Name<'db> {
             .unwrap()
             .parent()
             .unwrap();
+        if params.is_type(Nonterminal(star_etc)) {
+            params = params.parent().unwrap();
+        }
         debug_assert_eq!(params.type_(), Nonterminal(parameters));
         let func_node = params.parent().unwrap().parent().unwrap();
         FunctionDef::new(func_node)
@@ -2386,6 +2400,10 @@ impl<'db> ClassDef<'db> {
         let closing_paren = iterator.skip(1).next().unwrap();
         Some(opening_paren.start()..closing_paren.end())
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);
@@ -3317,6 +3335,19 @@ impl<'db> ImportFromAsName<'db> {
 }
 
 impl<'db> DottedImportName<'db> {
+    pub fn maybe_part_of_import_name(&self) -> Option<NameDef<'db>> {
+        let prev = self.node.previous_leaf()?;
+        if prev.as_code() != "." {
+            return None;
+        }
+        let prev_prev = prev.previous_leaf()?;
+        if prev_prev.is_type(Terminal(TerminalType::Name)) {
+            Name::new(prev_prev).name_def()
+        } else {
+            None
+        }
+    }
+
     pub fn unpack(&self) -> DottedImportNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();
@@ -3562,6 +3593,10 @@ impl<'db> Primary<'db> {
         let last = self.node.iter_children().last().unwrap();
         debug_assert_eq!(last.as_code(), ")");
         last.index
+    }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
     }
 }
 
@@ -4680,6 +4715,7 @@ fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option
     (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
 }
 
+#[derive(Debug)]
 pub enum NameDefParent {
     Primary,
     GlobalStmt,

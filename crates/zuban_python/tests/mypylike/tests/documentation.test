@@ -808,3 +808,524 @@ __main__.py:20:documentation -> "```python\n(param) other: Self\n```\n---\n*Self
 __main__.py:24:documentation -> "```python\n(variable) new_var: Self\n```\n---\n*Self is class F*"
 __main__.py:30:documentation -> "```python\n(class) Self\n```\n---\n*Self is class C*:\ndoc"
 __main__.py:33:documentation -> "```python\n(param) self: Self\n```\n---\n*Self is class C*:\ndoc"
+
+[case docs_for_untyped_with_possible_type_no_mypy_compatible]
+# flags: --only-language-server --mode default
+class X:
+    def __init__(self, x):
+        self.x1 = x if bool() else 1
+        #? documentation
+        self.x2 = x
+
+#? documentation
+X(1.0).x1
+#? documentation
+X("").x2
+#? documentation
+X(1).x2
+
+#? documentation
+def f(x): return x
+
+f(X(""))
+f(X(1))
+
+[out]
+__main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1] | float\n```"
+__main__.py:9:documentation -> "```python\n(variable) x1: Any | int\n\nMight be: float | int\n```"
+__main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
+__main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
+__main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
+
+[case docs_for_untyped_with_possible_type_mypy_compatible]
+# flags: --only-language-server --mode mypy
+class X:
+    def __init__(self, x):
+        self.x1 = x if bool() else 1
+        #? documentation
+        self.x2 = x
+
+#? documentation
+X(1.0).x1
+#? documentation
+X("").x2
+#? documentation
+X(1).x2
+
+#? documentation
+def f(x): return x
+
+f(X(""))
+f(X(1))
+
+[out]
+__main__.py:6:documentation -> "```python\n(param) x: Any\n\nMight be: Literal['', 1] | float\n```"
+__main__.py:9:documentation -> "```python\n(variable) x1: Any\n\nMight be: float | int\n```"
+__main__.py:11:documentation -> "```python\n(variable) x2: Any\n\nMight be: str\n```"
+__main__.py:13:documentation -> "```python\n(variable) x2: Any\n\nMight be: int\n```"
+__main__.py:16:documentation -> "```python\n(param) x: Any\n\nMight be: X\n```"
+
+[case docs_for_untyped_with_possible_type_should_not_be_any]
+#? documentation
+def f(x): return x
+f(undefined)  # E: Name "undefined" is not defined
+
+[out]
+__main__.py:2:documentation -> "```python\n(param) x: Any\n```"
+
+[case docs_for_untyped_with_possible_type_should_not_be_the_same_as_previously]
+def f(x):
+    y = [x]
+    #? documentation
+    return y
+f(undefined)  # E: Name "undefined" is not defined
+
+[out]
+__main__.py:4:documentation -> "```python\n(variable) y: list[Any]\n```"
+
+[case docs_for_untyped_with_possible_type_should_not_self]
+class C:
+    def f(self):
+        g(self)
+
+def g(x):
+    #? documentation
+    x
+
+[out]
+__main__.py:7:documentation -> "```python\n(param) x: Any\n\nMight be: C\n```"
+
+[case docs_for_untyped_site_packages1]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def import_from() -> None:
+    #? documentation
+    from pkg_untyped import pkg_untyped_var
+
+    #? --codepoint-column 11 documentation
+    from pkg_untyped import pkg_untyped_var
+    #? documentation
+    pkg_untyped_var
+
+    #? documentation
+    from pkg_untyped import pkg_untyped_var as imp1
+    #? --codepoint-column 40 documentation
+    from pkg_untyped import pkg_untyped_var as imp2
+
+def import_as() -> None:
+    #? documentation
+    import pkg_untyped
+    #? documentation
+    pkg_untyped
+
+    #? documentation
+    import pkg_untyped as imp1
+    #? --codepoint-column 15 documentation
+    import pkg_untyped as imp2
+
+def star_import() -> None:
+    #? --codepoint-column 11 documentation
+    from pkg_untyped import *
+    # TODO #? documentation
+    pkg_untyped_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:documentation -> "```python\n(variable) pkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:9:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:11:documentation -> "```python\n(variable) pkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:14:documentation -> "```python\n(variable) imp1: Any\n\nMight be: str\n```"
+__main__.py:16:documentation -> "```python\n(variable) pkg_untyped_var: Any\n\nMight be: str\n```"
+__main__.py:20:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:22:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:25:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:27:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:31:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+
+[case docs_for_untyped_site_packages2]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def import_from() -> None:
+    #? documentation
+    from pkg_untyped.b.c import c_var
+    #? documentation
+    c_var
+    #? documentation
+    from pkg_untyped.b import c
+    #? documentation
+    c
+    #? documentation
+    from pkg_untyped.b.c import c_var as cvar2
+    #? documentation
+    cvar2
+
+    #? --codepoint-column 15 documentation
+    from pkg_untyped.b.c import c_var as cvar3
+    #? --codepoint-column 22 documentation
+    from pkg_untyped.b.c import c_var as cvar4
+    #? --codepoint-column 23 documentation
+    from pkg_untyped.b.c import c_var as cvar5
+    #? --codepoint-column 35 documentation
+    from pkg_untyped.b.c import c_var as cvar6
+
+def import_as() -> None:
+    #? documentation
+    import pkg_untyped.b.c
+    #? documentation
+    pkg_untyped
+    #? documentation
+    pkg_untyped.b
+    #? documentation
+    pkg_untyped.b.c
+    #? documentation
+    pkg_untyped.b.c.c_var
+
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c
+    #? --codepoint-column 24 documentation
+    import pkg_untyped.b.c
+
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c as imp1
+    #? --codepoint-column 23 documentation
+    import pkg_untyped.b.c as imp2
+    #? --codepoint-column 26 documentation
+    import pkg_untyped.b.c as imp3
+    #? documentation
+    imp3
+
+def import_as_with_syntax_error() -> None:
+    #? --codepoint-column 15 documentation
+    import pkg_untyped.b.c.
+    #? --codepoint-column 24 documentation
+    import pkg_untyped.b.c.
+
+def star_import() -> None:
+    #? --codepoint-column 11 documentation
+    from pkg_untyped.b.c import *
+    # TODO #? documentation
+    c_var
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:8:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:10:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:12:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:14:documentation -> "```python\n(variable) cvar2: Any\n\nMight be: str\n```"
+__main__.py:16:documentation -> "```python\n(variable) cvar2: Any\n\nMight be: str\n```"
+__main__.py:19:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:21:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:23:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:25:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:29:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:31:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:33:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:35:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:37:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:40:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:42:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:45:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+__main__.py:47:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b\n```"
+__main__.py:49:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:51:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped.b.c\n```"
+__main__.py:55:documentation -> "```python\n(variable) pkg_untyped: Any\n```"
+__main__.py:57:documentation -> "```python\nb: Any\n```"
+__main__.py:61:documentation -> "```python\n(module) Any\n\nMight be: module pkg_untyped\n```"
+
+[case docs_for_untyped_site_packages3]
+# pkgs: modulefinder-site-packages
+# flags: --only-language-server --no-typecheck
+
+def star_import1() -> None:
+    #? --codepoint-column 21 documentation
+    from ns_pkg_untyped.b import *
+    # TODO #? documentation
+    c
+
+def star_import2() -> None:
+    #? --codepoint-column 27 documentation
+    from ns_pkg_untyped.b.c import *
+    #? --codepoint-column 10 documentation
+    from ns_pkg_untyped.untyped import *
+
+def import_name() -> None:
+    #? documentation
+    import ns_pkg_untyped
+    #? documentation
+    ns_pkg_untyped.b
+    #? documentation
+    ns_pkg_untyped.b.c.c_var
+    #? documentation
+    import ns_pkg_untyped.b.c
+    #? documentation
+    import ns_pkg_untyped.b.c as imp
+    #? documentation
+    imp
+    #? documentation
+    imp.c_var
+
+#? documentation
+from ns_pkg_untyped.b import c
+#? documentation
+c.c_var
+
+#? documentation
+from ns_pkg_untyped import b as imported1
+#? --codepoint-column 28 documentation
+from ns_pkg_untyped import b as imported2
+
+#? documentation
+from ns_pkg_untyped.b import c as imported3
+#? --codepoint-column 30 documentation
+from ns_pkg_untyped.b import c as imported4
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:6:documentation -> "```python\n(namespace) ns_pkg_untyped\n```"
+__main__.py:12:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:14:documentation -> "```python\n(namespace) ns_pkg_untyped\n```"
+__main__.py:18:documentation -> "```python\n(namespace) ns_pkg_untyped\n```"
+__main__.py:20:documentation -> "```python\n(namespace) ns_pkg_untyped.b\n```"
+__main__.py:22:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:24:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:26:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:28:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:30:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:33:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:35:documentation -> "```python\n(variable) c_var: Any\n\nMight be: str\n```"
+__main__.py:38:documentation -> "```python\n(namespace) ns_pkg_untyped.b\n```"
+__main__.py:40:documentation -> "```python\n(namespace) ns_pkg_untyped.b\n```"
+__main__.py:43:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+__main__.py:45:documentation -> "```python\n(module) Any\n\nMight be: module ns_pkg_untyped.b.c\n```"
+
+[case docs_for_untyped_site_packages4]
+# pkgs: simple-file-with-class
+# flags: --only-language-server
+import basedep
+from basedep import BaseDep
+
+def f(
+    #? documentation
+    x: basedep.BaseDep
+    ,
+    #? documentation
+    y: BaseDep
+): ...
+
+#? documentation
+class C1(basedep.BaseDep
+): ...
+
+#? documentation
+class C2(BaseDep
+): ...
+
+#? documentation
+C1.class_var
+
+#? documentation
+BaseDep.class_var
+#? documentation
+BaseDep().class_var
+#? documentation
+BaseDep(1).x
+#? documentation
+BaseDep().x
+
+#? documentation
+basedep.func1(b'')
+#? documentation
+basedep.func2(1)
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[out]
+__main__.py:8:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
+__main__.py:11:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
+__main__.py:15:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
+__main__.py:19:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
+__main__.py:23:documentation -> "```python\nclass_var: Any\n```"
+__main__.py:26:documentation -> "```python\n(variable) class_var: Any\n\nMight be: int\n```"
+__main__.py:28:documentation -> "```python\n(variable) class_var: Any\n\nMight be: int\n```"
+__main__.py:30:documentation -> "```python\n(variable) x: Any\n\nMight be: int\n```"
+__main__.py:32:documentation -> "```python\n(variable) x: Any\n\nMight be: float\n```"
+__main__.py:35:documentation -> "```python\nAny\n\nMight be: tuple[bytes, int]\n```"
+__main__.py:37:documentation -> "```python\nAny\n\nMight be: str\n```"
+
+[case docs_for_unchecked_functions]
+# flags: --allow-redefinition --no-check-untyped-defs
+
+def foo1(a):
+    1()
+    x = 1()
+    return x, a
+
+def foo2(a):
+    if bool():
+        x = 1
+    else:
+        x = ""
+    return 1(), a, x
+
+def empty_end(a):
+    if bool():
+        return a
+
+def no_return(a):
+    raise NotImplementedError
+
+#? documentation
+foo1(1)
+#? documentation
+foo2(1)
+#? documentation
+foo2("")
+#? documentation
+empty_end("")
+#? documentation
+no_return(1)
+
+[out]
+__main__.py:23:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:25:documentation -> "```python\nAny\n\nMight be: tuple[Any, int, int | str]\n```"
+__main__.py:27:documentation -> "```python\nAny\n\nMight be: tuple[Any, str, int | str]\n```"
+__main__.py:29:documentation -> "```python\nAny\n\nMight be: str\n```"
+__main__.py:31:documentation -> "```python\nAny\n```"
+
+[case docs_in_unchecked_functions]
+# flags: --only-language-server --allow-redefinition --no-check-untyped-defs
+def foo1(a):
+    1()
+    x = 1()
+    #? documentation
+    x
+    #? documentation
+    return x, a
+
+def foo2(a):
+    if bool():
+        x = 1
+    else:
+        x = ""
+    #? documentation
+    return x
+
+def empty_end(a):
+    if bool():
+        #? documentation
+        return a
+
+def no_return(a):
+    #? documentation
+    raise NotImplementedError
+
+foo1(1)
+empty_end("")
+empty_end(1)
+
+[out]
+__main__.py:6:documentation -> "```python\n(variable) x: Any\n```"
+__main__.py:8:documentation -> "```python\n(param) a: Any\n\nMight be: int\n```"
+__main__.py:16:documentation -> "```python\n(variable) x: int | str\n```"
+__main__.py:21:documentation -> "```python\n(param) a: Any\n\nMight be: Literal['', 1]\n```"
+__main__.py:25:documentation -> "```python\n(class) NotImplementedError(*args: object) -> NotImplementedError\n```"
+
+[case docs_for_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
+
+class C:
+    def f(self, a):
+        1()
+        x = 1()
+        return x, a
+
+class D:
+    def __init__(self, a):
+        1()
+        first = 1()
+        self.x = 1(), self.other, first, a
+        self.a = a
+
+    def g(self):
+        other = 1
+        self.other = 1(), other
+
+    def f(self, a):
+        this = 1()
+        return 1(), self.x, "" + a, this
+
+#? documentation
+C().f(1)
+#? documentation
+D(1).x
+#? documentation
+D("").x
+#? documentation
+D(1.0).f(1)
+#? documentation
+D(1.0).f("s")
+#? documentation
+D(1).a
+
+[out]
+__main__.py:25:documentation -> "```python\nAny\n\nMight be: tuple[Any, int]\n```"
+__main__.py:27:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, int]\n```"
+__main__.py:29:documentation -> "```python\n(variable) x: Any\n\nMight be: tuple[Any, tuple[Any, int], Any, str]\n```"
+__main__.py:31:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], Any, Any]\n```"
+__main__.py:33:documentation -> "```python\nAny\n\nMight be: tuple[Any, tuple[Any, tuple[Any, int], Any, float], str, Any]\n```"
+__main__.py:35:documentation -> "```python\n(variable) a: Any\n\nMight be: int\n```"
+
+[case docs_in_unchecked_methods]
+# flags: --only-language-server --no-check-untyped-defs
+
+class C:
+    def __init__(self, a):
+        1()
+        first = 1(), 1
+        #? documentation
+        first
+        self.a = a
+
+    def g(self):
+        #? documentation
+        self.a
+        self.in_g = b''
+
+    def f(self, a):
+        this = 1()
+        x = (self.in_g, a, this)
+        #? documentation
+        return x
+
+C(1.0).f(1)
+C(1.0).f("s")
+
+[out]
+__main__.py:8:documentation -> "```python\n(variable) first: tuple[Any, int]\n```"
+__main__.py:13:documentation -> "```python\n(variable) a: Any\n\nMight be: float\n```"
+__main__.py:20:documentation -> "```python\n(variable) x: tuple[Any, Any, Any]\n\nMight be: tuple[bytes, Literal[1, 's'], Any]\n```"
+
+[case docs_for_untyped_any]
+def f(x):
+    return x
+
+#? documentation
+f()
+
+[out]
+__main__:5: error: Missing positional argument "x" in call to "f"
+__main__.py:5:documentation -> "```python\nAny\n```"

@@ -634,7 +634,7 @@ x |= (_ async for _ in _)
 [out]
 __main__:2: error: Name "y" is not defined
 __main__:3: error: Name "_" is not defined
-__main__:4: error: No overload variant of "__ior__" of "dict" matches argument type "AsyncGenerator[Any, None]"
+__main__:4: error: No overload variant of "__ior__" of "dict" matches argument type "AsyncGeneratorType[Any, None]"
 __main__:4: note: Possible overload variants:
 __main__:4: note:     def __ior__(self, SupportsKeysAndGetItem[Any, type[int]], /) -> Self
 __main__:4: note:     def __ior__(self, Iterable[tuple[Any, type[int]]], /) -> Self

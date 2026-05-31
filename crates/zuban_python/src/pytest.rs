@@ -39,7 +39,7 @@ pub(crate) fn maybe_infer_pytest_param(
     let mut t = func.inferred_return_type(i_s);
     debug!("Executed pytest fixture: {}", t.format_short(db));
     if let Type::Class(c) = t.as_ref()
-        && c.link == db.python_state.generator_link()
+        && db.python_state.is_generator(c.link)
     {
         t = Cow::Owned(c.class(db).nth_type_argument(db, 0));
     }

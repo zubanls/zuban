@@ -131,3 +131,33 @@ __main__.py:7:call signatures:
 - "(xyz: Any) -> None", valid with params: true, on nth param: Some(0)
 __main__.py:10:call signatures:
 - "(xyz: Any) -> None", valid with params: true, on nth param: Some(0)
+
+[case signatures_in_unchecked_funcs]
+# flags: --no-typecheck  --no-check-untyped-defs
+import sys
+
+def f(a):
+    something
+def g(a: str) -> int: ...
+
+def foo(xyz):
+    #? signatures
+    f(
+    )
+    #? signatures
+    g(
+    )
+
+class C:
+    def f(self):
+        #? signatures
+        self.g(
+
+    def g(self, x): ...
+[out]
+__main__.py:10:call signatures:
+- "(a: Any) -> Any", valid with params: true, on nth param: Some(0)
+__main__.py:13:call signatures:
+- "(a: str) -> int", valid with params: true, on nth param: Some(0)
+__main__.py:19:call signatures:
+- "(x: Any) -> Any", valid with params: true, on nth param: Some(0)

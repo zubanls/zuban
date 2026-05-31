@@ -12,6 +12,7 @@ mod file;
 mod format_data;
 mod getitem;
 mod goto;
+mod heuristic_infer;
 mod imports;
 mod inference_state;
 mod inferred;
@@ -64,7 +65,7 @@ use matching::invalidate_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::{node_ref::NodeRef, select_files::all_typechecked_files};
+use crate::{goto::HeuristicDetail, node_ref::NodeRef, select_files::all_typechecked_files};
 
 pub struct Project {
     db: Database,
@@ -292,11 +293,12 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         goal: GotoGoal,
+        use_heuristics: bool,
         on_name: impl for<'a> FnMut(ValueName) -> T,
     ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
-                .infer_definition()
+                .infer_definition(use_heuristics.then_some(HeuristicDetail::Shallow))
                 .1,
         )
     }

@@ -272,7 +272,7 @@ def enum_test(e: Enum1, f: FunctionalEnum):
     e
     #? value_b()
     e.value_b
-    #! ["value_b = "value_a""]
+    #! ['value_b = "value_a"']
     e.value_b
 
     #? ['item_a', 'item_b']
@@ -281,7 +281,7 @@ def enum_test(e: Enum1, f: FunctionalEnum):
     f
     #? FunctionalEnum()
     f.item_b
-    #! [""FunctionalEnum""]
+    #! ['"FunctionalEnum"']
     f.item_b
 
 from typing import TypedDict, NamedTuple

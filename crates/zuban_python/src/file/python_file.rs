@@ -460,6 +460,10 @@ impl<'db> PythonFile {
         (entry, is_package_name(entry))
     }
 
+    pub fn has_calculated_diagnostics(&self) -> bool {
+        self.points.get(0).calculated() && self.delayed_diagnostics.read().unwrap().is_empty()
+    }
+
     pub fn ensure_calculated_diagnostics(&self, db: &Database) -> Result<(), ()> {
         self.inference(&InferenceState::new(db, self))
             .calculate_module_diagnostics()
@@ -540,6 +544,11 @@ impl<'db> PythonFile {
         self.stub_cache.is_some()
     }
 
+    #[inline]
+    pub fn is_builtins(&self, db: &Database) -> bool {
+        self.file_index == db.python_state.builtins().file_index
+    }
+
     pub fn normal_file_of_stub_file(&self, db: &'db Database) -> Option<&'db PythonFile> {
         let stub_cache = self.stub_cache.as_ref()?;
         let file_index = *stub_cache.non_stub.get_or_init(|| {
@@ -560,8 +569,7 @@ impl<'db> PythonFile {
                     assert_ne!(file_index, self.file_index);
                     Some(file_index)
                 }
-                ImportResult::Namespace(_) => None,
-                ImportResult::PyTypedMissing => unreachable!(),
+                _ => None,
             }
         });
         db.ensure_file_for_file_index(file_index?).ok()
@@ -585,8 +593,7 @@ impl<'db> PythonFile {
         } else {
             match ImportResult::import_stub_for_non_stub_package(db, self, parent_dir, name)? {
                 ImportResult::File(file_index) => file_index,
-                ImportResult::Namespace(_) => return None,
-                ImportResult::PyTypedMissing => unreachable!(),
+                _ => return None,
             }
         };
         let loaded = db.ensure_file_for_file_index(file_index).ok()?;

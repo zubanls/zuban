@@ -15,17 +15,17 @@ else:
 x = 1
 try:
     x = ''
-#? 8 int() str()
+#? 8 int()
 except x:
     #? 5 int() str()
     x
     x = 1.0
 else:
-    #? 5 int() str()
+    #? 5 str()
     x
     x = list
 finally:
-    #? 5 int() str() float() list
+    #? 5 float() list
     x
     x = tuple
 
@@ -160,25 +160,26 @@ if 2 == True:
 elif 1 == True:
     a = 0
 
-#? int()
+# zuban-diff: #? int()
+#? int() list() set
 a
 if check != 1:
     a = ''
-#? int() str()
+#? str()
 a
 if check == check:
     a = list
-#? list
+#? str() list
 a
 if check != check:
     a = set
 else:
     a = dict
-#? dict
+#? set dict
 a
 if not (check is not check):
     a = 1
-#? int()
+#? int() set dict
 a
 
 
@@ -186,30 +187,30 @@ a
 # name resolution
 # -----------------
 
-a = list
+a2 = list
 def elif_name(x):
     try:
         if True:
-            a = 1
+            a2 = 1
         elif 0:
-            a = 1.0
+            a2 = 1.0
         else:
             return ''
     except ValueError:
-        a = x
-    return a
+        a2 = x
+    return a2
 
 # zuban-diff: #? int() set
 #? int() set str()
 elif_name(set)
 
 if 0:
-    a = ''
+    a3 = ''
 else:
-    a = int
+    a3 = int
 
 #? int
-a
+a3
 
 # -----------------
 # isinstance
@@ -286,11 +287,12 @@ if False:
 class X():
     pass
 if X:
-    a = 1
+    a4 = 1
 else:
-    a = ''
-#? int()
-a
+    a4 = ''
+# zuban-diff: #? int()
+#? int() str()
+a4
 
 
 # -----------------
@@ -320,11 +322,12 @@ possible_recursion_error(s)
 from import_tree import flow_import
 
 if 1 == flow_import.env:
-    a = 1
+    a5 = 1
 elif 2 == flow_import.env:
-    a = ''
+    a5 = ''
 elif 3 == flow_import.env:
-    a = 1.0
+    a5 = 1.0
 
-#? int() str()
-a
+# zuban-diff: #? int() str()
+#? int() str() float()
+a5

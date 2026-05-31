@@ -213,7 +213,7 @@ pub(crate) enum GenericItem {
 }
 
 impl GenericItem {
-    fn maybe_any(&self) -> Option<AnyCause> {
+    pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
             Self::TypeArg(Type::Any(cause)) => Some(*cause),
             Self::TypeArg(_) => None,
@@ -688,6 +688,24 @@ impl Type {
     pub fn is_any_or_any_in_union(&self, db: &Database) -> bool {
         self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::Any(_)))
+    }
+
+    pub fn maybe_remove_any(&self, db: &Database) -> Option<Self> {
+        if !self.is_any_or_any_in_union(db) {
+            return None;
+        }
+        let might_have_defined_type_vars = match self {
+            Type::Union(u) => u.might_have_type_vars,
+            Type::Any(_) => false,
+            _ => true,
+        };
+        Some(Type::from_union_entries(
+            self.iter_with_unpacked_union_entries(db, true)
+                .filter(|e| !matches!(e.type_, Type::Any(_)))
+                .map(|e| e.into())
+                .collect(),
+            might_have_defined_type_vars,
+        ))
     }
 
     pub fn is_type_of_any(&self) -> bool {
@@ -1906,10 +1924,14 @@ impl Type {
         return_type: impl FnOnce() -> Type,
     ) -> Self {
         if is_async {
-            new_class!(db.python_state.async_generator_link(), self, Type::None,)
+            new_class!(
+                db.python_state.async_generator_type_link(),
+                self,
+                Type::None,
+            )
         } else {
             new_class!(
-                db.python_state.generator_link(),
+                db.python_state.generator_type_link(),
                 self,
                 Type::None,
                 return_type()

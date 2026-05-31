@@ -74,21 +74,21 @@ def alias_as_import_from():
 def import_from_multi1():
     from import_tree.mod1 import \
         a as a1,foobarbaz,undefined
-    #! ['from import_tree.mod1 import \']
+    #! ['from import_tree.mod1 import \\']
     a1
     #! --follow-imports ["a = 1"]
     a1
 
-    #! ['from import_tree.mod1 import \']
+    #! ['from import_tree.mod1 import \\']
     foobarbaz
     #! --follow-imports ["foobarbaz = 3.0"]
     foobarbaz
     #? float()
     foobarbaz
 
-    #! ['from import_tree.mod1 import \']
+    #! ['from import_tree.mod1 import \\']
     undefined
-    #! ['from import_tree.mod1 import \']
+    #! ['from import_tree.mod1 import \\']
     undefined
     #?
     undefined

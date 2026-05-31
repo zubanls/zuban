@@ -7,7 +7,10 @@ use utils::AlreadySeen;
 use vfs::FileIndex;
 
 use crate::{
-    database::{Database, Locality, Point, PointKind, PointLink, Specific},
+    RunCause,
+    database::{
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, PyTypedMissing, Specific,
+    },
     debug,
     diagnostics::IssueKind,
     file::{File, python_file::DunderAllState},
@@ -16,7 +19,7 @@ use crate::{
     inferred::Inferred,
     node_ref::NodeRef,
     recoverable_error,
-    type_::{LookupResult, Type},
+    type_::LookupResult,
     utils::is_magic_method,
 };
 
@@ -24,8 +27,8 @@ use super::{ClassInitializer, PythonFile, python_file::StarImport};
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {
-    pub(super) file: &'file PythonFile,
-    pub(super) i_s: &'i_s InferenceState<'db, 'i_s>,
+    pub file: &'file PythonFile,
+    pub i_s: &'i_s InferenceState<'db, 'i_s>,
     // Type computation uses alias calculation, which works in a different way than normal
     // inference. Therefore we want to stop and return the assignment.
     pub(super) stop_on_assignments: bool,
@@ -243,12 +246,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         import_name: Name,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let name = import_name.as_str();
-        let convert_imp_result =
-            |imp_result: LoadedImportResult| match imp_result.into_import_result() {
-                ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-                ImportResult::Namespace(ns) => Inferred::from_type(Type::Namespace(ns)),
-                ImportResult::PyTypedMissing => Inferred::new_any_from_error(),
-            };
+        let convert_imp_result = |imp_result: LoadedImportResult| {
+            imp_result.into_import_result().into_inferred(self.i_s.db)
+        };
         Some(match from_first_part {
             ImportResult::File(file_index) => {
                 // Coming from an import we need to make sure that we do not create loops for imports
@@ -273,7 +273,35 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 )?)),
                 None,
             ),
-            ImportResult::PyTypedMissing => (
+            ImportResult::PyTypedMissing(file_index) => {
+                if matches!(self.i_s.db.run_cause, RunCause::LanguageServer)
+                    && self.file.file_index != *file_index
+                    && let import_file = self.i_s.db.loaded_python_file(*file_index)
+                    && let Some((_, Some(access))) = self
+                        .with_new_file(import_file)
+                        .resolve_module_access(name, |kind| {
+                            self.add_issue(import_name.index(), kind)
+                        })
+                {
+                    (
+                        PointResolution::Inferred(Inferred::new_unsaved_complex(
+                            ComplexPoint::PyTypedMissing(match access {
+                                ModuleAccessDetail::OnName(link) => PyTypedMissing::Link(link),
+                                ModuleAccessDetail::OnFile(file_index) => {
+                                    PyTypedMissing::File(file_index)
+                                }
+                            }),
+                        )),
+                        None,
+                    )
+                } else {
+                    (
+                        PointResolution::Inferred(Inferred::new_any_from_error()),
+                        None,
+                    )
+                }
+            }
+            ImportResult::BinaryExtension => (
                 PointResolution::Inferred(Inferred::new_any_from_error()),
                 None,
             ),

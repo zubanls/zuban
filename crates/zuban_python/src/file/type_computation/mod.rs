@@ -1712,7 +1712,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::Module(file)
                         }
                         ImportResult::Namespace(ns) => TypeContent::Namespace(ns),
-                        ImportResult::PyTypedMissing => TypeContent::UNKNOWN_REPORTED,
+                        ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
+                            TypeContent::UNKNOWN_REPORTED
+                        }
                     }
                 } else {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
@@ -3564,10 +3566,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(file) = inferred.maybe_file(i_s.db) {
                     return Lookup::T(TypeContent::Module(i_s.db.loaded_python_file(file)));
                 }
-                if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
-                    inferred.maybe_complex_point(i_s.db)
-                {
-                    return Lookup::T(TypeContent::Namespace(ns.clone()));
+                match inferred.maybe_complex_point(i_s.db) {
+                    Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) => {
+                        return Lookup::T(TypeContent::Namespace(ns.clone()));
+                    }
+                    Some(ComplexPoint::PyTypedMissing(_)) => return Lookup::UNKNOWN_REPORTED,
+                    _ => (),
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
                     return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(
@@ -4979,7 +4983,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::AnyDueToError
         | Specific::Function
         | Specific::ModuleNotFound
-        | Specific::PyTypedMissing
+        | Specific::BinaryExtension
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithTypeVars
         | Specific::AnnotationOrTypeCommentWithoutTypeVars => return None,

@@ -113,7 +113,10 @@ impl<'file> NodeRef<'file> {
     pub fn accumulate_types(&self, i_s: &InferenceState, add: &Inferred) {
         let point = self.point();
         if point.calculated() {
-            if point.maybe_specific() == Some(Specific::Cycle) {
+            if matches!(
+                point.maybe_specific(),
+                Some(Specific::Cycle | Specific::UntypedFunctionSelfAssignment)
+            ) {
                 return;
             }
             let new = self.expect_inferred(i_s).simplified_union(i_s, add.clone());

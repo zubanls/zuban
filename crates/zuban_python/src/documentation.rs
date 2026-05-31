@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
@@ -5,13 +7,14 @@ use crate::{
     database::ComplexPoint,
     file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     format_data::FormatData,
-    goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
+    goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
     type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 impl<'project> Document<'project> {
@@ -21,6 +24,7 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let document = self.positional_document(position)?;
+        let _indent = debug_indent();
         Ok(with_i_s_non_self(
             document.db,
             document.file,
@@ -61,7 +65,7 @@ impl<'project> Document<'project> {
                 _ => n.name.documentation().to_string(),
             }
         });
-        let (inf, mut results) = resolver.infer_definition();
+        let (inf, mut results) = resolver.infer_definition(Some(HeuristicDetail::Deep));
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return None;
@@ -74,12 +78,35 @@ impl<'project> Document<'project> {
         let mut type_formatted = if only_docstrings {
             "".into()
         } else {
-            let t = inf.as_cow_type(i_s);
+            let t = inf.typed.as_cow_type(i_s);
             if let Type::Namespace(_) = t.as_ref() {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
             }
-            pretty_type_formatting(i_s, &t).into_string()
+            let mut s = pretty_type_formatting(i_s, &t, false).into_string();
+            if let Some(heuristic) = inf.heuristic {
+                let mut t = heuristic.as_cow_type(i_s);
+                let t = t.to_mut();
+                if let Type::Union(union) = t {
+                    // Here we avoid union entries that have the untyped type vars and therefore show up
+                    // as A | A.
+                    let mut previous_formatting = HashSet::new();
+                    let keep_entries = union
+                        .entries
+                        .iter()
+                        .filter(|entry| {
+                            previous_formatting.insert(entry.type_.format_short(i_s.db))
+                        })
+                        .cloned()
+                        .collect();
+                    *t = Type::from_union_entries(keep_entries, true);
+                }
+                let heuristic = pretty_type_formatting(i_s, &t, true).into_string();
+                if s != heuristic {
+                    s = format!("{s}\n\nMight be: {heuristic}")
+                }
+            }
+            s
         };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
@@ -281,7 +308,7 @@ impl<'project> Document<'project> {
     }
 }
 
-fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
+fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) -> Box<str> {
     let db = i_s.db;
     match t {
         Type::FunctionOverload(o) => format!(
@@ -304,7 +331,13 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
             }
             out.into_boxed_str()
         }
-        Type::Module(m) => db.loaded_python_file(*m).qualified_name(db).into(),
+        Type::Module(m) => {
+            let mut s = db.loaded_python_file(*m).qualified_name(db);
+            if from_heuristic {
+                s.insert_str(0, "module ");
+            }
+            s.into()
+        }
         Type::Namespace(n) => n.qualified_name().into(),
         _ => t.format_short(db),
     }

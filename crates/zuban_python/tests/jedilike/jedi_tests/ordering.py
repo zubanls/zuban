@@ -16,7 +16,8 @@ b = 1; b = ""
 b
 
 # temp should not be accessible before definition
-#? []
+# zuban-diff: #? []
+#? ['temp']
 temp
 
 a = 1
@@ -63,7 +64,7 @@ b
 # -----------------
 # function
 # -----------------
-def a(a=3):
+def a3(a=3):
     #? int()
     a
     #? []
@@ -71,9 +72,9 @@ def a(a=3):
     return a
 
 #? int()
-a(2)
+a3(2)
 #? []
-a(2).func
+a3(2).func
 
 a_param = ""
 def func(a_param):
@@ -161,14 +162,14 @@ a.real
 a.a
 
 a = 3
-class a():
+class a4():
     def __init__(self, a):
         self.a = a
 
 #? float()
-a(1.0).a
+a4(1.0).a
 #? 
-a().a
+a4().a
 
 # -----------------
 # imports

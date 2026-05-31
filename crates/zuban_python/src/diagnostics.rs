@@ -1,4 +1,12 @@
-use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::Write,
+    path::Path,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
@@ -2369,8 +2377,13 @@ impl std::fmt::Debug for Diagnostic<'_> {
     }
 }
 
-#[derive(Default, Clone)]
-pub(crate) struct Diagnostics(InsertOnlyVec<Issue>);
+#[derive(Default)]
+pub(crate) struct Diagnostics {
+    issues: InsertOnlyVec<Issue>,
+    // Issues can be finished once the whole file is checked to avoid some completion/goto add
+    // issues, especially when checking code that should not be checked in Mypy.
+    diagnostics_are_complete: AtomicBool,
+}
 
 impl Diagnostics {
     pub fn add_if_not_ignored(
@@ -2384,16 +2397,17 @@ impl Diagnostics {
             return Err(issue);
         }
         let from_name_binder = issue.from_name_binder;
-        let result = self.add(issue);
+        self.add_with_result(issue)?;
+        let last = self.issues.last().unwrap();
         if let Some(s) = add_not_covered_note {
             let rest = if in_brackets.is_empty() {
                 "".into()
             } else {
                 format!("[{}]", in_brackets.trim())
             };
-            self.0.push(Box::pin(Issue::from_start_stop(
-                result.start_position,
-                result.end_position,
+            self.issues.push(Box::pin(Issue::from_start_stop(
+                last.start_position,
+                last.end_position,
                 IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore{rest}" comment"#)
                         .into(),
@@ -2401,7 +2415,7 @@ impl Diagnostics {
                 from_name_binder,
             )));
         }
-        Ok(result)
+        Ok(last)
     }
 
     pub fn is_ignored_and_return_non_covered_error_code<'type_ignore>(
@@ -2442,17 +2456,43 @@ impl Diagnostics {
         (false, add_not_covered_note, in_brackets)
     }
 
-    pub fn add(&self, issue: Issue) -> &Issue {
-        self.0.push(Box::pin(issue));
-        self.0.last().unwrap()
+    pub fn add(&self, issue: Issue) {
+        let _ = self.add_with_result(issue);
+    }
+
+    pub fn add_with_result(&self, issue: Issue) -> Result<(), Issue> {
+        if self.diagnostics_are_complete.load(Ordering::Relaxed) {
+            Err(issue)
+        } else {
+            self.issues.push(Box::pin(issue));
+            Ok(())
+        }
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
-        unsafe { self.0.iter() }
+        unsafe { self.issues.iter() }
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
-        self.0.as_vec_mut().retain(|issue| issue.from_name_binder)
+        self.diagnostics_are_complete.store(false, Ordering::SeqCst);
+        self.issues
+            .as_vec_mut()
+            .retain(|issue| issue.from_name_binder)
+    }
+
+    pub fn set_complete_diagnostics(&self) {
+        self.diagnostics_are_complete.store(true, Ordering::SeqCst);
+    }
+}
+
+impl Clone for Diagnostics {
+    fn clone(&self) -> Self {
+        Self {
+            issues: self.issues.clone(),
+            diagnostics_are_complete: AtomicBool::new(
+                self.diagnostics_are_complete.load(Ordering::SeqCst).clone(),
+            ),
+        }
     }
 }
 

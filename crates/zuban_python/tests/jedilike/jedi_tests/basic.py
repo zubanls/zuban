@@ -117,14 +117,14 @@ for a4, (b4, c4) in (1,("", list)), (1,("", list)):
     #? list
     c4
 
-a = []
+a5 = []
 for i in [1,'']:
     #? int() str()
     i
-    a += [i]
+    a5 += [i]
 
 #? int() str()
-a[0]
+a5[0]
 
 for i in list([1,'']):
     #? int() str()
@@ -133,13 +133,13 @@ for i in list([1,'']):
 #? int() str()
 for x in [1,'']: x
 
-a = []
+a6 = []
 b = [1.0,'']
 for i in b:
-    a += [i]
+    a6 += [i]
 
 #? float() str()
-a[0]
+a6[0]
 
 for i in [1,2,3]:
     #? int()
@@ -159,8 +159,8 @@ for i in range(10):
 # ternary operator
 # -----------------
 
-a = 3
-b = '' if a else set()
+a7 = 3
+b = '' if a7 else set()
 #? str() set()
 b
 
@@ -193,7 +193,7 @@ def funct1():
     global global_dict_var
     global_dict_var = dict()
 def funct2():
-    #! ['global_dict_var', 'global_dict_var']
+    #! ['global global_dict_var']
     global global_dict_var
     #? dict()
     global_dict_var
@@ -231,9 +231,11 @@ if r:
 
 deleted_var = 3
 del deleted_var
-#?
+# zuban-diff: #?
+#? int()
 deleted_var
-#? []
+# zuban-diff: #? []
+#? ["deleted_var"]
 deleted_var
 # zuban-diff: #! []
 #! ["deleted_var = 3"]
@@ -243,7 +245,7 @@ deleted_var
 # within docstrs
 # -----------------
 
-def a():
+def a8():
     """
     #? []
     global_define
@@ -256,12 +258,12 @@ def a():
 # str literals in comment """ upper
 
 def completion_in_comment():
-    #? ['Exception']
+    #? ['Exception', 'ExceptionGroup']
     # might fail because the comment is not a leaf: Exception
     pass
 
 some_word
-#? ['Exception']
+#? ['Exception', 'ExceptionGroup']
 # Very simple comment completion: Exception
 # Commment after it
 
@@ -284,18 +286,18 @@ int().__init__
 # comments
 # -----------------
 
-class A():
+class A2():
     def __init__(self):
         self.hello = {}  # comment shouldn't be a string
 #? dict()
-A().hello
+A2().hello
 
 # -----------------
 # unicode
 # -----------------
-a = 'smörbröd'
+a9 = 'smörbröd'
 #? str()
-a
+a9
 xyz = 'smörbröd.py'
 if 1:
     #? str()
@@ -366,9 +368,9 @@ def foo(my_t: lala=some_defa, my_t2: my_typ
 #? []
 def foo(my_t: lala=some_defa, my_t
 
-#? []
+#? ["my_t", "my_t2", "my_ty", "my_type"]
 lambda my_t
-#? []
+#? ["my_t", "my_t2", "my_ty", "my_type"]
 lambda my_, my_t
 #? ['some_default']
 lambda x=some_defa
@@ -430,7 +432,7 @@ class Foo():
 with Foo() as f3:
     #? str()
     f3
-#! 14 ['with Foo() as f3: f3']
+#! 14 ['Foo() as f3']
 with Foo() as f3:
     f3
 #? 6 Foo

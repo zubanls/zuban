@@ -87,6 +87,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn from_func(db: &'db Database, func: &'a Function<'a, 'a>) -> Self {
+        Self {
+            db,
+            context: Context::Function(func),
+            mode: Mode::Normal,
+        }
+    }
+
     pub fn run_with_parent_scope<T>(
         db: &'db Database,
         file: &PythonFile,
@@ -157,7 +165,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub(crate) fn avoid_errors_within<T>(
         &self,
-        mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
         let had_error = &Cell::new(false);
         let i_s = &InferenceState {

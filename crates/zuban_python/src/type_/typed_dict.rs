@@ -29,14 +29,14 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypedDictMember {
-    pub name: StringSlice,
+    pub name: DbString,
     pub type_: Type,
     pub required: bool,
     pub read_only: bool,
 }
 
 pub(crate) struct TypedDictEntry<'x> {
-    pub name: Option<StringSlice>,
+    pub name: Option<&'x DbString>,
     pub type_: &'x Type,
     pub required: bool,
     pub read_only: bool,
@@ -45,7 +45,7 @@ pub(crate) struct TypedDictEntry<'x> {
 impl TypedDictMember {
     pub fn replace_type(&self, callable: impl FnOnce(&Type) -> Option<Type>) -> Self {
         Self {
-            name: self.name,
+            name: self.name.clone(),
             type_: callable(&self.type_).unwrap_or_else(|| self.type_.clone()),
             required: self.required,
             read_only: self.read_only,
@@ -55,7 +55,7 @@ impl TypedDictMember {
     pub fn as_keyword_param(&self) -> CallableParam {
         CallableParam {
             type_: ParamType::KeywordOnly(self.type_.clone()),
-            name: Some(DbString::StringSlice(self.name)),
+            name: Some(self.name.clone()),
             has_default: !self.required,
             might_have_type_vars: true,
         }
@@ -275,7 +275,7 @@ impl TypedDict {
         let m = self.members(db);
         if let Some(member) = m.named.iter().find(|p| p.name.as_str(db) == name) {
             Some(TypedDictEntry {
-                name: Some(member.name),
+                name: Some(&member.name),
                 type_: &member.type_,
                 required: member.required,
                 read_only: member.read_only,

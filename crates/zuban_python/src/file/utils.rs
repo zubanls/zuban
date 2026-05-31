@@ -781,6 +781,32 @@ pub fn infer_dict_like(
     }
 }
 
+pub(crate) fn maybe_func_of_self_symbol(
+    file: &PythonFile,
+    self_symbol: NodeIndex,
+) -> Option<FunctionDef<'_>> {
+    // This is due to the fact that the nodes before <name> in self.<name> are
+    // name_definition, `.` and then finally `self`.
+    let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
+    let self_point = file.points.get(self_index);
+    if !self_point.calculated() || self_point.kind() != PointKind::Redirect {
+        return None;
+    }
+    let param_name_node_ref = NodeRef::new(file, self_point.node_index());
+    (param_name_node_ref
+        .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+        .point()
+        .maybe_calculated_and_specific()?
+        == Specific::MaybeSelfParam)
+        .then(|| {
+            param_name_node_ref
+                .expect_name()
+                .expect_as_param_of_function()
+        })
+}
+
+// Implement this function essentially twice, because if we just unwrap here we lose valuable debug
+// information, and this one is also faster without a lot of branches.
 pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef<'_> {
     // This is due to the fact that the nodes before <name> in self.<name> are
     // name_definition, `.` and then finally `self`.

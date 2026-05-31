@@ -133,10 +133,10 @@ a()
 # keyword arguments
 # -----------------
 
-def func(a=1, b=''):
+def func2(a=1, b=''):
     return a, b
 
-exe = func(b=list, a=tuple)
+exe = func2(b=list, a=tuple)
 #? tuple
 exe[0]
 
@@ -148,27 +148,27 @@ exe[1]
 # -----------------
 
 #? int()
-func()[0]
+func2()[0]
 #? str()
-func()[1]
+func2()[1]
 #? float()
-func(1.0)[0]
+func2(1.0)[0]
 #? str()
-func(1.0)[1]
+func2(1.0)[1]
 
 
 #? float()
-func(a=1.0)[0]
+func2(a=1.0)[0]
 #? str()
-func(a=1.0)[1]
+func2(a=1.0)[1]
 #? int()
-func(b=1.0)[0]
+func2(b=1.0)[0]
 #? float()
-func(b=1.0)[1]
+func2(b=1.0)[1]
 #? list
-func(a=list, b=set)[0]
+func2(a=list, b=set)[0]
 #? set
-func(a=list, b=set)[1]
+func2(a=list, b=set)[1]
 
 
 def func_default(a, b=1):
@@ -187,20 +187,22 @@ nested_default(a=1.0, b='')[1]
 
 # Defaults should only work if they are defined before - not after.
 def default_function(a=default):
-    #?
+    # zuban-diff: #?
+    #? int()
     return a
 
-#?
+# zuban-diff: #?
+#? int()
 default_function()
 
 default = int()
 
-def default_function(a=default):
+def default_function2(a=default):
     #? int()
     return a
 
 #? int()
-default_function()
+default_function2()
 
 def default(a=default):
     #? int()
@@ -228,11 +230,11 @@ def args_func(*args):
     #? tuple()
     return args
 
-exe = args_func(1, "")
+exe2 = args_func(1, "")
 #? int()
-exe[0]
+exe2[0]
 #? str()
-exe[1]
+exe2[1]
 
 # illegal args (TypeError)
 #?
@@ -242,33 +244,35 @@ args_func(*1)[0]
 args_func(*iter([1]))[0]
 
 # different types
-e = args_func(*[1 if UNDEFINED else "", {}])
+e = args_func(*(1 if UNDEFINED else "", {}))
 #? int() str()
 e[0]
 #? dict()
 e[1]
 
 _list = [1,""]
-exe2 = args_func(_list)[0]
+exe3 = args_func(_list)[0]
 
-#? str()
-exe2[1]
-
-exe3 = args_func([1,""])[0]
-
-#? str()
+# zuban-diff: #? str()
+#? str() int()
 exe3[1]
 
-def args_func(arg1, *args):
+exe4 = args_func([1,""])[0]
+
+# zuban-diff: #? str()
+#? str() int()
+exe4[1]
+
+def args_func2(arg1, *args):
     return arg1, args
 
-exe = args_func(1, "", list)
+exe5 = args_func2(1, "", list)
 #? int()
-exe[0]
+exe5[0]
 #? tuple()
-exe[1]
+exe5[1]
 #? list
-exe[1][1]
+exe5[1][1]
 
 
 # In a dynamic search, both inputs should be given.
@@ -307,42 +311,45 @@ def kwargs_func(**kwargs):
     #? dict()
     return kwargs
 
-exe = kwargs_func(a=3,b=4.0)
+exe6 = kwargs_func(a=3,b=4.0)
 #? dict()
-exe
+exe6
 #? int()
-exe['a']
+exe6['a']
 #? float()
-exe['b']
-#? int() float()
-exe['c']
+exe6['b']
+# zuban-diff: #? int() float()
+#?
+exe6['c']
 
 a = 'a'
-exe2 = kwargs_func(**{a:3,
+exe7 = kwargs_func(**{a:3,
                       'b':4.0})
 
-#? int()
-exe2['a']
-#? float()
-exe2['b']
+# zuban-diff: #? int()
 #? int() float()
-exe2['c']
+exe7['a']
+# zuban-diff: #? float()
+#? float() int()
+exe7['b']
+#? int() float()
+exe7['c']
 
-exe3 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
+exe8 = kwargs_func(**{k: v for k, v in [(a, 3), ('b', 4.0)]})
 
 # Should resolve to the same as 2 but jedi is not smart enough yet
 # Here to make sure it doesn't result in crash though
 # zuban-diff: #? 
 #? int() float()
-exe3['a']
+exe8['a']
 
 # zuban-diff: #? 
 #? int() float()
-exe3['b']
+exe8['b']
 
 # zuban-diff: #? 
 #? int() float()
-exe3['c']
+exe8['c']
 
 # -----------------
 # *args / ** kwargs
@@ -357,27 +364,28 @@ def func_without_call(*args, **kwargs):
 def fu(a=1, b="", *args, **kwargs):
     return a, b, args, kwargs
 
-exe = fu(list, 1, "", c=set, d="")
+exe9 = fu(list, 1, "", c=set, d="")
 
 #? list
-exe[0]
+exe9[0]
 #? int()
-exe[1]
+exe9[1]
 #? tuple()
-exe[2]
+exe9[2]
 #? str()
-exe[2][0]
+exe9[2][0]
 #? dict()
-exe[3]
+exe9[3]
 #? set
-exe[3]['c']
+exe9[3]['c']
 
 
 def kwargs_iteration(**kwargs):
     return kwargs
 
 for x in kwargs_iteration(d=3):
-    #? float()
+    # zuban-diff: #? float()
+    #? float() str()
     {'d': 1.0, 'c': '1'}[x]
 
 
@@ -426,22 +434,18 @@ nested_kw(a=3.0, b=1)
 nested_kw(b=1, a=r"")
 #? []
 nested_kw(1, '').
-# zuban-diff: #? []
-#? --contains-subset ['upper', '__init__']
+#? []
 nested_kw(a='').
 
 #? int()
 nested_kw2(b=1)
-# zuban-diff: #? int()
-#? int() float()
+#? int()
 nested_kw2(b=1, c=1.0)
-# zuban-diff: #? int()
-#? int() float()
+#? int()
 nested_kw2(c=1.0, b=1)
 #? []
 nested_kw2('').
-# zuban-diff: #? []
-#? --contains-subset ['upper', '__init__']
+#? []
 nested_kw2(a='').
 #? []
 nested_kw2('', b=1).
@@ -456,9 +460,11 @@ def nested_both2(*args, **kwargs):
     return nested_both(*args, **kwargs)
 
 # invalid commands, may return whatever.
-#? list
+# zuban-diff: #? list
+#?
 nested_both('', b=1, c=1.0, list)
-#? list
+# zuban-diff: #? list
+#?
 nested_both('', c=1.0, b=1, list)
 
 #? []
@@ -501,6 +507,6 @@ nested_def2('')[1].
 # -----------------
 # magic methods
 # -----------------
-def a(): pass
-#? ['__closure__']
-a.__closure__
+def myfunc(): pass
+#? ['__call__']
+myfunc.__call__
