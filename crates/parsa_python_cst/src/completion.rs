@@ -455,22 +455,6 @@ impl<'db> Scope<'db> {
             Scope::Lambda(_) => "Lambda".into(),
         }
     }
-
-    pub fn most_outer_function(self) -> Option<FunctionDef<'db>> {
-        let mut most_outer_function = None;
-        let mut scope = self;
-        loop {
-            match scope {
-                Scope::Function(func) => {
-                    most_outer_function = Some(func);
-                    scope = func.parent_scope()
-                }
-                Scope::Module => return most_outer_function,
-                Scope::Class(class_def_) => scope = class_def_.parent_scope(),
-                Scope::Lambda(lambda_) => scope = lambda_.parent_scope(),
-            }
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]

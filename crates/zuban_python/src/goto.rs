@@ -196,11 +196,34 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
 
 impl<'db, T> PositionalDocument<'db, T> {
     pub fn ensure_scope_diagnostics(&self) {
-        let result = self.file.ensure_calculated_diagnostics(self.db);
+        let result = if self.db.project.flags.check_untyped_defs {
+            self.file.ensure_module_symbols_flow_analysis(self.db)
+        } else {
+            // Check everything, because files are otherwise in a weird state.
+            self.file.ensure_calculated_diagnostics(self.db)
+        };
         debug_assert!(result.is_ok());
-        if let Some(func) = self.scope.most_outer_function() {
+        self.ensure_function_diagnostics(self.scope)
+    }
+
+    fn ensure_function_diagnostics(&self, scope: Scope) {
+        // First cache the parents and then after that the current scope
+        self.ensure_function_diagnostics(match scope {
+            Scope::Function(func) => func.parent_scope(),
+            Scope::Module => return,
+            Scope::Class(class_def_) => class_def_.parent_scope(),
+            Scope::Lambda(lambda_) => lambda_.parent_scope(),
+        });
+        if let Scope::Function(func) = scope {
             let func =
                 Function::new_with_unknown_parent(self.db, NodeRef::new(self.file, func.index()));
+            let i_s = if let Some(cls) = &func.class {
+                InferenceState::from_class(self.db, cls)
+            } else {
+                InferenceState::new(self.db, func.node_ref.file)
+            };
+            let result = self.file.inference(&i_s).ensure_func_diagnostics(func);
+            debug_assert!(result.is_ok());
             func.ensure_checked_untyped_function_for_heuristics(self.db);
         }
     }
