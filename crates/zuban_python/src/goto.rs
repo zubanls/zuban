@@ -217,12 +217,7 @@ impl<'db, T> PositionalDocument<'db, T> {
         if let Scope::Function(func) = scope {
             let func =
                 Function::new_with_unknown_parent(self.db, NodeRef::new(self.file, func.index()));
-            let i_s = if let Some(cls) = &func.class {
-                InferenceState::from_class(self.db, cls)
-            } else {
-                InferenceState::new(self.db, func.node_ref.file)
-            };
-            let result = self.file.inference(&i_s).ensure_func_diagnostics(func);
+            let result = func.ensure_func_diagnostics(self.db);
             debug_assert!(result.is_ok());
             func.ensure_checked_untyped_function_for_heuristics(self.db);
         }

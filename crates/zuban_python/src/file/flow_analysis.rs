@@ -1041,19 +1041,10 @@ impl FlowAnalysis {
                             .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
                     );
                     let run = || {
-                        let i_s = if let Some(cls) = &func.class {
-                            InferenceState::from_class(db, cls)
-                        } else {
-                            InferenceState::new(db, func.node_ref.file)
-                        };
                         self.with_frame(
                             Frame::new(FrameKind::BaseScope, delayed_func.reused_narrowings),
                             || {
-                                let result = func
-                                    .node_ref
-                                    .file
-                                    .inference(&i_s)
-                                    .ensure_func_diagnostics(func);
+                                let result = func.ensure_func_diagnostics(db);
                                 debug_assert!(result.is_ok());
                             },
                         );
