@@ -1742,6 +1742,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         Ok(())
     }
+
     pub fn ensure_calculated_variance(&self, db: &Database) {
         let Some(class_infos) = self.maybe_cached_class_infos(db) else {
             debug!(
@@ -1804,6 +1805,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         );
                         false
                     })
+                    .with_avoid_inferring_return_types()
                     // object has no generics and is therefore not relevant.
                     .without_object(),
                 )

@@ -22,7 +22,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        File, Inference, inference::AssignKind,
+        File, Inference, flow_analysis::DelayedDiagnostic, inference::AssignKind,
         utils::for_each_reachable_if_stmt_block_and_return_reachability_always_known,
     },
     format_data::FormatData,
@@ -169,6 +169,28 @@ impl Inference<'_, '_, '_> {
                     });
                 })
             });
+
+            let classes: Vec<_> = self
+                .file
+                .delayed_diagnostics
+                .read()
+                .unwrap()
+                .iter()
+                .filter_map(|delayed| match delayed {
+                    DelayedDiagnostic::ClassTypeParams { class_link } => {
+                        debug_assert_eq!(class_link.file, self.file.file_index);
+                        Some(ClassNodeRef::new(self.file, class_link.node_index))
+                    }
+                    _ => None,
+                })
+                .collect();
+
+            // We need to infer class variances once the module is defined, otherwise the variances
+            // might not have been inferred correctly while matching types.
+            for class in classes {
+                class.infer_variance_of_type_params(self.i_s.db, true);
+            }
+
             // Unsafe is fine here, because it only copies existing values. If we used
             // ensure_calculated_types here, the complex values might be increased in size and we
             // therefore need to clone all type vars first.
