@@ -717,7 +717,7 @@ impl TupleArgs {
     }
 }
 
-pub trait MergableTypes: Deref<Target = [Type]> + Into<Arc<[Type]>> {
+pub(crate) trait MergableTypes: Deref<Target = [Type]> + Into<Arc<[Type]>> {
     fn into_iter_types(self) -> impl Iterator<Item = Type>;
     fn into_types_vec(self) -> Vec<Type>;
 }
