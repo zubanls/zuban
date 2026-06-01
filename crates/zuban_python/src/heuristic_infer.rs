@@ -68,6 +68,7 @@ struct HeuristicState<'db> {
     call_stack: Vec<(FuncNodeRef<'db>, ArgsFrame<'db>)>,
     self_stack: Vec<Type>,
     callable_search_stack: Vec<PointLink>,
+    name_search_recursion_avoidance: FastHashSet<PointLink>,
     known_name_stack: Vec<(PointLink, Inferred)>,
 }
 
@@ -238,6 +239,17 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn infer_name(&mut self, name: Name<'db>) -> Option<Heuristic> {
         debug!("Heuristics: Infer name: {}", name.as_code());
+        let key = PointLink::new(self.inference.file.file_index, name.index());
+        if !self.state.name_search_recursion_avoidance.insert(key) {
+            debug!("Heuristics: Abort inferring name, because it would have recursed");
+            return None;
+        }
+        let result = self.infer_name_part2(name);
+        self.state.name_search_recursion_avoidance.remove(&key);
+        result
+    }
+
+    fn infer_name_part2(&mut self, name: Name<'db>) -> Option<Heuristic> {
         match name.parent() {
             NameParent::Atom(_) | NameParent::Error => self.infer_name_reference(name),
             NameParent::NameDef(name_def) => {

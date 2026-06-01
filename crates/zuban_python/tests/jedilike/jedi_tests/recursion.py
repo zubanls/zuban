@@ -179,3 +179,21 @@ def g22(x): return x
 g1(1)
 #?
 g1("")
+
+class Rec1:
+    def x(self):
+        #?
+        self.a = self.b
+
+    def y(self):
+        #?
+        self.b = self.a
+
+#?
+Rec1().a
+
+a = b
+b = a
+
+a2 = (b2, 1)
+b2 = ("", a2)
