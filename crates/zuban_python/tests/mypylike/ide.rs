@@ -568,7 +568,7 @@ fn format_symbols<'x>(
             format_pos(target_start),
             format_pos(target_end),
         ));
-        if let Some(class_symbols) = name.class_symbols() {
+        if let Some(class_symbols) = name.class_symbols(kind) {
             format_symbols(out, class_symbols, &format!("{indent}  "))
         }
     }

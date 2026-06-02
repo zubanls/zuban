@@ -283,7 +283,16 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub fn class_symbols(&self) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
+    pub fn class_symbols(
+        &self,
+        // It might look very weird why we use this parameter here since we could theoretically
+        // access it. This is a simple optimization to avoid recalculating the kind for N symbols.
+        for_kind: SymbolKind,
+    ) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
+        debug_assert_eq!(self.lsp_kind(), for_kind);
+        if !matches!(for_kind, SymbolKind::CLASS | SymbolKind::ENUM) {
+            return None;
+        }
         match self {
             Self::TreeName(tree_name) => {
                 let cls = tree_name.cst_name.name_def()?.maybe_name_of_class()?;
