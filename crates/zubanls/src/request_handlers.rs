@@ -584,7 +584,7 @@ impl GlobalState<'_> {
                 let name = symbol.as_name();
                 let kind = name.lsp_kind();
                 if kind == SymbolKind::CLASS
-                    && let Some(child_symbols) = name.class_symbols()
+                    && let Some(child_symbols) = name.class_symbols(kind)
                 {
                     Self::nested_workspace_doc_symbols(encoding, child_symbols, query, add);
                 }
