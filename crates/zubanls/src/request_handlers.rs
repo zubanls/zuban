@@ -555,7 +555,7 @@ impl GlobalState<'_> {
             .map(|symbol| {
                 let name = symbol.as_name();
                 let kind = name.lsp_kind();
-                let children = if kind == SymbolKind::CLASS {
+                let children = if matches!(kind, SymbolKind::CLASS | SymbolKind::ENUM) {
                     name.class_symbols()
                         .map(|sym| Self::nested_doc_symbols(encoding, sym))
                 } else {
