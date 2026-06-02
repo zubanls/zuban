@@ -111,6 +111,14 @@ jobs:
           key: "swatinem-${{ matrix.t.target }}"
       - name: "Pre-Build"
         run: ./pre-maturin-build.sh
+
+      - name: "Build Source Distribution"
+        uses: PyO3/maturin-action@v1
+        if: ${{ matrix.t.target == 'x86_64-unknown-linux-gnu' }}
+        with:
+          command: sdist
+          args: --out dist
+
       - name: "Build Wheel"
         uses: PyO3/maturin-action@v1
         with:
