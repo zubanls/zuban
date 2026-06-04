@@ -37,8 +37,13 @@ impl Connection {
 
         let server_thread = Some(std::thread::spawn(move || {
             let typeshed_path = Some(test_utils::typeshed_path());
-            zubanls::run_server_with_custom_connection(connection1, typeshed_path, || Ok(()))
-                .expect("Should not error");
+            zubanls::run_server_with_custom_connection(
+                Default::default(),
+                connection1,
+                typeshed_path,
+                || Ok(()),
+            )
+            .expect("Should not error");
         }));
 
         Self {

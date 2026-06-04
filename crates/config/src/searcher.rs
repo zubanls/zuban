@@ -25,7 +25,7 @@ pub struct FoundConfig {
     pub most_probable_base: Arc<AbsPath>,
 }
 
-pub fn find_cli_config(
+pub fn find_config(
     vfs: &dyn VfsHandler,
     current_dir: Arc<AbsPath>,
     config_file: Option<&Path>,

@@ -21,8 +21,8 @@ use zuban_python::{PanicRecovery, Project, RunCause};
 use crate::capabilities::{ClientCapabilities, server_capabilities};
 use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
-use crate::panic_hooks;
 use crate::request_handlers::to_uri;
+use crate::{Cli, panic_hooks};
 
 // Since we currently don't do garbage collection, we simply delete the project and reindex,
 // because it's not that expensive after a specific amount of diagnostics.
@@ -35,6 +35,7 @@ fn version() -> &'static str {
 }
 
 pub fn run_server_with_custom_connection(
+    cli_options: Cli,
     connection: Connection,
     typeshed_path: Option<Arc<NormalizedPath>>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
@@ -177,6 +178,7 @@ pub fn run_server_with_custom_connection(
     }));
 
     let mut global_state = GlobalState::new(
+        cli_options,
         &connection.sender,
         client_capabilities,
         workspace_roots.clone(),
@@ -189,12 +191,12 @@ pub fn run_server_with_custom_connection(
     Ok(())
 }
 
-pub fn run_server() -> anyhow::Result<()> {
+pub fn run_server(cli_options: Cli) -> anyhow::Result<()> {
     // TODO reenable this in the alpha in some form
     //licensing::verify_license_in_config_dir()?;
 
     let (connection, _io_threads) = Connection::stdio();
-    run_server_with_custom_connection(connection, None, || {
+    run_server_with_custom_connection(cli_options, connection, None, || {
         // This used to be a join, but that seems to never join in VSCode, no idea why.
         //Ok(io_threads.join()?)
         Ok(())
@@ -207,6 +209,7 @@ struct NotificationDispatcher<'a, 'sender> {
 }
 
 pub(crate) struct GlobalState<'sender> {
+    cli_options: Cli,
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
@@ -223,12 +226,14 @@ pub(crate) struct GlobalState<'sender> {
 
 impl<'sender> GlobalState<'sender> {
     fn new(
+        cli_options: Cli,
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
         typeshed_path: Option<Arc<NormalizedPath>>,
     ) -> Self {
         GlobalState {
+            cli_options,
             paths_that_invalidate_whole_project: Default::default(),
             sender,
             roots,
@@ -375,6 +380,16 @@ impl<'sender> GlobalState<'sender> {
             }
             if self.typeshed_path.is_some() {
                 config.settings.typeshed_path = self.typeshed_path.clone();
+            }
+            if let Some(executable) = &self.cli_options.python_executable {
+                if let Err(err) = config.settings.apply_python_executable(
+                    &vfs_handler,
+                    &first_root,
+                    None,
+                    executable,
+                ) {
+                    tracing::error!("Was not able to apply {err}")
+                }
             }
             config.settings.try_to_apply_environment_variables(
                 &vfs_handler,
