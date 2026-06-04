@@ -8,7 +8,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, RwLock};
 
-use config::ProjectOptions;
+use config::{Mode, ProjectOptions};
 use crossbeam_channel::{Receiver, Sender, never, select};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
@@ -19,7 +19,7 @@ use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _}
 use zuban_python::{PanicRecovery, Project, RunCause};
 
 use crate::capabilities::{ClientCapabilities, server_capabilities};
-use crate::client_config::ClientConfig;
+use crate::client_config::{ClientConfig, TypeCheckingMode};
 use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
 use crate::request_handlers::to_uri;
@@ -98,7 +98,7 @@ pub fn run_server_with_custom_connection(
         }
     };
 
-    let config: ClientConfig = match initialization_options {
+    let client_config: ClientConfig = match initialization_options {
         Some(initialization_options) => serde_json::from_value(initialization_options)
             .unwrap_or_else(|err| {
                 tracing::error!(
@@ -109,7 +109,7 @@ pub fn run_server_with_custom_connection(
         None => Default::default(),
     };
     let client_capabilities = ClientCapabilities::new(capabilities);
-    let server_capabilities = server_capabilities(&client_capabilities, &config);
+    let server_capabilities = server_capabilities(&client_capabilities, &client_config);
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
@@ -191,6 +191,7 @@ pub fn run_server_with_custom_connection(
 
     let mut global_state = GlobalState::new(
         cli_options,
+        client_config,
         &connection.sender,
         client_capabilities,
         workspace_roots.clone(),
@@ -222,6 +223,7 @@ struct NotificationDispatcher<'a, 'sender> {
 
 pub(crate) struct GlobalState<'sender> {
     cli_options: Cli,
+    client_config: ClientConfig,
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
@@ -239,6 +241,7 @@ pub(crate) struct GlobalState<'sender> {
 impl<'sender> GlobalState<'sender> {
     fn new(
         cli_options: Cli,
+        client_config: ClientConfig,
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
         roots: Rc<[String]>,
@@ -246,6 +249,7 @@ impl<'sender> GlobalState<'sender> {
     ) -> Self {
         GlobalState {
             cli_options,
+            client_config,
             paths_that_invalidate_whole_project: Default::default(),
             sender,
             roots,
@@ -311,7 +315,12 @@ impl<'sender> GlobalState<'sender> {
                 .first()
                 .expect("There should always be at least one root at this point");
             let first_root = vfs_handler.unchecked_abs_path(first_root);
-            let mut config = config::find_config(&vfs_handler, first_root.clone(), None, None, |path| {
+            let mode = match self.client_config.type_checking_mode {
+                TypeCheckingMode::Auto | TypeCheckingMode::Off => None,
+                TypeCheckingMode::Default => Some(Mode::Default),
+                TypeCheckingMode::Mypy => Some(Mode::Mypy),
+            };
+            let mut config = config::find_config(&vfs_handler, first_root.clone(), None, mode, |path| {
                 // Watch the file itself to make sure that we can invalidate when it changes.
                 let path = Path::new(&**path);
                 vfs_handler.watch(path);

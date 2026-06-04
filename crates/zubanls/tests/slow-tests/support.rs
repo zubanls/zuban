@@ -39,6 +39,7 @@ pub(crate) struct Project<'a> {
     roots: Vec<String>,
     root_dir_contains_symlink: bool,
     push_diagnostics: bool,
+    initialization_options: Option<Value>,
 }
 
 impl<'a> Project<'a> {
@@ -49,6 +50,7 @@ impl<'a> Project<'a> {
             roots: vec![],
             root_dir_contains_symlink: false,
             push_diagnostics: false,
+            initialization_options: None,
         }
     }
 
@@ -64,6 +66,11 @@ impl<'a> Project<'a> {
 
     pub(crate) fn with_push_diagnostics(mut self) -> Self {
         self.push_diagnostics = true;
+        self
+    }
+
+    pub(crate) fn with_initialization_options(mut self, initialization_options: Value) -> Self {
+        self.initialization_options = Some(initialization_options);
         self
     }
 
@@ -99,6 +106,7 @@ impl<'a> Project<'a> {
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
                 !self.push_diagnostics,
+                self.initialization_options,
             ),
             version_incrementor: Default::default(),
         }

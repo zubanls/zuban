@@ -58,9 +58,15 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        initialization_options: Option<Value>,
     ) -> Self {
         let mut slf = Self::new();
-        let response = slf.initialize(roots, position_encodings, pull_diagnostics);
+        let response = slf.initialize(
+            roots,
+            position_encodings,
+            pull_diagnostics,
+            initialization_options,
+        );
         slf.server_capabilities = Some(response.capabilities);
         slf
     }
@@ -70,6 +76,7 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        initialization_options: Option<Value>,
     ) -> InitializeResult {
         let capabilities = lsp_types::ClientCapabilities {
             workspace: Some(lsp_types::WorkspaceClientCapabilities {
@@ -119,6 +126,7 @@ impl Connection {
                     .collect(),
             ),
             capabilities,
+            initialization_options,
             ..Default::default()
         };
         let response = self.request::<lsp_types::request::Initialize>(initialize_params);

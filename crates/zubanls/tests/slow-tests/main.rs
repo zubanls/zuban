@@ -49,7 +49,7 @@ use support::Project;
 #[parallel]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"], None, true);
+    let response = con.initialize(&["/foo/bar"], None, true, None);
 
     // Check diagnostic capabilities
     {
@@ -76,7 +76,7 @@ fn basic_server_setup() {
 #[test]
 #[parallel]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(&["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true, None);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -110,7 +110,7 @@ fn request_after_shutdown_is_invalid() {
 #[test]
 #[parallel]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(&["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true, None);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -524,6 +524,57 @@ fn change_config_file() {
 
     expect_diagnostics("After overwriting .mypy.ini with mypy.ini", vec![]);
     assert_eq!(req("in_mem.py"), vec![NOT_CALLABLE]);
+}
+
+#[test]
+#[parallel]
+fn client_config_mode() {
+    let check = |mode: &str, has_mypy_file, is_enabled| {
+        let server = Project::with_fixture(if has_mypy_file {
+            r#"
+                [file mypy.ini]
+                [file m.py]
+                1()
+                def f():
+                    ''()
+                "#
+        } else {
+            r#"
+                [file m.py]
+                1()
+                def f():
+                    ''()
+                "#
+        })
+        .with_initialization_options(json!({ "typeCheckingMode": mode }))
+        .into_server();
+        assert_eq!(
+            is_enabled,
+            server
+                .server_capabilities
+                .as_ref()
+                .unwrap()
+                .diagnostic_provider
+                .is_some(),
+        );
+        server.diagnostics_for_file("m.py")
+    };
+
+    const NOT_INT: &str = r#""int" not callable"#;
+    const NOT_STR: &str = r#""str" not callable"#;
+
+    // Without Mypy config file
+    assert_eq!(check("default", false, true), [NOT_INT, NOT_STR]);
+    assert_eq!(check("mypy", false, true), [NOT_INT]);
+    assert_eq!(check("auto", false, true), [NOT_INT, NOT_STR]);
+    // The capability should not be announced, but if somebody requests diagnostics,it it will
+    // still work.
+    assert_eq!(check("off", false, false), [NOT_INT, NOT_STR]);
+
+    // With Mypy config file
+    assert_eq!(check("default", true, true), [NOT_INT]);
+    assert_eq!(check("mypy", true, true), [NOT_INT]);
+    assert_eq!(check("auto", true, true), [NOT_INT]);
 }
 
 #[test]

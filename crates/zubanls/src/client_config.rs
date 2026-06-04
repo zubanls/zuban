@@ -27,7 +27,7 @@ pub(crate) enum DiagnosticMode {
 }
 
 #[derive(Default, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub(crate) struct ClientConfig {
     /// Default mode to use if there is no explicit Zuban config in `pyproject.toml`.
     pub type_checking_mode: TypeCheckingMode,
