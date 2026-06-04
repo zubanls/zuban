@@ -578,6 +578,34 @@ fn client_config_mode() {
 }
 
 #[test]
+#[parallel]
+fn diagnostic_mode() {
+    let check = |mode| {
+        let server = Project::with_fixture(
+            r#"
+            [file m.py]
+            "#,
+        )
+        .with_initialization_options(json!({ "diagnosticMode": mode }))
+        .into_server();
+        let DiagnosticServerCapabilities::Options(diagnostics) = server
+            .server_capabilities
+            .as_ref()
+            .unwrap()
+            .diagnostic_provider
+            .as_ref()
+            .unwrap()
+        else {
+            unreachable!()
+        };
+        diagnostics.workspace_diagnostics
+    };
+    assert!(!check("open-files-only"));
+    assert!(!check("something-undefined"));
+    assert!(check("workspace"));
+}
+
+#[test]
 #[serial]
 fn check_rename_without_symlinks() {
     if !symlink_creation_allowed() {

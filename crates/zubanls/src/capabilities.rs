@@ -12,7 +12,7 @@ use lsp_types::{
 };
 use zuban_python::InputPosition;
 
-use crate::client_config::ClientConfig;
+use crate::client_config::{ClientConfig, DiagnosticMode};
 
 pub(crate) fn server_capabilities(
     client_capabilities: &ClientCapabilities,
@@ -115,8 +115,8 @@ pub(crate) fn server_capabilities(
                 inter_file_dependencies: true,
                 // It seems like while workspace diagnostics are implemented, VSCode will trigger
                 // this endpint without user interaction. At the moment this is simply to expensive
-                // for large projects, so we avoid doing that.
-                workspace_diagnostics: false,
+                // for large projects, so we avoid doing that by default.
+                workspace_diagnostics: matches!(config.diagnostic_mode, DiagnosticMode::Workspace),
                 work_done_progress_options: Default::default(),
             })
         }),
