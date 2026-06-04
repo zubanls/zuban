@@ -79,7 +79,6 @@ fn project_from_cli(
         &local_fs,
         current_dir.clone(),
         cli.mypy_options.config_file.as_deref(),
-        // Set the default to not mypy compatible, at least for now
         cli.mode(),
         |_| (),
     )
@@ -993,6 +992,50 @@ mod tests {
             [
                 r#"m.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]"#
             ]
+        );
+    }
+
+    #[test]
+    fn test_mypy_config_with_explicit_mode() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file m.py]
+            1()
+            def f(x):
+                ''()
+
+            [file mypy.ini]
+            [mypy]
+            disallow_untyped_defs = true
+            ",
+            false,
+        );
+        let not_int = "m.py:1: error: \"int\" not callable  [operator]";
+        let missing_annotation =
+            "m.py:2: error: Function is missing a type annotation  [no-untyped-def]";
+        assert_eq!(
+            diagnostics(Cli::parse_from([""]), test_dir.path()),
+            [not_int, missing_annotation]
+        );
+        assert_eq!(
+            diagnostics(Cli::parse_from(["", "--mode", "default"]), test_dir.path()),
+            [
+                not_int,
+                missing_annotation,
+                "m.py:3: error: \"str\" not callable  [operator]"
+            ]
+        );
+
+        // An empty mypy config file should also work
+        test_dir.write_file("mypy.ini", "");
+        assert_eq!(
+            diagnostics(Cli::parse_from([""]), test_dir.path()),
+            [not_int]
+        );
+        assert_eq!(
+            diagnostics(Cli::parse_from(["", "--mode", "default"]), test_dir.path()),
+            [not_int, "m.py:3: error: \"str\" not callable  [operator]"]
         );
     }
 

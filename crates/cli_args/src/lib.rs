@@ -13,8 +13,7 @@ use clap::Parser;
 #[derive(Parser, Default, Debug)]
 pub struct Cli {
     // Additional options that are not present in zmypy
-    /// Choosing a mode sets the basic preset of flags. The default mode is typed, which is not
-    /// mypy-compatible.
+    /// Choosing a mode sets the basic preset of flags. The default mode is not mypy-compatible.
     #[arg(long)]
     mode: Option<Mode>,
 

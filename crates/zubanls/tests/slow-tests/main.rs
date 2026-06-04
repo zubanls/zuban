@@ -572,7 +572,7 @@ fn client_config_mode() {
     assert_eq!(check("off", false, false), [NOT_INT, NOT_STR]);
 
     // With Mypy config file
-    assert_eq!(check("default", true, true), [NOT_INT]);
+    assert_eq!(check("default", true, true), [NOT_INT, NOT_STR]);
     assert_eq!(check("mypy", true, true), [NOT_INT]);
     assert_eq!(check("auto", true, true), [NOT_INT]);
 }

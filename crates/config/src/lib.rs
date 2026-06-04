@@ -272,9 +272,10 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
+        mode: Option<Mode>,
     ) -> anyhow::Result<Option<Self>> {
         let ini = parse_python_ini(code)?;
-        let mut result = Self::mypy_default();
+        let mut result = Self::default_for_mode(mode.unwrap_or(Mode::Mypy));
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
@@ -1225,6 +1226,7 @@ mod tests {
                 &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
+                None,
             )
         } else {
             ProjectOptions::from_pyproject_toml_only(

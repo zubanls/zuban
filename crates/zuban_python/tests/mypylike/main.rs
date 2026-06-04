@@ -230,6 +230,7 @@ impl TestCase<'_, '_> {
                     &local_fs.join(&base_path, "mypy.ini"),
                     &ini,
                     &mut diagnostic_config,
+                    None,
                 )
                 .expect("Expected there to be no errors in the mypy.ini")
                 .unwrap_or_else(ProjectOptions::mypy_default)

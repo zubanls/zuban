@@ -87,7 +87,14 @@ fn initialize_config(
             mode,
         )?
     } else {
-        ProjectOptions::from_mypy_ini(vfs, in_dir, &config_path, &content, &mut diagnostic_config)?
+        ProjectOptions::from_mypy_ini(
+            vfs,
+            in_dir,
+            &config_path,
+            &content,
+            &mut diagnostic_config,
+            mode,
+        )?
     };
     Ok((options, diagnostic_config, config_path))
 }
@@ -141,7 +148,7 @@ fn find_mypy_config_file_in_dir(
                     ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                        ProjectOptions::mypy_default()
+                        ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Mypy))
                     })
                 }) {
                     end_result = Some(FoundConfig {
