@@ -1,10 +1,5 @@
 use serde::Deserialize;
 
-#[derive(Default, Deserialize, Debug)]
-pub(crate) struct ClientConfig {
-    pub zuban: ZubanClientConfig,
-}
-
 #[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum TypeCheckingMode {
@@ -24,7 +19,7 @@ impl TypeCheckingMode {
 #[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
 pub(crate) enum DiagnosticMode {
     #[default]
-    #[serde(rename = "openFilesOnly")]
+    #[serde(rename = "open-files-only")]
     OpenFilesOnly,
     /// Compute and publish diagnostics for all files in the workspace, not just open files.
     #[serde(rename = "workspace")]
@@ -33,7 +28,7 @@ pub(crate) enum DiagnosticMode {
 
 #[derive(Default, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ZubanClientConfig {
+pub(crate) struct ClientConfig {
     /// Default mode to use if there is no explicit Zuban config in `pyproject.toml`.
     pub type_checking_mode: TypeCheckingMode,
     pub diagnostic_mode: DiagnosticMode,

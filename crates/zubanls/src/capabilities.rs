@@ -109,7 +109,7 @@ pub(crate) fn server_capabilities(
         inlay_hint_provider: Some(OneOf::Left(true)),
         inline_value_provider: None,
         experimental: None,
-        diagnostic_provider: config.zuban.type_checking_mode.is_enabled().then(|| {
+        diagnostic_provider: config.type_checking_mode.is_enabled().then(|| {
             lsp_types::DiagnosticServerCapabilities::Options(lsp_types::DiagnosticOptions {
                 identifier: None,
                 inter_file_dependencies: true,
