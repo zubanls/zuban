@@ -19,6 +19,7 @@ use vfs::{LocalFS, NormalizedPath, NotifyEvent, PathWithScheme, VfsHandler as _}
 use zuban_python::{PanicRecovery, Project, RunCause};
 
 use crate::capabilities::{ClientCapabilities, server_capabilities};
+use crate::client_config::ClientConfig;
 use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
 use crate::request_handlers::to_uri;
@@ -59,6 +60,7 @@ pub fn run_server_with_custom_connection(
         capabilities,
         workspace_folders,
         client_info,
+        initialization_options,
         ..
     } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
 
@@ -96,8 +98,18 @@ pub fn run_server_with_custom_connection(
         }
     };
 
+    let config: ClientConfig = match initialization_options {
+        Some(initialization_options) => serde_json::from_value(initialization_options)
+            .unwrap_or_else(|err| {
+                tracing::error!(
+                    "Tried to parse user provided initializationOptions, but got: {err}"
+                );
+                Default::default()
+            }),
+        None => Default::default(),
+    };
     let client_capabilities = ClientCapabilities::new(capabilities);
-    let server_capabilities = server_capabilities(&client_capabilities);
+    let server_capabilities = server_capabilities(&client_capabilities, &config);
 
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,

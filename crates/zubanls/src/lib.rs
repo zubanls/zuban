@@ -1,4 +1,5 @@
 mod capabilities;
+mod client_config;
 mod notebooks;
 mod notification_handlers;
 mod panic_hooks;

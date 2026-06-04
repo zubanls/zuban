@@ -12,7 +12,12 @@ use lsp_types::{
 };
 use zuban_python::InputPosition;
 
-pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
+use crate::client_config::ClientConfig;
+
+pub(crate) fn server_capabilities(
+    client_capabilities: &ClientCapabilities,
+    config: &ClientConfig,
+) -> ServerCapabilities {
     ServerCapabilities {
         position_encoding: Some(client_capabilities.negotiated_encoding().into()),
         text_document_sync: Some(TextDocumentSyncCapability::Options(
@@ -104,8 +109,8 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
         inlay_hint_provider: Some(OneOf::Left(true)),
         inline_value_provider: None,
         experimental: None,
-        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
-            lsp_types::DiagnosticOptions {
+        diagnostic_provider: config.zuban.type_checking_mode.is_enabled().then(|| {
+            lsp_types::DiagnosticServerCapabilities::Options(lsp_types::DiagnosticOptions {
                 identifier: None,
                 inter_file_dependencies: true,
                 // It seems like while workspace diagnostics are implemented, VSCode will trigger
@@ -113,8 +118,8 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
                 // for large projects, so we avoid doing that.
                 workspace_diagnostics: false,
                 work_done_progress_options: Default::default(),
-            },
-        )),
+            })
+        }),
         inline_completion_provider: None,
         type_hierarchy_provider: None,
     }
