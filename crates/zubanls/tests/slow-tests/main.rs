@@ -32,6 +32,7 @@ use lsp_types::{
 };
 
 mod connection;
+mod custom;
 mod support;
 mod test_initialization_options;
 

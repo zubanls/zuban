@@ -245,6 +245,10 @@ impl Project {
     pub fn vfs_handler(&self) -> &dyn VfsHandler {
         self.db.vfs.handler.as_ref()
     }
+
+    pub fn mode(&self) -> config::Mode {
+        self.db.project.settings.mode
+    }
 }
 
 impl std::fmt::Debug for Project {

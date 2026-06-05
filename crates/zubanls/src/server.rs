@@ -23,7 +23,7 @@ use crate::client_config::{ClientConfig, TypeCheckingMode};
 use crate::notebooks::Notebooks;
 use crate::notification_handlers::TestPanic;
 use crate::request_handlers::to_uri;
-use crate::{Cli, panic_hooks};
+use crate::{Cli, custom, panic_hooks};
 
 // Since we currently don't do garbage collection, we simply delete the project and reindex,
 // because it's not that expensive after a specific amount of diagnostics.
@@ -221,7 +221,7 @@ struct NotificationDispatcher<'a, 'sender> {
 }
 
 pub(crate) struct GlobalState<'sender> {
-    client_config: ClientConfig,
+    pub client_config: ClientConfig,
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
     roots: Rc<[String]>,
@@ -488,6 +488,8 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<SelectionRangeRequest>(GlobalState::selection_ranges)
         .on_sync_mut::<InlayHintRequest>(GlobalState::inlay_hints)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
+        .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
+        .on_sync_mut::<custom::DisplayStatusRequest>(GlobalState::display_status)
         .finish();
     }
 
