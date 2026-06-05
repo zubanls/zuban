@@ -18,7 +18,7 @@ pub(crate) fn server_capabilities(
     client_capabilities: &ClientCapabilities,
     config: &ClientConfig,
 ) -> ServerCapabilities {
-    ServerCapabilities {
+    let mut capabilities = ServerCapabilities {
         position_encoding: Some(client_capabilities.negotiated_encoding().into()),
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
@@ -122,7 +122,38 @@ pub(crate) fn server_capabilities(
         }),
         inline_completion_provider: None,
         type_hierarchy_provider: None,
+    };
+    if config.disable_language_services {
+        capabilities.completion_provider = None;
+        capabilities.hover_provider = None;
+        capabilities.completion_provider = None;
+        capabilities.signature_help_provider = None;
+        capabilities.declaration_provider = None;
+        capabilities.definition_provider = None;
+        capabilities.type_definition_provider = None;
+        capabilities.implementation_provider = None;
+        capabilities.references_provider = None;
+        capabilities.document_highlight_provider = None;
+        capabilities.document_symbol_provider = None;
+        capabilities.workspace_symbol_provider = None;
+        capabilities.code_action_provider = None;
+        capabilities.code_lens_provider = None;
+        capabilities.document_formatting_provider = None;
+        capabilities.document_range_formatting_provider = None;
+        capabilities.document_on_type_formatting_provider = None;
+        capabilities.selection_range_provider = None;
+        capabilities.folding_range_provider = None;
+        capabilities.rename_provider = None;
+        capabilities.linked_editing_range_provider = None;
+        capabilities.document_link_provider = None;
+        capabilities.color_provider = None;
+        capabilities.execute_command_provider = None;
+        capabilities.call_hierarchy_provider = None;
+        capabilities.semantic_tokens_provider = None;
+        capabilities.moniker_provider = None;
+        capabilities.inlay_hint_provider = None;
     }
+    capabilities
 }
 
 #[derive(Debug, PartialEq, Clone)]

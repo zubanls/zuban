@@ -121,3 +121,29 @@ fn python_executable() {
         [] as [&str; 0]
     );
 }
+
+#[test]
+#[parallel]
+fn disable_language_services() {
+    let check = |enabled: bool| {
+        let server = Project::with_fixture(
+            r#"
+            [file m.py]
+            "#,
+        )
+        .with_initialization_options(json!({ "disableLanguageServices": !enabled }))
+        .into_server();
+        let cap = server.server_capabilities.as_ref().unwrap();
+        assert_eq!(enabled, cap.completion_provider.is_some());
+        assert_eq!(enabled, cap.definition_provider.is_some());
+        assert_eq!(enabled, cap.declaration_provider.is_some());
+        assert_eq!(enabled, cap.hover_provider.is_some());
+        assert_eq!(enabled, cap.signature_help_provider.is_some());
+        assert_eq!(enabled, cap.type_definition_provider.is_some());
+        assert_eq!(enabled, cap.implementation_provider.is_some());
+        assert_eq!(enabled, cap.rename_provider.is_some());
+        assert!(cap.diagnostic_provider.is_some());
+    };
+    check(false);
+    check(true);
+}
