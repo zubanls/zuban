@@ -30,6 +30,7 @@ pub(crate) enum DiagnosticMode {
 #[serde(default, rename_all = "camelCase")]
 pub(crate) struct ClientConfig {
     /// Default mode to use if there is no explicit Zuban config in `pyproject.toml`.
+    pub python_executable: Option<String>,
     pub type_checking_mode: TypeCheckingMode,
     pub diagnostic_mode: DiagnosticMode,
     pub disable_language_services: bool,

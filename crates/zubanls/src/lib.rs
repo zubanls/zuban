@@ -14,8 +14,4 @@ pub use crate::server::{
 use clap::Parser;
 
 #[derive(Parser, Clone, Default, Debug)]
-pub struct Cli {
-    /// Specifies the path for a python executable (for example a virtual env)
-    #[arg(long)]
-    python_executable: Option<String>,
-}
+pub struct Cli {}

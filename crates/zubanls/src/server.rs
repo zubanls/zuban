@@ -36,7 +36,7 @@ fn version() -> &'static str {
 }
 
 pub fn run_server_with_custom_connection(
-    cli_options: Cli,
+    _cli_options: Cli,
     connection: Connection,
     typeshed_path: Option<Arc<NormalizedPath>>,
     cleanup: impl FnOnce() -> anyhow::Result<()>,
@@ -190,7 +190,6 @@ pub fn run_server_with_custom_connection(
     }));
 
     let mut global_state = GlobalState::new(
-        cli_options,
         client_config,
         &connection.sender,
         client_capabilities,
@@ -222,7 +221,6 @@ struct NotificationDispatcher<'a, 'sender> {
 }
 
 pub(crate) struct GlobalState<'sender> {
-    cli_options: Cli,
     client_config: ClientConfig,
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
     sender: &'sender Sender<lsp_server::Message>,
@@ -240,7 +238,6 @@ pub(crate) struct GlobalState<'sender> {
 
 impl<'sender> GlobalState<'sender> {
     fn new(
-        cli_options: Cli,
         client_config: ClientConfig,
         sender: &'sender Sender<lsp_server::Message>,
         client_capabilities: ClientCapabilities,
@@ -248,7 +245,6 @@ impl<'sender> GlobalState<'sender> {
         typeshed_path: Option<Arc<NormalizedPath>>,
     ) -> Self {
         GlobalState {
-            cli_options,
             client_config,
             paths_that_invalidate_whole_project: Default::default(),
             sender,
@@ -402,7 +398,7 @@ impl<'sender> GlobalState<'sender> {
             if self.typeshed_path.is_some() {
                 config.settings.typeshed_path = self.typeshed_path.clone();
             }
-            if let Some(executable) = &self.cli_options.python_executable {
+            if let Some(executable) = &self.client_config.python_executable {
                 if let Err(err) = config.settings.apply_python_executable(
                     &vfs_handler,
                     &first_root,
