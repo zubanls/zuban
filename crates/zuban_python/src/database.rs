@@ -1150,7 +1150,7 @@ impl Database {
 
         this.generate_python_state();
 
-        tracing::debug!(
+        tracing::info!(
             "Workspace base paths: {:?}",
             this.vfs
                 .workspaces
@@ -1201,7 +1201,7 @@ impl Database {
                 .vfs
                 .add_workspace_without_full_access(p1.clone(), *kind);
         }
-        tracing::debug!(
+        tracing::info!(
             "Workspace base paths (for reused project): {:?}",
             new_db
                 .vfs
