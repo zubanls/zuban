@@ -407,6 +407,9 @@ impl<'sender> GlobalState<'sender> {
                 ) {
                     tracing::error!("Was not able to apply {err}")
                 }
+                tracing::info!(
+                    "Using the python_executable {executable:?} provided by the initialization options"
+                );
             }
             config.settings.try_to_apply_environment_variables(
                 &vfs_handler,
