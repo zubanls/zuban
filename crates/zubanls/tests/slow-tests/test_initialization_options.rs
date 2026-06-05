@@ -82,3 +82,42 @@ fn diagnostic_mode() {
     assert!(!check("something-undefined"));
     assert!(check("workspace"));
 }
+
+#[test]
+#[parallel]
+fn python_executable() {
+    let check = |json| {
+        let server = Project::with_fixture(
+            r#"
+                [file build/venv/bin/python]
+                [file build/venv/Scripts/python.exe]
+                [file build/venv/pyvenv.cfg]
+                include-system-site-packages = false
+                version = 3.14.3
+
+                [file build/venv/Lib/site-packages/foo.py]
+                [file build/venv/lib/python3.12/site-packages/foo.py]
+
+                [file m.py]
+                import foo
+                "#,
+        )
+        .with_initialization_options(json)
+        .into_server();
+        server.diagnostics_for_file("m.py")
+    };
+
+    let executable = if cfg!(windows) {
+        "build/venv/bin/python"
+    } else {
+        "build/venv/Scripts/python.exe"
+    };
+    assert_eq!(
+        check(json!({})),
+        ["Cannot find implementation or library stub for module named \"foo\""]
+    );
+    assert_eq!(
+        check(json!({ "pythonExecutable": executable })),
+        [] as [&str; 0]
+    );
+}
