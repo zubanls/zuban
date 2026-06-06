@@ -52,7 +52,7 @@ pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 pub use code_actions::CodeAction;
-use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{IgnoreFileReason, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::Database;
 pub use database::RunCause;
 pub use diagnostics::Severity;
@@ -462,6 +462,13 @@ impl<'project> Document<'project> {
             Scope::Module,
             &python_file.symbol_table,
         )
+    }
+
+    pub fn ignored_errors_reason(&self) -> Option<IgnoreFileReason> {
+        self.project
+            .db
+            .loaded_python_file(self.file_index)
+            .ignore_type_errors
     }
 }
 

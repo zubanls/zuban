@@ -495,9 +495,16 @@ fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
     overrides.sort_by_key(|o| o.module.kind);
 }
 
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum IgnoreFileReason {
+    IgnoreErrorsInConfigFile,
+    TypeIgnoreAtTopOfFile,
+    IgnoreErrorsAtTopOfFile,
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
-    pub ignore_errors: bool,
+    pub ignore_errors: Option<IgnoreFileReason>,
     pub strict_optional: bool,
     pub strict_equality: bool,
     pub implicit_optional: bool,
@@ -547,7 +554,7 @@ pub struct TypeCheckerFlags {
 impl Default for TypeCheckerFlags {
     fn default() -> Self {
         Self {
-            ignore_errors: false,
+            ignore_errors: None,
             strict_optional: true,
             strict_equality: false,
             implicit_optional: false,
@@ -1052,7 +1059,9 @@ fn set_bool_init_flags(
         // Will always be irrelevant
         "cache_fine_grained" => (),
         "ignore_errors" => {
-            flags.ignore_errors = value.as_bool(invert)?;
+            flags.ignore_errors = value
+                .as_bool(invert)?
+                .then_some(IgnoreFileReason::IgnoreErrorsInConfigFile);
         }
         "python_version" => bail!("python_version not supported in inline configuration"),
 

@@ -137,7 +137,10 @@ impl GlobalState<'_> {
             .collect()
     }
 
-    fn document(&mut self, text_document: &TextDocumentIdentifier) -> anyhow::Result<Document<'_>> {
+    pub fn document(
+        &mut self,
+        text_document: &TextDocumentIdentifier,
+    ) -> anyhow::Result<Document<'_>> {
         let project = self.project();
         let path = Self::uri_to_path(project, &text_document.uri)?;
         let Some(document) = project.document(&path) else {

@@ -8,7 +8,8 @@ use std::{
 };
 
 use config::{
-    DiagnosticConfig, FinalizedTypeCheckerFlags, IniOrTomlValue, TypeCheckerFlags, set_flag,
+    DiagnosticConfig, FinalizedTypeCheckerFlags, IgnoreFileReason, IniOrTomlValue,
+    TypeCheckerFlags, set_flag,
 };
 use parsa_python_cst::*;
 use utils::InsertOnlyVec;
@@ -118,7 +119,7 @@ pub(crate) struct PythonFile {
     pub sub_files: SubFiles,
     pub(crate) super_file: Option<SuperFile>,
     stub_cache: Option<StubCache>,
-    pub ignore_type_errors: bool,
+    pub ignore_type_errors: Option<IgnoreFileReason>,
     flags: Option<FinalizedTypeCheckerFlags>,
     pub(super) delayed_diagnostics: RwLock<VecDeque<DelayedDiagnostic>>,
 
@@ -307,31 +308,35 @@ impl<'db> PythonFile {
     ) -> Self {
         let is_stub = file_entry.name.ends_with(".pyi");
         let issues = Diagnostics::default();
-        let mut ignore_type_errors =
-            tree.has_type_ignore_at_start()
-                .unwrap_or_else(|ignore_code| {
-                    issues.add(Issue::from_start_stop(
-                        1,
-                        1,
-                        IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
-                            ignore_code: ignore_code.into(),
-                        },
-                        true,
-                    ));
-                    true
-                });
+        let mut ignore_type_errors = tree
+            .has_type_ignore_at_start()
+            .map(|has_ignore| has_ignore.then_some(IgnoreFileReason::TypeIgnoreAtTopOfFile))
+            .unwrap_or_else(|ignore_code| {
+                issues.add(Issue::from_start_stop(
+                    1,
+                    1,
+                    IssueKind::TypeIgnoreWithErrorCodeNotSupportedForModules {
+                        ignore_code: ignore_code.into(),
+                    },
+                    true,
+                ));
+                Some(IgnoreFileReason::TypeIgnoreAtTopOfFile)
+            });
         let directives_info = info_from_directives(
             project,
             file_entry,
             &issues,
             tree.mypy_inline_config_directives(),
         );
-        ignore_type_errors |= match &directives_info.flags {
-            Some(flags) => flags.ignore_errors,
-            None => project.flags.ignore_errors,
-        };
+        if ignore_type_errors.is_none() {
+            ignore_type_errors = match &directives_info.flags {
+                Some(flags) => flags.ignore_errors,
+                None => project.flags.ignore_errors,
+            }
+        }
 
-        if !ignore_type_errors && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
+        if ignore_type_errors.is_none()
+            && let Some(issue) = add_error_if_typeshed_is_overwritten(file_entry)
         {
             issues.add(Issue::from_node_index(&tree, 0, issue, false));
         }
@@ -356,7 +361,7 @@ impl<'db> PythonFile {
         is_stub: bool,
         flags: Option<TypeCheckerFlags>,
         project: &PythonProject,
-        ignore_type_errors: bool,
+        ignore_type_errors: Option<IgnoreFileReason>,
     ) -> Self {
         let flags = flags.map(|flags| flags.finalize());
         let complex_points = Default::default();
@@ -810,7 +815,7 @@ impl<'db> PythonFile {
     ) -> bool {
         // This function adds issues in all normal cases and does not respect the InferenceState
         // mode.
-        if self.ignore_type_errors {
+        if self.ignore_type_errors.is_some() {
             return false;
         }
         let (file, add) = match self.super_file {
@@ -1014,7 +1019,11 @@ fn info_from_directives<'x>(
                     Some(value) => IniOrTomlValue::Ini(value),
                     None => IniOrTomlValue::InlineConfigNoValue,
                 };
-                set_flag(flags.as_mut().unwrap(), &name, value, true)?;
+                let mut_flags = flags.as_mut().unwrap();
+                set_flag(mut_flags, &name, value, true)?;
+                if name == "ignore_errors" && mut_flags.ignore_errors.is_some() {
+                    mut_flags.ignore_errors = Some(IgnoreFileReason::IgnoreErrorsAtTopOfFile);
+                }
                 Ok(())
             };
             if let Err(err) = check() {
