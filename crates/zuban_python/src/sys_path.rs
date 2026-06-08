@@ -305,6 +305,16 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
         .parent()
         .expect(NEEDS_PARENTS);
 
+    let maybe_has_zuban_in_path = |path: &Path| {
+        let typeshed_path = path.join("zuban").join("third_party").join("typeshed");
+        typeshed_path.exists().then(|| {
+            LocalFS::without_watcher().normalized_path_from_current_dir(
+                typeshed_path
+                    .to_str()
+                    .expect("Expected the typeshed path to be UTF-8"),
+            )
+        })
+    };
     let maybe_has_zuban_detailed = |lib_path: &Path, site_packages_name: &str| {
         let typeshed_path = lib_path
             .join(site_packages_name)
@@ -363,8 +373,16 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
             }
         }
         if let Err(err) = result {
+            // This can happen when you for example pip install -t ...
+            if let Some(p) = maybe_has_zuban_in_path(env_folder) {
+                return p;
+            }
             panic!("{err}")
         }
+    }
+    // See comment above
+    if let Some(p) = maybe_has_zuban_in_path(env_folder) {
+        return p;
     }
     panic!("Did not find a typeshed folder in {env_folder:?}")
 }
