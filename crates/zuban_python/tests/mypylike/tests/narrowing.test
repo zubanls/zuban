@@ -2315,3 +2315,22 @@ if isinstance(x, str):  # E: Subclass of "int" and "str" cannot exist: have dist
     print()  # E: Statement is unreachable
 if isinstance(int(), str):  # E: Subclass of "int" and "str" cannot exist: have distinct disjoint bases
     print()  # E: Statement is unreachable
+
+[case intersection_can_not_be_passed_to_invariant]
+# From GH #438
+class A:
+    pass
+
+class B:
+    pass
+
+def g(x: list[A]): pass
+
+def f(x: A):
+    if isinstance(x, B):
+        y = [x]
+        g(y)  # E: Argument 1 to "g" has incompatible type "list[<subclass of "__main__.A" and "__main__.B">]"; expected "list[A]" \
+              # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+              # N: Consider using "Sequence" instead, which is covariant
+
+        y = [x, x]  # This should be fine

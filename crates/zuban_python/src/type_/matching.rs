@@ -252,9 +252,16 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::CustomBehavior(_) | Type::DataclassTransformObj(_) => Match::new_false(),
-            Self::Intersection(intersection1) => Match::all(intersection1.iter_entries(), |t| {
-                t.matches(i_s, matcher, value_type, variance)
-            }),
+            Self::Intersection(intersection1) => {
+                if variance == Variance::Invariant {
+                    self.is_super_type_of(i_s, matcher, value_type)
+                        & self.is_sub_type_of(i_s, matcher, value_type)
+                } else {
+                    Match::all(intersection1.iter_entries(), |t| {
+                        t.matches(i_s, matcher, value_type, variance)
+                    })
+                }
+            }
             Self::LiteralString { .. } => match value_type {
                 Self::LiteralString { .. } => Match::new_true(),
                 Self::Literal(l) => match &l.kind {
@@ -551,7 +558,7 @@ impl Type {
                     m
                 }
             }
-            Type::Intersection(intersection2) => {
+            Type::Intersection(intersection2) if variance == Variance::Covariant => {
                 Match::any(intersection2.iter_entries(), |t| {
                     self.matches(i_s, matcher, t, variance)
                 })
