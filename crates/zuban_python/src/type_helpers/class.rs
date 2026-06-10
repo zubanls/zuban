@@ -38,7 +38,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
-        GenericsList, LiteralValue, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
+        GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
         ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StringSlice, Tuple,
         TupleArgs, Type, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
         TypedDictGenerics, Variance, add_any_params_to_params,
@@ -405,22 +405,19 @@ impl<'db: 'a, 'a> Class<'a> {
                     continue;
                 }
 
+                // Magic methods are probably never relevant on the object, since Python
+                // ignores all self attributes. This is especially the case if Enums classes
+                // are passed. However it feels a bit weird here and might need to be changed
+                // in the future.
+                let kind = if is_magic_method(name) {
+                    LookupKind::OnlyType
+                } else {
+                    LookupKind::Normal
+                };
                 other.run_after_lookup_on_each_union_member(
-                    i_s,
                     None,
-                    self.node_ref.file,
-                    name,
-                    // Magic methods are probably never relevant on the object, since Python
-                    // ignores all self attributes. This is especially the case if Enums classes
-                    // are passed. However it feels a bit weird here and might need to be changed
-                    // in the future.
-                    if is_magic_method(name) {
-                        LookupKind::OnlyType
-                    } else {
-                        LookupKind::Normal
-                    },
-                    None,
-                    &mut ResultContext::Unknown,
+                    LookupArgs::new(i_s, self.node_ref.file, name).with_kind(kind)
+                    .with_add_issue(
                     &|issue| {
                         // Deprecated should not affect matching
                         if let IssueKind::Deprecated { .. } = &issue {
@@ -430,7 +427,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         debug!("Issue in protocol: {}", issue_str);
                         *had_error.borrow_mut() = Some(issue_str);
                         false
-                    },
+                    }),
+                    &mut ResultContext::Unknown,
+                    None,
                     &mut |_, mut lookup_details| {
                         if name == "__hash__"
                             && other.is_protocol(i_s.db)

@@ -38,9 +38,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
-        ensure_calculated_dataclass, format_callable_params,
+        LookupArgs, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type,
+        TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarVariance, Variance,
+        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -2347,16 +2347,12 @@ impl Inference<'_, '_, '_> {
             return; // If the type is Any, we do not need to check.
         };
         forward_type.run_after_lookup_on_each_union_member(
-            i_s,
             None,
-            from.file,
-            normal_magic,
-            LookupKind::OnlyType,
-            None,
+            LookupArgs::new(i_s, from.file, normal_magic).with_kind(LookupKind::OnlyType),
             &mut ResultContext::ValueExpected,
-            // Theoretically this should not be ignored, but for now I'm not sure if self types are
-            // working anyway.
-            &|_| false,
+            // Theoretically we should add a add_with_ignore, but for now I'm not sure if self
+            // types are working anyway.
+            None,
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will

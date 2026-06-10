@@ -30,9 +30,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
-        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupResult, NeverCause,
-        PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, execute_tuple_class, execute_type_of_type,
+        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupArgs, LookupResult,
+        NeverCause, PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
@@ -1999,14 +1999,12 @@ impl<'db: 'slf, 'slf> Inferred {
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
-            i_s,
             Some(self),
-            in_file,
-            name,
-            kind,
-            None,
+            LookupArgs::new(i_s, in_file, name)
+                .with_kind(kind)
+                .with_add_issue(add_issue),
             &mut ResultContext::ValueExpected,
-            add_issue,
+            None,
             callable,
         )
     }

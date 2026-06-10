@@ -52,7 +52,7 @@ pub(crate) use self::{
     lookup_result::LookupResult,
     matching::{match_arbitrary_len_vs_unpack, match_tuple_type_arguments, match_unpack},
     named_tuple::NamedTuple,
-    operations::{IterCause, IterInfos, execute_type_of_type},
+    operations::{IterCause, IterInfos, LookupArgs, execute_type_of_type},
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::{ReplaceSelf, ReplaceTypeVarLikes, replace_param_spec},
     sentinel::Sentinel,
