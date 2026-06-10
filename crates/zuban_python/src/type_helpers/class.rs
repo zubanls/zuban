@@ -429,7 +429,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         false
                     }),
                     &mut ResultContext::Unknown,
-                    None,
                     &mut |_, mut lookup_details| {
                         if name == "__hash__"
                             && other.is_protocol(i_s.db)

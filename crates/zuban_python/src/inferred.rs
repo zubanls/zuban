@@ -2004,7 +2004,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 .with_kind(kind)
                 .with_add_issue(add_issue),
             &mut ResultContext::ValueExpected,
-            None,
             callable,
         )
     }

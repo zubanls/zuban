@@ -2352,7 +2352,6 @@ impl Inference<'_, '_, '_> {
             &mut ResultContext::ValueExpected,
             // Theoretically we should add a add_with_ignore, but for now I'm not sure if self
             // types are working anyway.
-            None,
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
