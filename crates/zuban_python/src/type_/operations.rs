@@ -673,6 +673,13 @@ impl Type {
                 result_context,
                 add_issue,
             ),
+            Type::LiteralString { .. } => i_s.db.python_state.str_type().get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
             Type::Self_ => {
                 let Some(current_class) = i_s.current_class() else {
                     recoverable_error!(
