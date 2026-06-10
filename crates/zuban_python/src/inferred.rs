@@ -878,6 +878,8 @@ impl<'db: 'slf, 'slf> Inferred {
         disallow_lazy_bound_method: bool,
         avoid_inferring_return_types: bool,
     ) -> Option<(Self, AttributeKind)> {
+        let disallow_lazy_bound_method =
+            disallow_lazy_bound_method || matches!(instance, Type::Intersection(_));
         self.bind_instance_descriptors_internal(
             i_s,
             for_name,
