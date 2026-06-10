@@ -35,6 +35,7 @@ pub(crate) struct TypedDictMember {
     pub read_only: bool,
 }
 
+#[derive(Debug)]
 pub(crate) struct TypedDictEntry<'x> {
     pub name: Option<&'x DbString>,
     pub type_: &'x Type,
@@ -281,11 +282,16 @@ impl TypedDict {
                 read_only: member.read_only,
             })
         } else {
-            m.extra_items.as_ref().map(|e| TypedDictEntry {
-                name: None,
-                type_: &e.t,
-                required: false,
-                read_only: e.read_only,
+            m.extra_items.as_ref().and_then(|e| {
+                if e.t.is_never() {
+                    return None;
+                }
+                Some(TypedDictEntry {
+                    name: None,
+                    type_: &e.t,
+                    required: false,
+                    read_only: e.read_only,
+                })
             })
         }
     }

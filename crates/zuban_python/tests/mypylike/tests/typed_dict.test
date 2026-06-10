@@ -658,7 +658,7 @@ class ClosedMovie(TypedDict, closed=True):
     name: str
 
 ClosedMovie(name="No Country for Old Men")  # OK
-ClosedMovie(name="No Country for Old Men", year=2007)  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "Never")
+ClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra key "year" for TypedDict "ClosedMovie"
 
 [case typed_dict_extra_items_assignable_to_mapping]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -1286,3 +1286,12 @@ class ConditionalField(TypedDict):
 ConditionalField(x=1, y=2)  # E: Missing key "z" for TypedDict "ConditionalField"
 ConditionalField(x=1, y=2, z=3)
 
+[case closed_typed_dict_deletion]
+# From GH #439
+from typing_extensions import TypedDict
+
+class TD(TypedDict, closed=True):
+    a: int
+
+def f(x: TD):
+    del x["b"]  # E: TypedDict "TD" has no key "b"
