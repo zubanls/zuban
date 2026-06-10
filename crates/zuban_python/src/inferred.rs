@@ -2004,6 +2004,7 @@ impl<'db: 'slf, 'slf> Inferred {
             in_file,
             name,
             kind,
+            None,
             &mut ResultContext::ValueExpected,
             add_issue,
             callable,

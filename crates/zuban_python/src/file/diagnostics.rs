@@ -2352,6 +2352,7 @@ impl Inference<'_, '_, '_> {
             from.file,
             normal_magic,
             LookupKind::OnlyType,
+            None,
             &mut ResultContext::ValueExpected,
             // Theoretically this should not be ignored, but for now I'm not sure if self types are
             // working anyway.

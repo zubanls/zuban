@@ -78,6 +78,7 @@ impl Type {
             from_file,
             name,
             lookup_kind,
+            None,
             result_context,
             add_issue,
             &mut |t, lookup_result| {
@@ -131,6 +132,7 @@ impl Type {
         from_file: &PythonFile,
         name: &str,
         kind: LookupKind,
+        as_self_instance: Option<&dyn Fn() -> Type>,
         result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueKind) -> bool,
         callable: &mut dyn FnMut(&Type, LookupDetails),
@@ -141,7 +143,11 @@ impl Type {
                 options = options.with_avoid_inferring_return_types();
             }
             */
-            InstanceLookupOptions::new(add_issue).with_kind(kind)
+            let options = InstanceLookupOptions::new(add_issue).with_kind(kind);
+            if let Some(as_self_instance) = as_self_instance {
+                return options.with_as_self_instance(as_self_instance);
+            }
+            options
         };
         match self {
             Type::Class(c) => {
@@ -177,25 +183,26 @@ impl Type {
 
                 callable(self, l)
             }
-            t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
+            Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => {
-                    if let Type::Class(c) = bound {
-                        let inst = Instance::new(c.class(i_s.db), None);
-                        let l =
-                            inst.lookup(i_s, name, options().with_as_self_instance(&|| t.clone()));
-                        callable(self, l)
-                    } else {
-                        bound.run_after_lookup_on_each_union_member(
-                            i_s,
-                            None,
-                            from_file,
-                            name,
-                            kind,
-                            result_context,
-                            add_issue,
-                            callable,
-                        );
-                    }
+                    bound.run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from_file,
+                        name,
+                        kind,
+                        Some(&|| self.clone()),
+                        result_context,
+                        add_issue,
+                        &mut |t, lookup| {
+                            if bound.is_union_like(i_s.db) {
+                                // Pass t for better error messages
+                                callable(t, lookup)
+                            } else {
+                                callable(self, lookup)
+                            }
+                        },
+                    );
                 }
                 TypeVarKind::Constraints(_constraints) => {
                     debug!("TODO type var values");
@@ -238,6 +245,7 @@ impl Type {
                         from_file,
                         name,
                         kind,
+                        None,
                         result_context,
                         add_issue,
                         &mut |t, lookup| {
@@ -265,6 +273,7 @@ impl Type {
                             from_file,
                             name,
                             kind,
+                            None,
                             result_context,
                             add_issue,
                             callable,
@@ -338,6 +347,7 @@ impl Type {
                         from_file,
                         name,
                         kind,
+                        Some(&|| self.clone()),
                         result_context,
                         add_issue,
                         callable,
@@ -406,27 +416,17 @@ impl Type {
                     AttributeKind::Attribute,
                 ),
             ),
-            Type::NewType(new_type) => {
-                if let Type::Class(c) = &new_type.type_ {
-                    let l = Instance::new(c.class(i_s.db), None).lookup(
-                        i_s,
-                        name,
-                        options().with_as_self_instance(&|| self.clone()),
-                    );
-                    callable(self, l)
-                } else {
-                    new_type.type_.run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from_file,
-                        name,
-                        kind,
-                        result_context,
-                        add_issue,
-                        callable,
-                    )
-                }
-            }
+            Type::NewType(new_type) => new_type.type_.run_after_lookup_on_each_union_member(
+                i_s,
+                None,
+                from_file,
+                name,
+                kind,
+                Some(&|| self.clone()),
+                result_context,
+                add_issue,
+                &mut |_, lookup| callable(self, lookup),
+            ),
             Type::Enum(e) => callable(self, lookup_on_enum_instance(i_s, add_issue, e, name)),
             Type::EnumMember(member) => callable(
                 self,
@@ -440,6 +440,7 @@ impl Type {
                     from_file,
                     name,
                     kind,
+                    as_self_instance,
                     result_context,
                     add_issue,
                     callable,
@@ -454,6 +455,7 @@ impl Type {
                     from_file,
                     name,
                     kind,
+                    as_self_instance,
                     result_context,
                     add_issue,
                     callable,
@@ -468,6 +470,7 @@ impl Type {
                     from_file,
                     name,
                     kind,
+                    as_self_instance,
                     result_context,
                     add_issue,
                     callable,
@@ -480,6 +483,7 @@ impl Type {
                         from_file,
                         name,
                         kind,
+                        as_self_instance,
                         result_context,
                         add_issue,
                         callable,
@@ -506,6 +510,7 @@ impl Type {
                                 from_file,
                                 name,
                                 kind,
+                                None, // TODO
                                 result_context,
                                 add_issue,
                                 &mut |t, lookup| on_lookup_result(t, lookup),

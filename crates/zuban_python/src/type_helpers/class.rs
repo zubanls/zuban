@@ -419,6 +419,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     } else {
                         LookupKind::Normal
                     },
+                    None,
                     &mut ResultContext::Unknown,
                     &|issue| {
                         // Deprecated should not affect matching
