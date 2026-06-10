@@ -2334,3 +2334,25 @@ def f(x: A):
               # N: Consider using "Sequence" instead, which is covariant
 
         y = [x, x]  # This should be fine
+
+[case intersection_binding_retains_narrowing]
+# From GH #441
+from typing import Any, Self, overload, reveal_type
+
+class Descriptor:
+    @overload
+    def __get__(self, instance: None, owner: type, /) -> Self: ...
+    @overload
+    def __get__[T](self, instance: T, owner: type | None = None, /) -> T: ...
+    def __get__(self, instance: object, owner: type | None = None, /) -> Any: ...
+
+class A:
+    desc = Descriptor()
+
+class Mixin:
+    desc2 = Descriptor()
+
+def g(x: A) -> None:
+    if isinstance(x, Mixin):
+        reveal_type(x.desc)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"
+        reveal_type(x.desc2)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"

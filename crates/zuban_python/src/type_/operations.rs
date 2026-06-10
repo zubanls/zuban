@@ -98,7 +98,7 @@ impl<'db, 'a> LookupArgs<'db, 'a> {
         self
     }
 
-    pub fn clone_for_union(&self) -> Self {
+    pub fn clone_for_arithmetic(&self) -> Self {
         let mut new = self.clone();
         new.as_self_instance = None;
         new
@@ -295,7 +295,7 @@ impl Type {
                     }
                     t.run_after_lookup_on_each_union_member(
                         None,
-                        args.clone_for_union(),
+                        args.clone_for_arithmetic(),
                         result_context,
                         &mut |t, lookup| {
                             if ignore_attr_errors {
@@ -318,7 +318,7 @@ impl Type {
                         }
                         t.run_after_lookup_on_each_union_member(
                             None,
-                            args.clone_for_union(),
+                            args.clone_for_arithmetic(),
                             result_context,
                             callable,
                         )
@@ -487,6 +487,7 @@ impl Type {
                 // We need to wrap this in a function, because otherwise the Rust compiler recurses
                 // while trying to create the impls.
                 fn on_intersection(
+                    intersection_t: &Type,
                     i: &Intersection,
                     args: LookupArgs,
                     result_context: &mut ResultContext,
@@ -497,7 +498,9 @@ impl Type {
                         &mut |t, add_issue, on_lookup_result| {
                             t.run_after_lookup_on_each_union_member(
                                 None,
-                                args.clone().with_add_issue(add_issue),
+                                args.clone_for_arithmetic()
+                                    .with_add_issue(add_issue)
+                                    .with_as_self_instance(&|| intersection_t.clone()),
                                 result_context,
                                 &mut |t, lookup| on_lookup_result(t, lookup),
                             );
@@ -506,7 +509,7 @@ impl Type {
                         callable,
                     )
                 }
-                on_intersection(i, args, result_context, callable);
+                on_intersection(self, i, args, result_context, callable);
             }
             Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
             Type::LiteralString { .. } => {
