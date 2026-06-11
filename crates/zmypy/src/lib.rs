@@ -1204,4 +1204,16 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_typeshed_path() {
+        logging_config::setup_logging_for_tests();
+        if cfg!(unix) {
+            let options = cli_args_to_additional(["--custom-typeshed-dir", "/my-typeshed-path"]);
+            assert_eq!(
+                &*options.settings.typeshed_path.unwrap() as &str,
+                "/my-typeshed-path"
+            )
+        }
+    }
 }

@@ -291,6 +291,13 @@ pub struct MypyCli {
     explicit_package_bases: bool,
     #[arg(long, hide = true)]
     no_explicit_package_bases: bool,
+
+    // Hidden in Mypy
+    /// Specifies the directory where zuban looks for standard library typeshed stubs, instead of
+    /// the typeshed that ships with zuban.
+    #[arg(long)]
+    custom_typeshed_dir: Option<String>,
+
     // Non-Mypy options
     #[arg(long, hide = true)]
     allow_incomplete_generics: bool,
@@ -464,6 +471,10 @@ fn apply_mypy_flags(
     flags.disabled_error_codes.extend(cli.disable_error_code);
     flags.always_true_symbols.extend(cli.always_true);
     flags.always_false_symbols.extend(cli.always_false);
+
+    if let Some(typeshed_dir) = cli.custom_typeshed_dir {
+        settings.typeshed_path = Some(vfs_handler.normalized_path_from_current_dir(&typeshed_dir))
+    }
 
     if cli.ignore_excludes_from_config {
         // This is for testing, so we can test all files
