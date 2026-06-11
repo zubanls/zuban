@@ -1397,3 +1397,19 @@ def f6(a: str, /) -> None: ...
 @overload
 def f6(**kwargs: str) -> None: ...
 def f6(a: str = "", **kwargs: Unpack[TDmixed2Extra]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+[case overload_call_positional_only]
+# From GH #456
+from typing import overload
+
+@overload
+def posonly(x: int, /) -> int: ...
+@overload
+def posonly(x: str, /) -> str: ...
+def posonly(x: int | str, /) -> int | str: return x
+
+def test_posonly_narrow(x: int | str) -> int | str: # typechecks
+    if isinstance(x, int): return posonly(x)
+    else: return posonly(x)
+
+def test_posonly(x: int | str) -> int | str: return posonly(x) # doesnt

@@ -689,6 +689,23 @@ impl<'db, 'a> Arg<'db, 'a> {
         }
     }
 
+    pub fn is_positional_arg(&self) -> bool {
+        match &self.kind {
+            ArgKind::Positional { .. } | ArgKind::Comprehension { .. } => true,
+            ArgKind::Inferred {
+                in_args_or_kwargs_and_arbitrary_len: false,
+                is_keyword: None,
+                ..
+            }
+            | ArgKind::InferredWithCustomAddIssue { .. } => true,
+            ArgKind::Overridden { original, .. } => original.is_positional_arg(),
+            ArgKind::ParamSpec { .. }
+            | ArgKind::StarredWithUnpack { .. }
+            | ArgKind::Keyword(KeywordArg { .. })
+            | ArgKind::Inferred { .. } => false,
+        }
+    }
+
     pub fn maybe_positional_arg(
         self,
         i_s: &InferenceState<'db, '_>,

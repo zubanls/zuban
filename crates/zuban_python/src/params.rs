@@ -1312,18 +1312,10 @@ where
             }
             ParamKind::PositionalOnly => {
                 if let Some(arg) = self.next_arg() {
-                    match arg.kind {
-                        ArgKind::Positional { .. }
-                        | ArgKind::Inferred {
-                            is_keyword: None, ..
-                        }
-                        | ArgKind::InferredWithCustomAddIssue { .. }
-                        | ArgKind::Comprehension { .. } => argument_with_index = Some(arg),
-                        _ => {
-                            if arg.keyword_name(self.db).is_some() {
-                                self.unused_keyword_arguments.push(arg);
-                            }
-                        }
+                    if arg.is_positional_arg() {
+                        argument_with_index = Some(arg)
+                    } else if arg.keyword_name(self.db).is_some() {
+                        self.unused_keyword_arguments.push(arg);
                     }
                 }
             }
