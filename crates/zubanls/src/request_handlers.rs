@@ -16,11 +16,12 @@ use lsp_types::{
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolInformation, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Url,
-    WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
-    WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
-    WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation,
+    SymbolInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Url, WorkspaceDiagnosticParams,
+    WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport,
+    WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport, WorkspaceSymbol, WorkspaceSymbolParams,
+    WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -539,13 +540,18 @@ impl GlobalState<'_> {
         let encoding = self.client_capabilities.negotiated_encoding();
         let hierarchical_symbols = self.client_capabilities.hierarchical_symbols();
         let document = self.document(&params.text_document)?;
-        
+
         if hierarchical_symbols {
             Ok(Some(DocumentSymbolResponse::Nested(
                 Self::nested_doc_symbols(encoding, document.symbols()),
             )))
         } else {
-            let symbols = Self::flat_doc_symbols(encoding, &params.text_document.uri, document.symbols(), None);
+            let symbols = Self::flat_doc_symbols(
+                encoding,
+                &params.text_document.uri,
+                document.symbols(),
+                None,
+            );
             Ok(Some(DocumentSymbolResponse::Flat(symbols)))
         }
     }
@@ -599,7 +605,8 @@ impl GlobalState<'_> {
                     container_name: container_name.map(|s| s.to_string()),
                 }];
                 if let Some(child_symbols) = name.class_symbols(kind) {
-                    let mut children = Self::flat_doc_symbols(encoding, uri, child_symbols, Some(symbol.symbol));
+                    let mut children =
+                        Self::flat_doc_symbols(encoding, uri, child_symbols, Some(symbol.symbol));
                     result.append(&mut children);
                 }
                 result
