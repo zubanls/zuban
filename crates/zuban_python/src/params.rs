@@ -533,65 +533,26 @@ fn matches_simple_params_part2<
                         }
                     },
                 },
-                WrappedParamType::StarStar(d1) => match specific2 {
-                    WrappedParamType::StarStar(d2) => match (d1, d2) {
-                        (WrappedStarStar::UnpackTypedDict(td1), _) => {
-                            return matches
-                                & matches_simple_params_part2(
-                                    i_s,
-                                    matcher,
-                                    typed_dict_to_params(i_s.db, td1),
-                                    params2,
-                                    variance,
-                                );
-                        }
-                        (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
-                            matches &= match_(i_s, matcher, t1, &t2)
-                        }
-                        (_, WrappedStarStar::ParamSpecKwargs(_))
-                        | (WrappedStarStar::ParamSpecKwargs(_), _)
-                        | (_, WrappedStarStar::UnpackTypedDict(_)) => {
-                            unreachable!()
-                        }
-                    },
-                    ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
-                    | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
-                        WrappedStarStar::UnpackTypedDict(td1) => {
-                            return matches
-                                & matches_simple_params_part2(
-                                    i_s,
-                                    matcher,
-                                    typed_dict_to_params(i_s.db, td1),
-                                    params2,
-                                    variance,
-                                );
-                        }
-                        WrappedStarStar::ValueType(t1)
-                            if param2.has_default()
-                                && matches!(specific2, WrappedParamType::KeywordOnly(_)) =>
+                WrappedParamType::StarStar(d1) => match d1 {
+                    WrappedStarStar::ValueType(t1) => {
+                        if let Some(error) =
+                            match_star_star(i_s.db, param1, params2.by_ref(), |t2| {
+                                matches &= match_(i_s, matcher, t1, &t2)
+                            })
                         {
-                            matches &= match_(i_s, matcher, t1, t2);
-                            continue;
+                            return error;
                         }
-                        _ => {
-                            debug!(
-                                "Params mismatch (#{}), because had {:?} vs {:?}",
-                                line!(),
-                                param1.kind(i_s.db),
-                                param2.kind(i_s.db),
+                    }
+                    WrappedStarStar::ParamSpecKwargs(_) => unreachable!(),
+                    WrappedStarStar::UnpackTypedDict(td1) => {
+                        return matches
+                            & matches_simple_params_part2(
+                                i_s,
+                                matcher,
+                                typed_dict_to_params(i_s.db, td1),
+                                params2,
+                                variance,
                             );
-                            return Match::new_false();
-                        }
-                    },
-                    WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => continue,
-                    _ => {
-                        debug!(
-                            "Params mismatch (#{}), because had {:?} vs {:?}",
-                            line!(),
-                            param1.kind(i_s.db),
-                            param2.kind(i_s.db)
-                        );
-                        return Match::new_false();
                     }
                 },
             };
@@ -667,6 +628,54 @@ fn matches_simple_params_part2<
         }
     }
     matches
+}
+
+fn match_star_star<'db: 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
+    db: &'db Database,
+    param1: P1,
+    params2: impl Iterator<Item = P2>,
+    mut ensure_matching_type: impl FnMut(Option<Cow<'_, Type>>),
+) -> Option<Match> {
+    for param2 in params2 {
+        let specific2 = param2.specific(db);
+        match specific2 {
+            WrappedParamType::StarStar(d2) => match d2 {
+                WrappedStarStar::ValueType(t2) => ensure_matching_type(t2),
+                WrappedStarStar::ParamSpecKwargs(_) | WrappedStarStar::UnpackTypedDict(_) => {
+                    // Handled earlier
+                    unreachable!()
+                }
+            },
+            WrappedParamType::PositionalOrKeyword(t2) | WrappedParamType::KeywordOnly(t2) => {
+                if param2.has_default() {
+                    ensure_matching_type(t2);
+                    continue;
+                } else {
+                    debug!(
+                        "Params mismatch (#{}), because had {:?} vs {:?}",
+                        line!(),
+                        param1.kind(db),
+                        param2.kind(db),
+                    );
+                    return Some(Match::new_false());
+                }
+            }
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => (),
+            WrappedParamType::Star(_) => {}
+            WrappedParamType::PositionalOnly(_) => {
+                if !param2.has_default() {
+                    debug!(
+                        "Params mismatch (#{}), because had {:?} vs {:?}",
+                        line!(),
+                        param1.kind(db),
+                        param2.kind(db)
+                    );
+                    return Some(Match::new_false());
+                }
+            }
+        }
+    }
+    None
 }
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
