@@ -1225,6 +1225,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    fn is_in_protocol(&self, db: &Database) -> bool {
+        self.class.map(|c| c.is_protocol(db)).unwrap_or(false)
+    }
+
     fn calculate_next_overload_items(
         &self,
         i_s: &InferenceState,
@@ -1242,7 +1246,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut dataclass_transform = details.dataclass_transform;
         let should_error_out = Cell::new(false);
         let add_issue_for_decorators_in_wrong_positions = |func: &Function, is_first: bool| {
-            if !(in_stub && is_first) {
+            if !(in_stub && is_first) && !self.is_in_protocol(i_s.db) {
                 for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
                     let add = |kind| {
                         NodeRef::new(func.node_ref.file, decorator.index()).add_issue(
@@ -1444,7 +1448,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return None;
         } else if implementation.is_none()
             && !in_stub
-            && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
+            && !self.is_in_protocol(i_s.db)
             && !has_abstract
         {
             if i_s.db.mypy_compatible() {

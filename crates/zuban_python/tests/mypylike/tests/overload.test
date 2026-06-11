@@ -1413,3 +1413,17 @@ def test_posonly_narrow(x: int | str) -> int | str: # typechecks
     else: return posonly(x)
 
 def test_posonly(x: int | str) -> int | str: return posonly(x) # doesnt
+
+[case override_on_overload_in_protocol]
+# From GH #451
+from typing import Protocol, overload, override
+
+class CanA(Protocol):
+    def a(self, x: str) -> str: ...
+
+class CanA2(CanA, Protocol):
+    @override  # error: @override should be applied only to overload implementation  [misc]
+    @overload
+    def a(self, x: str) -> str: ...
+    @overload
+    def a(self, x: bytes) -> bytes: ...
