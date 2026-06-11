@@ -863,3 +863,25 @@ class Y:
 
     def check(self: Self):
         a: P = self
+
+[case protocol_override_of_object_methods]
+# From GH #449
+from typing import runtime_checkable, Protocol, override
+
+@runtime_checkable
+class CanStr(Protocol):
+    @override
+    def __str__(self, /) -> str: ...
+    @override
+    def missing(self, /) -> str: ...  # E: Method "missing" is marked as an override, but no base method was found with this name
+
+class ProtocolBase(Protocol):
+    def bar(self) -> str: ...
+
+class CanStr2(ProtocolBase, Protocol):
+    @override
+    def __str__(self, /) -> str: ...
+    @override
+    def bar(self) -> str: ...
+    @override
+    def missing(self, /) -> str: ...  # E: Method "missing" is marked as an override, but no base method was found with this name

@@ -2679,12 +2679,9 @@ fn find_and_check_override(
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
         false
     };
-    let mut lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
+    let lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
         .with_skip_first_of_mro(i_s.db, &override_class)
         .with_avoid_inferring_return_types();
-    if instance.class.is_protocol(i_s.db) {
-        lookup_options = lookup_options.without_object();
-    }
     let mut original_details = instance.lookup(
         i_s,
         name,
@@ -2715,30 +2712,33 @@ fn find_and_check_override(
                 },
             );
         }
-        while let Some(mro_index) = original_details.mro_index {
-            check_override(
-                i_s,
-                from,
-                original_details,
-                &override_details,
-                name,
-                |c| {
-                    if let TypeOrClass::Class(c) = c
-                        && c.file_index() != from.file_index()
-                    {
-                        return c.qualified_name(i_s.db).into();
-                    }
-                    c.name(i_s.db).into()
-                },
-                None,
-            );
-            original_details = instance.lookup(
-                i_s,
-                name,
-                // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-                InstanceLookupOptions::new(&add_lookup_issue)
-                    .with_super_count(mro_index.0 as usize + 1),
-            )
+        // Protocols can override builtin methods with different signatures
+        if !(instance.class.is_protocol(i_s.db) && original_details.class.is_object(i_s.db)) {
+            while let Some(mro_index) = original_details.mro_index {
+                check_override(
+                    i_s,
+                    from,
+                    original_details,
+                    &override_details,
+                    name,
+                    |c| {
+                        if let TypeOrClass::Class(c) = c
+                            && c.file_index() != from.file_index()
+                        {
+                            return c.qualified_name(i_s.db).into();
+                        }
+                        c.name(i_s.db).into()
+                    },
+                    None,
+                );
+                original_details = instance.lookup(
+                    i_s,
+                    name,
+                    // NamedTuple / Tuple are special, because they insert an additional type of themselves.
+                    InstanceLookupOptions::new(&add_lookup_issue)
+                        .with_super_count(mro_index.0 as usize + 1),
+                )
+            }
         }
     } else if has_override_decorator {
         let issue = IssueKind::MissingBaseForOverride { name: name.into() };
