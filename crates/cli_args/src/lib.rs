@@ -25,6 +25,13 @@ pub struct Cli {
 
     #[command(flatten)]
     pub mypy_options: MypyCli,
+
+    // Additional non-mypy options
+    /// Additional paths to be used as additional "sys.path" module-resolution bases.
+    /// Using this option typically means your environment is not setup correctly. In some rare
+    /// cases this can be useful to find Python packages that were not installed normally.
+    #[arg(long)]
+    extra_search_path: Vec<String>,
 }
 
 impl Cli {
@@ -33,6 +40,7 @@ impl Cli {
             mode: Some(Mode::Mypy),
             untyped_function_return_mode: None,
             mypy_options,
+            extra_search_path: Default::default(),
         }
     }
 
@@ -331,6 +339,12 @@ pub fn apply_flags_detailed(
     if let Some(untyped_function_return_mode) = cli.untyped_function_return_mode {
         settings.untyped_function_return_mode = untyped_function_return_mode
     }
+
+    settings.prepended_site_packages.extend(
+        cli.extra_search_path
+            .into_iter()
+            .map(|path| vfs_handler.normalized_path_from_current_dir(&path)),
+    );
 
     apply_mypy_flags(
         vfs_handler,

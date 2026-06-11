@@ -7,7 +7,7 @@ use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::find_config;
+use config::{ProjectOptions, find_config};
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
@@ -73,6 +73,20 @@ fn project_from_cli(
     typeshed_path: Option<Arc<NormalizedPath>>,
     lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
 ) -> (Project, DiagnosticConfig) {
+    let (local_fs, options, diagnostic_config) =
+        project_options_from_cli(cli, current_dir, typeshed_path, lookup_env_var);
+    (
+        Project::new(local_fs, options, RunCause::LanguageServer),
+        diagnostic_config,
+    )
+}
+
+fn project_options_from_cli(
+    cli: Cli,
+    current_dir: &str,
+    typeshed_path: Option<Arc<NormalizedPath>>,
+    lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
+) -> (Box<dyn VfsHandler>, ProjectOptions, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
     let mut found = find_config(
@@ -104,10 +118,7 @@ fn project_from_cli(
         found.config_path.as_deref(),
     );
 
-    (
-        Project::new(Box::new(local_fs), options, RunCause::LanguageServer),
-        found.diagnostic_config,
-    )
+    (Box::new(local_fs), options, found.diagnostic_config)
 }
 
 #[cfg(test)]
@@ -153,6 +164,16 @@ mod tests {
         diagnostics_with_env_lookup(cli, directory, |_| Err(VarError::NotPresent))
             .unwrap_err()
             .to_string()
+    }
+
+    fn cli_args_to_additional<'x>(args: impl IntoIterator<Item = &'x str>) -> ProjectOptions {
+        project_options_from_cli(
+            Cli::parse_from(std::iter::once("").chain(args.into_iter())),
+            ".",
+            None,
+            |_| Err(VarError::NotPresent),
+        )
+        .1
     }
 
     #[test]
@@ -1149,5 +1170,38 @@ mod tests {
                  \"undefined3\"  [attr-defined]",
             ]
         );
+    }
+
+    #[test]
+    fn test_additional_paths() {
+        // From GH #453
+        logging_config::setup_logging_for_tests();
+        if cfg!(unix) {
+            let options = cli_args_to_additional(["--extra-search-path", "/my-additional-path"]);
+            assert_eq!(
+                options
+                    .settings
+                    .prepended_site_packages
+                    .iter()
+                    .map(|normalized| normalized as &str)
+                    .collect::<Vec<_>>(),
+                ["/my-additional-path"]
+            );
+            let options = cli_args_to_additional([
+                "--extra-search-path",
+                "/my-additional-path",
+                "--extra-search-path",
+                "/my-additional-path/inner",
+            ]);
+            assert_eq!(
+                options
+                    .settings
+                    .prepended_site_packages
+                    .iter()
+                    .map(|normalized| normalized as &str)
+                    .collect::<Vec<_>>(),
+                ["/my-additional-path", "/my-additional-path/inner"]
+            );
+        }
     }
 }
