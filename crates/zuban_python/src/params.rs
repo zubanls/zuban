@@ -1312,7 +1312,7 @@ where
             }
             ParamKind::PositionalOnly => {
                 if let Some(arg) = self.next_arg() {
-                    if arg.is_positional_arg() {
+                    if arg.can_be_used_to_match_positional_param() {
                         argument_with_index = Some(arg)
                     } else if arg.keyword_name(self.db).is_some() {
                         self.unused_keyword_arguments.push(arg);

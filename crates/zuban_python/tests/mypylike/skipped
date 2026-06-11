@@ -7,7 +7,6 @@ testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 testDefaultsMustBeInScope
 goto_doc_contains_stdlib_compiled
-testNotSimplifyingUnionWithMetaclass
 
 completion_no_wrong_range_in_strings
 
