@@ -575,7 +575,6 @@ fn matches_simple_params_part2<
                     matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
-                //WrappedParamType::StarStar(WrappedStarStar::ValueType(_)) => {}
                 specific1 => {
                     if !matcher.precise_matching
                         && is_trivial_suffix(
@@ -636,20 +635,25 @@ fn match_star_star<'db: 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     params2: impl Iterator<Item = P2>,
     mut ensure_matching_type: impl FnMut(Option<Cow<'_, Type>>),
 ) -> Option<Match> {
+    let mut missing_kwargs = true;
     for param2 in params2 {
-        let specific2 = param2.specific(db);
-        match specific2 {
+        match param2.specific(db) {
             WrappedParamType::StarStar(d2) => match d2 {
-                WrappedStarStar::ValueType(t2) => ensure_matching_type(t2),
+                WrappedStarStar::ValueType(t2) => {
+                    missing_kwargs = false;
+                    ensure_matching_type(t2)
+                }
                 WrappedStarStar::ParamSpecKwargs(_) | WrappedStarStar::UnpackTypedDict(_) => {
-                    // Handled earlier
+                    // ParamSpecs are handled earlier together with the args case, they only appear
+                    // together.
+                    // Unpacked TypedDicts are unpacked and flattened in the first part of
+                    // matches_simple_params.
                     unreachable!()
                 }
             },
             WrappedParamType::PositionalOrKeyword(t2) | WrappedParamType::KeywordOnly(t2) => {
                 if param2.has_default() {
                     ensure_matching_type(t2);
-                    continue;
                 } else {
                     debug!(
                         "Params mismatch (#{}), because had {:?} vs {:?}",
@@ -675,7 +679,7 @@ fn match_star_star<'db: 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
             }
         }
     }
-    None
+    missing_kwargs.then_some(Match::new_false())
 }
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(

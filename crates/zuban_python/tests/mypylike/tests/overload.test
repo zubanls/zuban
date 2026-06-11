@@ -1342,3 +1342,58 @@ def f6(a: int, /) -> str: ...
 @overload
 def f6(**kwargs: str) -> str: ...
 def f6(*args: int, **kwargs: bytes) -> str: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+[case overload_implementation_with_unpack]
+from typing import overload, TypedDict, Unpack, NotRequired
+
+class TDstrRequired(TypedDict):
+    x: str
+
+class TDstr(TypedDict):
+    x: NotRequired[str]
+    y: NotRequired[str]
+
+class TDstrExtra(TypedDict, extra_items=str):
+    x: NotRequired[str]
+
+class TDmixed1Extra(TypedDict, extra_items=int):
+    x: NotRequired[str]
+
+class TDmixed2Extra(TypedDict, extra_items=str):
+    x: NotRequired[int]
+
+@overload
+def f1(a: int, /, *, x: str) -> None: ...
+@overload
+def f1(**kwargs: str) -> None: ...
+def f1(a: int = 1, /, **kwargs: Unpack[TDstrRequired]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f2(a: str, /) -> None: ...
+@overload
+def f2(**kwargs: str) -> None: ...
+def f2(a: str = "", **kwargs: Unpack[TDstr]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f3(a: str, /) -> None: ...
+@overload
+def f3(**kwargs: str) -> None: ...
+def f3(a: str = "", b: str = "") -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f4(a: str, /) -> None: ...
+@overload
+def f4(**kwargs: str) -> None: ...
+def f4(a: str = "", **kwargs: Unpack[TDstrExtra]) -> None: ...
+
+@overload
+def f5(a: str, /) -> None: ...
+@overload
+def f5(**kwargs: str) -> None: ...
+def f5(a: str = "", **kwargs: Unpack[TDmixed1Extra]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f6(a: str, /) -> None: ...
+@overload
+def f6(**kwargs: str) -> None: ...
+def f6(a: str = "", **kwargs: Unpack[TDmixed2Extra]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
