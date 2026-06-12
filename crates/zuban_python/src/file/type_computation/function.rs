@@ -443,13 +443,21 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let t = self.return_annotation_type(i_s);
         if self.is_async() && !self.is_generator() {
             Cow::Owned(new_class!(
-                i_s.db.python_state.coroutine_type_link(),
+                Self::coroutine_link_depending_on_mypy_compatibility(i_s.db),
                 Type::Any(AnyCause::Todo),
                 Type::Any(AnyCause::Todo),
                 t.into_owned(),
             ))
         } else {
             t
+        }
+    }
+
+    pub fn coroutine_link_depending_on_mypy_compatibility(db: &Database) -> PointLink {
+        if db.mypy_compatible() {
+            db.python_state.coroutine_link()
+        } else {
+            db.python_state.coroutine_type_link()
         }
     }
 }

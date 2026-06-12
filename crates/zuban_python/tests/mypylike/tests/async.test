@@ -44,3 +44,91 @@ async def print_value() -> None:
     pass
 
 MenuItem(lambda: print_value())
+
+[case async_await_coroutine_mypy_compatible]
+# flags: --mode mypy
+# From GH #462
+
+import asyncio
+import functools
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Coroutine
+from typing import Any
+from types import CoroutineType
+
+def sync_to_async1[**P, R](
+    func: Callable[P, R],
+) -> Callable[P, Coroutine[Any, Any, R]]:
+    async def run(*args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
+    return run
+
+def sync_to_async2[**P, R](
+    func: Callable[P, R],
+) -> Callable[P, CoroutineType[Any, Any, R]]:
+    async def run(*args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
+    return run  # E: Incompatible return value type (got "Callable[P, Coroutine[Any, Any, R]]", expected "Callable[P, CoroutineType[Any, Any, R]]")
+
+class Base(ABC):
+    @abstractmethod
+    async def create1(self, name: str) -> int: ...
+    @abstractmethod
+    async def create2(self, name: str) -> int: ...
+
+class Impl(Base):
+    @sync_to_async1
+    def create1(self, name: str) -> int:
+        return len(name)
+
+    @sync_to_async2
+    def create2(self, name: str) -> int:
+        return len(name)
+
+[case async_await_coroutine_non_mypy_compatible]
+# flags: --mode default
+# From GH #462
+
+import asyncio
+import functools
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Coroutine
+from typing import Any
+from types import CoroutineType
+
+def sync_to_async1[**P, R](
+    func: Callable[P, R],
+) -> Callable[P, Coroutine[Any, Any, R]]:
+    async def run(*args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
+    return run
+
+def sync_to_async2[**P, R](
+    func: Callable[P, R],
+) -> Callable[P, CoroutineType[Any, Any, R]]:
+    async def run(*args: P.args, **kwargs: P.kwargs) -> R:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
+    return run
+
+class Base(ABC):
+    @abstractmethod
+    async def create1(self, name: str) -> int: ...
+    @abstractmethod
+    async def create2(self, name: str) -> int: ...
+
+class Impl(Base):
+    @sync_to_async1
+    def create1(self, name: str) -> int:  # E: Return type "Coroutine[Any, Any, int]" of "create1" incompatible with return type "CoroutineType[Any, Any, int]" in supertype "Base"
+        return len(name)
+
+    @sync_to_async2
+    def create2(self, name: str) -> int:
+        return len(name)
