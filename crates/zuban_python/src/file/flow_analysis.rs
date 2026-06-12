@@ -492,13 +492,6 @@ impl FlowAnalysis {
             result: callable(),
             unfinished_partials: self.partials_in_module.take(),
         };
-        // Discard any delayed diagnostics bubbled up by with_new_empty_and_delay_further.
-        // In a full diagnostic context (with_new_empty_for_file) the closure already captured
-        // them before returning here, so this is a no-op. In bare inference contexts (e.g.
-        // infer_module_point_resolution) ensure_calculated_diagnostics_for_class can trigger
-        // with_new_empty_and_delay_further which leaks function-body diagnostic work into this
-        // scope; that work is not needed for type inference and can be safely dropped.
-        self.delayed_diagnostics.take();
         self.debug_assert_is_empty();
 
         *self.frames.borrow_mut() = old_frames;
