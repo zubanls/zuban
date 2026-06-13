@@ -580,7 +580,13 @@ impl<'db> NameSymbol<'db> {
         parent_scope: Scope<'db>,
         symbol_table: &'db SymbolTable,
     ) -> impl ExactSizeIterator<Item = Self> {
-        symbol_table.iter().map(move |(symbol, &node_index)| Self {
+        // It's a bit suboptimal that we always have to sort here. It might be worth exploring if
+        // we can simply store the entries in this order and query (like the CPython dict
+        // implementation works).
+        let mut sorted: Vec<_> = symbol_table.iter().collect();
+        sorted.sort_by_key(|(_, node_index)| **node_index);
+
+        sorted.into_iter().map(move |(symbol, &node_index)| Self {
             db,
             file,
             parent_scope,

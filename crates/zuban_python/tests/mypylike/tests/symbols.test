@@ -19,3 +19,26 @@ __main__.py:2: Symbols:
 -   Field class_var (parent: C) (target-range: 10:4-10:17)
 -   Constructor __init__ (parent: C) (target-range: 3:4-7:4)
 - Variable global_var (parent: None) (target-range: 12:0-12:14)
+
+[case test_symbols_order]
+# From GH #467
+#? symbols
+
+c = 1
+a = 1
+b = 1
+
+class C:
+    y = 1
+    x = 1
+    z = 1
+
+[out]
+__main__.py:3: Symbols:
+- Variable c (parent: None) (target-range: 4:0-4:5)
+- Variable a (parent: None) (target-range: 5:0-5:5)
+- Variable b (parent: None) (target-range: 6:0-6:5)
+- Class C (parent: None) (target-range: 8:0-13:0)
+-   Field y (parent: C) (target-range: 9:4-9:9)
+-   Field x (parent: C) (target-range: 10:4-10:9)
+-   Field z (parent: C) (target-range: 11:4-11:9)
