@@ -58,6 +58,7 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        hierarchical_document_symbol_support: bool,
         initialization_options: Option<Value>,
     ) -> Self {
         let mut slf = Self::new();
@@ -65,6 +66,7 @@ impl Connection {
             roots,
             position_encodings,
             pull_diagnostics,
+            hierarchical_document_symbol_support,
             initialization_options,
         );
         slf.server_capabilities = Some(response.capabilities);
@@ -76,6 +78,7 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        hierarchical_document_symbol_support: bool,
         initialization_options: Option<Value>,
     ) -> InitializeResult {
         let capabilities = lsp_types::ClientCapabilities {
@@ -103,7 +106,9 @@ impl Connection {
             text_document: Some(TextDocumentClientCapabilities {
                 diagnostic: pull_diagnostics.then(DiagnosticClientCapabilities::default),
                 document_symbol: Some(DocumentSymbolClientCapabilities {
-                    hierarchical_document_symbol_support: Some(true),
+                    hierarchical_document_symbol_support: Some(
+                        hierarchical_document_symbol_support,
+                    ),
                     ..Default::default()
                 }),
                 ..Default::default()

@@ -51,7 +51,7 @@ use support::Project;
 #[parallel]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"], None, true, None);
+    let response = con.initialize(&["/foo/bar"], None, true, false, None);
 
     // Check diagnostic capabilities
     {
@@ -78,7 +78,7 @@ fn basic_server_setup() {
 #[test]
 #[parallel]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(&["/foo/bar"], None, true, None);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -112,7 +112,7 @@ fn request_after_shutdown_is_invalid() {
 #[test]
 #[parallel]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(&["/foo/bar"], None, true, None);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -2466,7 +2466,7 @@ fn check_notebook_cell_change() {
 
 #[test]
 #[serial]
-fn test_symbols() {
+fn test_symbols_nested() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -2922,6 +2922,224 @@ fn test_symbols() {
             }
           }
         ]),
+    );
+}
+
+#[test]
+#[serial]
+fn test_symbols_flat() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        a: int = 1
+        b = ""
+        type Alias = int
+
+        class X:
+            x: int
+
+            def f(self, param: int) -> None:
+                func_var: int = 1
+
+            class Y:
+                def g(self, param: int) -> None: ...
+
+        [file bar.py]
+        x = 1
+        "#,
+    )
+    .without_hierarchical_document_symbol_support()
+    .into_server();
+
+    let foo_py = server.doc_id("foo.py").uri;
+    let bar_py = server.doc_id("bar.py").uri;
+
+    server.request_and_expect_json::<WorkspaceSymbolRequest>(
+        WorkspaceSymbolParams::default(),
+        json!([
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "a"
+          },
+          {
+            "kind": 11,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 2
+                },
+                "start": {
+                  "character": 5,
+                  "line": 2
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Alias"
+          },
+          {
+            "containerName": "X",
+            "kind": 8,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 5,
+                  "line": 5
+                },
+                "start": {
+                  "character": 4,
+                  "line": 5
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "x"
+          },
+          {
+            "containerName": "X.Y",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 13,
+                  "line": 11
+                },
+                "start": {
+                  "character": 12,
+                  "line": 11
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "g"
+          },
+          {
+            "containerName": "X",
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 11,
+                  "line": 10
+                },
+                "start": {
+                  "character": 10,
+                  "line": 10
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Y"
+          },
+          {
+            "containerName": "X",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 7
+                },
+                "start": {
+                  "character": 8,
+                  "line": 7
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "f"
+          },
+          {
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 6,
+                  "line": 4
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "X"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 1
+                },
+                "start": {
+                  "character": 0,
+                  "line": 1
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "b"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              },
+              "uri": bar_py,
+            },
+            "name": "x"
+          }
+        ]),
+    );
+
+    server.request_and_expect_json::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("bar.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+          "kind": 13,
+          "location": {
+            "range": {
+              "end": {
+                "character": 5,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            },
+            "uri": bar_py,
+          },
+          "name": "x"
+        }]),
     );
 }
 
