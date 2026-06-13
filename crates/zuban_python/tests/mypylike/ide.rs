@@ -140,10 +140,7 @@ pub struct InlayHintArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct SymbolsArgs {
-    #[arg(long)]
-    pub flat: bool,
-}
+pub struct SymbolsArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -514,13 +511,9 @@ pub(crate) fn find_and_check_ide_tests(
                         Err(err) => ("inlay-hints", Err(err)),
                     }
                 }
-                Commands::Symbols(args) => {
+                Commands::Symbols(_) => {
                     output.push(format!("{path}:{test_on_line_nr}: Symbols:"));
-                    if args.flat {
-                        format_flat_symbols(output, document.symbols(), None);
-                    } else {
-                        format_nested_symbols(output, document.symbols(), "- ");
-                    }
+                    format_symbols(output, document.symbols(), "- ");
                     continue;
                 }
             };
@@ -557,7 +550,7 @@ fn format_pos(pos: PositionInfos) -> String {
     format!("{}:{}", pos.line_one_based(), pos.code_points_column())
 }
 
-fn format_nested_symbols<'x>(
+fn format_symbols<'x>(
     out: &mut Vec<String>,
     symbols: impl Iterator<Item = NameSymbol<'x>>,
     indent: &str,
@@ -576,29 +569,7 @@ fn format_nested_symbols<'x>(
             format_pos(target_end),
         ));
         if let Some(class_symbols) = name.class_symbols(kind) {
-            format_nested_symbols(out, class_symbols, &format!("{indent}  "))
-        }
-    }
-}
-
-fn format_flat_symbols<'x>(
-    out: &mut Vec<String>,
-    symbols: impl Iterator<Item = NameSymbol<'x>>,
-    container_name: Option<&str>,
-) {
-    for symbol in symbols {
-        let name = symbol.as_name();
-        let kind = name.lsp_kind();
-        let (target_start, target_end) = name.target_range();
-        out.push(format!(
-            "- {kind:?} {} (container: {}) (target-range: {}-{})",
-            symbol.symbol,
-            container_name.unwrap_or("None"),
-            format_pos(target_start),
-            format_pos(target_end),
-        ));
-        if let Some(class_symbols) = name.class_symbols(kind) {
-            format_flat_symbols(out, class_symbols, Some(symbol.symbol));
+            format_symbols(out, class_symbols, &format!("{indent}  "))
         }
     }
 }
