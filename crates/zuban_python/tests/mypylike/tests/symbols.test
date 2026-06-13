@@ -15,9 +15,9 @@ global_var = 1
 [out]
 __main__.py:2: Symbols:
 - Class C (parent: None) (target-range: 2:0-12:0)
+-   Constructor __init__ (parent: C) (target-range: 3:4-7:4)
 -   Method foo (parent: C) (target-range: 7:4-10:4)
 -   Field class_var (parent: C) (target-range: 10:4-10:17)
--   Constructor __init__ (parent: C) (target-range: 3:4-7:4)
 - Variable global_var (parent: None) (target-range: 12:0-12:14)
 
 [case test_symbols_order]

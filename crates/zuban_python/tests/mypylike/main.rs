@@ -534,9 +534,14 @@ impl TestCase<'_, '_> {
                 actual.push_str(r);
                 actual.push('\n');
             }
+            // Generally we should not sort any of the tests we wrote ourselves, but this might be
+            // tricky for now due to determinism, so get closer slowly.
+            let should_sort = !ide_test_results.iter().any(|s| s.contains("Symbols:"));
             actual_lines.extend(ide_test_results);
 
-            actual_lines.sort();
+            if should_sort {
+                actual_lines.sort();
+            }
 
             let mut wanted_cleaned_up: Vec<_> = wanted
                 .iter()
@@ -551,11 +556,15 @@ impl TestCase<'_, '_> {
                 })
                 .filter_map(temporarily_skip)
                 .collect();
-            wanted_cleaned_up.sort();
+            if should_sort {
+                wanted_cleaned_up.sort();
+            }
 
             if wanted_cleaned_up != actual_lines {
-                // To check output only sort by filenames, which should be enough.
-                wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+                if should_sort {
+                    // To check output only sort by filenames, which should be enough.
+                    wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+                }
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
                 result = Err(anyhow::anyhow!(
