@@ -16,11 +16,12 @@ use lsp_types::{
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Url,
-    WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
-    WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
-    WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation,
+    SymbolInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Url, WorkspaceDiagnosticParams,
+    WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport,
+    WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport, WorkspaceSymbol, WorkspaceSymbolParams,
+    WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -538,16 +539,21 @@ impl GlobalState<'_> {
         );
         let encoding = self.client_capabilities.negotiated_encoding();
         let hierarchical_symbols = self.client_capabilities.hierarchical_symbols();
-        if !hierarchical_symbols {
-            // This is not supported for now, VSCode supports doesn't do it that way and until I
-            // find a client that does I won't implement it.
-            return Ok(None);
-        }
-
         let document = self.document(&params.text_document)?;
-        Ok(Some(DocumentSymbolResponse::Nested(
-            Self::nested_doc_symbols(encoding, document.symbols()),
-        )))
+
+        if hierarchical_symbols {
+            Ok(Some(DocumentSymbolResponse::Nested(
+                Self::nested_doc_symbols(encoding, document.symbols()),
+            )))
+        } else {
+            let symbols = Self::flat_doc_symbols(
+                encoding,
+                &params.text_document.uri,
+                document.symbols(),
+                None,
+            );
+            Ok(Some(DocumentSymbolResponse::Flat(symbols)))
+        }
     }
 
     fn nested_doc_symbols<'x>(
@@ -572,6 +578,38 @@ impl GlobalState<'_> {
                     selection_range: Self::to_range(encoding, name.name_range()),
                     children,
                 }
+            })
+            .collect()
+    }
+
+    fn flat_doc_symbols<'x>(
+        encoding: NegotiatedEncoding,
+        uri: &Url,
+        symbols: impl Iterator<Item = NameSymbol<'x>>,
+        container_name: Option<&str>,
+    ) -> Vec<SymbolInformation> {
+        symbols
+            .flat_map(|symbol| {
+                let name = symbol.as_name();
+                let kind = name.lsp_kind();
+                let mut result = vec![SymbolInformation {
+                    name: symbol.symbol.into(),
+                    kind,
+                    tags: None,
+                    #[expect(deprecated)]
+                    deprecated: None,
+                    location: Location {
+                        uri: uri.clone(),
+                        range: Self::to_range(encoding, name.target_range()),
+                    },
+                    container_name: container_name.map(|s| s.to_string()),
+                }];
+                if let Some(child_symbols) = name.class_symbols(kind) {
+                    let mut children =
+                        Self::flat_doc_symbols(encoding, uri, child_symbols, Some(symbol.symbol));
+                    result.append(&mut children);
+                }
+                result
             })
             .collect()
     }
