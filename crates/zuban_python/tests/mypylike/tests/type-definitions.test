@@ -1232,3 +1232,11 @@ func2(Cls.IN_CLASS)  # E: Argument 1 to "func2" has incompatible type "Sentinel(
 func3(1)  # ok
 func3(MISSING)  # E: Argument 1 to "func3" has incompatible type "Sentinel('<MISSING>')"; expected "int | Sentinel('Cls.IN_CLASS')"
 func3(Cls.IN_CLASS)  # ok
+
+[case no_crash_on_type_with_missing_param_spec_argument]
+# From GH #465
+class Base[T, **P]:
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
+
+x: Base[int]   # E: "Base" expects 2 type arguments, but 1 given
+x.m            # Should not cause problems

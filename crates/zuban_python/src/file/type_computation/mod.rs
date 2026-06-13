@@ -2159,8 +2159,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     break;
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
-                    given += 1;
                     if expected == 1 && slice_type.iter().count() != 1 {
+                        given += 1;
                         // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
                         // because "for aesthetic purposes we allow these to be omitted".
                         let params =
@@ -2168,6 +2168,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         is_single_param_spec = true;
                         GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
+                        given += 1;
                         GenericItem::ParamSpecArg(spec)
                     } else if let Some(default) = param_spec.default(db) {
                         resolve_default(
