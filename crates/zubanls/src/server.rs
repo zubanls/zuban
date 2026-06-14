@@ -626,6 +626,7 @@ impl<'sender> GlobalState<'sender> {
         {
             //self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
         }
+        tracing::trace!("Sending request: {response:?}");
         self.sender.send(response.into()).unwrap()
     }
 
