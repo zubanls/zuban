@@ -1,7 +1,7 @@
 use config::FinalizedTypeCheckerFlags;
 use parsa_python_cst::{
     DefiningStmt, DottedAsName, ImportFrom, ImportFromAsName, NAME_DEF_TO_NAME_DIFFERENCE, Name,
-    NameDef, NameImportParent, NodeIndex,
+    NameDef, NameImportParent, NodeIndex, TypeParams,
 };
 use utils::AlreadySeen;
 use vfs::FileIndex;
@@ -836,8 +836,31 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Ok(StarImportResult::Link(name_ref.as_link()));
             }
+
+            let lookup_type_params = |file: &PythonFile, type_params: Option<TypeParams>| {
+                let found = type_params?
+                    .iter()
+                    .find(|param| param.name_def().as_code() == name)?;
+                return Some(StarImportResult::Link(PointLink::new(
+                    file.file_index,
+                    found.name_def().name_index(),
+                )));
+            };
+
             if let Some(func) = self.i_s.current_function() {
                 debug!("TODO lookup in func of sub file");
+                // TODO in theory we need to lookup all type params in all parents, but I'm not
+                // sure this is helpful, since this should ideally be done by the name binder. The
+                // name binder however does currently not support multi-file analysis and this is
+                // an architectural issue.
+                if let Some(ok) = lookup_type_params(func.file, func.node().type_params()) {
+                    return Ok(ok);
+                }
+                if let Some(class) = func.class
+                    && let Some(ok) = lookup_type_params(class.file, class.node().type_params())
+                {
+                    return Ok(ok);
+                }
             } else if let Some(class) = self.i_s.current_class() {
                 if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
                     return Ok(StarImportResult::Link(PointLink::new(
@@ -845,15 +868,8 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         index,
                     )));
                 }
-                if let Some(type_params) = class.node().type_params()
-                    && let Some(found) = type_params
-                        .iter()
-                        .find(|param| param.name_def().as_code() == name)
-                {
-                    return Ok(StarImportResult::Link(PointLink::new(
-                        class.node_ref.file_index(),
-                        found.name_def().name_index(),
-                    )));
+                if let Some(ok) = lookup_type_params(class.file, class.node().type_params()) {
+                    return Ok(ok);
                 }
             }
             self.with_new_file(super_file)

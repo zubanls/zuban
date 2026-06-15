@@ -395,6 +395,39 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let f = self
             .file
             .ensure_forward_reference_file(self.i_s.db, start, code);
+
+        // Does some light name binding to avoid cases where we cannot find names otherwise.
+        {
+            let node_ref = NodeRef::from_link(self.name_resolution.i_s.db, self.for_definition);
+
+            let redirect_type_params = |type_params: Option<TypeParams>| {
+                if let Some(type_params) = type_params {
+                    for name in f.tree.filter_all_names(None) {
+                        let name_str = name.as_code();
+                        if let Some(matched) = type_params
+                            .iter()
+                            .find(|type_param| type_param.name_def().as_code() == name_str)
+                        {
+                            f.points.set(
+                                name.index(),
+                                Point::new_redirect(
+                                    self.file.file_index,
+                                    matched.name_def().name_index(),
+                                    Locality::NameBinder,
+                                ),
+                            );
+                        }
+                    }
+                }
+            };
+            if let Some(func) = node_ref.maybe_function() {
+                redirect_type_params(func.type_params())
+            }
+            if let Some(class) = node_ref.maybe_class() {
+                redirect_type_params(class.type_params())
+            }
+        }
+
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {

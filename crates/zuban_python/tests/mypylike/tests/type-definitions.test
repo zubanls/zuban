@@ -1258,9 +1258,11 @@ class C[T]:
     def f[S](x: "T", y: "S") -> "list[tuple[T, S]]":
         a: "T" = x
         b: "S" = y
-        type X = "list[T]"
-        Alias: TypeAlias = "list[T]"
+        Alias: TypeAlias = "list[T]"  # E: Can't use bound type variable "T" to define generic alias
         return [(a, b)]
 
-def check(x: C[int]) -> None:
-    assert_type(x.class_var, int)
+class D[T](list["list[T]"]): ...
+
+def check(c: C[int], d: D[str]) -> None:
+    assert_type(c.class_var, int)
+    assert_type(d[0], list[str])
