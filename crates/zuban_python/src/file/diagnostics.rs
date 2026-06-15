@@ -1097,10 +1097,18 @@ impl Inference<'_, '_, '_> {
             self.i_s,
             || class_infos.base_types(),
             // Don't check symbols if they are part of the instance that we are currently using.
+            // Also, Django models routinely combine abstract "model mixins" that each declare their
+            // own inner "Meta" class. Those inner classes are unrelated and would otherwise be
+            // reported as incompatible, but the django-stubs mypy plugin ignores them, so we do the
+            // same for any class derived from the django-stubs base classes.
             |name| {
-                c.lookup_symbol(self.i_s, name)
-                    .into_maybe_inferred()
-                    .is_none()
+                if name == "Meta" && c.has_django_stubs_base_class(self.i_s.db) {
+                    return false;
+                } else {
+                    c.lookup_symbol(self.i_s, name)
+                        .into_maybe_inferred()
+                        .is_none()
+                }
             },
             |issue| c.add_issue_on_args(self.i_s, issue),
         );

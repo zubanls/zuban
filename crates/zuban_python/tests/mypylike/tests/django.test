@@ -56,3 +56,22 @@ def f(album: Album):
 __main__.py:25:complete -> [artist, artist_id]
 __main__.py:27:complete -> [composer, composer_id]
 __main__.py:29:complete -> [name]
+
+[case django_abstract_model_mixins_meta]
+# From GH #470
+from django.db import models
+
+class ArchivableModel(models.Model):
+    class Meta:
+        abstract = True
+    archived = models.BooleanField(default=False)
+
+class Tracked(models.Model):
+    class Meta:
+        abstract = True
+    created_at = models.DateTimeField(auto_now=True)
+
+# The incompatible "Meta" inner classes of the bases must not be reported for
+# Django models, mirroring the behaviour of the django-stubs mypy plugin.
+class Model(Tracked, ArchivableModel):
+    pass
