@@ -1930,7 +1930,7 @@ impl std::ops::BitAnd for Truthiness {
                     in_type_checking_block: in_type_checking_block2,
                 },
             ) => Self::True {
-                in_type_checking_block: in_type_checking_block1 && in_type_checking_block2,
+                in_type_checking_block: in_type_checking_block1 || in_type_checking_block2,
             },
             (Self::False, _) | (_, Self::False) => Self::False,
             _ => Self::Unknown,
@@ -1942,15 +1942,8 @@ impl std::ops::BitOr for Truthiness {
     type Output = Self;
     fn bitor(self, rhs: Self) -> Self::Output {
         match (&self, &rhs) {
-            (
-                Self::True {
-                    in_type_checking_block: in_type_checking_block1,
-                },
-                Self::True {
-                    in_type_checking_block: in_type_checking_block2,
-                },
-            ) => Self::True {
-                in_type_checking_block: *in_type_checking_block1 | *in_type_checking_block2,
+            (Self::True { .. }, Self::True { .. }) => Self::True {
+                in_type_checking_block: false,
             },
             (Self::True { .. }, _) => self,
             (_, Self::True { .. }) => rhs,

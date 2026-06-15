@@ -876,8 +876,6 @@ testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
 # Recursive alias forward reference in class scope
 testRecursiveClassLevelAlias
-# Name binder MYPY/platform/TYPE_CHECKING etc
-testMypyFalseValuesInBinaryOps_no_empty
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
