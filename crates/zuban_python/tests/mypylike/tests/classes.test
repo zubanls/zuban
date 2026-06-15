@@ -2801,3 +2801,23 @@ class SupportsClose(Protocol):
 from io import StringIO
 
 StringIO()
+
+[case no_crash_on_decorated_classmethod]
+# From GH #464
+import model as pa
+
+def validate[T: pa.DataFrameModel](schema: type[T]) -> None:
+    schema.validate()
+
+[file model.py]
+from collections.abc import Callable
+from typing import Self
+
+def docstring_substitution[F]() -> Callable[[F], F]:
+    pass
+
+class DataFrameModel:
+    @classmethod
+    @docstring_substitution()
+    def validate(cls: type[Self]):
+        pass

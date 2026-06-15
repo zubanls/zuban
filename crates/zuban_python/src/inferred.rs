@@ -2783,6 +2783,7 @@ fn proper_classmethod_callable(
                 }
                 if let Type::Type(t) = t.as_ref()
                     && let Type::TypeVar(usage) = t.as_ref()
+                    && usage.in_definition == callable.defined_at
                 {
                     class_method_type_var_usage = Some(usage.clone());
                     type_vars.remove(0);
