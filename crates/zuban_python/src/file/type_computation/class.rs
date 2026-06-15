@@ -756,34 +756,33 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         func.ensure_cached_func(i_s);
                         let mut c = func.as_callable(i_s, FirstParamProperties::None);
                         if func_def.maybe_decorated().is_some() {
-                            debug!("Make method a classmethod: {name}");
-                        } else {
-                            if !c.kind.had_first_self_or_class_annotation() {
-                                let params = &mut c.params;
-                                let CallableParams::Simple(ps) = params else {
-                                    unreachable!()
-                                };
-                                *ps = ps
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(i, p)| {
-                                        let mut p = p.clone();
-                                        if let Some(t) = p.type_.maybe_positional_type()
-                                            && i == 0
-                                        {
-                                            p.type_ = ParamType::PositionalOnly(Type::Type(
-                                                Arc::new(t.clone()),
-                                            ));
-                                        }
-                                        p
-                                    })
-                                    .collect();
-                            }
-                            c.kind = FunctionKind::Classmethod {
-                                had_first_self_or_class_annotation: true,
-                            };
-                            node_ref.insert_type(Type::Callable(Arc::new(c)));
+                            debug!("TODO use the classmethod decorators: {name}");
                         }
+                        if !c.kind.had_first_self_or_class_annotation() {
+                            let params = &mut c.params;
+                            let CallableParams::Simple(ps) = params else {
+                                unreachable!()
+                            };
+                            *ps = ps
+                                .iter()
+                                .enumerate()
+                                .map(|(i, p)| {
+                                    let mut p = p.clone();
+                                    if let Some(t) = p.type_.maybe_positional_type()
+                                        && i == 0
+                                    {
+                                        p.type_ = ParamType::PositionalOnly(Type::Type(Arc::new(
+                                            t.clone(),
+                                        )));
+                                    }
+                                    p
+                                })
+                                .collect();
+                        }
+                        c.kind = FunctionKind::Classmethod {
+                            had_first_self_or_class_annotation: true,
+                        };
+                        node_ref.insert_type(Type::Callable(Arc::new(c)));
                     }
                 }
             }

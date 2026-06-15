@@ -2821,3 +2821,13 @@ class DataFrameModel:
     @docstring_substitution()
     def validate(cls: type[Self]):
         pass
+
+[case init_subclass_with_override_decorator]
+# From GH #450
+from typing import override
+
+class A:
+    @override
+    def __init_subclass__(cls, /, *, root: bool = False) -> None: ...
+
+class B(A): ...
