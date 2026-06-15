@@ -1240,3 +1240,27 @@ class Base[T, **P]:
 
 x: Base[int]   # E: "Base" expects 2 type arguments, but 1 given
 x.m            # Should not cause problems
+
+[case forward_reference_to_type_params]
+# flags: --strict
+# From GH #448
+from typing import TypeAlias, assert_type
+
+def f[T](x: "T") -> "list[T]":
+    if bool():
+        return [x]
+    else:
+        return [1]  # E: List item 0 has incompatible type "int"; expected "T"
+
+class C[T]:
+    class_var: "T"
+
+    def f[S](x: "T", y: "S") -> "list[tuple[T, S]]":
+        a: "T" = x
+        b: "S" = y
+        type X = "list[T]"
+        Alias: TypeAlias = "list[T]"
+        return [(a, b)]
+
+def check(x: C[int]) -> None:
+    assert_type(x.class_var, int)

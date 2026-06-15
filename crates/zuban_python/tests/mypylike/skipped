@@ -863,9 +863,10 @@ testTypeExpressionWithStringAnnotationNotRecognizedInOtherSyntacticLocations
 testValueExpressionWithStringInTypeFormUnionContextEmitsConservativeWarning1
 testValueExpressionWithStringInTypeFormUnionContextEmitsConservativeWarning2
 
-# Forward name binder reference in class
+# Forward name binder name usage in class
 testNewAnalyzerNamedTupleCallNested
 testForwardNestedPrecedesForwardGlobal
+testRecursiveClassLevelAlias
 # forwards references/type comments name binding of type definitions within function scopes
 testForwardBoundFunctionScopeWorks
 testIncrementalNestedTypeAlias
@@ -874,8 +875,7 @@ testDeclarationReferenceToNestedClass
 testNewAnalyzerNamedTupleCallNestedMethod
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
-# Recursive alias forward reference in class scope
-testRecursiveClassLevelAlias
+forward_reference_to_type_params
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1

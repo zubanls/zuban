@@ -836,15 +836,25 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if let Some(name_ref) = super_file.lookup_symbol(name) {
                 return Ok(StarImportResult::Link(name_ref.as_link()));
             }
-            if let Some(_func) = self.i_s.current_function() {
-                debug!("TODO lookup in func of sub file")
-            } else if let Some(class) = self.i_s.current_class()
-                && let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name)
-            {
-                return Ok(StarImportResult::Link(PointLink::new(
-                    class.node_ref.file_index(),
-                    index,
-                )));
+            if let Some(func) = self.i_s.current_function() {
+                debug!("TODO lookup in func of sub file");
+            } else if let Some(class) = self.i_s.current_class() {
+                if let Some(index) = class.class_storage.class_symbol_table.lookup_symbol(name) {
+                    return Ok(StarImportResult::Link(PointLink::new(
+                        class.node_ref.file_index(),
+                        index,
+                    )));
+                }
+                if let Some(type_params) = class.node().type_params()
+                    && let Some(found) = type_params
+                        .iter()
+                        .find(|param| param.name_def().as_code() == name)
+                {
+                    return Ok(StarImportResult::Link(PointLink::new(
+                        class.node_ref.file_index(),
+                        found.name_def().name_index(),
+                    )));
+                }
             }
             self.with_new_file(super_file)
                 .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
