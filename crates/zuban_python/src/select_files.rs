@@ -149,16 +149,27 @@ impl<'db> FileSelector<'db> {
                         self.added_file = false;
                         let normalized =
                             LocalFS::without_watcher().normalized_path_from_current_dir(path);
-                        match self.db.vfs.search_path(
-                            self.db.project.flags.case_sensitive,
-                            &PathWithScheme::with_file_scheme(normalized.clone()),
-                        ) {
+                        let p = PathWithScheme::with_file_scheme(normalized.clone());
+                        match self
+                            .db
+                            .vfs
+                            .search_path(self.db.project.flags.case_sensitive, &p)
+                        {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),
                             None => {
                                 for workspace in self.db.vfs.workspaces.load().iter() {
                                     if workspace.root_path_starts_with(&normalized) {
                                         self.handle_entries(&workspace.entries)
+                                    }
+                                }
+                                if !self.added_file {
+                                    match self.db.vfs.ensure_fallback(p) {
+                                        Some(DirectoryEntry::File(file)) => self.add_file(file),
+                                        Some(DirectoryEntry::Directory(dir)) => {
+                                            self.handle_dir(&dir)
+                                        }
+                                        _ => (),
                                     }
                                 }
                             }

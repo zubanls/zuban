@@ -38,6 +38,11 @@ impl NormalizedPath {
     pub fn arc_to_abs_path(p: Arc<Self>) -> Arc<AbsPath> {
         unsafe { std::mem::transmute(p) }
     }
+
+    pub fn arc_to_str(p: Arc<Self>) -> Arc<str> {
+        let ptr = Arc::into_raw(p) as *const str;
+        unsafe { Arc::from_raw(ptr) }
+    }
 }
 
 impl AsRef<Path> for NormalizedPath {

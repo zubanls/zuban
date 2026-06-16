@@ -559,6 +559,43 @@ mod tests {
     }
 
     #[test]
+    fn test_relative_dirs_with_relative_config() {
+        // From GH #455
+        logging_config::setup_logging_for_tests();
+        let fixture = format!(
+            r#"
+            [file configs/zuban.toml]
+            [tool.zuban]
+            strict = true
+
+            [file src/example.py]
+            x: int = "5"
+
+            "#
+        );
+        let test_dir = test_utils::write_files_from_fixture(&fixture, false);
+        let configs_dir = &format!("{}/configs", test_dir.path());
+
+        let err = "1: error: Incompatible types in assignment (expression has \
+                    type \"str\", variable has type \"int\")  [assignment]";
+        /*
+        let ds = diagnostics(
+            Cli::parse_from(["", "--config-file", "configs/zuban.toml"]),
+            test_dir.path(),
+        );
+        // By default within a subfolder we still show all issues
+        assert_eq!(ds, [""]);
+        */
+
+        let ds = diagnostics(Cli::parse_from(["", "../src/example.py"]), configs_dir);
+        assert_eq!(ds, [format!("../src/example.py:{err}")]);
+        let ds = diagnostics(Cli::parse_from(["", "../src/"]), configs_dir);
+        assert_eq!(ds, [format!("../src/example.py:{err}")]);
+        let err = expect_diagnostics_error(Cli::parse_from([""]), configs_dir);
+        assert_eq!(err, "No Python files found to check");
+    }
+
+    #[test]
     #[cfg(not(target_os = "windows"))]
     fn test_pth_file_link_to_type_checked_part() {
         // From GH #360

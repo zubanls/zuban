@@ -265,6 +265,33 @@ impl Workspaces {
         unreachable!("Expected to be able to place the file {path:?}")
     }
 
+    pub(crate) fn ensure_fallback(
+        &self,
+        vfs: &dyn VfsHandler,
+        path: PathWithScheme,
+    ) -> Option<DirectoryEntry> {
+        for workspace in self.items.load().iter() {
+            if workspace.kind == WorkspaceKind::Fallback {
+                let dir_entry = vfs.read_and_watch_entry(
+                    &*self.items.load(),
+                    &path.path,
+                    Parent::Workspace(Arc::downgrade(workspace)),
+                    &path.path,
+                )?;
+                // We just use the full entry as a name, this is not supposed to be looked up by
+                // anything. It's just a fallback so we have a node to store the entry.
+                let name = NormalizedPath::arc_to_str(path.path);
+                workspace
+                    .entries
+                    .borrow_mut()
+                    .insert(name, dir_entry.clone());
+                return Some(dir_entry);
+            }
+        }
+        tracing::error!("Would typically expect a fallback workspace");
+        return None;
+    }
+
     pub(crate) fn unload_file(
         &mut self,
         vfs: &dyn VfsHandler,

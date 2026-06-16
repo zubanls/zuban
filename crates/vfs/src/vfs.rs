@@ -850,6 +850,10 @@ impl<F: VfsFile> Vfs<F> {
         file_index
     }
 
+    pub fn ensure_fallback(&self, path: PathWithScheme) -> Option<DirectoryEntry> {
+        self.workspaces.ensure_fallback(&*self.handler, path)
+    }
+
     pub fn create_sub_file(
         &self,
         super_file_index: FileIndex,
