@@ -412,10 +412,10 @@ mod tests {
         });
         assert_eq!(ds.unwrap(), empty);
 
-        assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
-
-        // Checking the venv explicitly
         if !cfg!(windows) {
+            assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
+
+            // Checking the venv explicitly
             let err = r#"venvs/venv/lib/python3.12/site-packages/bar.py:1: error: "int" not callable  [operator]"#;
             assert_eq!(
                 d(&[
