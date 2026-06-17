@@ -412,8 +412,35 @@ mod tests {
         });
         assert_eq!(ds.unwrap(), empty);
 
-        // TODO
-        // assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
+        assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
+
+        // Checking the venv explicitly
+        if !cfg!(windows) {
+            let err = r#"venvs/venv/lib/python3.12/site-packages/bar.py:1: error: "int" not callable  [operator]"#;
+            assert_eq!(
+                d(&[
+                    "",
+                    "--config-file",
+                    "custom-zuban.toml",
+                    "venvs/venv/lib/python3.12/site-packages/bar.py"
+                ]),
+                [err]
+            );
+            assert_eq!(
+                d(&[
+                    "",
+                    "--config-file",
+                    "custom-zuban.toml",
+                    "venvs/venv/lib/python3.12/site-packages/"
+                ]),
+                [err]
+            );
+            let err = expect_diagnostics_error(
+                Cli::parse_from(["", "--config-file", "custom-zuban.toml", "venvs/"]),
+                test_dir.path(),
+            );
+            assert!(err.starts_with("No Python files found to check"), "{err:?}");
+        }
     }
 
     #[test]

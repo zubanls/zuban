@@ -158,11 +158,28 @@ impl<'db> FileSelector<'db> {
                             Some(DirOrFile::Dir(dir)) => self.handle_dir(&dir),
                             Some(DirOrFile::File(file)) => self.add_file(file),
                             None => {
+                                // First check the type checked workspaces. If we did not find
+                                // something there, the user might explicitly want to typecheck
+                                // part of the venv (2). In the case where no files are found,
+                                // because the workspaces are subdirs or somewhere else we just
+                                // fall back (3) to checking the provided files/directories, but
+                                // that will typically lead to import errors.
                                 for workspace in self.db.vfs.workspaces.load().iter() {
-                                    if workspace.root_path_starts_with(&normalized) {
-                                        self.handle_entries(&workspace.entries)
+                                    if workspace.is_type_checked() {
+                                        if workspace.root_path_starts_with(&normalized) {
+                                            self.handle_entries(&workspace.entries)
+                                        }
                                     }
                                 }
+                                // (2)
+                                if !self.added_file {
+                                    for workspace in self.db.vfs.workspaces.load().iter() {
+                                        if workspace.root_path_starts_with(&normalized) {
+                                            self.handle_entries(&workspace.entries)
+                                        }
+                                    }
+                                }
+                                // (3)
                                 if !self.added_file {
                                     match self.db.vfs.ensure_fallback(p) {
                                         Some(DirectoryEntry::File(file)) => self.add_file(file),
