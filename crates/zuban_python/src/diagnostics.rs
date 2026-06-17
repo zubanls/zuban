@@ -628,6 +628,7 @@ impl IssueKind {
             | MetaclassMustInheritFromType
             | MetaclassConflict => "metaclass",
             UntypedDecorator { .. } => "untyped-decorator",
+            ExplicitOverrideFlagRequiresOverride { .. } => "explicit-override",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }

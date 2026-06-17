@@ -2831,3 +2831,18 @@ class A:
     def __init_subclass__(cls, /, *, root: bool = False) -> None: ...
 
 class B(A): ...
+
+[case explicit_override_error_code]
+# flags: --show-error-codes --enable-error-code explicit-override
+# From GH #413
+
+class A:
+   def m(self) -> None:
+       pass
+
+class B(A):
+    def m(self) -> None:
+        pass
+
+[out]
+__main__:9: error: Method "m" is not using @override but is overriding a method in class "__main__.A"  [explicit-override]
