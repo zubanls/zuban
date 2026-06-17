@@ -108,6 +108,8 @@ fn project_options_from_cli(
         lookup_env_var,
     );
 
+    // let config_file = cli.mypy_options.config_file.clone();
+
     cli_args::apply_flags(
         &local_fs,
         &mut options,
@@ -117,6 +119,21 @@ fn project_options_from_cli(
         found.most_probable_base,
         found.config_path.as_deref(),
     );
+
+    /*
+    let files_and_dir = &mut options.settings.files_or_directories_to_check;
+    if files_and_dir.is_empty() {
+        options
+            .settings
+            .set_files_or_directories_to_check(
+                &local_fs,
+                &current_dir,
+                found.config_path.as_deref(),
+                [".".into()],
+            )
+            .expect("Need a valid glob path as a files argument");
+    }
+    */
 
     (Box::new(local_fs), options, found.diagnostic_config)
 }
@@ -320,12 +337,16 @@ mod tests {
         // We intentionally also test that dirs with dashes are also checked.
         let fixture = if cfg!(windows) {
             r#"
-            [file venv/Scripts/python.exe]
+            [file venvs/venv/Scripts/python.exe]
 
-            [file venv/site-packages/foo.py]
+            [file venvs/venv/site-packages/foo.py]
 
-            [file venv/site-packages/bar.py]
+            [file venvs/venv/site-packages/bar.py]
             1()
+
+            [file custom-zuban.toml]
+            [tool.zuban]
+            strict = true
 
             [file m.py]
             import foo
@@ -335,16 +356,20 @@ mod tests {
             "#
         } else {
             r#"
-            [file venv/bin/python]
+            [file venvs/venv/bin/python]
 
-            [file venv/lib/python3.12/site-packages/foo.py]
+            [file venvs/venv/lib/python3.12/site-packages/foo.py]
 
-            [file venv/lib/python3.12/site-packages/bar.py]
+            [file venvs/venv/lib/python3.12/site-packages/bar.py]
             1()
 
-            [file venv/src/baz/baz/__init__.py]
+            [file venvs/venv/src/baz/baz/__init__.py]
             # Installing with pip install -e works similar to this
             my_baz = 1
+
+            [file custom-zuban.toml]
+            [tool.zuban]
+            python_executable = "venvs/venv/bin/python"
 
             [file m.py]
             import foo
@@ -364,16 +389,21 @@ mod tests {
         );
         // venv information via --python-executable should work
         let empty: [&str; _] = [];
-        assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
+        assert_eq!(
+            d(&["", "--python-executable", "venvs/venv/bin/python"]),
+            empty
+        );
 
         // venv information via $VIRTUAL_ENV
         let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
             match name == "VIRTUAL_ENV" {
-                true => Ok("venv".to_string()),
+                true => Ok("venvs/venv".to_string()),
                 false => Err(VarError::NotPresent),
             }
         });
         assert_eq!(ds.unwrap(), empty);
+
+        assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
     }
 
     #[test]
@@ -584,7 +614,7 @@ mod tests {
             test_dir.path(),
         );
         // By default within a subfolder we still show all issues
-        assert_eq!(ds, [""]);
+        assert_eq!(ds, [format!("src/example.py:{err}")]);
         */
 
         let ds = diagnostics(Cli::parse_from(["", "../src/example.py"]), configs_dir);
