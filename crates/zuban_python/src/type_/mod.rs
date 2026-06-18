@@ -1035,6 +1035,19 @@ impl Type {
                 }
                 result
             }),
+            Type::Enum(enum_) => Some({
+                CallableLike::Callable(Arc::new(CallableContent::new_non_generic(
+                    i_s.db,
+                    None,
+                    None,
+                    enum_.defined_at,
+                    [CallableParam::new(
+                        DbString::Static("value"),
+                        ParamType::PositionalOrKeyword(Type::Any(AnyCause::Internal)),
+                    )],
+                    self.clone(),
+                )))
+            }),
             _ => None,
         }
     }

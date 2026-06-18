@@ -936,8 +936,8 @@ class T(TypedDict):
 
 def foo(e: E, d: D, n: N, t: T):
     reveal_type(type(E))  # N: Revealed type is "type[object]"
-    reveal_type(type(e))  # N: Revealed type is "type[__main__.E]"
-    reveal_type(type(E.x))  # N: Revealed type is "type[__main__.E]"
+    reveal_type(type(e))  # N: Revealed type is "def (value: Any) -> __main__.E"
+    reveal_type(type(E.x))  # N: Revealed type is "def (value: Any) -> __main__.E"
 
     reveal_type(type(D))  # N: Revealed type is "type[object]"
     reveal_type(type(d))  # N: Revealed type is "def (x: int) -> __main__.D"

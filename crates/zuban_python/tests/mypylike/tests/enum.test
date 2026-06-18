@@ -540,3 +540,45 @@ def f(p: Period, e: Literal[Period.day]):
     takes_float(e)
     takes_float(24)
     takes_float(24.0)
+
+[case enum_matched_with_protocol]
+# From GH #435
+from collections.abc import Iterator
+from enum import Enum
+from typing import Generic, Protocol, TypeVar
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+class _EnumLike(Protocol, Generic[_T_co]):
+    def __call__(self, key: str, /) -> _T_co: ...
+    def __iter__(self, /) -> Iterator[_T_co]: ...
+
+def construct_from_string(key: str, enum_type: _EnumLike[_T_co]) -> _T_co:
+    return enum_type(key.lower())
+
+class Color(Enum):
+    GREEN = "green"
+    RED = "red"
+
+construct_from_string("red", Color)
+
+class ColorWithInit(Enum):
+    GREEN = "green"
+    RED = "red"
+
+    # The int is wrong, but it shouldn't influence the __call__ on the enum
+    def __init__(self, index: int): ...
+
+construct_from_string("red", ColorWithInit)
+
+[case enum_as_callable]
+from enum import Enum
+from typing import Callable
+
+class Color(Enum):
+    GREEN = "green"
+    RED = "red"
+
+y: Callable[[], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[], Color]")
+x: Callable[[str], Color] = Color
+z: Callable[[str, int], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[str, int], Color]")
