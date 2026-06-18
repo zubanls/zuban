@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path, sync::Arc};
 
-use crate::{DiagnosticConfig, Mode, ProjectOptions, get_zuban_config_and_apply_mode};
+use crate::{DiagnosticConfig, Mode, ModeChoice, ProjectOptions, get_zuban_config_and_apply_mode};
 use toml_edit::DocumentMut;
 use vfs::{AbsPath, VfsHandler};
 
@@ -29,7 +29,7 @@ pub fn find_config(
     vfs: &dyn VfsHandler,
     current_dir: Arc<AbsPath>,
     config_file: Option<&Path>,
-    mode: Option<Mode>,
+    mode: ModeChoice,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
@@ -73,7 +73,7 @@ fn initialize_config(
     in_dir: &AbsPath,
     config_path: Arc<AbsPath>,
     content: String,
-    mode: Option<Mode>,
+    mode: ModeChoice,
 ) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
@@ -102,7 +102,7 @@ fn initialize_config(
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: Arc<AbsPath>,
-    mut mode: Option<Mode>,
+    mut mode: ModeChoice,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<Option<FoundConfig>> {
     let mut end_result = None;
@@ -148,7 +148,10 @@ fn find_mypy_config_file_in_dir(
                     ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                        ProjectOptions::default_for_mode(mode.unwrap_or(Mode::Mypy))
+                        ProjectOptions::default_for_mode(match mode {
+                            ModeChoice::Auto => Mode::Mypy,
+                            _ => mode.into(),
+                        })
                     })
                 }) {
                     end_result = Some(FoundConfig {
@@ -189,12 +192,12 @@ fn find_mypy_config_file_in_dir(
 }
 
 fn default_config(
-    mode: Option<Mode>,
+    mode: ModeChoice,
     config_path: Option<Arc<AbsPath>>,
     dir: Arc<AbsPath>,
 ) -> FoundConfig {
     FoundConfig {
-        project_options: ProjectOptions::default_for_mode(mode.unwrap_or_default()),
+        project_options: ProjectOptions::default_for_mode(mode.into()),
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
         most_probable_base: dir,

@@ -12,7 +12,9 @@ use std::{
 
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
 
-use config::{DiagnosticConfig, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{
+    DiagnosticConfig, Mode, ModeChoice, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+};
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{Step, calculate_steps};
@@ -204,7 +206,7 @@ impl TestCase<'_, '_> {
         &self,
         projects: &'p mut ProjectsCache,
         local_fs: &SimpleLocalFS,
-        mode: Option<Mode>,
+        mode: ModeChoice,
         mut flags: PerTestFlags,
         steps: &[Step],
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
@@ -212,7 +214,7 @@ impl TestCase<'_, '_> {
             show_error_codes: false,
             ..Default::default()
         };
-        let po = ProjectOptions::default_for_mode(mode.unwrap_or_else(|| Mode::Default));
+        let po = ProjectOptions::default_for_mode(mode.into());
         let mut config = po.flags;
         // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
         // different argument types.
@@ -230,7 +232,7 @@ impl TestCase<'_, '_> {
                     &local_fs.join(&base_path, "mypy.ini"),
                     &ini,
                     &mut diagnostic_config,
-                    None,
+                    mode,
                 )
                 .expect("Expected there to be no errors in the mypy.ini")
                 .unwrap_or_else(ProjectOptions::mypy_default)
@@ -380,7 +382,10 @@ impl TestCase<'_, '_> {
         let (mut project, diagnostic_config) = self.initialize_flags(
             projects,
             &local_fs,
-            (!flags.auto_mode).then_some(mode),
+            match flags.auto_mode {
+                true => ModeChoice::Auto,
+                false => ModeChoice::Explicit(mode),
+            },
             flags,
             &steps,
         );

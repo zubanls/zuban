@@ -7,7 +7,7 @@ use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::{ProjectOptions, find_config};
+use config::{ModeChoice, ProjectOptions, find_config};
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
@@ -93,7 +93,10 @@ fn project_options_from_cli(
         &local_fs,
         current_dir.clone(),
         cli.mypy_options.config_file.as_deref(),
-        cli.mode(),
+        match cli.mode() {
+            Some(mode) => ModeChoice::Explicit(mode),
+            None => ModeChoice::Auto,
+        },
         |_| (),
     )
     .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));

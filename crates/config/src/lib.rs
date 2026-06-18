@@ -60,6 +60,22 @@ impl Default for Mode {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum ModeChoice {
+    Explicit(Mode),
+    Implicit(Mode),
+    Auto,
+}
+
+impl From<ModeChoice> for Mode {
+    fn from(value: ModeChoice) -> Self {
+        match value {
+            ModeChoice::Explicit(mode) | ModeChoice::Implicit(mode) => mode,
+            ModeChoice::Auto => Default::default(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug, clap::ValueEnum)]
 pub enum UntypedFunctionReturnMode {
     Any,
@@ -272,10 +288,13 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-        mode: Option<Mode>,
+        mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         let ini = parse_python_ini(code)?;
-        let mut result = Self::default_for_mode(mode.unwrap_or(Mode::Mypy));
+        let mut result = Self::default_for_mode(match mode {
+            ModeChoice::Auto => Mode::Mypy,
+            _ => mode.into(),
+        });
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
@@ -322,7 +341,7 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-        mut mode: Option<Mode>,
+        mut mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         let document: DocumentMut = code.parse()?;
         let zuban_config = get_zuban_config_and_apply_mode(&document, &mut mode)?;
@@ -335,8 +354,7 @@ impl ProjectOptions {
             mode,
         )?;
         Ok(if let Some(config) = zuban_config {
-            let mut result =
-                result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or_default()));
+            let mut result = result.unwrap_or_else(|| Self::default_for_mode(mode.into()));
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -357,12 +375,12 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         document: &DocumentMut,
         diagnostic_config: &mut DiagnosticConfig,
-        mode: Option<Mode>,
+        mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             // If an explicit mode is provided, use that, otherwise since we have an explicit Mypy
             // configuration we default to that.
-            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or_default());
+            let mut result = ProjectOptions::default_for_mode(mode.into());
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -464,16 +482,16 @@ impl ProjectOptions {
     }
 }
 
-pub(crate) fn get_zuban_config_and_apply_mode<'document>(
+fn get_zuban_config_and_apply_mode<'document>(
     pyright_toml: &'document DocumentMut,
-    mode: &mut Option<Mode>,
+    mode: &mut ModeChoice,
 ) -> anyhow::Result<Option<&'document Item>> {
     let zuban_config = pyright_toml.get("tool").and_then(|item| item.get("zuban"));
     if let Some(Item::Table(table)) = zuban_config
         && let Some(item) = table.get("mode")
         && let Some(value) = item.as_value()
     {
-        *mode = Some(
+        *mode = ModeChoice::Explicit(
             Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
                 .map_err(|err| map_clap_error("mode", err))?,
         );
@@ -1255,7 +1273,7 @@ mod tests {
                 &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
-                None,
+                ModeChoice::Auto,
             )
         } else {
             ProjectOptions::from_pyproject_toml_only(
@@ -1264,7 +1282,7 @@ mod tests {
                 &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
-                None,
+                ModeChoice::Auto,
             )
         }
     }

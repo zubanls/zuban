@@ -8,7 +8,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, RwLock};
 
-use config::{Mode, ProjectOptions};
+use config::{Mode, ModeChoice, ProjectOptions};
 use crossbeam_channel::{Receiver, Sender, never, select};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
@@ -312,9 +312,9 @@ impl<'sender> GlobalState<'sender> {
                 .expect("There should always be at least one root at this point");
             let first_root = vfs_handler.unchecked_abs_path(first_root);
             let mode = match self.client_config.type_checking_mode {
-                TypeCheckingMode::Auto | TypeCheckingMode::Off => None,
-                TypeCheckingMode::Default => Some(Mode::Default),
-                TypeCheckingMode::Mypy => Some(Mode::Mypy),
+                TypeCheckingMode::Auto | TypeCheckingMode::Off => ModeChoice::Auto,
+                TypeCheckingMode::Default => ModeChoice::Explicit(Mode::Default),
+                TypeCheckingMode::Mypy => ModeChoice::Explicit(Mode::Mypy),
             };
             let mut config = config::find_config(&vfs_handler, first_root.clone(), None, mode, |path| {
                 // Watch the file itself to make sure that we can invalidate when it changes.
