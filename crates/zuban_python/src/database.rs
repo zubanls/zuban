@@ -82,7 +82,10 @@ pub(crate) struct Point {
 impl Point {
     #[inline]
     fn calculate_flags(kind: PointKind, rest: u32, locality: Locality) -> u32 {
-        debug_assert!(rest & !REST_MASK == 0);
+        debug_assert!(
+            rest & !REST_MASK == 0,
+            "rest: {rest}, rest mask: {REST_MASK}"
+        );
         rest | IS_ANALIZED_MASK
             | (locality as u32) << LOCALITY_BIT_INDEX
             | (kind as u32) << KIND_BIT_INDEX
@@ -133,6 +136,7 @@ impl Point {
     }
 
     pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
+        assert!(complex_index <= REST_MASK);
         let flags = Self::calculate_flags(PointKind::Complex, complex_index, locality);
         Self {
             flags,
