@@ -917,3 +917,23 @@ from not_defined import *  # E: Cannot find implementation or library stub for m
 from dir.not_defined import *  # E: Cannot find implementation or library stub for module named "dir.not_defined"
 [file namespace/star3.py]
 from namespace.not_defined import *  # E: Cannot find implementation or library stub for module named "namespace.not_defined"
+
+[case imports_with_ignore_missing_imports_in_mypy_ini]
+# From GH #419
+import undefined1
+import undefined2
+import undefined3  # E: Cannot find implementation or library stub for module named "undefined3"
+
+from undefined1 import foo1
+from undefined2 import foo2
+from undefined3 import foo3  # E: Cannot find implementation or library stub for module named "undefined3"
+
+[file mypy.ini]
+[mypy-undefined1.*]
+ignore_missing_imports = True
+[mypy-undefined2]
+ignore_missing_imports = True
+[mypy-undefined3]
+ignore_missing_imports = False
+[mypy-something_else.*]
+ignore_missing_imports = True

@@ -716,7 +716,7 @@ impl std::hash::Hash for ExcludeRegex {
 enum OverrideKind {
     WellStructured, // e.g. foo.bar.*
     Unstructured,   // e.g. foo.*.baz
-    ModuleName,     // e.g. foo.bar (has the highest priority
+    ModuleName,     // e.g. foo.bar (has the highest priority)
 }
 
 #[derive(Clone, Debug)]
@@ -808,12 +808,29 @@ impl OverridePath {
         }
         matches_file_path(self.path.iter().rev(), name, parent_dir)
     }
+
+    pub fn maybe_affects_global_import_name(&self) -> Option<&str> {
+        match self.path.as_slice() {
+            [OverridePathPart::Part(x)]
+            | [OverridePathPart::Part(x), OverridePathPart::Wildcard] => Some(x.as_ref()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 enum OverrideIniOrTomlValue {
     Toml(Value),
     Ini(Box<str>),
+}
+
+impl OverrideIniOrTomlValue {
+    fn to_value(&self) -> IniOrTomlValue<'_> {
+        match self {
+            OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
+            OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -825,19 +842,22 @@ pub struct OverrideConfig {
 
 impl OverrideConfig {
     pub fn apply_to_flags<'slf>(&'slf self, flags: &mut TypeCheckerFlags) -> ConfigResult {
-        let to_value = |value: &'slf _| match value {
-            OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
-            OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
-        };
         for (key, value) in self.config.iter() {
-            if **key == *"strict" && to_value(value).as_bool(false)? {
+            if **key == *"strict" && value.to_value().as_bool(false)? {
                 flags.enable_all_strict_flags();
             }
         }
         for (key, value) in self.config.iter() {
-            set_flag(flags, key, to_value(value), false)?;
+            set_flag(flags, key, value.to_value(), false)?;
         }
         Ok(())
+    }
+
+    pub fn has_ignore_missing_imports(&self) -> bool {
+        self.config.iter().any(|(name, value)| {
+            name.as_ref() == "ignore_missing_imports"
+                && value.to_value().as_bool(false).unwrap_or(false)
+        })
     }
 }
 

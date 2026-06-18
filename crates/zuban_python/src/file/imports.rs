@@ -24,7 +24,8 @@ use super::{PythonFile, python_file::StarImport};
 
 impl PythonFile {
     pub fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {
-        let result = global_import(db, self, name.as_str());
+        let name_str = name.as_str();
+        let result = global_import(db, self, name_str);
         if let Some(result) = &result {
             debug!(
                 "Global import '{}': {:?}",
@@ -33,11 +34,16 @@ impl PythonFile {
             );
         } else if is_global_binary_extension(db, name) {
             return Some(ImportResult::BinaryExtension);
-        } else if !self.flags(db).ignore_missing_imports {
+        } else if !self.flags(db).ignore_missing_imports
+            // Check for ignore_missing_imports in mypy.ini/pyproject.toml overrides
+            && !db
+                .project
+                .ignored_global_imports().contains(name_str)
+        {
             NodeRef::new(self, name.index()).add_type_issue(
                 db,
                 IssueKind::ModuleNotFound {
-                    module_name: Box::from(name.as_str()),
+                    module_name: Box::from(name_str),
                 },
             );
         }
