@@ -1184,8 +1184,9 @@ mod tests {
         //
         // 1. pyproject.toml only
         // 2. pyproject.toml with mypy.ini/.mypy.ini/setup.cfg
-        // 3. Only mypy.ini/.mypy.ini/setup.cfg
-        // 4. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        // 3. Only mypy.ini/.mypy.ini
+        // 4. Only setup.cfg
+        // 5. Combinations of mypy.ini/.mypy.ini/setup.cfg
         //
         // All pyproject.toml tests additionally have the following properties:
         //
@@ -1289,18 +1290,28 @@ mod tests {
         test_dir.remove_file("pyproject.toml");
 
         // (3)
-        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+        for file_name in [".mypy.ini", "mypy.ini"] {
             test_dir.write_file(file_name, "");
             println!("Write {file_name}");
 
-            // assert!(is_mypy_empty_args());
-            // assert!(is_mypy_in_auto_mode());
+            assert!(!is_mypy_empty_args());
+            assert!(is_mypy_in_auto_mode());
 
             test_dir.remove_file(file_name)
         }
 
         // (4)
-        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+        test_dir.write_file("setup.cfg", "");
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        test_dir.write_file("setup.cfg", "[mypy]");
+        assert!(!is_mypy_empty_args());
+        // TODO is this correct?
+        assert!(!is_mypy_in_auto_mode());
+
+        // (5)
+        for file_name in [".mypy.ini", "mypy.ini"] {
             test_dir.write_file(file_name, "");
         }
         assert!(!is_mypy_empty_args());
