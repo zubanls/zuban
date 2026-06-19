@@ -149,7 +149,7 @@ fn find_mypy_config_file_in_dir(
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
                         ProjectOptions::default_for_mode(match mode {
-                            ModeChoice::Auto => Mode::Mypy,
+                            ModeChoice::Auto if pyproject_toml.is_none() => Mode::Mypy,
                             _ => mode.into(),
                         })
                     })

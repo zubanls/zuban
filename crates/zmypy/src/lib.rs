@@ -1259,8 +1259,8 @@ mod tests {
 
             // (2a1)
             pyproject_zuban_section_only(None);
-            // assert!(!is_mypy_empty_args());
-            // assert!(!is_mypy_in_auto_mode());
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
 
             // (2a2)
             pyproject_zuban_section_only(Some("default"));
