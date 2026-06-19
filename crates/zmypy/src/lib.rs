@@ -1194,12 +1194,10 @@ mod tests {
         //    - 1. No explicit mode
         //    - 2. mode = default
         //    - 3. mode = mypy
-        //    - 4. mode = auto
         // b. Both tool.zuban and tool.mypy sections
         //    - 1. No explicit mode
         //    - 2. mode = default
         //    - 3. mode = mypy
-        //    - 4. mode = auto
         // c. Only tool.mypy section
         // d. Empty pyprojec.toml
 
@@ -1218,13 +1216,7 @@ mod tests {
         assert!(is_mypy_empty_args());
         assert!(is_mypy_in_auto_mode());
 
-        // (1a4)
-        pyproject_zuban_section_only(Some("auto"));
-        assert!(!is_mypy_empty_args());
-        assert!(!is_mypy_in_auto_mode());
-
         // (1b1)
-        write_pyproject_toml(true, true, None);
         pyproject_both_sections(None);
         assert!(!is_mypy_empty_args());
         assert!(!is_mypy_in_auto_mode());
@@ -1238,11 +1230,6 @@ mod tests {
         pyproject_both_sections(Some("mypy"));
         assert!(is_mypy_empty_args());
         assert!(is_mypy_in_auto_mode());
-
-        // (1b4)
-        pyproject_both_sections(Some("auto"));
-        assert!(!is_mypy_empty_args());
-        assert!(!is_mypy_in_auto_mode());
 
         // (1c)
         pyproject_mypy_section_only();
@@ -1272,13 +1259,7 @@ mod tests {
             assert!(is_mypy_empty_args());
             assert!(is_mypy_in_auto_mode());
 
-            // (2a4)
-            pyproject_zuban_section_only(Some("auto"));
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
-
             // (2b1)
-            write_pyproject_toml(true, true, None);
             pyproject_both_sections(None);
             assert!(!is_mypy_empty_args());
             assert!(!is_mypy_in_auto_mode());
@@ -1292,11 +1273,6 @@ mod tests {
             pyproject_both_sections(Some("mypy"));
             assert!(is_mypy_empty_args());
             assert!(is_mypy_in_auto_mode());
-
-            // (2b4)
-            pyproject_both_sections(Some("auto"));
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
 
             // (2c)
             pyproject_mypy_section_only();

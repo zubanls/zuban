@@ -513,11 +513,8 @@ fn get_zuban_config_and_apply_mode<'document>(
         && let Some(value) = item.as_value()
     {
         *mode = ModeChoice::Explicit(
-            ModeChoice::from(
-                ModeChoiceArg::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
-                    .map_err(|err| map_clap_error("mode", err))?,
-            )
-            .into(),
+            Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
+                .map_err(|err| map_clap_error("mode", err))?,
         );
     }
     Ok(zuban_config)
