@@ -143,15 +143,15 @@ fn find_mypy_config_file_in_dir(
                     break;
                 }
             } else {
+                if matches!(mode, ModeChoice::Auto) && pyproject_toml.is_none() {
+                    mode = ModeChoice::Implicit(Mode::Mypy);
+                }
                 let result = initialize_config(vfs, &dir, config_path, content, mode)?;
                 if let Some(project_options) = result.0.or_else(|| {
                     ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                        ProjectOptions::default_for_mode(match mode {
-                            ModeChoice::Auto if pyproject_toml.is_none() => Mode::Mypy,
-                            _ => mode.into(),
-                        })
+                        ProjectOptions::default_for_mode(mode.into())
                     })
                 }) {
                     end_result = Some(FoundConfig {

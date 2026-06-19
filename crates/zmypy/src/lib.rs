@@ -1242,48 +1242,50 @@ mod tests {
         assert!(!is_mypy_in_auto_mode());
 
         for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
-            test_dir.write_file(file_name, "");
-            println!("Write {file_name}");
+            for mypy_content in ["", "[mypy]"] {
+                test_dir.write_file(file_name, mypy_content);
+                println!("Write {file_name}");
 
-            // (2a1)
-            pyproject_zuban_section_only(None);
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
+                // (2a1)
+                pyproject_zuban_section_only(None);
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
 
-            // (2a2)
-            pyproject_zuban_section_only(Some("default"));
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
+                // (2a2)
+                pyproject_zuban_section_only(Some("default"));
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
 
-            // (2a3)
-            pyproject_zuban_section_only(Some("mypy"));
-            assert!(is_mypy_empty_args());
-            assert!(is_mypy_in_auto_mode());
+                // (2a3)
+                pyproject_zuban_section_only(Some("mypy"));
+                assert!(is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
 
-            // (2b1)
-            pyproject_both_sections(None);
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
+                // (2b1)
+                pyproject_both_sections(None);
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
 
-            // (2b2)
-            pyproject_both_sections(Some("default"));
-            assert!(!is_mypy(&[]));
-            assert!(!is_mypy(&["--mode", "auto"]));
+                // (2b2)
+                pyproject_both_sections(Some("default"));
+                assert!(!is_mypy(&[]));
+                assert!(!is_mypy(&["--mode", "auto"]));
 
-            // (2b3)
-            pyproject_both_sections(Some("mypy"));
-            assert!(is_mypy_empty_args());
-            assert!(is_mypy_in_auto_mode());
+                // (2b3)
+                pyproject_both_sections(Some("mypy"));
+                assert!(is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
 
-            // (2c)
-            pyproject_mypy_section_only();
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
+                // (2c)
+                pyproject_mypy_section_only();
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
 
-            // (2d)
-            pyproject_empty();
-            assert!(!is_mypy_empty_args());
-            assert!(!is_mypy_in_auto_mode());
+                // (2d)
+                pyproject_empty();
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
+            }
             test_dir.remove_file(file_name)
         }
 
@@ -1291,13 +1293,15 @@ mod tests {
 
         // (3)
         for file_name in [".mypy.ini", "mypy.ini"] {
-            test_dir.write_file(file_name, "");
-            println!("Write {file_name}");
+            for mypy_content in ["", "[mypy]"] {
+                test_dir.write_file(file_name, mypy_content);
+                println!("Write {file_name}");
 
-            assert!(!is_mypy_empty_args());
-            assert!(is_mypy_in_auto_mode());
+                assert!(!is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
 
-            test_dir.remove_file(file_name)
+                test_dir.remove_file(file_name)
+            }
         }
 
         // (4)
@@ -1307,8 +1311,7 @@ mod tests {
 
         test_dir.write_file("setup.cfg", "[mypy]");
         assert!(!is_mypy_empty_args());
-        // TODO is this correct?
-        assert!(!is_mypy_in_auto_mode());
+        assert!(is_mypy_in_auto_mode());
 
         // (5)
         for file_name in [".mypy.ini", "mypy.ini"] {
