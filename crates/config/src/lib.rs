@@ -505,7 +505,10 @@ fn get_zuban_config_and_apply_mode<'document>(
     mode: &mut ModeChoice,
 ) -> anyhow::Result<Option<&'document Item>> {
     let zuban_config = pyright_toml.get("tool").and_then(|item| item.get("zuban"));
-    if let Some(Item::Table(table)) = zuban_config
+    // Explicit modes provided from outside always take preference, for example if the user calls
+    // zuban check --mode default
+    if !matches!(mode, ModeChoice::Explicit(_))
+        && let Some(Item::Table(table)) = zuban_config
         && let Some(item) = table.get("mode")
         && let Some(value) = item.as_value()
     {

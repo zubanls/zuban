@@ -13,7 +13,7 @@ use zuban_python::{Project, RunCause};
 
 pub fn run(cli: Cli) -> ExitCode {
     /*
-     * TODO renenable this after alpha in some form
+     * TODO is this ever going to be needed anymore?
     if let Err(err) = licensing::verify_license_in_config_dir() {
         eprintln!("{err}");
         return ExitCode::from(10);
@@ -1138,7 +1138,10 @@ mod tests {
         let is_mypy = |args: &[&str]| {
             let options = init_options(test_dir.path(), args.iter().copied());
             let is_mypy = options.settings.mypy_compatible();
+
+            // Ensure that the internal defaults are carried over as well:
             assert_eq!(is_mypy, !options.flags.check_untyped_defs);
+
             return is_mypy;
         };
 
@@ -1197,19 +1200,19 @@ mod tests {
         assert!(!is_mypy(&[]));
         assert!(!is_mypy(&["--mode", "default"]));
         assert!(!is_mypy(&["--mode", "auto"]));
-        // TODO assert!(is_mypy(&["--mode", "mypy"]));
+        assert!(is_mypy(&["--mode", "mypy"]));
 
         // (1a3)
         write_pyproject_toml(true, false, Some("mypy"));
         assert!(is_mypy(&[]));
-        // TODO assert!(!is_mypy(&["--mode", "default"]));
+        assert!(!is_mypy(&["--mode", "default"]));
         assert!(is_mypy(&["--mode", "auto"]));
         assert!(is_mypy(&["--mode", "mypy"]));
 
         // (1a4)
         write_pyproject_toml(true, false, Some("mypy"));
         assert!(is_mypy(&[]));
-        // TODO assert!(!is_mypy(&["--mode", "default"]));
+        assert!(!is_mypy(&["--mode", "default"]));
         assert!(is_mypy(&["--mode", "auto"]));
         assert!(is_mypy(&["--mode", "mypy"]));
 
