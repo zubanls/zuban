@@ -309,10 +309,7 @@ impl ProjectOptions {
         mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         let ini = parse_python_ini(code)?;
-        let mut result = Self::default_for_mode(match mode {
-            ModeChoice::Auto => Mode::Mypy,
-            _ => mode.into(),
-        });
+        let mut result = Self::default_for_mode(mode.into());
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };

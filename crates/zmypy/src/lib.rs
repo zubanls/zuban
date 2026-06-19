@@ -7,7 +7,7 @@ use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::{ModeChoice, ProjectOptions, find_config};
+use config::{Mode, ModeChoice, ProjectOptions, find_config};
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
@@ -95,7 +95,7 @@ fn project_options_from_cli(
         cli.mypy_options.config_file.as_deref(),
         match cli.mode {
             Some(mode) => mode.into(),
-            None => ModeChoice::Auto,
+            None => ModeChoice::Implicit(Mode::Default),
         },
         |_| (),
     )
@@ -1184,9 +1184,8 @@ mod tests {
         //
         // 1. pyproject.toml only
         // 2. pyproject.toml with mypy.ini/.mypy.ini/setup.cfg
-        // 3. Only mypy.ini/.mypy.ini
-        // 4. Only setup.cfg
-        // 5. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        // 3. Only mypy.ini/.mypy.ini/setup.cfg
+        // 4. Combinations of mypy.ini/.mypy.ini/setup.cfg
         //
         // All pyproject.toml tests additionally have the following properties:
         //
@@ -1243,6 +1242,7 @@ mod tests {
 
         for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
             test_dir.write_file(file_name, "");
+            println!("Write {file_name}");
 
             // (2a1)
             pyproject_zuban_section_only(None);
@@ -1287,6 +1287,28 @@ mod tests {
         }
 
         test_dir.remove_file("pyproject.toml");
+
+        // (3)
+        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+            test_dir.write_file(file_name, "");
+            println!("Write {file_name}");
+
+            // assert!(is_mypy_empty_args());
+            // assert!(is_mypy_in_auto_mode());
+
+            test_dir.remove_file(file_name)
+        }
+
+        // (4)
+        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+            test_dir.write_file(file_name, "");
+        }
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        test_dir.remove_file("mypy.ini");
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
     }
 
     #[test]
