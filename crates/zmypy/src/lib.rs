@@ -195,10 +195,13 @@ mod tests {
             .to_string()
     }
 
-    fn cli_args_to_additional<'x>(args: impl IntoIterator<Item = &'x str>) -> ProjectOptions {
+    fn init_options<'x>(
+        current_dir: &str,
+        args: impl IntoIterator<Item = &'x str>,
+    ) -> ProjectOptions {
         project_options_from_cli(
             Cli::parse_from(std::iter::once("").chain(args.into_iter())),
-            ".",
+            current_dir,
             None,
             |_| Err(VarError::NotPresent),
         )
@@ -1122,6 +1125,99 @@ mod tests {
     }
 
     #[test]
+    fn test_mode_matrix() {
+        // Test without actually running the diagnostics/running the language server to avoid
+        // initializing the expensive typeshed stuff again and again.
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file m.py]
+            ",
+            false,
+        );
+
+        let is_mypy = |args: &[&str]| {
+            let options = init_options(test_dir.path(), args.iter().copied());
+            let is_mypy = options.settings.mypy_compatible();
+            assert_eq!(is_mypy, !options.flags.check_untyped_defs);
+            return is_mypy;
+        };
+
+        let write_pyproject_toml = |has_zuban, has_mypy, mode: Option<&str>| {
+            let zuban_section = match has_zuban {
+                true => "[tool.zuban]\n",
+                false => "",
+            };
+            let mypy_section = match has_mypy {
+                true => "[tool.mypy]\n",
+                false => "",
+            };
+            let explicit_mode = match mode {
+                Some(mode) => format!("mode = {mode:?}\n"),
+                _ => "".into(),
+            };
+            test_dir.write_file(
+                "pyproject.toml",
+                &format!("{zuban_section}{explicit_mode}{mypy_section}"),
+            );
+        };
+
+        // Test in the following order with every explicit/implicit mode:
+        //
+        // 1. pyproject.toml only
+        // 2. pyproject.toml with mypy.ini/.mypy.ini
+        // 3. pyproject.toml with setup.cfg
+        // 4. Only mypy.ini/.mypy.ini
+        // 5. Only setup.cfg
+        // 6. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        //
+        // All pyproject.toml tests additionally have the following properties:
+        //
+        // a. Only tool.zuban section
+        //    - 1. No explicit mode
+        //    - 2. mode = default
+        //    - 3. mode = mypy
+        //    - 4. mode = auto
+        // b. Both tool.zuban and tool.mypy sections
+        //    - 1. No explicit mode
+        //    - 2. mode = default
+        //    - 3. mode = mypy
+        //    - 4. mode = auto
+        // c. Only tool.mypy section
+        // d. Empty pyprojec.toml
+
+        // (1a1)
+        write_pyproject_toml(true, false, None);
+        assert!(!is_mypy(&[]));
+        assert!(!is_mypy(&["--mode", "default"]));
+        assert!(!is_mypy(&["--mode", "auto"]));
+        assert!(is_mypy(&["--mode", "mypy"]));
+
+        // (1a2)
+        write_pyproject_toml(true, false, Some("default"));
+        assert!(!is_mypy(&[]));
+        assert!(!is_mypy(&["--mode", "default"]));
+        assert!(!is_mypy(&["--mode", "auto"]));
+        // TODO assert!(is_mypy(&["--mode", "mypy"]));
+
+        // (1a3)
+        write_pyproject_toml(true, false, Some("mypy"));
+        assert!(is_mypy(&[]));
+        // TODO assert!(!is_mypy(&["--mode", "default"]));
+        assert!(is_mypy(&["--mode", "auto"]));
+        assert!(is_mypy(&["--mode", "mypy"]));
+
+        // (1a4)
+        write_pyproject_toml(true, false, Some("mypy"));
+        assert!(is_mypy(&[]));
+        // TODO assert!(!is_mypy(&["--mode", "default"]));
+        assert!(is_mypy(&["--mode", "auto"]));
+        assert!(is_mypy(&["--mode", "mypy"]));
+
+        // TODO
+        test_dir.write_file("mypy.ini", "");
+    }
+
+    #[test]
     fn test_mypy_config_with_explicit_mode() {
         logging_config::setup_logging_for_tests();
         let test_dir = test_utils::write_files_from_fixture(
@@ -1282,7 +1378,7 @@ mod tests {
         // From GH #453
         logging_config::setup_logging_for_tests();
         if cfg!(unix) {
-            let options = cli_args_to_additional(["--extra-search-path", "/my-additional-path"]);
+            let options = init_options(".", ["--extra-search-path", "/my-additional-path"]);
             assert_eq!(
                 options
                     .settings
@@ -1292,12 +1388,15 @@ mod tests {
                     .collect::<Vec<_>>(),
                 ["/my-additional-path"]
             );
-            let options = cli_args_to_additional([
-                "--extra-search-path",
-                "/my-additional-path",
-                "--extra-search-path",
-                "/my-additional-path/inner",
-            ]);
+            let options = init_options(
+                ".",
+                [
+                    "--extra-search-path",
+                    "/my-additional-path",
+                    "--extra-search-path",
+                    "/my-additional-path/inner",
+                ],
+            );
             assert_eq!(
                 options
                     .settings
@@ -1314,7 +1413,7 @@ mod tests {
     fn test_typeshed_path() {
         logging_config::setup_logging_for_tests();
         if cfg!(unix) {
-            let options = cli_args_to_additional(["--custom-typeshed-dir", "/my-typeshed-path"]);
+            let options = init_options(".", ["--custom-typeshed-dir", "/my-typeshed-path"]);
             assert_eq!(
                 &*options.settings.typeshed_path.unwrap() as &str,
                 "/my-typeshed-path"
