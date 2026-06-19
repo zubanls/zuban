@@ -1234,7 +1234,7 @@ mod tests {
         // (1c)
         pyproject_mypy_section_only();
         assert!(!is_mypy_empty_args());
-        assert!(!is_mypy_in_auto_mode());
+        assert!(is_mypy_in_auto_mode());
 
         // (1d)
         pyproject_empty();
@@ -1268,8 +1268,8 @@ mod tests {
 
                 // (2b2)
                 pyproject_both_sections(Some("default"));
-                assert!(!is_mypy(&[]));
-                assert!(!is_mypy(&["--mode", "auto"]));
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
 
                 // (2b3)
                 pyproject_both_sections(Some("mypy"));
@@ -1279,7 +1279,7 @@ mod tests {
                 // (2c)
                 pyproject_mypy_section_only();
                 assert!(!is_mypy_empty_args());
-                assert!(!is_mypy_in_auto_mode());
+                assert!(is_mypy_in_auto_mode());
 
                 // (2d)
                 pyproject_empty();

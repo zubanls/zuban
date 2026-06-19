@@ -514,6 +514,15 @@ fn get_zuban_config_and_apply_mode<'document>(
                 .map_err(|err| map_clap_error("mode", err))?,
         );
     }
+    if zuban_config.is_none()
+        && matches!(mode, ModeChoice::Auto)
+        && pyright_toml
+            .get("tool")
+            .and_then(|item| item.get("mypy"))
+            .is_some()
+    {
+        *mode = ModeChoice::Implicit(Mode::Mypy);
+    }
     Ok(zuban_config)
 }
 
