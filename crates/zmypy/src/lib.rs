@@ -1145,8 +1145,8 @@ mod tests {
             return is_mypy;
         };
 
-        let check_empty = || is_mypy(&[]);
-        let check_auto = || {
+        let is_mypy_empty_args = || is_mypy(&[]);
+        let is_mypy_in_auto_mode = || {
             // Ensure that the explicit modes work as well
             assert!(!is_mypy(&["--mode", "default"]));
             assert!(is_mypy(&["--mode", "mypy"]));
@@ -1183,11 +1183,10 @@ mod tests {
         // Test in the following order with every explicit/implicit mode:
         //
         // 1. pyproject.toml only
-        // 2. pyproject.toml with mypy.ini/.mypy.ini
-        // 3. pyproject.toml with setup.cfg
-        // 4. Only mypy.ini/.mypy.ini
-        // 5. Only setup.cfg
-        // 6. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        // 2. pyproject.toml with mypy.ini/.mypy.ini/setup.cfg
+        // 3. Only mypy.ini/.mypy.ini
+        // 4. Only setup.cfg
+        // 5. Combinations of mypy.ini/.mypy.ini/setup.cfg
         //
         // All pyproject.toml tests additionally have the following properties:
         //
@@ -1206,57 +1205,110 @@ mod tests {
 
         // (1a1)
         pyproject_zuban_only(None);
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1a2)
         pyproject_zuban_only(Some("default"));
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1a3)
         pyproject_zuban_only(Some("mypy"));
-        assert!(check_empty());
-        assert!(check_auto());
+        assert!(is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
 
         // (1a4)
         pyproject_zuban_only(Some("auto"));
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1b1)
         write_pyproject_toml(true, true, None);
         pyproject_both_sections(None);
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1b2)
         pyproject_both_sections(Some("default"));
-        assert!(!is_mypy(&[]));
-        assert!(!is_mypy(&["--mode", "auto"]));
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1b3)
         pyproject_both_sections(Some("mypy"));
-        assert!(check_empty());
-        assert!(check_auto());
+        assert!(is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
 
         // (1b4)
         pyproject_both_sections(Some("auto"));
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1c)
         pyproject_mypy_only();
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
         // (1d)
         pyproject_empty();
-        assert!(!check_empty());
-        assert!(!check_auto());
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
 
-        // TODO
-        test_dir.write_file("mypy.ini", "");
+        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+            test_dir.write_file(file_name, "");
+
+            // (2a1)
+            pyproject_zuban_only(None);
+            // assert!(!is_mypy_empty_args());
+            // assert!(!is_mypy_in_auto_mode());
+
+            // (2a2)
+            pyproject_zuban_only(Some("default"));
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+
+            // (2a3)
+            pyproject_zuban_only(Some("mypy"));
+            assert!(is_mypy_empty_args());
+            assert!(is_mypy_in_auto_mode());
+
+            // (2a4)
+            pyproject_zuban_only(Some("auto"));
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+
+            // (2b1)
+            write_pyproject_toml(true, true, None);
+            pyproject_both_sections(None);
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+
+            // (2b2)
+            pyproject_both_sections(Some("default"));
+            assert!(!is_mypy(&[]));
+            assert!(!is_mypy(&["--mode", "auto"]));
+
+            // (2b3)
+            pyproject_both_sections(Some("mypy"));
+            assert!(is_mypy_empty_args());
+            assert!(is_mypy_in_auto_mode());
+
+            // (2b4)
+            pyproject_both_sections(Some("auto"));
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+
+            // (2c)
+            pyproject_mypy_only();
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+
+            // (2d)
+            pyproject_empty();
+            assert!(!is_mypy_empty_args());
+            assert!(!is_mypy_in_auto_mode());
+            test_dir.remove_file(file_name)
+        }
     }
 
     #[test]
