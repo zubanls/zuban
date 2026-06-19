@@ -1145,10 +1145,21 @@ mod tests {
             return is_mypy;
         };
 
+        let check_empty = || is_mypy(&[]);
+        let check_auto = || {
+            // Ensure that the explicit modes work as well
+            assert!(!is_mypy(&["--mode", "default"]));
+            assert!(is_mypy(&["--mode", "mypy"]));
+            is_mypy(&["--mode", "auto"])
+        };
+
         let write_pyproject_toml = |has_zuban, has_mypy, mode: Option<&str>| {
             let zuban_section = match has_zuban {
                 true => "[tool.zuban]\n",
-                false => "",
+                false => {
+                    assert!(mode.is_none());
+                    ""
+                }
             };
             let mypy_section = match has_mypy {
                 true => "[tool.mypy]\n",
@@ -1163,6 +1174,11 @@ mod tests {
                 &format!("{zuban_section}{explicit_mode}{mypy_section}"),
             );
         };
+
+        let pyproject_zuban_only = |mode| write_pyproject_toml(true, false, mode);
+        let pyproject_both_sections = |mode| write_pyproject_toml(true, true, mode);
+        let pyproject_mypy_only = || write_pyproject_toml(false, true, None);
+        let pyproject_empty = || write_pyproject_toml(true, true, None);
 
         // Test in the following order with every explicit/implicit mode:
         //
@@ -1189,32 +1205,55 @@ mod tests {
         // d. Empty pyprojec.toml
 
         // (1a1)
-        write_pyproject_toml(true, false, None);
-        assert!(!is_mypy(&[]));
-        assert!(!is_mypy(&["--mode", "default"]));
-        assert!(!is_mypy(&["--mode", "auto"]));
-        assert!(is_mypy(&["--mode", "mypy"]));
+        pyproject_zuban_only(None);
+        assert!(!check_empty());
+        assert!(!check_auto());
 
         // (1a2)
-        write_pyproject_toml(true, false, Some("default"));
-        assert!(!is_mypy(&[]));
-        assert!(!is_mypy(&["--mode", "default"]));
-        assert!(!is_mypy(&["--mode", "auto"]));
-        assert!(is_mypy(&["--mode", "mypy"]));
+        pyproject_zuban_only(Some("default"));
+        assert!(!check_empty());
+        assert!(!check_auto());
 
         // (1a3)
-        write_pyproject_toml(true, false, Some("mypy"));
-        assert!(is_mypy(&[]));
-        assert!(!is_mypy(&["--mode", "default"]));
-        assert!(is_mypy(&["--mode", "auto"]));
-        assert!(is_mypy(&["--mode", "mypy"]));
+        pyproject_zuban_only(Some("mypy"));
+        assert!(check_empty());
+        assert!(check_auto());
 
         // (1a4)
-        write_pyproject_toml(true, false, Some("mypy"));
-        assert!(is_mypy(&[]));
-        assert!(!is_mypy(&["--mode", "default"]));
-        assert!(is_mypy(&["--mode", "auto"]));
-        assert!(is_mypy(&["--mode", "mypy"]));
+        pyproject_zuban_only(Some("auto"));
+        assert!(!check_empty());
+        assert!(!check_auto());
+
+        // (1b1)
+        write_pyproject_toml(true, true, None);
+        pyproject_both_sections(None);
+        assert!(!check_empty());
+        assert!(!check_auto());
+
+        // (1b2)
+        pyproject_both_sections(Some("default"));
+        assert!(!is_mypy(&[]));
+        assert!(!is_mypy(&["--mode", "auto"]));
+
+        // (1b3)
+        pyproject_both_sections(Some("mypy"));
+        assert!(check_empty());
+        assert!(check_auto());
+
+        // (1b4)
+        pyproject_both_sections(Some("auto"));
+        assert!(!check_empty());
+        assert!(!check_auto());
+
+        // (1c)
+        pyproject_mypy_only();
+        assert!(!check_empty());
+        assert!(!check_auto());
+
+        // (1d)
+        pyproject_empty();
+        assert!(!check_empty());
+        assert!(!check_auto());
 
         // TODO
         test_dir.write_file("mypy.ini", "");
