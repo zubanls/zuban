@@ -1175,9 +1175,9 @@ mod tests {
             );
         };
 
-        let pyproject_zuban_only = |mode| write_pyproject_toml(true, false, mode);
+        let pyproject_zuban_section_only = |mode| write_pyproject_toml(true, false, mode);
         let pyproject_both_sections = |mode| write_pyproject_toml(true, true, mode);
-        let pyproject_mypy_only = || write_pyproject_toml(false, true, None);
+        let pyproject_mypy_section_only = || write_pyproject_toml(false, true, None);
         let pyproject_empty = || write_pyproject_toml(true, true, None);
 
         // Test in the following order with every explicit/implicit mode:
@@ -1204,22 +1204,22 @@ mod tests {
         // d. Empty pyprojec.toml
 
         // (1a1)
-        pyproject_zuban_only(None);
+        pyproject_zuban_section_only(None);
         assert!(!is_mypy_empty_args());
         assert!(!is_mypy_in_auto_mode());
 
         // (1a2)
-        pyproject_zuban_only(Some("default"));
+        pyproject_zuban_section_only(Some("default"));
         assert!(!is_mypy_empty_args());
         assert!(!is_mypy_in_auto_mode());
 
         // (1a3)
-        pyproject_zuban_only(Some("mypy"));
+        pyproject_zuban_section_only(Some("mypy"));
         assert!(is_mypy_empty_args());
         assert!(is_mypy_in_auto_mode());
 
         // (1a4)
-        pyproject_zuban_only(Some("auto"));
+        pyproject_zuban_section_only(Some("auto"));
         assert!(!is_mypy_empty_args());
         assert!(!is_mypy_in_auto_mode());
 
@@ -1245,7 +1245,7 @@ mod tests {
         assert!(!is_mypy_in_auto_mode());
 
         // (1c)
-        pyproject_mypy_only();
+        pyproject_mypy_section_only();
         assert!(!is_mypy_empty_args());
         assert!(!is_mypy_in_auto_mode());
 
@@ -1258,22 +1258,22 @@ mod tests {
             test_dir.write_file(file_name, "");
 
             // (2a1)
-            pyproject_zuban_only(None);
+            pyproject_zuban_section_only(None);
             // assert!(!is_mypy_empty_args());
             // assert!(!is_mypy_in_auto_mode());
 
             // (2a2)
-            pyproject_zuban_only(Some("default"));
+            pyproject_zuban_section_only(Some("default"));
             assert!(!is_mypy_empty_args());
             assert!(!is_mypy_in_auto_mode());
 
             // (2a3)
-            pyproject_zuban_only(Some("mypy"));
+            pyproject_zuban_section_only(Some("mypy"));
             assert!(is_mypy_empty_args());
             assert!(is_mypy_in_auto_mode());
 
             // (2a4)
-            pyproject_zuban_only(Some("auto"));
+            pyproject_zuban_section_only(Some("auto"));
             assert!(!is_mypy_empty_args());
             assert!(!is_mypy_in_auto_mode());
 
@@ -1299,7 +1299,7 @@ mod tests {
             assert!(!is_mypy_in_auto_mode());
 
             // (2c)
-            pyproject_mypy_only();
+            pyproject_mypy_section_only();
             assert!(!is_mypy_empty_args());
             assert!(!is_mypy_in_auto_mode());
 
@@ -1309,6 +1309,8 @@ mod tests {
             assert!(!is_mypy_in_auto_mode());
             test_dir.remove_file(file_name)
         }
+
+        test_dir.remove_file("pyproject.toml");
     }
 
     #[test]
