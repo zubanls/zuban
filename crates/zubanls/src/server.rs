@@ -313,8 +313,8 @@ impl<'sender> GlobalState<'sender> {
             let first_root = vfs_handler.unchecked_abs_path(first_root);
             let mode = match self.client_config.type_checking_mode {
                 TypeCheckingMode::Auto | TypeCheckingMode::Off => ModeChoice::Auto,
-                TypeCheckingMode::Default => ModeChoice::Explicit(Mode::Default),
-                TypeCheckingMode::Mypy => ModeChoice::Explicit(Mode::Mypy),
+                TypeCheckingMode::Default => ModeChoice::Implicit(Mode::Default),
+                TypeCheckingMode::Mypy => ModeChoice::Implicit(Mode::Mypy),
             };
             let mut config = config::find_config(&vfs_handler, first_root.clone(), None, mode, |path| {
                 // Watch the file itself to make sure that we can invalidate when it changes.

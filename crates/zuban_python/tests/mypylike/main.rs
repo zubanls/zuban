@@ -13,7 +13,8 @@ use std::{
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
 
 use config::{
-    DiagnosticConfig, Mode, ModeChoice, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+    DiagnosticConfig, Mode, ModeChoice, ModeChoiceArg, ProjectOptions, PythonVersion, Settings,
+    TypeCheckerFlags,
 };
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
@@ -189,8 +190,6 @@ struct PerTestFlags {
     no_use_joins: bool,
     #[arg(long)]
     disallow_empty_bodies: bool,
-    #[arg(long)]
-    auto_mode: bool,
 }
 
 #[derive(Debug)]
@@ -370,10 +369,18 @@ impl TestCase<'_, '_> {
             PerTestFlags::from_arg_matches(&matches)?
         };
         let steps = steps.steps;
-        if flags.cli.mode().is_some_and(|m| m != mode)
-            || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
+        if flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
-            || flags.auto_mode && mode == Mode::Mypy
+            || match flags.cli.mode {
+                Some(ModeChoiceArg::Default) => mode != Mode::Default,
+                Some(ModeChoiceArg::Mypy) => mode != Mode::Mypy,
+                Some(ModeChoiceArg::Auto) => {
+                    // We skip these, because we only want to run these tests once and that's
+                    // already done in default mode.
+                    mode == Mode::Mypy
+                }
+                None => false,
+            }
         {
             return Ok(false);
         }
@@ -382,9 +389,9 @@ impl TestCase<'_, '_> {
         let (mut project, diagnostic_config) = self.initialize_flags(
             projects,
             &local_fs,
-            match flags.auto_mode {
-                true => ModeChoice::Auto,
-                false => ModeChoice::Explicit(mode),
+            match flags.cli.mode {
+                Some(mode) => mode.into(),
+                None => ModeChoice::Explicit(mode),
             },
             flags,
             &steps,

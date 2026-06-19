@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 pub use config::DiagnosticConfig;
 
 use config::{
-    ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+    ExcludeRegex, Mode, ModeChoiceArg, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
     UntypedFunctionReturnMode,
 };
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
@@ -15,7 +15,7 @@ pub struct Cli {
     // Additional options that are not present in zmypy
     /// Choosing a mode sets the basic preset of flags. The default mode is not mypy-compatible.
     #[arg(long)]
-    mode: Option<Mode>,
+    pub mode: Option<ModeChoiceArg>,
 
     /// Can be either "any" to infer untyped function returns like Mypy, "inferred" to infer return
     /// types or "advanced" to infer return types in a more sophisticated way that includes
@@ -37,7 +37,7 @@ pub struct Cli {
 impl Cli {
     pub fn new_mypy_compatible(mypy_options: MypyCli) -> Self {
         Self {
-            mode: Some(Mode::Mypy),
+            mode: Some(ModeChoiceArg::Mypy),
             untyped_function_return_mode: None,
             mypy_options,
             extra_search_path: Default::default(),
@@ -45,11 +45,7 @@ impl Cli {
     }
 
     pub fn mypy_compatible(&self) -> Option<bool> {
-        Some(matches!(self.mode?, Mode::Mypy))
-    }
-
-    pub fn mode(&self) -> Option<Mode> {
-        Some(self.mode?.into())
+        Some(matches!(self.mode?, ModeChoiceArg::Mypy))
     }
 }
 
@@ -341,7 +337,11 @@ pub fn apply_flags_detailed(
     config_path: Option<&AbsPath>,
 ) {
     if let Some(mode) = cli.mode {
-        settings.mode = mode.into();
+        match mode {
+            ModeChoiceArg::Default => settings.mode = Mode::Default,
+            ModeChoiceArg::Mypy => settings.mode = Mode::Mypy,
+            ModeChoiceArg::Auto => (),
+        }
     }
     if let Some(untyped_function_return_mode) = cli.untyped_function_return_mode {
         settings.untyped_function_return_mode = untyped_function_return_mode

@@ -93,8 +93,8 @@ fn project_options_from_cli(
         &local_fs,
         current_dir.clone(),
         cli.mypy_options.config_file.as_deref(),
-        match cli.mode() {
-            Some(mode) => ModeChoice::Explicit(mode),
+        match cli.mode {
+            Some(mode) => mode.into(),
             None => ModeChoice::Auto,
         },
         |_| (),

@@ -67,6 +67,24 @@ pub enum ModeChoice {
     Auto,
 }
 
+// This is used in the pyproject.toml tool.zuban section and for the explicit mode in the CLI
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum ModeChoiceArg {
+    Default,
+    Mypy,
+    Auto,
+}
+
+impl From<ModeChoiceArg> for ModeChoice {
+    fn from(value: ModeChoiceArg) -> Self {
+        match value {
+            ModeChoiceArg::Default => ModeChoice::Explicit(Mode::Default),
+            ModeChoiceArg::Mypy => ModeChoice::Explicit(Mode::Mypy),
+            ModeChoiceArg::Auto => ModeChoice::Auto,
+        }
+    }
+}
+
 impl From<ModeChoice> for Mode {
     fn from(value: ModeChoice) -> Self {
         match value {
@@ -492,8 +510,11 @@ fn get_zuban_config_and_apply_mode<'document>(
         && let Some(value) = item.as_value()
     {
         *mode = ModeChoice::Explicit(
-            Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
-                .map_err(|err| map_clap_error("mode", err))?,
+            ModeChoice::from(
+                ModeChoiceArg::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
+                    .map_err(|err| map_clap_error("mode", err))?,
+            )
+            .into(),
         );
     }
     Ok(zuban_config)
