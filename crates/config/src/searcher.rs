@@ -143,7 +143,7 @@ fn find_mypy_config_file_in_dir(
                     break;
                 }
             } else {
-                if matches!(mode, ModeChoice::Auto) && pyproject_toml.is_none() {
+                if matches!(mode, ModeChoice::Auto) {
                     mode = ModeChoice::Implicit(Mode::Mypy);
                 }
                 let result = initialize_config(vfs, &dir, config_path, content, mode)?;
