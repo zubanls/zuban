@@ -900,6 +900,7 @@ impl Type {
                 _ => return None,
             },
             Type::TypedDict(_) => db.python_state.typed_dict_class(),
+            Type::Callable(_) | Type::FunctionOverload(_) => db.python_state.function_class(),
             Type::NewType(n) => return n.type_.inner_generic_class_with_db(db),
             _ => return None,
         })
