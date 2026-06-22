@@ -148,11 +148,20 @@ def f():
 [file pyproject.toml]
 [tool.mypy]
 
-[case auto_mode_should_use_mypy_in_case_of_mypy_config]
+[case auto_mode_should_use_mypy_in_case_of_zuban_config]
 # flags: --mode auto
 
 def f():
     x: int = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file pyproject.toml]
+[tool.zuban]
+
+[case auto_mode_should_use_mypy_in_case_of_mypy_config]
+# flags: --mode auto
+
+def f():
+    x: int = ""  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
 [file pyproject.toml]
 [tool.mypy]
