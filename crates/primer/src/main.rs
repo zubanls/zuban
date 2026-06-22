@@ -77,7 +77,13 @@ fn main() -> ExitCode {
             .unwrap();
         env::set_current_dir(&pth).expect("Failed to change directory");
 
-        let mut v = vec!["".into(), "--python-executable".into(), executable];
+        let mut v = vec![
+            "".into(),
+            "--python-executable".into(),
+            executable,
+            "--mode".into(),
+            "auto".into(),
+        ];
         v.extend_from_slice(&cli.mypy_args);
         let cli = cli_args::Cli::parse_from(v);
         let result = zmypy::with_diagnostics_from_cli(
