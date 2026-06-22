@@ -3200,10 +3200,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     op_infos.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
-                                (Some(l.class), l.lookup.into_maybe_inferred())
+                                (l.class, l.lookup.into_maybe_inferred())
                             }
                             _ => (
-                                None,
+                                TypeOrClass::Type(Cow::Borrowed(r_type)),
                                 r_type
                                     .lookup(
                                         i_s,
@@ -3218,7 +3218,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             ),
                         };
 
-                        let l_defined_in = Some(&lookup_result.class);
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
                             // `op_methods_that_shortcut`)
@@ -3231,9 +3230,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             }
                             // If right is a sub type of left, Python and Mypy execute right first
                             if r_type.is_simple_sub_type_of(i_s, l_type).bool()
-                                && let Some(TypeOrClass::Class(l_class)) = l_defined_in
-                                && let Some(TypeOrClass::Class(r_class)) = r_defined_in
-                                && l_class.node_ref != r_class.node_ref
+                                && let Some(ldef) = lookup_result.class.defined_at()
+                                && let Some(rdef) = r_defined_in.defined_at()
+                                && ldef != rdef
                             {
                                 return LookupStrategy::ReverseThenNormal;
                             }

@@ -582,3 +582,22 @@ class Color(Enum):
 y: Callable[[], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[], Color]")
 x: Callable[[str], Color] = Color
 z: Callable[[str, int], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[str, int], Color]")
+
+[case narrowing_int_flag]
+# From GH #476
+from enum import auto, IntFlag
+from typing import Literal, assert_type
+
+class Flags(IntFlag):
+    A = auto()
+    B = auto()
+assert_type(int() & Flags.A, Flags)
+assert_type(Flags.A & int(), Flags)
+
+def f(a: Literal[Flags.A], b: Flags):
+    assert_type(int() & a, Flags)
+    assert_type(a & int(), Flags)
+    assert_type(int() & b, Flags)
+    assert_type(b & int(), Flags)
+
+assert_type(int() & Flags.A, Flags)

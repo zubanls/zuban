@@ -2395,6 +2395,20 @@ impl<'a> TypeOrClass<'a> {
             TypeOrClass::Type(_) => false,
         }
     }
+
+    pub fn defined_at(&self) -> Option<PointLink> {
+        Some(match self {
+            TypeOrClass::Class(c) => c.node_ref.as_link(),
+            TypeOrClass::Type(t) => match t.as_ref() {
+                Type::Dataclass(dc) => dc.class.link,
+                Type::TypedDict(td) => td.defined_at,
+                Type::Enum(enum_) => enum_.defined_at,
+                Type::EnumMember(enum_member) => enum_member.enum_.defined_at,
+                // Type::Literal(literal) => TODO ?
+                _ => return None,
+            },
+        })
+    }
 }
 
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
