@@ -1152,6 +1152,23 @@ mod tests {
             assert!(is_mypy(&["--mode", "mypy"]));
             is_mypy(&["--mode", "auto"])
         };
+        let is_mypy_empty_args_with_explicit_config_pyproject_toml = || is_mypy(&[]);
+        let is_mypy_in_auto_mode_with_explicit_config_pyproject_toml = || {
+            // Ensure that the explicit modes work as well
+            assert!(!is_mypy(&[
+                "--config-file",
+                "pyproject.toml",
+                "--mode",
+                "default"
+            ]));
+            assert!(is_mypy(&[
+                "--config-file",
+                "pyproject.toml",
+                "--mode",
+                "mypy"
+            ]));
+            is_mypy(&["--config-file", "pyproject.toml", "--mode", "auto"])
+        };
 
         let write_pyproject_toml = |has_zuban, has_mypy, mode: Option<&str>| {
             let zuban_section = match has_zuban {
@@ -1187,6 +1204,8 @@ mod tests {
         // 3. Only mypy.ini/.mypy.ini
         // 4. Only setup.cfg
         // 5. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        // 6. --config-file pyproject.toml when mypy.ini exists
+        // 7. --config-file mypy.ini when pyproject.toml exists
         //
         // All pyproject.toml tests additionally have the following properties:
         //
@@ -1315,7 +1334,7 @@ mod tests {
 
         // (5)
         for file_name in [".mypy.ini", "mypy.ini"] {
-            test_dir.write_file(file_name, "");
+            test_dir.write_file(file_name, "[mypy]");
         }
         assert!(!is_mypy_empty_args());
         assert!(is_mypy_in_auto_mode());
@@ -1323,6 +1342,80 @@ mod tests {
         test_dir.remove_file("mypy.ini");
         assert!(!is_mypy_empty_args());
         assert!(is_mypy_in_auto_mode());
+
+        // (6a1)
+        pyproject_zuban_section_only(None);
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6a2)
+        pyproject_zuban_section_only(Some("default"));
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6a3)
+        pyproject_zuban_section_only(Some("mypy"));
+        assert!(is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b1)
+        pyproject_both_sections(None);
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b2)
+        pyproject_both_sections(Some("default"));
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b3)
+        pyproject_both_sections(Some("mypy"));
+        assert!(is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6c)
+        pyproject_mypy_section_only();
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6d)
+        pyproject_empty();
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (7)
+        pyproject_both_sections(None);
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
+
+        pyproject_zuban_section_only(Some("default"));
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
+
+        pyproject_empty();
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
     }
 
     #[test]
@@ -1345,7 +1438,7 @@ mod tests {
         let missing_annotation =
             "m.py:2: error: Function is missing a type annotation  [no-untyped-def]";
         assert_eq!(
-            diagnostics(Cli::parse_from([""]), test_dir.path()),
+            diagnostics(Cli::parse_from(["", "--mode", "auto"]), test_dir.path()),
             [not_int, missing_annotation]
         );
         assert_eq!(
@@ -1355,17 +1448,6 @@ mod tests {
                 missing_annotation,
                 "m.py:3: error: \"str\" not callable  [operator]"
             ]
-        );
-
-        // An empty mypy config file should also work
-        test_dir.write_file("mypy.ini", "");
-        assert_eq!(
-            diagnostics(Cli::parse_from([""]), test_dir.path()),
-            [not_int]
-        );
-        assert_eq!(
-            diagnostics(Cli::parse_from(["", "--mode", "default"]), test_dir.path()),
-            [not_int, "m.py:3: error: \"str\" not callable  [operator]"]
         );
     }
 

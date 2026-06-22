@@ -29,7 +29,7 @@ pub fn find_config(
     vfs: &dyn VfsHandler,
     current_dir: Arc<AbsPath>,
     config_file: Option<&Path>,
-    mode: ModeChoice,
+    mut mode: ModeChoice,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
@@ -41,6 +41,9 @@ pub fn find_config(
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
         let most_probable_base = Arc::from(vfs.parent_of_absolute_path(&config_path).unwrap());
+        if matches!(mode, ModeChoice::Auto) && config_path.ends_with(".ini") {
+            mode = ModeChoice::Explicit(Mode::Mypy)
+        }
         let result = initialize_config(vfs, &current_dir, config_path, s, mode)?;
         let project_options = result.0.unwrap_or_else(ProjectOptions::mypy_default);
         Ok(FoundConfig {
