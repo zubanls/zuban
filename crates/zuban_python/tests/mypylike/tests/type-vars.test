@@ -473,7 +473,7 @@ reveal_type(D().f(1))  # N: Revealed type is "Any"
 reveal_type(D[int].f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
 reveal_type(D[int]().f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
 
-[case avoid_crash_around_type_var_bound]
+[case avoid_crash_around_type_var_bound_with_callable]
 from typing import Callable, TypeVar
 
 T = TypeVar("T", bound=Callable)

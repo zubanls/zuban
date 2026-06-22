@@ -901,6 +901,7 @@ impl Type {
             },
             Type::TypedDict(_) => db.python_state.typed_dict_class(),
             Type::Callable(_) | Type::FunctionOverload(_) => db.python_state.function_class(),
+            Type::RecursiveType(r) => return r.calculated_type(db).inner_generic_class_with_db(db),
             Type::NewType(n) => return n.type_.inner_generic_class_with_db(db),
             _ => return None,
         })
