@@ -18,6 +18,7 @@ const CONFIG_NAMES: [&str; 4] = [
     //"~/.mypy.ini",
 ];
 
+#[derive(Debug)]
 pub struct FoundConfig {
     pub project_options: ProjectOptions,
     pub diagnostic_config: DiagnosticConfig,
@@ -45,7 +46,9 @@ pub fn find_config(
             mode = ModeChoice::Explicit(Mode::Mypy)
         }
         let result = initialize_config(vfs, &current_dir, config_path, s, mode)?;
-        let project_options = result.0.unwrap_or_else(ProjectOptions::mypy_default);
+        let project_options = result
+            .0
+            .unwrap_or_else(|| ProjectOptions::default_for_mode(mode.into()));
         Ok(FoundConfig {
             project_options,
             diagnostic_config: result.1,

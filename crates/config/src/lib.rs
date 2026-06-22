@@ -21,6 +21,7 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 4] = [
     "allow_empty_bodies",
 ];
 
+#[derive(Debug)]
 pub struct DiagnosticConfig {
     pub show_error_codes: bool,
     pub show_error_end: bool,

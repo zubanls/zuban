@@ -1195,7 +1195,7 @@ mod tests {
         let pyproject_zuban_section_only = |mode| write_pyproject_toml(true, false, mode);
         let pyproject_both_sections = |mode| write_pyproject_toml(true, true, mode);
         let pyproject_mypy_section_only = || write_pyproject_toml(false, true, None);
-        let pyproject_empty = || write_pyproject_toml(true, true, None);
+        let pyproject_empty = || write_pyproject_toml(false, false, None);
 
         // Test in the following order with every explicit/implicit mode:
         //
@@ -1303,7 +1303,7 @@ mod tests {
                 // (2d)
                 pyproject_empty();
                 assert!(!is_mypy_empty_args());
-                assert!(!is_mypy_in_auto_mode());
+                assert!(is_mypy_in_auto_mode());
             }
             test_dir.remove_file(file_name)
         }
