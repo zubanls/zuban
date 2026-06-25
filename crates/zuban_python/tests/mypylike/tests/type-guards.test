@@ -25,3 +25,32 @@ if foo(a, ""):  # E: No overload variant of "foo" matches argument types "object
                 # N:     def foo(a: object, b: int) -> TypeGuard[bytes] \
                 # N:     def foo(a: object, b: bytes) -> TypeGuard[bytes]
     reveal_type(a)  # N: Revealed type is "object"
+
+[case type_is_contravariant]
+# From #478
+from typing import Any, Generic, TypeVar, assert_type, Never, TypeIs
+
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class Sink(Generic[T_contra]): ...
+
+def is_sink(x: object) -> TypeIs[Sink[Never]]:
+    return False
+
+def f(x: int | Sink[Any]) -> None:
+    assert not is_sink(x)
+    assert_type(x, int)
+
+[case type_is_covariant]
+from typing import Any, Generic, TypeVar, assert_type, Never, TypeIs
+
+T_co = TypeVar("T_co", covariant=True)
+
+class Source(Generic[T_co]): ...
+
+def is_source(x: object) -> TypeIs[Source[object]]:
+    return False
+
+def f(x: int | Source[Any]) -> None:
+    assert not is_source(x)
+    assert_type(x, int)

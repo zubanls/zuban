@@ -86,7 +86,11 @@ impl Type {
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(value_type, *cause);
                 Match::True {
-                    with_any: matcher.is_matching_reverse() && !matches!(value_type, Type::Any(_)),
+                    with_any: matcher.is_matching_reverse()
+                        && !(matches!(value_type, Type::Any(_))
+                            // Never is a subtype of all types.
+                            || variance == Variance::Covariant
+                                && matches!(value_type, Type::Never(_))),
                 }
             }
             Type::Never(_) => matches!(value_type, Type::Never(_)).into(),
