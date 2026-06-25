@@ -88,18 +88,26 @@ impl Intersection {
             (Type::Union(u), _) => return handle_union(u, t2),
             (_, Type::Union(u)) => return handle_union(u, t1),
             (Type::Self_, _) => {
+                let Some(cls) = i_s.current_class() else {
+                    tracing::error!("Missing current class when trying to intersect (1)");
+                    return Ok(Type::ERROR);
+                };
                 return Intersection::new_instance_intersection(
                     i_s,
-                    &i_s.current_class().unwrap().as_type(i_s.db),
+                    &cls.as_type(i_s.db),
                     t2,
                     add_issue,
                 );
             }
             (_, Type::Self_) => {
+                let Some(cls) = i_s.current_class() else {
+                    tracing::error!("Missing current class when trying to intersect (2)");
+                    return Ok(Type::ERROR);
+                };
                 return Intersection::new_instance_intersection(
                     i_s,
                     t1,
-                    &i_s.current_class().unwrap().as_type(i_s.db),
+                    &cls.as_type(i_s.db),
                     add_issue,
                 );
             }
