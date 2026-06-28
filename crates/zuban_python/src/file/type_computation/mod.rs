@@ -131,6 +131,7 @@ enum TypeComputationOrigin {
     TypeApplication,
     TypeAlias,
     CastTarget,
+    AssertType,
     NamedTupleMember,
     BaseClass,
     Other,
@@ -3204,7 +3205,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'x> {
         match lookup {
             Lookup::T(c @ TypeContent::SpecialCase(Specific::TypingAny))
-                if self.flags().disallow_any_explicit =>
+                if self.flags().disallow_any_explicit
+                    && self.origin != TypeComputationOrigin::AssertType =>
             {
                 self.add_issue_for_index(name.index(), IssueKind::DisallowedAnyExplicit);
                 c
@@ -4190,12 +4192,24 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         None
     }
-    pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+
+    fn compute_target_like(
+        &self,
+        node_ref: NodeRef,
+        origin: TypeComputationOrigin,
+    ) -> Result<Inferred, ()> {
         assert_eq!(node_ref.file.file_index, self.file.file_index);
         let named_expr = node_ref.expect_named_expression();
-        let t =
-            self.compute_type_for_expr(named_expr.expression(), TypeComputationOrigin::CastTarget)?;
+        let t = self.compute_type_for_expr(named_expr.expression(), origin)?;
         Ok(Inferred::from_type(t))
+    }
+
+    pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+        self.compute_target_like(node_ref, TypeComputationOrigin::CastTarget)
+    }
+
+    pub(crate) fn compute_assert_type(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+        self.compute_target_like(node_ref, TypeComputationOrigin::AssertType)
     }
 
     fn compute_type_for_expr(

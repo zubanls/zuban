@@ -251,7 +251,7 @@ pub(crate) fn execute_assert_type<'db>(
         .node_ref
         .file
         .name_resolution_for_types(i_s)
-        .compute_cast_target(second_positional.node_ref)
+        .compute_assert_type(second_positional.node_ref)
     else {
         return Inferred::new_any_from_error();
     };

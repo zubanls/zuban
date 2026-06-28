@@ -1266,3 +1266,11 @@ class D[T](list["list[T]"]): ...
 def check(c: C[int], d: D[str]) -> None:
     assert_type(c.class_var, int)
     assert_type(d[0], list[str])
+
+[case explicit_any_in_assert_type_always_allowed]
+# flags: --disallow-any-explicit
+# From GH #483
+import typing
+
+x: typing.Any = 5  # E: Explicit "Any" is not allowed
+typing.assert_type(x, typing.Any)
