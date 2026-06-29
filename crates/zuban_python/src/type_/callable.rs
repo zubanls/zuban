@@ -4,9 +4,9 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes,
-    StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike,
-    TypeVarLikes, TypeVarUsage, TypedDict,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple,
+    Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    TypedDict,
 };
 use crate::{
     database::{Database, PointLink},
@@ -322,34 +322,7 @@ impl CallableParams {
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
-    }
-
-    pub(super) fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
-        match self {
-            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
-                ParamType::PositionalOnly(t)
-                | ParamType::PositionalOrKeyword(t)
-                | ParamType::KeywordOnly(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                    t.has_any_internal(db, already_checked)
-                }
-                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
-                    tup.args.has_any_internal(db, already_checked)
-                }
-                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
-                    td.has_any_internal(db, already_checked)
-                }
-            }),
-            Self::Any(_) => true,
-        }
+        self.find_in_type(db, &mut |t| t.has_any(db))
     }
 
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
@@ -399,7 +372,7 @@ impl CallableParams {
                 | ParamType::Star(StarParamType::ArbitraryLen(t))
                 | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(db, check),
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(db, check),
+                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.args.find_in_type(db, check),
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
                     Type::TypedDict(td.clone()).find_in_type(db, check)

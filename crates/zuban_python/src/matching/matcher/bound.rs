@@ -355,7 +355,7 @@ impl BoundKind {
     fn has_any(&self, db: &Database) -> bool {
         match self {
             Self::TypeVar(t) => t.has_any(db),
-            Self::TypeVarTuple(ts) => ts.has_any(db),
+            Self::TypeVarTuple(ts) => ts.find_in_type(db, &mut |t| t.has_any(db)),
             Self::ParamSpec(params) => params.has_any(db),
         }
     }

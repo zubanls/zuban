@@ -6,8 +6,8 @@ use std::{
 
 use super::{
     CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, NeverCause, ParamType, RecursiveType, ReplaceTypeVarLikes,
-    StringSlice, Type, TypeVarLikeUsage, TypeVarLikes, utils::method_with_fallback,
+    GenericsList, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, StringSlice, Type,
+    TypeVarLikeUsage, TypeVarLikes, utils::method_with_fallback,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
@@ -590,23 +590,6 @@ impl TypedDict {
         if let TypedDictGenerics::Generics(list) = &self.generics {
             list.search_type_vars(found_type_var)
         }
-    }
-
-    pub fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
-        let Ok(m) = self.members_if_ready(db) else {
-            // Just assume an Any if we haven't finished calculating
-            return true;
-        };
-        m.named
-            .iter()
-            .any(|m| m.type_.has_any_internal(db, already_checked))
-            || m.extra_items
-                .as_ref()
-                .is_some_and(|e| e.t.has_any_internal(db, already_checked))
     }
 
     fn can_be_emptied(&self, db: &Database) -> bool {

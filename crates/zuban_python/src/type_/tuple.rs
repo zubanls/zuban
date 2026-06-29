@@ -11,7 +11,7 @@ use num_bigint::BigInt;
 
 use super::{
     ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
-    RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage, utils::method_with_fallback,
+    TypeVarLikeUsage, TypeVarTupleUsage, utils::method_with_fallback,
 };
 use crate::{
     arguments::Args,
@@ -449,14 +449,6 @@ impl Tuple {
         }
     }
 
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        match &self.args {
-            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
-            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
-            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
-        }
-    }
-
     pub fn class<'db: 'a, 'a>(&'a self, db: &'db Database) -> Class<'a> {
         let generics = self.tuple_class_generics(db);
         Class::from_position(
@@ -544,24 +536,6 @@ impl WithUnpack {
             }
             || self.before.iter().any(|t| t.find_in_type(db, check))
     }
-
-    fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
-        self.before
-            .iter()
-            .any(|t| t.has_any_internal(db, already_checked))
-            || match &self.unpack {
-                TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::ArbitraryLen(t) => t.has_any_internal(db, already_checked),
-            }
-            || self
-                .after
-                .iter()
-                .any(|t| t.has_any_internal(db, already_checked))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -586,23 +560,15 @@ impl TupleArgs {
         }
     }
 
-    pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
-    }
-
     pub fn is_empty(&self) -> bool {
         matches!(self, TupleArgs::FixedLen(fixed) if fixed.is_empty())
     }
 
-    pub(super) fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            Self::FixedLen(ts) => ts.iter().any(|t| t.has_any_internal(db, already_checked)),
-            Self::ArbitraryLen(t) => t.has_any_internal(db, already_checked),
-            Self::WithUnpack(with_unpack) => with_unpack.has_any_internal(db, already_checked),
+            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
         }
     }
 

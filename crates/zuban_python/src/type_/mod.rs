@@ -322,11 +322,8 @@ impl GenericsList {
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
-        self.iter().any(|g| match g {
-            GenericItem::TypeArg(t) => t.has_any_internal(db, already_checked),
-            GenericItem::TypeArgs(ts) => ts.args.has_any_internal(db, already_checked),
-            GenericItem::ParamSpecArg(a) => a.params.has_any_internal(db, already_checked),
-        })
+        self.iter()
+            .any(|g| Generic::new(g).has_any_internal(db, already_checked))
     }
 }
 
@@ -1327,7 +1324,7 @@ impl Type {
         self.has_any_internal(db, &mut Vec::new())
     }
 
-    fn has_any_internal(
+    pub fn has_any_internal(
         &self,
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
@@ -1411,7 +1408,7 @@ impl Type {
                 .iter_functions()
                 .any(|c| c.find_in_type(db, check)),
             Self::Type(t) => t.find_in_type(db, check),
-            Self::Tuple(tup) => tup.find_in_type(db, check),
+            Self::Tuple(tup) => tup.args.find_in_type(db, check),
             Self::Callable(content) => content.find_in_type(db, check),
             Self::TypedDict(d) => {
                 (match &d.generics {
