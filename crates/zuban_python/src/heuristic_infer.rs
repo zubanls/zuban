@@ -1052,7 +1052,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let _indent = debug_indent();
         let i_s = self.inference.i_s;
         let t = inf.as_cow_type(i_s);
-        if t.has_any(i_s)
+        if t.has_any(i_s.db)
             || t.maybe_class(i_s.db)
                 .is_some_and(|c| !c.file.is_stub() && !matches!(c.generics, Generics::List(..)))
         {
@@ -1880,7 +1880,7 @@ pub fn infer_heuristics_if_necessary(
     let t = inferred.as_cow_type(i_s);
     match detail {
         HeuristicDetail::Deep => {
-            if t.has_any(i_s)
+            if t.has_any(i_s.db)
                 && let heuristic = generate_heuristics()?
                 && heuristic.maybe_any(i_s.db).is_none()
                 && !heuristic

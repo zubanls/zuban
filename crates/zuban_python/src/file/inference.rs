@@ -2560,7 +2560,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let inferred = inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true);
         if self.flags().disallow_any_expr && !self.file.is_stub() {
             let t = inferred.as_cow_type(self.i_s);
-            if t.has_any(self.i_s) {
+            if t.has_any(self.i_s.db) {
                 self.add_issue(
                     expr.index(),
                     IssueKind::DisallowedAnyExpr {

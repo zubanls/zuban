@@ -503,7 +503,7 @@ fn apply_result_context(
                     .is_sub_type_of(i_s, matcher, expected)
                     .bool()
                 {
-                    matcher.reset_invalid_bounds_of_context(i_s)
+                    matcher.reset_invalid_bounds_of_context(i_s.db)
                 } else {
                     // Here we reset all bounds, because it did not match.
                     for tv_matcher in &mut matcher.type_var_matchers {
@@ -518,7 +518,7 @@ fn apply_result_context(
             let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
-            matcher.reset_invalid_bounds_of_context(i_s)
+            matcher.reset_invalid_bounds_of_context(i_s.db)
         }
         debug!(
             "Finished trying to infer context type arguments: [{}]",

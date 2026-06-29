@@ -11,7 +11,6 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     format_data::{FormatData, ParamsStyle},
-    inference_state::InferenceState,
     matching::{Generics, maybe_class_usage},
     node_ref::NodeRef,
     params::{
@@ -322,13 +321,13 @@ impl CallableParams {
         }
     }
 
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.has_any_internal(i_s, &mut Vec::new())
+    pub fn has_any(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new())
     }
 
     pub(super) fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         match self {
@@ -338,15 +337,15 @@ impl CallableParams {
                 | ParamType::KeywordOnly(t)
                 | ParamType::Star(StarParamType::ArbitraryLen(t))
                 | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                    t.has_any_internal(i_s, already_checked)
+                    t.has_any_internal(db, already_checked)
                 }
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
                 ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
-                    tup.args.has_any_internal(i_s, already_checked)
+                    tup.args.has_any_internal(db, already_checked)
                 }
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
-                    td.has_any_internal(i_s, already_checked)
+                    td.has_any_internal(db, already_checked)
                 }
             }),
             Self::Any(_) => true,
@@ -643,14 +642,14 @@ impl CallableContent {
 
     pub(super) fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.guard
             .as_ref()
-            .is_some_and(|guard| guard.type_.has_any_internal(i_s, already_checked))
-            || self.return_type.has_any_internal(i_s, already_checked)
-            || self.params.has_any_internal(i_s, already_checked)
+            .is_some_and(|guard| guard.type_.has_any_internal(db, already_checked))
+            || self.return_type.has_any_internal(db, already_checked)
+            || self.params.has_any_internal(db, already_checked)
     }
 
     pub fn has_self_type(&self, db: &Database) -> bool {

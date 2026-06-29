@@ -431,7 +431,7 @@ fn check_constraints<'x>(
                     AnyCause::Todo,
                 ))));
             }
-            if value_type.has_any(i_s) {
+            if value_type.has_any(i_s.db) {
                 matched_constraint = Some(constraint);
             } else {
                 return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));

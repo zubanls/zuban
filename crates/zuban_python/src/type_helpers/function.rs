@@ -1081,7 +1081,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         if self.node_ref.file.flags(i_s.db).disallow_any_decorated {
             let t = inferred.as_cow_type(i_s);
-            if t.has_any(i_s) {
+            if t.has_any(i_s.db) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
                 NodeRef::new(self.node_ref.file, self.node().name().index())
                     .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got });

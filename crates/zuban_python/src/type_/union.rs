@@ -105,7 +105,7 @@ fn merge_simplified_union_type<'x>(
         if additional_t.is_object(i_s.db) {
             return additional_t.clone();
         }
-        if additional_t.has_any(i_s) {
+        if additional_t.has_any(i_s.db) {
             // Generics with unknown type params can probably simply be merged with other objects
             // of the same type.
             if let Type::Class(c1) = &additional_t
@@ -147,7 +147,7 @@ fn merge_simplified_union_type<'x>(
             }
         } else {
             for (i, current) in new_types.iter_mut().enumerate() {
-                if current.type_.has_any(i_s) {
+                if current.type_.has_any(i_s.db) {
                     if let Type::Class(c1) = &mut current.type_
                         && c1.generics.all_any_with_unknown_type_params()
                         && matches!(additional_t, Type::Class(c2) if c1.link == c2.link)
@@ -180,7 +180,7 @@ fn merge_simplified_union_type<'x>(
                         .extract_if(i + 1.., |e| {
                             let t = &e.type_;
                             // These are essentially the conditions from above repeated
-                            if t.has_any(i_s)
+                            if t.has_any(i_s.db)
                                 || t.is_calculating(i_s.db)
                                 || is_recursive_with_generics(t)
                             {

@@ -641,7 +641,7 @@ fn check_elements_with_context<'db>(
     }
     (!had_error).then(|| {
         let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t);
-        if needs_actual_return_type && (replaced.has_any(i_s) || has_any_match) {
+        if needs_actual_return_type && (replaced.has_any(i_s.db) || has_any_match) {
             result
         } else {
             replaced.into_owned()

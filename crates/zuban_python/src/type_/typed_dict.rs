@@ -586,16 +586,16 @@ impl TypedDict {
 
     pub fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
-        let m = self.members(i_s.db);
+        let m = self.members(db);
         m.named
             .iter()
-            .any(|m| m.type_.has_any_internal(i_s, already_checked))
+            .any(|m| m.type_.has_any_internal(db, already_checked))
             || m.extra_items
                 .as_ref()
-                .is_some_and(|e| e.t.has_any_internal(i_s, already_checked))
+                .is_some_and(|e| e.t.has_any_internal(db, already_checked))
     }
 
     fn can_be_emptied(&self, db: &Database) -> bool {

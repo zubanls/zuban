@@ -199,13 +199,13 @@ impl Bound {
         }
     }
 
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
+    pub fn has_any(&self, db: &Database) -> bool {
         match self {
-            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.has_any(i_s),
-            Self::UpperAndLower(upper, lower) => upper.has_any(i_s) || lower.has_any(i_s),
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.has_any(db),
+            Self::UpperAndLower(upper, lower) => upper.has_any(db) || lower.has_any(db),
             Self::Uncalculated {
                 fallback: Some(fallback),
-            } => fallback.has_any(i_s),
+            } => fallback.has_any(db),
             Self::Uncalculated { fallback: None } => false,
         }
     }
@@ -352,11 +352,11 @@ impl BoundKind {
         })
     }
 
-    fn has_any(&self, i_s: &InferenceState) -> bool {
+    fn has_any(&self, db: &Database) -> bool {
         match self {
-            Self::TypeVar(t) => t.has_any(i_s),
-            Self::TypeVarTuple(ts) => ts.has_any(i_s),
-            Self::ParamSpec(params) => params.has_any(i_s),
+            Self::TypeVar(t) => t.has_any(db),
+            Self::TypeVarTuple(ts) => ts.has_any(db),
+            Self::ParamSpec(params) => params.has_any(db),
         }
     }
 

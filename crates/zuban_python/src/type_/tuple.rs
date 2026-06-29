@@ -547,20 +547,20 @@ impl WithUnpack {
 
     fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.before
             .iter()
-            .any(|t| t.has_any_internal(i_s, already_checked))
+            .any(|t| t.has_any_internal(db, already_checked))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::ArbitraryLen(t) => t.has_any_internal(i_s, already_checked),
+                TupleUnpack::ArbitraryLen(t) => t.has_any_internal(db, already_checked),
             }
             || self
                 .after
                 .iter()
-                .any(|t| t.has_any_internal(i_s, already_checked))
+                .any(|t| t.has_any_internal(db, already_checked))
     }
 }
 
@@ -586,8 +586,8 @@ impl TupleArgs {
         }
     }
 
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.has_any_internal(i_s, &mut Vec::new())
+    pub fn has_any(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -596,13 +596,13 @@ impl TupleArgs {
 
     pub(super) fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         match self {
-            Self::FixedLen(ts) => ts.iter().any(|t| t.has_any_internal(i_s, already_checked)),
-            Self::ArbitraryLen(t) => t.has_any_internal(i_s, already_checked),
-            Self::WithUnpack(with_unpack) => with_unpack.has_any_internal(i_s, already_checked),
+            Self::FixedLen(ts) => ts.iter().any(|t| t.has_any_internal(db, already_checked)),
+            Self::ArbitraryLen(t) => t.has_any_internal(db, already_checked),
+            Self::WithUnpack(with_unpack) => with_unpack.has_any_internal(db, already_checked),
         }
     }
 

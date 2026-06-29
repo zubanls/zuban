@@ -319,13 +319,13 @@ impl GenericsList {
 
     fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         self.iter().any(|g| match g {
-            GenericItem::TypeArg(t) => t.has_any_internal(i_s, already_checked),
-            GenericItem::TypeArgs(ts) => ts.args.has_any_internal(i_s, already_checked),
-            GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
+            GenericItem::TypeArg(t) => t.has_any_internal(db, already_checked),
+            GenericItem::TypeArgs(ts) => ts.args.has_any_internal(db, already_checked),
+            GenericItem::ParamSpecArg(a) => a.params.has_any_internal(db, already_checked),
         })
     }
 }
@@ -1323,33 +1323,33 @@ impl Type {
         result
     }
 
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.has_any_internal(i_s, &mut Vec::new())
+    pub fn has_any(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        i_s: &InferenceState,
+        db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
         let mut search_in_generic_class = |c: &GenericClass| match &c.generics {
-            ClassGenerics::List(generics) => generics.has_any_internal(i_s, already_checked),
+            ClassGenerics::List(generics) => generics.has_any_internal(db, already_checked),
             _ => false,
         };
         match self {
             Self::Class(c) => search_in_generic_class(c),
-            Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
+            Self::Union(u) => u.iter().any(|t| t.has_any_internal(db, already_checked)),
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
-                .any(|callable| callable.has_any_internal(i_s, already_checked)),
-            Self::Type(type_) => type_.has_any_internal(i_s, already_checked),
-            Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
-            Self::Callable(content) => content.has_any_internal(i_s, already_checked),
+                .any(|callable| callable.has_any_internal(db, already_checked)),
+            Self::Type(type_) => type_.has_any_internal(db, already_checked),
+            Self::Tuple(content) => content.args.has_any_internal(db, already_checked),
+            Self::Callable(content) => content.has_any_internal(db, already_checked),
             Self::Any(_) => true,
-            Self::NewType(n) => n.type_.has_any_internal(i_s, already_checked),
+            Self::NewType(n) => n.type_.has_any_internal(db, already_checked),
             Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics
-                    && generics.has_any_internal(i_s, already_checked)
+                    && generics.has_any_internal(db, already_checked)
                 {
                     return true;
                 }
@@ -1357,12 +1357,12 @@ impl Type {
                     false
                 } else {
                     already_checked.push(recursive_alias.clone());
-                    match recursive_alias.origin(i_s.db) {
+                    match recursive_alias.origin(db) {
                         RecursiveTypeOrigin::TypeAlias(type_alias) => {
                             !type_alias.calculating()
                                 && type_alias
                                     .type_if_valid()
-                                    .has_any_internal(i_s, already_checked)
+                                    .has_any_internal(db, already_checked)
                         }
                         RecursiveTypeOrigin::Class(_) => false,
                     }
@@ -1372,8 +1372,8 @@ impl Type {
                 debug!("TODO Self could contain Any?");
                 false
             }
-            Self::TypeVar(tv) => match &tv.type_var.kind(i_s.db) {
-                TypeVarKind::Bound(bound) => bound.has_any_internal(i_s, already_checked),
+            Self::TypeVar(tv) => match &tv.type_var.kind(db) {
+                TypeVarKind::Bound(bound) => bound.has_any_internal(db, already_checked),
                 TypeVarKind::Unrestricted | TypeVarKind::Constraints(_) => false,
             },
             Self::None
@@ -1391,12 +1391,12 @@ impl Type {
             | Self::Sentinel(_)
             | Self::LiteralString { .. } => false,
             Self::Dataclass(d) => search_in_generic_class(&d.class),
-            Self::TypedDict(d) => d.has_any_internal(i_s, already_checked),
-            Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
+            Self::TypedDict(d) => d.has_any_internal(db, already_checked),
+            Self::NamedTuple(nt) => nt.__new__.has_any_internal(db, already_checked),
             Self::Intersection(intersection) => intersection
                 .iter_entries()
-                .any(|t| t.has_any_internal(i_s, already_checked)),
-            Self::TypeForm(tf) => tf.has_any_internal(i_s, already_checked),
+                .any(|t| t.has_any_internal(db, already_checked)),
+            Self::TypeForm(tf) => tf.has_any_internal(db, already_checked),
         }
     }
 

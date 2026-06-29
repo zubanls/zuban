@@ -1645,7 +1645,7 @@ impl<'a> Matcher<'a> {
         has_bound
     }
 
-    pub fn reset_invalid_bounds_of_context(&mut self, i_s: &InferenceState) {
+    pub fn reset_invalid_bounds_of_context(&mut self, db: &Database) {
         for tv_matcher in &mut self.type_var_matchers {
             for calc in tv_matcher.calculating_type_args.iter_mut() {
                 // Make sure that the fallback is never used from a context.
@@ -1654,7 +1654,7 @@ impl<'a> Matcher<'a> {
                     *calc = Default::default();
                 } else {
                     calc.defined_by_result_context = true;
-                    calc.has_any_in_context = calc.type_.has_any(i_s);
+                    calc.has_any_in_context = calc.type_.has_any(db);
                 }
             }
         }
