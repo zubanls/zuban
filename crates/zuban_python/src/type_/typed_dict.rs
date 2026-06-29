@@ -225,23 +225,31 @@ impl TypedDict {
     }
 
     pub fn members(&self, db: &Database) -> &TypedDictMembers {
-        self.members.get().unwrap_or_else(|| {
-            let TypedDictGenerics::Generics(list) = &self.generics else {
-                unreachable!()
-            };
-            let class = Class::from_non_generic_link(db, self.defined_at);
-            let original_typed_dict = class.maybe_typed_dict().unwrap();
-            // The members are not pre-calculated, because there existed recursions where the
-            // members of the original class were not calculated at that point. Therefore do that
-            // now.
-            let new_members = Self::remap_members_with_generics(
-                db,
-                original_typed_dict.members.get().unwrap(),
-                list,
-            );
-            let result = self.members.set(new_members);
-            debug_assert_eq!(result, Ok(()));
-            self.members.get().unwrap()
+        self.members_if_ready(db).unwrap()
+    }
+
+    pub fn members_if_ready(&self, db: &Database) -> Result<&TypedDictMembers, ()> {
+        Ok(match self.members.get() {
+            Some(members) => members,
+            None => {
+                let TypedDictGenerics::Generics(list) = &self.generics else {
+                    // The members of the original class are still instantiating
+                    return Err(());
+                };
+                let class = Class::from_non_generic_link(db, self.defined_at);
+                let original_typed_dict = class.maybe_typed_dict().unwrap();
+                // The members are not pre-calculated, because there existed recursions where the
+                // members of the original class were not calculated at that point. Therefore do that
+                // now.
+                let new_members = Self::remap_members_with_generics(
+                    db,
+                    original_typed_dict.members.get().unwrap(),
+                    list,
+                );
+                let result = self.members.set(new_members);
+                debug_assert_eq!(result, Ok(()));
+                self.members.get().unwrap()
+            }
         })
     }
 
@@ -589,7 +597,10 @@ impl TypedDict {
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
-        let m = self.members(db);
+        let Ok(m) = self.members_if_ready(db) else {
+            // Just assume an Any if we haven't finished calculating
+            return true;
+        };
         m.named
             .iter()
             .any(|m| m.type_.has_any_internal(db, already_checked))

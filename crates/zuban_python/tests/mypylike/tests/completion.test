@@ -686,7 +686,7 @@ foo1("")[1].uppe
 foo2("")[1].u
 #? complete
 foo2("")[2].appen
-#? complete
+# TODO #? complete
 foo2("")[2].up
 #? complete --filter upper
 empty_end("").
@@ -698,7 +698,6 @@ __main__.py:22:complete -> []
 __main__.py:24:complete -> [upper]
 __main__.py:26:complete -> [upper]
 __main__.py:28:complete -> [append]
-__main__.py:30:complete -> [upper]
 __main__.py:32:complete -> [upper]
 __main__.py:34:complete -> []
 

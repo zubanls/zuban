@@ -640,18 +640,6 @@ impl CallableContent {
         }
     }
 
-    pub(super) fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
-        self.guard
-            .as_ref()
-            .is_some_and(|guard| guard.type_.has_any_internal(db, already_checked))
-            || self.return_type.has_any_internal(db, already_checked)
-            || self.params.has_any_internal(db, already_checked)
-    }
-
     pub fn has_self_type(&self, db: &Database) -> bool {
         self.find_in_type(db, &mut |t| matches!(t, Type::Self_))
     }

@@ -1332,32 +1332,19 @@ impl Type {
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
-        let mut search_in_generic_class = |c: &GenericClass| match &c.generics {
-            ClassGenerics::List(generics) => generics.has_any_internal(db, already_checked),
-            _ => false,
-        };
-        match self {
-            Self::Class(c) => search_in_generic_class(c),
-            Self::Union(u) => u.iter().any(|t| t.has_any_internal(db, already_checked)),
-            Self::FunctionOverload(intersection) => intersection
-                .iter_functions()
-                .any(|callable| callable.has_any_internal(db, already_checked)),
-            Self::Type(type_) => type_.has_any_internal(db, already_checked),
-            Self::Tuple(content) => content.args.has_any_internal(db, already_checked),
-            Self::Callable(content) => content.has_any_internal(db, already_checked),
+        self.find_in_type(db, &mut |t| match t {
             Self::Any(_) => true,
-            Self::NewType(n) => n.type_.has_any_internal(db, already_checked),
-            Self::RecursiveType(recursive_alias) => {
-                if let Some(generics) = &recursive_alias.generics
+            Self::RecursiveType(recursive) => {
+                if let Some(generics) = &recursive.generics
                     && generics.has_any_internal(db, already_checked)
                 {
                     return true;
                 }
-                if already_checked.contains(recursive_alias) {
+                if already_checked.contains(recursive) {
                     false
                 } else {
-                    already_checked.push(recursive_alias.clone());
-                    match recursive_alias.origin(db) {
+                    already_checked.push(recursive.clone());
+                    match recursive.origin(db) {
                         RecursiveTypeOrigin::TypeAlias(type_alias) => {
                             !type_alias.calculating()
                                 && type_alias
@@ -1368,14 +1355,11 @@ impl Type {
                     }
                 }
             }
-            Self::Self_ => {
-                debug!("TODO Self could contain Any?");
-                false
-            }
-            Self::TypeVar(tv) => match &tv.type_var.kind(db) {
-                TypeVarKind::Bound(bound) => bound.has_any_internal(db, already_checked),
-                TypeVarKind::Unrestricted | TypeVarKind::Constraints(_) => false,
-            },
+            Self::NewType(n) => n.type_.has_any_internal(db, already_checked),
+            Self::Callable(c) => matches!(c.params, CallableParams::Any(_)),
+
+            // All the other types are are either not Any or inner types will be checked by the
+            // recursive nature of find_types.
             Self::None
             | Self::Never(_)
             | Self::Literal { .. }
@@ -1389,15 +1373,20 @@ impl Type {
             | Self::Super { .. }
             | Self::Namespace(_)
             | Self::Sentinel(_)
-            | Self::LiteralString { .. } => false,
-            Self::Dataclass(d) => search_in_generic_class(&d.class),
-            Self::TypedDict(d) => d.has_any_internal(db, already_checked),
-            Self::NamedTuple(nt) => nt.__new__.has_any_internal(db, already_checked),
-            Self::Intersection(intersection) => intersection
-                .iter_entries()
-                .any(|t| t.has_any_internal(db, already_checked)),
-            Self::TypeForm(tf) => tf.has_any_internal(db, already_checked),
-        }
+            | Self::LiteralString { .. }
+            | Self::Class(_)
+            | Self::Union(_)
+            | Self::Intersection(_)
+            | Self::FunctionOverload(_)
+            | Self::TypeVar(_)
+            | Self::Type(_)
+            | Self::Tuple(_)
+            | Self::Dataclass(_)
+            | Self::TypedDict(_)
+            | Self::NamedTuple(_)
+            | Self::Self_
+            | Self::TypeForm(_) => false,
+        })
     }
 
     pub fn has_self_type(&self, db: &Database) -> bool {
@@ -1408,12 +1397,15 @@ impl Type {
         if check(self) {
             return true;
         }
+        let mut search_in_generic_class = |c: &GenericClass| {
+            Generics::from_class_generics(db, ClassNodeRef::from_link(db, c.link), &c.generics)
+                .iter(db)
+                .any(|generic| generic.find_in_type(db, check))
+        };
+
         match self {
-            Self::Class(c) => {
-                Generics::from_class_generics(db, ClassNodeRef::from_link(db, c.link), &c.generics)
-                    .iter(db)
-                    .any(|generic| generic.find_in_type(db, check))
-            }
+            Self::Class(c) => search_in_generic_class(c),
+            Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()
@@ -1421,12 +1413,39 @@ impl Type {
             Self::Type(t) => t.find_in_type(db, check),
             Self::Tuple(tup) => tup.find_in_type(db, check),
             Self::Callable(content) => content.find_in_type(db, check),
-            Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(gs) => {
-                    gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
+            Self::TypedDict(d) => {
+                (match &d.generics {
+                    TypedDictGenerics::Generics(gs) => {
+                        gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
+                    }
+                    TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+                }) || {
+                    let Ok(members) = d.members_if_ready(db) else {
+                        // This is a bit unfortunate, but TypedDicts can be unfinished
+                        return false;
+                    };
+                    if let Some(extra) = &members.extra_items
+                        && extra.t.find_in_type(db, check)
+                    {
+                        return true;
+                    }
+                    members
+                        .named
+                        .iter()
+                        .any(|t| t.type_.find_in_type(db, check))
                 }
-                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+            }
+            Self::TypeVar(tv) => match &tv.type_var.kind(db) {
+                TypeVarKind::Bound(bound) => bound.find_in_type(db, check),
+                // Constraints are special since they shouldn't ever be normally found without an
+                // intersection.
+                TypeVarKind::Constraints(_) => false,
+                TypeVarKind::Unrestricted => false,
             },
+            Self::Intersection(intersection) => intersection
+                .iter_entries()
+                .any(|t| t.find_in_type(db, check)),
+            Self::TypeForm(tf) => tf.find_in_type(db, check),
             _ => false,
         }
     }

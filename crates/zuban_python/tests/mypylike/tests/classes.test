@@ -1437,7 +1437,7 @@ def g(x: type[Foo], y: type[Bar]):
 # flags: --use-joins
 from collections import defaultdict
 m = set([dict, defaultdict])
-reveal_type(m)  # N: Revealed type is "set[type[dict[Any, Any]]]"
+reveal_type(m)  # N: Revealed type is "set[type[dict[Any, Any]] | type[collections.defaultdict]]"
 
 [case class_name_resolving_if_member_has_same_name]
 import m
