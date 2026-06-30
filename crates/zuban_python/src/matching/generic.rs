@@ -177,12 +177,15 @@ impl<'a> Generic<'a> {
         &self,
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
+        recheck: &impl Fn(AnyCause) -> bool,
     ) -> bool {
         if let Self::ParamSpecArg(a) = self
-            && matches!(a.params, CallableParams::Any(_))
+            && let CallableParams::Any(a) = &a.params
         {
-            return true;
+            return recheck(*a);
         }
-        self.find_in_type(db, &mut |t| t.has_any_internal(db, already_checked))
+        self.find_in_type(db, &mut |t| {
+            t.has_any_internal(db, already_checked, recheck)
+        })
     }
 }
