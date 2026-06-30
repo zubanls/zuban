@@ -1416,9 +1416,7 @@ impl Type {
             Self::Class(c) => search_in_generic_class(c),
             Self::Dataclass(d) => search_in_generic_class(&d.class),
             Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
-            Self::FunctionOverload(intersection) => intersection
-                .iter_functions()
-                .any(|c| c.find_in_type(db, check)),
+            Self::FunctionOverload(o) => o.iter_functions().any(|c| c.find_in_type(db, check)),
             Self::Type(t) => t.find_in_type(db, check),
             Self::Tuple(tup) => tup.args.find_in_type(db, check),
             Self::Callable(content) => content.find_in_type(db, check),
