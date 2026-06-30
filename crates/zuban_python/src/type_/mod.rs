@@ -1329,6 +1329,21 @@ impl Type {
         db: &Database,
         already_checked: &mut Vec<Arc<RecursiveType>>,
     ) -> bool {
+        let has_any_callable_params = |list: &GenericsList| {
+            list.iter().any(|generic| {
+                matches!(
+                    generic,
+                    GenericItem::ParamSpecArg(ParamSpecArg {
+                        params: CallableParams::Any(..),
+                        ..
+                    })
+                )
+            })
+        };
+        let has_any_callable_params_in_generics = |generics: &_| match generics {
+            ClassGenerics::List(list) => has_any_callable_params(list),
+            _ => false,
+        };
         self.find_in_type(db, &mut |t| match t {
             Self::Any(_) => true,
             Self::RecursiveType(recursive) => {
@@ -1355,6 +1370,13 @@ impl Type {
             Self::NewType(n) => n.type_.has_any_internal(db, already_checked),
             Self::Callable(c) => matches!(c.params, CallableParams::Any(_)),
 
+            Self::Class(c) => has_any_callable_params_in_generics(&c.generics),
+            Self::Dataclass(d) => has_any_callable_params_in_generics(&d.class.generics),
+            Self::TypedDict(td) => match &td.generics {
+                TypedDictGenerics::Generics(list) => has_any_callable_params(list),
+                _ => false,
+            },
+
             // All the other types are are either not Any or inner types will be checked by the
             // recursive nature of find_types.
             Self::None
@@ -1371,15 +1393,12 @@ impl Type {
             | Self::Namespace(_)
             | Self::Sentinel(_)
             | Self::LiteralString { .. }
-            | Self::Class(_)
             | Self::Union(_)
             | Self::Intersection(_)
             | Self::FunctionOverload(_)
             | Self::TypeVar(_)
             | Self::Type(_)
             | Self::Tuple(_)
-            | Self::Dataclass(_)
-            | Self::TypedDict(_)
             | Self::NamedTuple(_)
             | Self::Self_
             | Self::TypeForm(_) => false,
@@ -1448,21 +1467,30 @@ impl Type {
     }
 
     pub fn has_any_with_unknown_type_params(&self, db: &Database) -> bool {
+        let has_any_callable_params = |list: &GenericsList| {
+            list.iter().any(|generic| {
+                matches!(
+                    generic,
+                    GenericItem::ParamSpecArg(ParamSpecArg {
+                        params: CallableParams::Any(AnyCause::UnknownTypeParam),
+                        ..
+                    })
+                )
+            })
+        };
+        let has_any_callable_params_in_generics = |generics: &_| match generics {
+            ClassGenerics::List(list) => has_any_callable_params(list),
+            _ => false,
+        };
         self.find_in_type(db, &mut |t| match t {
-            Type::Any(AnyCause::UnknownTypeParam) => true,
-            Type::Callable(c) => {
+            Self::Any(AnyCause::UnknownTypeParam) => true,
+            Self::Callable(c) => {
                 matches!(c.params, CallableParams::Any(AnyCause::UnknownTypeParam))
             }
-            Type::Class(c) => match &c.generics {
-                ClassGenerics::List(list) => list.iter().any(|g| {
-                    matches!(
-                        g,
-                        GenericItem::ParamSpecArg(ParamSpecArg {
-                            params: CallableParams::Any(AnyCause::UnknownTypeParam),
-                            ..
-                        })
-                    )
-                }),
+            Self::Class(c) => has_any_callable_params_in_generics(&c.generics),
+            Self::Dataclass(d) => has_any_callable_params_in_generics(&d.class.generics),
+            Self::TypedDict(td) => match &td.generics {
+                TypedDictGenerics::Generics(list) => has_any_callable_params(list),
                 _ => false,
             },
             _ => false,
