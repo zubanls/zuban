@@ -322,7 +322,10 @@ impl CallableParams {
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
-        matches!(self, CallableParams::Any(_)) || self.find_in_type(db, &mut |t| t.has_any(db))
+        match self {
+            Self::Simple(params) => any_for_each_type_like(params, |t| t.has_any(db)),
+            Self::Any(_) => true,
+        }
     }
 
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
@@ -365,22 +368,30 @@ impl CallableParams {
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
-                ParamType::PositionalOnly(t)
-                | ParamType::PositionalOrKeyword(t)
-                | ParamType::KeywordOnly(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(db, check),
-                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.args.find_in_type(db, check),
-                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
-                    Type::TypedDict(td.clone()).find_in_type(db, check)
-                }
-            }),
+            Self::Simple(params) => any_for_each_type_like(params, |t| t.find_in_type(db, check)),
             Self::Any(_) => false,
         }
     }
+}
+
+// This probably shouldn't be used too much, it's just a helper function
+fn any_for_each_type_like<'x>(
+    params: &'x Arc<[CallableParam]>,
+    mut callback: impl FnMut(&Type) -> bool,
+) -> bool {
+    params.into_iter().any(|param| match &param.type_ {
+        ParamType::PositionalOnly(t)
+        | ParamType::PositionalOrKeyword(t)
+        | ParamType::KeywordOnly(t)
+        | ParamType::Star(StarParamType::ArbitraryLen(t))
+        | ParamType::StarStar(StarStarParamType::ValueType(t)) => callback(t),
+        ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+        ParamType::Star(StarParamType::UnpackedTuple(u)) => callback(&Type::Tuple(u.clone())),
+        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+        ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
+            callback(&Type::TypedDict(td.clone()))
+        }
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
