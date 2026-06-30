@@ -1368,6 +1368,8 @@ impl Type {
                 TypedDictGenerics::Generics(list) => has_any_callable_params(list),
                 _ => false,
             },
+            // This is a special case for the experimental advanced function return inference mode
+            Self::TypeVar(tv) => tv.type_var.is_untyped() && recheck(AnyCause::Unannotated),
 
             // All the other types are are either not Any or inner types will be checked by the
             // recursive nature of find_types.
@@ -1388,7 +1390,6 @@ impl Type {
             | Self::Union(_)
             | Self::Intersection(_)
             | Self::FunctionOverload(_)
-            | Self::TypeVar(_)
             | Self::Type(_)
             | Self::Tuple(_)
             | Self::NamedTuple(_)
@@ -1447,13 +1448,6 @@ impl Type {
                         .any(|t| t.type_.find_in_type(db, check))
                 }
             }
-            Self::TypeVar(tv) => match &tv.type_var.kind(db) {
-                TypeVarKind::Bound(bound) => bound.find_in_type(db, check),
-                // Constraints are special since they shouldn't ever be normally found without an
-                // intersection.
-                TypeVarKind::Constraints(_) => false,
-                TypeVarKind::Unrestricted => false,
-            },
             Self::Intersection(intersection) => intersection
                 .iter_entries()
                 .any(|t| t.find_in_type(db, check)),
