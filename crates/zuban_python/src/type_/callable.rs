@@ -322,7 +322,7 @@ impl CallableParams {
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
-        self.find_in_type(db, &mut |t| t.has_any(db))
+        matches!(self, CallableParams::Any(_)) || self.find_in_type(db, &mut |t| t.has_any(db))
     }
 
     pub fn maybe_param_spec(&self) -> Option<&ParamSpecUsage> {
