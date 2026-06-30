@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 
 use super::Matcher;
 use crate::{
@@ -8,9 +8,8 @@ use crate::{
     match_::Match,
     params::matches_params_with_variance,
     type_::{
-        AnyCause, CallableParams, GenericItem, ParamSpecArg, RecursiveType, TupleArgs, Type,
-        TypeArgs, Variance, format_callable_params, format_params_as_param_spec,
-        match_tuple_type_arguments,
+        AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
+        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
     },
 };
 
@@ -171,21 +170,5 @@ impl<'a> Generic<'a> {
             },
             Generic::ParamSpecArg(a) => a.params.find_in_type(db, check),
         }
-    }
-
-    pub fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-        recheck: &impl Fn(AnyCause) -> bool,
-    ) -> bool {
-        if let Self::ParamSpecArg(a) = self
-            && let CallableParams::Any(a) = &a.params
-        {
-            return recheck(*a);
-        }
-        self.find_in_type(db, &mut |t| {
-            t.has_any_internal(db, already_checked, recheck)
-        })
     }
 }

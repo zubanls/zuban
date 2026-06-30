@@ -444,8 +444,8 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if self.is_async() && !self.is_generator() {
             Cow::Owned(new_class!(
                 Self::coroutine_link_depending_on_mypy_compatibility(i_s.db),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::AsyncCoroutine),
+                Type::Any(AnyCause::AsyncCoroutine),
                 t.into_owned(),
             ))
         } else {

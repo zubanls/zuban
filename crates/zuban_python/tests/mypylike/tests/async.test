@@ -132,3 +132,19 @@ class Impl(Base):
     @sync_to_async2
     def create2(self, name: str) -> int:
         return len(name)
+
+[case async_disallow_any_decorated]
+# flags: --disallow-any-decorated --mode default
+# From GH #484
+from typing import overload, Any
+
+def f[T](x: T) -> T:
+    return x
+
+@f
+async def function1() -> None:
+    return None
+
+@f
+async def function2() -> Any:  # E: Type of decorated function contains type "Any" ("Callable[[], CoroutineType[Any, Any, Any]]")
+    return None

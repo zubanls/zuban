@@ -316,16 +316,6 @@ impl GenericsList {
     pub fn into_vec(self) -> Vec<GenericItem> {
         arc_slice_into_vec(self.0)
     }
-
-    fn has_any_internal(
-        &self,
-        db: &Database,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-        recheck: &impl Fn(AnyCause) -> bool,
-    ) -> bool {
-        self.iter()
-            .any(|g| Generic::new(g).has_any_internal(db, already_checked, recheck))
-    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -1348,7 +1338,7 @@ impl Type {
             Self::Any(cause) => recheck(*cause),
             Self::RecursiveType(recursive) => {
                 if let Some(generics) = &recursive.generics
-                    && generics.has_any_internal(db, already_checked, recheck)
+                    && has_any_callable_params(generics)
                 {
                     return true;
                 }
@@ -1431,6 +1421,10 @@ impl Type {
             Self::Type(t) => t.find_in_type(db, check),
             Self::Tuple(tup) => tup.args.find_in_type(db, check),
             Self::Callable(content) => content.find_in_type(db, check),
+            Self::RecursiveType(recursive) => match &recursive.generics {
+                Some(gs) => gs.iter().any(|g| Generic::new(g).find_in_type(db, check)),
+                None => false,
+            },
             Self::TypedDict(d) => {
                 (match &d.generics {
                     TypedDictGenerics::Generics(gs) => {
@@ -1471,6 +1465,12 @@ impl Type {
     pub fn has_any_with_unknown_type_params(&self, db: &Database) -> bool {
         self.has_any_internal(db, &mut Vec::new(), &|cause| {
             cause == AnyCause::UnknownTypeParam
+        })
+    }
+
+    pub fn has_any_but_not_from_coroutine(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new(), &|cause| {
+            cause != AnyCause::AsyncCoroutine
         })
     }
 
@@ -2343,6 +2343,7 @@ pub(crate) enum AnyCause {
     Internal,
     UnknownTypeParam,
     UntypedDecorator,
+    AsyncCoroutine,
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }
 

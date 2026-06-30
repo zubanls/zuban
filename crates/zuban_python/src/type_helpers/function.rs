@@ -310,8 +310,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if needs_async_remap {
             result = Inferred::from_type(new_class!(
                 FuncNodeRef::coroutine_link_depending_on_mypy_compatibility(i_s.db),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::AsyncCoroutine),
+                Type::Any(AnyCause::AsyncCoroutine),
                 result.as_type(i_s),
             ))
         }
@@ -1081,7 +1081,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         if self.node_ref.file.flags(i_s.db).disallow_any_decorated {
             let t = inferred.as_cow_type(i_s);
-            if t.has_any(i_s.db) {
+            if t.has_any_but_not_from_coroutine(i_s.db) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
                 NodeRef::new(self.node_ref.file, self.node().name().index())
                     .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got });
