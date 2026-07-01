@@ -166,8 +166,16 @@ impl NewlineIndices {
         code: &'code str,
         byte_position: CodeIndex,
     ) -> PositionInfos<'code> {
+        // Byte positions from forward-reference sub-files may land inside multi-byte
+        // UTF-8 characters because Python string unescaping can change byte lengths
+        // (e.g. `\xa7` → `§`). Clamp to the nearest valid char boundary to avoid
+        // panicking when slicing the code string.
+        let mut byte_position = (byte_position as usize).min(code.len());
+        while byte_position > 0 && !code.is_char_boundary(byte_position) {
+            byte_position -= 1;
+        }
         let lines = self.lines(code);
-        let line = lines.partition_point(|&l| l <= byte_position);
+        let line = lines.partition_point(|&l| l <= byte_position as CodeIndex);
         PositionInfos {
             line,
             code,
@@ -175,7 +183,7 @@ impl NewlineIndices {
                 .checked_sub(1)
                 .map(|line| lines[line] as usize)
                 .unwrap_or(0),
-            byte_position: byte_position as usize,
+            byte_position,
         }
     }
 
@@ -390,5 +398,35 @@ mod tests {
         assert_eq!(check(c2, 4..4), 4..5);
         assert_eq!(check(c2, 1..5), 0..5);
         assert_eq!(check(c2, 1..8), 0..5);
+    }
+
+    #[test]
+    fn test_position_infos_non_char_boundary() {
+        // Regression test for GH #362: position_infos should not panic when
+        // byte_position falls inside a multi-byte UTF-8 character.
+        let indices = NewlineIndices::new();
+        let code = "a:'''\n'\\xa7'\n'Й\\r'\n'''";
+        // 'Й' is at bytes 14..16 (two-byte UTF-8: 0xD0 0x99).
+        // Byte 15 is inside the character and is NOT a char boundary.
+        assert!(!code.is_char_boundary(15));
+
+        // position_infos must not panic; it should clamp to byte 14.
+        let infos = indices.position_infos(code, 15);
+        assert_eq!(infos.byte_position, 14);
+        // The clamped position is on line 2 (zero-based), starting at byte 13.
+        assert_eq!(infos.line_zero_based(), 2);
+        assert_eq!(infos.line_one_based(), 3);
+        // Column methods must also not panic.
+        assert_eq!(infos.utf8_bytes_column(), 1);
+        assert_eq!(infos.code_points_column(), 1);
+    }
+
+    #[test]
+    fn test_position_infos_beyond_code_length() {
+        // position_infos should handle byte_position beyond code length.
+        let indices = NewlineIndices::new();
+        let code = "ab";
+        let infos = indices.position_infos(code, 100);
+        assert_eq!(infos.byte_position, 2);
     }
 }
