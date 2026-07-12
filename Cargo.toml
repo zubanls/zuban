@@ -59,9 +59,14 @@ insta = "*"
 pre-release-hook = [
     "sed",
     "-i",
+    "-e",
     "s/^version = .*$/version = \"{{version}}\"/",
+    "-e",
+    "s/^    \"zuban==.*\",$/    \"zuban=={{version}}\",/",
     # It seems like this is being run for every Cargo.toml
     "../../deploy/pypi/zuban/pyproject.toml",
+    # Keeps the pre-commit/prek hook shim's pinned zuban version in sync
+    "../../pyproject.toml",
 ]
 
 [profile.release]

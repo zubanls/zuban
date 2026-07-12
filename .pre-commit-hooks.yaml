@@ -1,0 +1,17 @@
+- id: zuban
+  name: zuban
+  description: Type-check Python files with zuban (PyRight-like mode)
+  entry: zuban check
+  language: python
+  types_or: [python, pyi]
+  require_serial: true
+  minimum_pre_commit_version: '2.9.2'
+
+- id: zmypy
+  name: zmypy
+  description: Type-check Python files with zuban in mypy-compatible mode
+  entry: zmypy
+  language: python
+  types_or: [python, pyi]
+  require_serial: true
+  minimum_pre_commit_version: '2.9.2'
