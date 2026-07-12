@@ -4371,6 +4371,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             self.file.qualified_name(self.i_s.db),
             name_def.line_one_based(self.i_s.db),
         );
+        let _indent = debug_indent();
         match defining_stmt {
             DefiningStmt::FunctionDef(func_def) => {
                 Function::new(

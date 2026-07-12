@@ -1488,7 +1488,7 @@ impl Inference<'_, '_, '_> {
             function.name(),
             self.file_path(),
             self.file.file_index,
-            func_node.index(),
+            function.node().index(),
             function.node_ref.line_one_based(self.i_s.db)
         );
         let _indent = debug_indent();

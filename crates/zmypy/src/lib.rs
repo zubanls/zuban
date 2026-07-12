@@ -1564,6 +1564,45 @@ mod tests {
     }
 
     #[test]
+    fn non_determinism_avoid_regression() {
+        // From GH #412, this does not reproduce in normal tests, only in zmypy
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file main.py]
+            class RClip:
+              def __init__(self):
+                self._db = None
+
+              def clear_db(self):
+                self._db = None
+
+            def main():
+              rclip = RClip()
+              rclip.clear_db()
+
+            [file test_rclip.py]
+            from main import main
+
+            main()
+            "#,
+            false,
+        );
+        let ds = diagnostics(
+            Cli::parse_from(["", "--disallow-untyped-defs"]),
+            test_dir.path(),
+        );
+        // The error should only appear once, not multiple times
+        assert_eq!(
+            ds.iter()
+                .filter(|s| s
+                    .starts_with("main.py:2: error: Function is missing a return type annotation"))
+                .count(),
+            1
+        );
+    }
+
+    #[test]
     fn test_additional_paths() {
         // From GH #453
         logging_config::setup_logging_for_tests();

@@ -1198,12 +1198,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     self.db(),
                     NodeRef::new(directed_to.file, func_def.index()),
                 );
-                let result = directed_to
-                    .file
-                    .inference(self.inference.i_s)
-                    .ensure_func_diagnostics(func);
+                let result = func.ensure_body_diagnostics(db);
                 debug_assert!(result.is_ok());
-                func.ensure_checked_untyped_function_for_heuristics(self.db());
+                func.ensure_checked_untyped_function_for_heuristics(db);
             }
             if inf.maybe_specific(db) == Some(Specific::Cycle) {
                 // We need to ensure that cycles are not executed in some way
@@ -1510,10 +1507,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
 
     fn heuristic_return_type_part2(&mut self, func_node_ref: FuncNodeRef) -> Option<Heuristic> {
         let func = Function::new_with_unknown_parent(self.db(), *func_node_ref);
-        let result = func
-            .file
-            .inference(self.inference.i_s)
-            .ensure_func_diagnostics(func);
+        let result = func.ensure_func_diagnostics(self.db());
         debug_assert!(result.is_ok());
         func.ensure_checked_untyped_function_for_heuristics(self.db());
 

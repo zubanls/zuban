@@ -330,6 +330,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .ensure_func_diagnostics(self)
     }
 
+    pub(crate) fn ensure_body_diagnostics(&self, db: &Database) -> Result<(), ()> {
+        let i_s = if let Some(cls) = &self.class {
+            InferenceState::from_class(db, cls)
+        } else {
+            InferenceState::new(db, self.node_ref.file)
+        };
+        self.cache_func_from_diagnostics(&i_s);
+        self.node_ref
+            .file
+            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
+            .ensure_calculated_function_body(*self)
+    }
+
     pub fn ensure_checked_untyped_function_for_heuristics(&self, db: &Database) {
         // This is specifically here to be called from heuristics to ensure that the names in an
         // unchecked function are properly initialized. This typically happens with

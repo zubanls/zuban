@@ -2066,7 +2066,9 @@ impl<'file> Inference<'_, 'file, '_> {
             result?
         }
 
-        fa.with_new_empty_and_delay_further(self.i_s.db, || self.ensure_func_diagnostics(function))
+        fa.with_new_empty_and_delay_further(self.i_s.db, || {
+            function.ensure_body_diagnostics(self.i_s.db)
+        })
     }
 
     pub fn flow_analysis_for_ternary(
