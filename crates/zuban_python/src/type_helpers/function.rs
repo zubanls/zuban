@@ -538,6 +538,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         from_diagnostics: bool,
     ) {
         if !name_def.point().calculated() {
+            // I'm not sure if this is true, but we want to assert it at least for tests.
+            debug_assert!(!name_def.point().calculating());
             name_def.set_point(Point::new_calculating());
             if !from_diagnostics && self.needs_flow_analysis_for_decorators(i_s) {
                 name_def.set_point(Point::new_uncalculated());
