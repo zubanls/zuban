@@ -1314,7 +1314,7 @@ impl<'db> NameBinder<'db> {
                         NameBinderKind::Function { is_async: true } if is_yield_from => {
                             self.add_issue(n.index(), IssueKind::YieldFromInAsyncFunction)
                         }
-                        NameBinderKind::Function { .. } => (),
+                        NameBinderKind::Function { .. } | NameBinderKind::Lambda => (),
                         NameBinderKind::Comprehension => self.add_issue(
                             n.index(),
                             IssueKind::YieldOrYieldFromInsideComprehension { keyword },

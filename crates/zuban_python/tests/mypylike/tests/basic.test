@@ -1981,3 +1981,9 @@ reveal_type(list[Any] | list[str])  # N: Revealed type is "types.UnionType"
 
 reveal_type(Any | int)  # N: Revealed type is "types.UnionType"
 reveal_type(str | None)  # N: Revealed type is "types.UnionType"
+
+[case yield_in_lambda_is_fine]
+# From GH #494
+from collections.abc import Generator, Callable
+
+yield_once: Callable[[int], Generator[int]] = lambda x: (yield x)
