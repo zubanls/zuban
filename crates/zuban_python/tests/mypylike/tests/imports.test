@@ -941,6 +941,7 @@ ignore_missing_imports = True
 [case dunder_builtins_pyi_to_extend_builtins]
 # From GH #495
 foo("")
+bar
 
 [file __builtins__.pyi]
 def foo(value: str) -> None: ...
@@ -951,7 +952,10 @@ def foo(value: str) -> None: ...
 def foo(value: int) -> None: ...
 
 [out]
+__main__:3: error: Name "bar" is not defined
 ==
 __main__:2: error: Name "foo" is not defined
+__main__:3: error: Name "bar" is not defined
 ==
 __main__:2: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+__main__:3: error: Name "bar" is not defined
