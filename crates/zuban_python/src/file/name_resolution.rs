@@ -14,7 +14,7 @@ use crate::{
     debug,
     diagnostics::IssueKind,
     file::{File, python_file::DunderAllState},
-    imports::{ImportResult, LoadedImportResult, namespace_import},
+    imports::{ImportResult, LoadedImportResult, global_import, namespace_import},
     inference_state::InferenceState,
     inferred::Inferred,
     node_ref::NodeRef,
@@ -411,6 +411,16 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             self.file,
                             save_to_index,
                         ));
+                    // __builtins__ makes it possible to extend the builtins module and add names
+                    // that are importable from everywhere.
+                    } else if let Some(r) = global_import(i_s.db, self.file, "__builtins__")
+                        && let Some(loaded) = r.ensured_loaded_file(i_s.db)
+                        && let Some(dunder_builtins) = loaded.into_file(i_s.db)
+                        && let Some((resolution, _)) = self
+                            .with_new_file(dunder_builtins)
+                            .resolve_module_access(name_str, |_| false)
+                    {
+                        return resolution;
                     }
                     let mut note = None;
                     if !name_str.starts_with('_')

@@ -937,3 +937,21 @@ ignore_missing_imports = True
 ignore_missing_imports = False
 [mypy-something_else.*]
 ignore_missing_imports = True
+
+[case dunder_builtins_pyi_to_extend_builtins]
+# From GH #495
+foo("")
+
+[file __builtins__.pyi]
+def foo(value: str) -> None: ...
+
+[delete __builtins__.pyi.2]
+
+[file __builtins__.pyi.3]
+def foo(value: int) -> None: ...
+
+[out]
+==
+__main__:2: error: Name "foo" is not defined
+==
+__main__:2: error: Argument 1 to "foo" has incompatible type "str"; expected "int"

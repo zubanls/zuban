@@ -173,6 +173,13 @@ impl LoadedImportResult {
         }
     }
 
+    pub fn into_file(self, db: &Database) -> Option<&PythonFile> {
+        match self.0 {
+            ImportResult::File(file_index) => Some(db.loaded_python_file(file_index)),
+            _ => None,
+        }
+    }
+
     pub fn into_import_result(self) -> ImportResult {
         self.0
     }
