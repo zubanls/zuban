@@ -8,6 +8,15 @@ pub(crate) struct ClientConfig {
     pub type_checking_mode: TypeCheckingMode,
     pub diagnostic_mode: DiagnosticMode,
     pub disable_language_services: bool,
+    pub inlay_hint_mode: InlayHintMode,
+}
+
+#[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum InlayHintMode {
+    #[default]
+    Default,
+    Off,
 }
 
 #[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]

@@ -147,3 +147,31 @@ fn disable_language_services() {
     check(false);
     check(true);
 }
+
+#[test]
+#[parallel]
+fn disable_inlay_hint_mode() {
+    let check = |mode, enabled| {
+        let server = Project::with_fixture(
+            r#"
+            [file m.py]
+            "#,
+        )
+        .with_initialization_options(json!({ "inlayHintMode": mode }))
+        .into_server();
+        let cap = server.server_capabilities.as_ref().unwrap();
+        assert!(cap.completion_provider.is_some());
+        assert!(cap.definition_provider.is_some());
+        assert!(cap.declaration_provider.is_some());
+        assert!(cap.hover_provider.is_some());
+        assert!(cap.signature_help_provider.is_some());
+        assert!(cap.type_definition_provider.is_some());
+        assert!(cap.implementation_provider.is_some());
+        assert!(cap.rename_provider.is_some());
+        assert!(cap.diagnostic_provider.is_some());
+
+        assert_eq!(enabled, cap.inlay_hint_provider.is_some());
+    };
+    check("off", false);
+    check("default", true);
+}

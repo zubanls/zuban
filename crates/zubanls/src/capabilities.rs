@@ -12,7 +12,7 @@ use lsp_types::{
 };
 use zuban_python::InputPosition;
 
-use crate::client_config::{ClientConfig, DiagnosticMode};
+use crate::client_config::{ClientConfig, DiagnosticMode, InlayHintMode};
 
 pub(crate) fn server_capabilities(
     client_capabilities: &ClientCapabilities,
@@ -106,7 +106,8 @@ pub(crate) fn server_capabilities(
             },
         )),
         moniker_provider: None,
-        inlay_hint_provider: Some(OneOf::Left(true)),
+        inlay_hint_provider: (config.inlay_hint_mode != InlayHintMode::Off)
+            .then_some(OneOf::Left(true)),
         inline_value_provider: None,
         experimental: None,
         diagnostic_provider: config.type_checking_mode.is_enabled().then(|| {
