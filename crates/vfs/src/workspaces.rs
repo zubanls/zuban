@@ -438,7 +438,7 @@ impl Workspace {
         root_path: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> Arc<Self> {
-        tracing::debug!("Add workspace {root_path}");
+        tracing::debug!("Add workspace {root_path} as {kind:?}");
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
@@ -509,6 +509,9 @@ impl Workspace {
                     && let Some(dir_entry) = old.entries.search(name)
                     && let DirectoryEntry::Directory(dir) = &*dir_entry
                 {
+                    tracing::debug!(
+                        "Added nested workspace for {folder} while creating new workspace"
+                    );
                     let result = dir
                         .entries
                         .set(DirEntries::NestedWorkspace(Arc::downgrade(&workspace)));

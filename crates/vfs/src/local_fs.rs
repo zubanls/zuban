@@ -401,6 +401,10 @@ impl ResolvedFileType {
                         absolute.path == workspace.root_path && absolute.scheme == workspace.scheme
                     }
                 }) {
+                    tracing::debug!(
+                        "Added nested workspace for {:?} while creating new dir",
+                        dir.absolute_path(vfs)
+                    );
                     let result = dir
                         .entries
                         .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));
