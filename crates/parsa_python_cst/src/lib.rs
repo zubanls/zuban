@@ -3198,14 +3198,22 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
     }
 }
 
+pub struct LevelWithDottedNameResult<'db> {
+    pub level: usize,
+    pub names: Option<DottedImportName<'db>>,
+}
+
 impl<'db> ImportFrom<'db> {
-    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedImportName<'db>>) {
+    pub fn level_with_dotted_name(&self) -> LevelWithDottedNameResult<'db> {
         // | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
         for node in self.node.iter_children().skip(1) {
             if node.is_type(Nonterminal(dotted_import_name)) {
-                return (level, Some(DottedImportName::new(node)));
+                return LevelWithDottedNameResult {
+                    level,
+                    names: Some(DottedImportName::new(node)),
+                };
             } else if node.as_code() == "." {
                 level += 1;
             } else if node.as_code() == "..." {
@@ -3214,7 +3222,7 @@ impl<'db> ImportFrom<'db> {
                 break;
             }
         }
-        (level, None)
+        LevelWithDottedNameResult { level, names: None }
     }
 
     pub fn unpack_targets(&self) -> ImportFromTargets<'db> {

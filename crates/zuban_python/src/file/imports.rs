@@ -1,6 +1,6 @@
 use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
-    ImportFromTargets, ImportName, Name, NameImportParent, NodeIndex,
+    ImportFromTargets, ImportName, LevelWithDottedNameResult, Name, NameImportParent, NodeIndex,
 };
 use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
@@ -190,13 +190,10 @@ impl PythonFile {
         db: &Database,
         import_from: ImportFrom,
     ) -> Option<ImportResult> {
-        let (level, dotted_name) = import_from.level_with_dotted_name();
-        self.import_from_first_part_calculation_without_loading_file(
-            db,
-            level,
-            dotted_name,
-            |issue| NodeRef::new(self, import_from.index()).add_type_issue(db, issue),
-        )
+        let LevelWithDottedNameResult { level, names } = import_from.level_with_dotted_name();
+        self.import_from_first_part_calculation_without_loading_file(db, level, names, |issue| {
+            NodeRef::new(self, import_from.index()).add_type_issue(db, issue)
+        })
     }
 
     pub fn import_from_first_part_calculation_without_loading_file(
