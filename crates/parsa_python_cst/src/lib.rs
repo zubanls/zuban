@@ -3198,31 +3198,41 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
     }
 }
 
-pub struct LevelWithDottedNameResult<'db> {
+#[derive(Clone, Copy, Debug)]
+pub struct LevelWithDottedName<'db> {
     pub level: usize,
     pub names: Option<DottedImportName<'db>>,
+    pub last_dot_element_node_index: Option<NodeIndex>,
 }
 
 impl<'db> ImportFrom<'db> {
-    pub fn level_with_dotted_name(&self) -> LevelWithDottedNameResult<'db> {
+    pub fn level_with_dotted_name(&self) -> LevelWithDottedName<'db> {
         // | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
+        let mut last_dot_element_node_index = None;
         for node in self.node.iter_children().skip(1) {
             if node.is_type(Nonterminal(dotted_import_name)) {
-                return LevelWithDottedNameResult {
+                return LevelWithDottedName {
                     level,
                     names: Some(DottedImportName::new(node)),
+                    last_dot_element_node_index,
                 };
             } else if node.as_code() == "." {
+                last_dot_element_node_index = Some(node.index);
                 level += 1;
             } else if node.as_code() == "..." {
+                last_dot_element_node_index = Some(node.index);
                 level += 3;
             } else if node.as_code() == "import" {
                 break;
             }
         }
-        LevelWithDottedNameResult { level, names: None }
+        LevelWithDottedName {
+            level,
+            names: None,
+            last_dot_element_node_index,
+        }
     }
 
     pub fn unpack_targets(&self) -> ImportFromTargets<'db> {

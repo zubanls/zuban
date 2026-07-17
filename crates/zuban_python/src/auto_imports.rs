@@ -6,7 +6,7 @@ use std::{
 
 use config::ProjectOptions;
 use parsa_python_cst::{
-    CodeIndex, DottedImportName, DottedImportNameContent, LevelWithDottedNameResult, Name,
+    CodeIndex, DottedImportName, DottedImportNameContent, LevelWithDottedName, Name,
     NameImportParent, Scope,
 };
 use rayon::prelude::*;
@@ -180,14 +180,15 @@ impl<'db> ImportFinder<'db> {
                 NameImportParent::ImportFromAsName(from_as_name) => from_as_name
                     .import_from()
                     .is_some_and(|import_from| match import_from.level_with_dotted_name() {
-                        LevelWithDottedNameResult {
+                        LevelWithDottedName {
                             level: 0,
                             names: Some(imp),
+                            ..
                         } => {
                             let (_, is_package) = file.file_entry_and_is_package(self.db);
                             !(is_package || has_import_of_file(self.db, file, imp))
                         }
-                        LevelWithDottedNameResult { level: 1, .. } => false, // Imports from the same package are not private
+                        LevelWithDottedName { level: 1, .. } => false, // Imports from the same package are not private
                         // Levels bigger than two should not be public
                         _ => true,
                     }),

@@ -1,6 +1,6 @@
 use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
-    ImportFromTargets, ImportName, LevelWithDottedNameResult, Name, NameImportParent, NodeIndex,
+    ImportFromTargets, ImportName, LevelWithDottedName, Name, NameImportParent, NodeIndex,
 };
 use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
@@ -190,9 +190,20 @@ impl PythonFile {
         db: &Database,
         import_from: ImportFrom,
     ) -> Option<ImportResult> {
-        let LevelWithDottedNameResult { level, names } = import_from.level_with_dotted_name();
-        self.import_from_first_part_calculation_without_loading_file(db, level, names, |issue| {
-            NodeRef::new(self, import_from.index()).add_type_issue(db, issue)
+        let LevelWithDottedName {
+            level,
+            names,
+            last_dot_element_node_index,
+        } = import_from.level_with_dotted_name();
+        self.import_from_first_part_calculation_without_loading_file(db, level, names, || {
+            if let Some(last_dot_element_node_index) = last_dot_element_node_index {
+                let node = NodeRef::new(self, last_dot_element_node_index);
+                if !node.point().calculated() {
+                    node.set_point(Point::new_analyzed_with_node_index(Locality::Complex, 0));
+                    NodeRef::new(self, import_from.index())
+                        .add_type_issue(db, IssueKind::NoParentModule);
+                }
+            }
         })
     }
 
@@ -201,20 +212,20 @@ impl PythonFile {
         db: &Database,
         level: usize,
         dotted_name: Option<DottedImportName>,
-        add_issue: impl FnOnce(IssueKind) -> bool,
+        add_no_parent_module: impl FnOnce(),
     ) -> Option<ImportResult> {
         let maybe_level_file = if level > 0 {
             match find_import_ancestor(db, self, level) {
                 ImportAncestor::Found(import_result) => Some(import_result),
                 ImportAncestor::Workspace => {
-                    add_issue(IssueKind::NoParentModule);
+                    add_no_parent_module();
                     // This is not correct in theory, we should simply abort here. However in
                     // practice this can be useful, because if the sys path is wrong this still
                     // provides some information, especially with completions/goto.
                     None
                 }
                 ImportAncestor::NoParentModule => {
-                    add_issue(IssueKind::NoParentModule);
+                    add_no_parent_module();
                     return None;
                 }
             }

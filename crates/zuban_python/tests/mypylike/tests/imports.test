@@ -938,6 +938,11 @@ ignore_missing_imports = False
 [mypy-something_else.*]
 ignore_missing_imports = True
 
+[case relative_import_avoid_duplicate_issues]
+from foo import bar
+[file foo.py]
+from . import bar  # E: No parent module -- cannot perform relative import
+
 [case dunder_builtins_pyi_to_extend_builtins]
 # From GH #495
 foo("")

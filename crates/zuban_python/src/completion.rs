@@ -181,7 +181,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                                 i_s.db,
                                 *dots,
                                 *base,
-                                |_| false,
+                                || (),
                             )
                     }))
                 }
