@@ -4,11 +4,11 @@ build the playground
 
 ```
 git submodule update --init --recursive third_party/typeshed
-wasm-pack build crates/playground_wasm --target web --no-default-features --features playground-single
-python -m http.server
+./crates/playground_wasm/build-web.sh
+python -m http.server --directory crates/playground_wasm/dist
 ```
 
-visit <http://localhost:8000/crates/playground_wasm/web/index.html>
+visit <http://localhost:8000>
 
 ---
 
