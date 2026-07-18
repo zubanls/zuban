@@ -1,7 +1,7 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent, Workspace, WorkspaceKind};
 
 use crate::{
     database::{ComplexPoint, Database, PyTypedMissing},
@@ -579,39 +579,51 @@ pub enum ImportAncestor {
 
 pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> ImportAncestor {
     debug_assert!(level > 0);
-    let invalid = |workspace: &Weak<Workspace>, current_level| match level - current_level {
-        0 => {
-            if !db.project.settings.explicit_package_bases {
-                // While technically the sys path says that this is a workspace, we probably just
-                // have the wrong sys path and since this is annoying for most users, just allow
-                // the user to access the workspace as a relative directory.
+
+    fn check_parent(
+        db: &Database,
+        parent: &Parent,
+        file: &PythonFile,
+        level: usize,
+    ) -> ImportAncestor {
+        let parent_dir = match parent.maybe_dir() {
+            Ok(dir) => match level {
+                1 => dir,
+                _ => return check_parent(db, &dir.parent, file, level - 1),
+            },
+            Err(workspace) => {
                 let workspace = workspace.upgrade().unwrap();
-                if let Some(index) =
-                    load_init_file_from_entries(db, &workspace.entries, file.file_index)
-                {
-                    return ImportAncestor::Found(ImportResult::File(index));
+                if let Some(parent) = &workspace.parent {
+                    // Check the parent of the workspace first
+                    return check_parent(db, parent, file, level);
+                }
+                match level {
+                    1 => {
+                        if !db.project.settings.explicit_package_bases {
+                            // While technically the sys path says that this is a workspace, we probably just
+                            // have the wrong sys path and since this is annoying for most users, just allow
+                            // the user to access the workspace as a relative directory.
+                            if let Some(index) =
+                                load_init_file_from_entries(db, &workspace.entries, file.file_index)
+                            {
+                                return ImportAncestor::Found(ImportResult::File(index));
+                            }
+                        }
+                        return ImportAncestor::Workspace;
+                    }
+                    _ => return ImportAncestor::NoParentModule,
                 }
             }
-            ImportAncestor::Workspace
-        }
-        _ => ImportAncestor::NoParentModule,
-    };
-    let mut parent = match file.file_entry(db).parent.maybe_dir() {
-        Ok(dir) => dir,
-        Err(workspace) => return invalid(workspace, 1),
-    };
-    for i in 1..level {
-        parent = match parent.parent.maybe_dir() {
-            Ok(dir) => dir,
-            Err(workspace) => return invalid(workspace, i + 1),
         };
+        ImportAncestor::Found(match load_init_file(db, &parent_dir, file.file_index) {
+            Some(index) => ImportResult::File(index),
+            None => ImportResult::Namespace(Arc::new(Namespace {
+                directories: [parent_dir].into(),
+            })),
+        })
     }
-    ImportAncestor::Found(match load_init_file(db, &parent, file.file_index) {
-        Some(index) => ImportResult::File(index),
-        None => ImportResult::Namespace(Arc::new(Namespace {
-            directories: [parent].into(),
-        })),
-    })
+
+    check_parent(db, &file.file_entry(db).parent, file, level)
 }
 
 pub(crate) fn is_binary_extension<'x>(

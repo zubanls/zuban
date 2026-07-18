@@ -428,6 +428,7 @@ pub struct Workspace {
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
+    pub parent: Option<Parent>,
 }
 
 impl Workspace {
@@ -438,7 +439,32 @@ impl Workspace {
         root_path: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> Arc<Self> {
-        tracing::debug!("Add workspace {root_path} as {kind:?}");
+        tracing::debug!("Add workspace \"{root_path}\" as {kind:?}");
+
+        // Workspaces are added as nested workspaces already for workspaces that are contained
+        // within this one. But this workspace could be contained by another one, check for that
+        // here.
+        let mut parent_dir = None;
+        if !workspaces.is_empty()
+            && let (Some(folder), name) = vfs.split_off_last_item(&root_path)
+        {
+            for old in workspaces {
+                if ***old.root_path == *folder
+                    && let Some(dir_entry) = old.entries.search(name)
+                    && let DirectoryEntry::Directory(dir) = &*dir_entry
+                {
+                    tracing::debug!(
+                        "Added nested workspace for {folder} while creating new workspace"
+                    );
+                    parent_dir = Some(dir.clone());
+                    break;
+                }
+            }
+        }
+        let parent = parent_dir
+            .as_ref()
+            .map(|dir| Parent::Directory(Arc::downgrade(dir)));
+
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
@@ -477,6 +503,7 @@ impl Workspace {
                 canonicalized_path: vfs
                     .unchecked_normalized_path(vfs.unchecked_abs_path(&canonicalized_path)),
                 kind,
+                parent,
             });
         };
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios")))]
@@ -486,6 +513,7 @@ impl Workspace {
                 scheme,
                 root_path,
                 kind,
+                parent,
             })
         }
         if kind == WorkspaceKind::Fallback {
@@ -498,26 +526,11 @@ impl Workspace {
         );
         *workspace.entries.borrow_mut() = std::mem::take(&mut new_entries.borrow_mut());
 
-        // Workspaces are added as nested workspaces already for workspaces that are contained
-        // within this one. But this workspace could be contained by another one, check for that
-        // here.
-        if !workspaces.is_empty()
-            && let (Some(folder), name) = vfs.split_off_last_item(&workspace.root_path)
-        {
-            for old in workspaces {
-                if ***old.root_path == *folder
-                    && let Some(dir_entry) = old.entries.search(name)
-                    && let DirectoryEntry::Directory(dir) = &*dir_entry
-                {
-                    tracing::debug!(
-                        "Added nested workspace for {folder} while creating new workspace"
-                    );
-                    let result = dir
-                        .entries
-                        .set(DirEntries::NestedWorkspace(Arc::downgrade(&workspace)));
-                    debug_assert!(result.is_ok());
-                }
-            }
+        if let Some(dir) = parent_dir {
+            let result = dir
+                .entries
+                .set(DirEntries::NestedWorkspace(Arc::downgrade(&workspace)));
+            debug_assert!(result.is_ok());
         }
         workspace
     }
