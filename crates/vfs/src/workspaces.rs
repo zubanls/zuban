@@ -428,7 +428,7 @@ pub struct Workspace {
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
-    pub parent: Option<Parent>,
+    pub parent: WorkspaceParent,
 }
 
 impl Workspace {
@@ -461,9 +461,11 @@ impl Workspace {
                 }
             }
         }
-        let parent = parent_dir
-            .as_ref()
-            .map(|dir| Parent::Directory(Arc::downgrade(dir)));
+        let parent = WorkspaceParent::new(
+            parent_dir
+                .as_ref()
+                .map(|dir| Parent::Directory(Arc::downgrade(dir))),
+        );
 
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
@@ -642,5 +644,27 @@ fn strip_path_prefix<'x>(
             return Some(path);
         };
         to_strip = rest_to_strip
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct WorkspaceParent(Mutex<Option<Parent>>);
+
+impl WorkspaceParent {
+    fn new(mutex: Option<Parent>) -> Self {
+        Self(Mutex::new(mutex))
+    }
+
+    pub fn lock(&self) -> impl std::ops::Deref<Target = Option<Parent>> {
+        self.0.lock().unwrap()
+    }
+}
+
+impl Clone for WorkspaceParent {
+    fn clone(&self) -> Self {
+        if self.lock().is_some() {
+            unimplemented!("Currently nested workspaces cannot be cloned")
+        }
+        Self::default()
     }
 }

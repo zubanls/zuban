@@ -593,7 +593,7 @@ pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> I
             },
             Err(workspace) => {
                 let workspace = workspace.upgrade().unwrap();
-                if let Some(parent) = &workspace.parent {
+                if let Some(parent) = workspace.parent.lock().as_ref() {
                     // Check the parent of the workspace first
                     return check_parent(db, parent, file, level);
                 }
