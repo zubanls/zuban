@@ -405,6 +405,9 @@ impl ResolvedFileType {
                         "Added nested workspace for {:?} while creating new dir",
                         dir.absolute_path(vfs)
                     );
+                    workspace
+                        .parent
+                        .change(Some(Parent::Directory(Arc::downgrade(&dir))));
                     let result = dir
                         .entries
                         .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));

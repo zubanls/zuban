@@ -586,12 +586,17 @@ pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> I
         file: &PythonFile,
         level: usize,
     ) -> ImportAncestor {
-        let parent_dir = match parent.maybe_dir() {
-            Ok(dir) => match level {
-                1 => dir,
-                _ => return check_parent(db, &dir.parent, file, level - 1),
-            },
-            Err(workspace) => {
+        let parent_dir = match parent {
+            Parent::Directory(dir) => {
+                let Some(dir) = dir.upgrade() else {
+                    return ImportAncestor::NoParentModule;
+                };
+                match level {
+                    1 => dir,
+                    _ => return check_parent(db, &dir.parent, file, level - 1),
+                }
+            }
+            Parent::Workspace(workspace) => {
                 let workspace = workspace.upgrade().unwrap();
                 if let Some(parent) = workspace.parent.lock().as_ref() {
                     // Check the parent of the workspace first

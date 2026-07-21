@@ -658,6 +658,10 @@ impl WorkspaceParent {
     pub fn lock(&self) -> impl std::ops::Deref<Target = Option<Parent>> {
         self.0.lock().unwrap()
     }
+
+    pub(crate) fn change(&self, new: Option<Parent>) {
+        *self.0.lock().unwrap() = new
+    }
 }
 
 impl Clone for WorkspaceParent {
