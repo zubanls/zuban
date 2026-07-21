@@ -9,7 +9,8 @@ use utils::{FastHashMap, FastHashSet};
 
 use crate::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
-    NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace, tree::DirEntries,
+    NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace,
+    workspaces::add_nested_workspace_if_necessary,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -393,26 +394,7 @@ impl ResolvedFileType {
             ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name)),
             ResolvedFileType::Directory => {
                 let dir = Directory::new(parent, name);
-                if let Some(workspace) = workspaces.iter().find(|workspace| {
-                    // Checking ends_with first is a performance optimization to avoid creating a
-                    // lot of paths.
-                    workspace.root_path.ends_with(&*dir.name) && {
-                        let absolute = dir.absolute_path(vfs);
-                        absolute.path == workspace.root_path && absolute.scheme == workspace.scheme
-                    }
-                }) {
-                    tracing::debug!(
-                        "Added nested workspace for {:?} while creating new dir",
-                        dir.absolute_path(vfs)
-                    );
-                    workspace
-                        .parent
-                        .change(Some(Parent::Directory(Arc::downgrade(&dir))));
-                    let result = dir
-                        .entries
-                        .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));
-                    debug_assert!(result.is_ok());
-                }
+                add_nested_workspace_if_necessary(workspaces, vfs, &dir);
                 DirectoryEntry::Directory(dir)
             }
         })

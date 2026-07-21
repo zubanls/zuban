@@ -672,3 +672,30 @@ impl Clone for WorkspaceParent {
         Self::default()
     }
 }
+
+pub(crate) fn add_nested_workspace_if_necessary(
+    workspaces: &[Arc<Workspace>],
+    vfs: &dyn VfsHandler,
+    dir: &Arc<Directory>,
+) {
+    if let Some(workspace) = workspaces.iter().find(|workspace| {
+        // Checking ends_with first is a performance optimization to avoid creating a
+        // lot of paths.
+        workspace.root_path.ends_with(&*dir.name) && {
+            let absolute = dir.absolute_path(vfs);
+            absolute.path == workspace.root_path && absolute.scheme == workspace.scheme
+        }
+    }) {
+        tracing::debug!(
+            "Added nested workspace for {:?} while creating new dir",
+            dir.absolute_path(vfs)
+        );
+        workspace
+            .parent
+            .change(Some(Parent::Directory(Arc::downgrade(&dir))));
+        let result = dir
+            .entries
+            .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));
+        debug_assert!(result.is_ok());
+    }
+}
