@@ -479,7 +479,7 @@ fn in_memory_file_changes() {
 }
 
 #[test]
-#[parallel]
+#[serial]
 fn test_relative_namespace_import() {
     // From GH #486
     let server = Project::with_fixture(
