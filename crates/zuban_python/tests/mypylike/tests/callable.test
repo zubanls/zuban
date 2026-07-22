@@ -672,3 +672,25 @@ if bool():
     a1 = a3  # E: Incompatible types in assignment (expression has type "def a3(**kwargs: Unpack[TD3]) -> None", variable has type "def a1(**kwargs: Unpack[TD1]) -> None")
 else:
     a3 = a1
+
+[case recursive_callable_should_still_be_callable]
+# From GH #504
+from collections.abc import Callable
+
+type RList = list[int | RList]
+type Returns[A] = Callable[[], A]
+
+type ReturnsRList = Returns[RList]
+type ReturnsInt = Returns[int]
+
+def test_direct(fn: Callable[[], RList]) -> RList:
+    return fn() # passes
+
+def test_alias_1(fn: Returns[RList]) -> RList:
+    return fn() # passes
+
+def test_alias_2(fn: ReturnsRList) -> RList:
+    return fn() # Callable[[], RList] is not callable
+
+def test_int(fn: ReturnsInt) -> int:
+    return fn() # passes

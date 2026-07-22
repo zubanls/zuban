@@ -801,6 +801,10 @@ impl Type {
             Type::DataclassTransformObj(d) => {
                 Inferred::from_type(Type::DataclassTransformObj(d.clone()))
             }
+            Type::RecursiveType(t) => {
+                t.calculated_type(i_s.db)
+                    .execute(i_s, None, args, result_context, on_type_error)
+            }
             Type::Self_ => {
                 if let Some(current_type) = i_s.current_type() {
                     current_type.execute(i_s, None, args, result_context, on_type_error)
