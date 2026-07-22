@@ -479,6 +479,43 @@ fn in_memory_file_changes() {
 }
 
 #[test]
+#[parallel]
+fn test_relative_namespace_import() {
+    // From GH #486
+    let server = Project::with_fixture(
+        r#"
+        [file main.py]
+        from namespace import x
+        x.func
+        [file namespace/x.py]
+        from .y import func
+        [file namespace/y.py]
+        def func(): ...
+
+        [file pyproject.toml]
+        [tool.zuban]
+        mypy_path = [".", "namespace"]
+        "#,
+    )
+    .into_server();
+    assert!(server.diagnostics_for_file("namespace/x.py").is_empty());
+    assert!(server.diagnostics_for_file("main.py").is_empty());
+
+    let pos =
+        TextDocumentPositionParams::new(server.doc_id("namespace/x.py"), Position::new(0, 19));
+    let actual = server.request_with_expected_response::<Completion>(CompletionParams {
+        text_document_position: pos,
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: None,
+    });
+    let obj = actual.as_array().expect("array")[0]
+        .as_object()
+        .expect("object");
+    assert_eq!(obj["label"].as_str().expect("label"), "func");
+}
+
+#[test]
 #[serial]
 fn change_config_file() {
     let server = Project::with_fixture(

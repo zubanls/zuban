@@ -1649,28 +1649,4 @@ mod tests {
             )
         }
     }
-
-    #[test]
-    fn test_relative_namespace_import() {
-        // From GH #486
-        logging_config::setup_logging_for_tests();
-        let test_dir = test_utils::write_files_from_fixture(
-            r#"
-            [file main.py]
-            from namespace import x
-            x.func
-            [file namespace/x.py]
-            from .y import func
-            [file namespace/y.py]
-            def func(): ...
-
-            [file pyproject.toml]
-            [tool.zuban]
-            mypy_path = [".", "namespace"]
-            "#,
-            false,
-        );
-        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
-        assert!(ds.is_empty(), "{ds:?}");
-    }
 }

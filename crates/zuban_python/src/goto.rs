@@ -309,17 +309,15 @@ impl<'db, T> PositionalDocument<'db, T> {
         dots: usize,
         dotted: Option<DottedImportName>,
     ) -> Inferred {
-        let mut import_result = None;
-        if dots > 0 {
-            // TODO dots
-            return Inferred::new_any_from_error();
-        }
-        if let Some(dotted) = dotted {
-            import_result = self.with_i_s(|i_s| {
-                self.file
-                    .cache_import_dotted_name(i_s.db, dotted, import_result)
-            })
-        }
+        let import_result = self.with_i_s(|i_s| {
+            self.file
+                .import_from_first_part_calculation_without_loading_file(
+                    i_s.db,
+                    dots,
+                    dotted,
+                    || (),
+                )
+        });
         if let Some(import_result) = import_result {
             import_result.into_inferred(self.db)
         } else {
