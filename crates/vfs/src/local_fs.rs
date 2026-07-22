@@ -112,7 +112,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                 continue;
                             }
                             if let Some(entry) =
-                                new.into_dir_entry(workspaces, self, parent.clone(), n.clone())
+                                new.into_dir_entry(self, workspaces, parent.clone(), n.clone())
                             {
                                 entries.insert(n, entry);
                             }
@@ -161,7 +161,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
             self.watch(path);
             ResolvedFileType::File
         };
-        resolved.into_dir_entry(workspaces, self, parent, replace_name.into())
+        resolved.into_dir_entry(self, workspaces, parent, replace_name.into())
     }
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
@@ -378,8 +378,8 @@ enum ResolvedFileType {
 impl ResolvedFileType {
     fn into_dir_entry(
         self,
-        workspaces: &[Arc<Workspace>],
         vfs: &dyn VfsHandler,
+        workspaces: &[Arc<Workspace>],
         parent: Parent,
         name: Arc<str>,
     ) -> Option<DirectoryEntry> {
@@ -394,7 +394,7 @@ impl ResolvedFileType {
             ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name)),
             ResolvedFileType::Directory => {
                 let dir = Directory::new(parent, name);
-                add_nested_workspace_if_necessary(workspaces, vfs, &dir);
+                add_nested_workspace_if_necessary(vfs, workspaces, &dir);
                 DirectoryEntry::Directory(dir)
             }
         })

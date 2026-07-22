@@ -674,8 +674,8 @@ impl Clone for WorkspaceParent {
 }
 
 pub(crate) fn add_nested_workspace_if_necessary(
-    workspaces: &[Arc<Workspace>],
     vfs: &dyn VfsHandler,
+    workspaces: &[Arc<Workspace>],
     dir: &Arc<Directory>,
 ) {
     if let Some(workspace) = workspaces.iter().find(|workspace| {
