@@ -2,7 +2,7 @@
 set -eu -o pipefail -x
 
 # Simply show the current rust version
-rustup show
+rustup show -v
 
 RUST_BACKTRACE=full cargo test --locked
 
