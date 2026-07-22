@@ -1542,7 +1542,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 .collect(),
                                         ),
                                     )),
-                                    AttributeKind::Attribute,
+                                    AttributeKind::DefMethod { is_final: false },
                                 ));
                             }
                             FunctionKind::Property { .. } => unreachable!(),

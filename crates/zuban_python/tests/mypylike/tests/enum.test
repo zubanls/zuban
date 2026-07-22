@@ -601,3 +601,23 @@ def f(a: Literal[Flags.A], b: Flags):
     assert_type(b & int(), Flags)
 
 assert_type(int() & Flags.A, Flags)
+
+[case enum_multi_items]
+# From GH #500
+from typing import Any, assert_type
+import enum
+
+class Operation(str, enum.Enum):
+    code: str
+    label: str
+
+    def __new__(cls, code: str, label: str) -> Operation:
+        op = str.__new__(cls, code)
+        op._value_ = code
+        op.label = label
+        return op
+
+    BUY = ("buy", "Buy")
+    SELL = ("sell", "Sell")
+
+assert_type(Operation.BUY.value, Any)
