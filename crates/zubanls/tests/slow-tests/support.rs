@@ -306,6 +306,7 @@ impl Server {
         assert!(message.contains("Test Panic"), "{message}");
         // Check for traceback occurrence
         assert!(
+            // The first is Rust 1.97.0+, while the other appears before
             message.contains("<zubanls::server::GlobalState>::event_loop")
                 || message.contains("zubanls::server::GlobalState::event_loop"),
             "{message}"
