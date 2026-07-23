@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{borrow::Cow, collections::HashSet, sync::Arc};
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionKind,
@@ -272,6 +272,24 @@ impl Type {
             | Type::Sentinel(_)
             | Type::LiteralString { .. } => None,
         }
+    }
+
+    pub fn maybe_erase_type_var_likes(
+        &self,
+        db: &Database,
+        replace_self: ReplaceSelf,
+    ) -> Option<Self> {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |u| Some(u.as_any_generic_item()),
+            replace_self,
+        )
+    }
+
+    pub fn erase_type_var_likes(&self, db: &Database, replace_self: ReplaceSelf) -> Cow<'_, Self> {
+        self.maybe_erase_type_var_likes(db, replace_self)
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(self))
     }
 }
 

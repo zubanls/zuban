@@ -1780,14 +1780,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(new) = new {
                         self_t = Cow::Owned(new)
                     }
-                    let erased = self_t
-                        .replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |u| Some(u.as_any_generic_item()),
-                            &|| Some(class_t.clone()),
-                        )
-                        .map(Cow::Owned)
-                        .unwrap_or(self_t);
+                    let erased = self_t.erase_type_var_likes(i_s.db, &|| Some(class_t.clone()));
                     let erased_is_protocol = match erased.as_ref() {
                         Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
                         Type::Type(t) => {
