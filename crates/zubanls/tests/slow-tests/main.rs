@@ -837,9 +837,6 @@ fn files_outside_of_root_with_push_diagnostics() {
     let in_mem_uri = &format!("file://{}/outside_in_mem.py", server.tmp_dir.path_for_uri());
     let m_uri = &format!("file://{}/base/m.py", server.tmp_dir.path_for_uri());
 
-    if fails_too_much_on_linux_and_github_actions() {
-        return; // I'm not sure why the panic recovery is not working in CI :/
-    }
     // The in memory files should still work after a panic
     server.raise_and_recover_panic_in_language_server();
     let mut expected: Vec<_> = check_other_uris
@@ -953,7 +950,7 @@ fn diagnostics_positions() {
 
 #[test]
 #[serial]
-fn check_panic_recovery() {
+fn check_panic_recovery_without_push() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -990,9 +987,6 @@ fn check_panic_recovery() {
 #[test]
 #[serial]
 fn check_panic_recovery_with_push_diagnostics() {
-    if fails_too_much_on_linux_and_github_actions() {
-        return; // I'm not sure why this is not working in CI :/
-    }
     let server = Project::with_fixture(
         r#"
         [file foo.py]
