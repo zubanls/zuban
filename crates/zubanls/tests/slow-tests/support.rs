@@ -306,7 +306,8 @@ impl Server {
         assert!(message.contains("Test Panic"), "{message}");
         // Check for traceback occurrence
         assert!(
-            message.contains("<zubanls::server::GlobalState>::event_loop"),
+            message.contains("<zubanls::server::GlobalState>::event_loop")
+                || message.contains("zubanls::server::GlobalState::event_loop"),
             "{message}"
         );
         assert!(
