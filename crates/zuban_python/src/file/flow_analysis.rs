@@ -3147,12 +3147,18 @@ impl<'file> Inference<'_, 'file, '_> {
             pattern.as_code(),
             inf.format_short(self.i_s)
         );
-        let _indent = debug_indent();
+        let indent = debug_indent();
         let (pattern_kind, as_name) = pattern.unpack();
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind.clone());
         if let Some(as_name) = as_name {
             self.assign_to_pattern_name(as_name, &result.truthy_t)
         }
+        drop(indent);
+        debug!(
+            "Pattern result truthy: {} falsey: {}",
+            result.truthy_t.format_short(self.i_s),
+            result.falsey_t.format_short(self.i_s)
+        );
         result
     }
 
