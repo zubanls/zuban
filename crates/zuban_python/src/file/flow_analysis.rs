@@ -3439,6 +3439,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let mut inner_mismatch = false;
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
+        let mut falsey_unreachable = true;
         let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
             let lookup = lookup(truthy, name);
             let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
@@ -3453,6 +3454,7 @@ impl<'file> Inference<'_, 'file, '_> {
             });
             let inner_result = self.find_guards_in_pattern(inf, None, pat);
             inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
+            falsey_unreachable &= inner_result.is_falsey_unreachable(i_s);
             inner_mismatch
         };
         let mut used_keywords: Vec<(&str, bool)> = vec![];
@@ -3556,7 +3558,14 @@ impl<'file> Inference<'_, 'file, '_> {
         if inner_mismatch {
             (Type::NEVER, truthy.clone())
         } else {
-            (truthy.clone(), Type::NEVER)
+            (
+                truthy.clone(),
+                if falsey_unreachable {
+                    Type::NEVER
+                } else {
+                    truthy.clone()
+                },
+            )
         }
     }
 
@@ -3885,7 +3894,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 .into_tuple(i_s.db, || unreachable!())
                 .into_type(i_s),
             if falsey_unreachable && (matches!(&tup.args, TupleArgs::FixedLen(_)) || had_star) {
-                Type::Never(NeverCause::Other)
+                Type::NEVER
             } else {
                 Type::Tuple(tup)
             },

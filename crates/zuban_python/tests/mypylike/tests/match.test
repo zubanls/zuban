@@ -493,3 +493,20 @@ def examine() -> None:
             print('Not for current tenant')
             return None
     reveal_type(email)  # N: Revealed type is "str"
+
+[case class_pattern_does_not_handle_all_child_patterns]
+# flags: --warn-unreachable
+# From GH #491
+from typing import assert_type
+class Int:
+    __match_args__ = ("x",)
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def fn1(x: Int) -> None:
+    match x:
+        case Int(0):
+            pass
+        case Int(i):
+            assert_type(i, int)
