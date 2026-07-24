@@ -3430,7 +3430,6 @@ impl<'file> Inference<'_, 'file, '_> {
             )
         };
         let mut added_no_match_args_issue = false;
-        //for e in truthy.into_iter_with_unpacked_unions(i_s.db, true) {
         let mut inner_mismatch = false;
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
