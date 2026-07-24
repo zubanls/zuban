@@ -1188,7 +1188,11 @@ impl<'a> Matcher<'a> {
         &self.type_var_matchers[tv.matcher_index].calculating_type_args[tv.type_var_index]
     }
 
-    fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
+    fn find_secondary_transitive_constraints(
+        &mut self,
+        db: &Database,
+        cycles: &TypeVarCycles,
+    ) -> Match {
         debug!("Start calculating secondary transitive constraints");
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
@@ -1246,6 +1250,9 @@ impl<'a> Matcher<'a> {
                             Bound::Uncalculated { .. } => unreachable!(),
                         };
                         let m = t1.matches(i_s, self, &t2, variance);
+                        if !m.bool() {
+                            return m;
+                        }
                         debug!(
                             "Secondary constraint match {variance:?} for {} against {}: {m:?}",
                             t1.format_short(db),
@@ -1257,6 +1264,7 @@ impl<'a> Matcher<'a> {
 
             // TODO check unresolved against each other
         }
+        Match::new_true()
     }
 
     fn finish_matcher(
@@ -1282,7 +1290,10 @@ impl<'a> Matcher<'a> {
         // Some cases need to propagate type vars across ParamSpec and TypeVarTuple. In that case
         // we need to match constraints against each other, see for example
         // testInferenceAgainstGenericParamSpecSecondary.
-        self.find_secondary_transitive_constraints(i_s.db, &cycles);
+        let m = self.find_secondary_transitive_constraints(i_s.db, &cycles);
+        if !m.bool() {
+            return (self, Err(m));
+        }
         // If constraints were added, that we rescan for cycles, because the information is out of
         // date.
         if before < self.constraint_count() {

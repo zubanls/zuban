@@ -2034,3 +2034,17 @@ b = 20
 c = -20
 
 clamped = max(b, min(c, a))
+
+[case higher_order_generics_for_callable1]
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+@dataclass
+class Box[A]:
+    x: A
+class Const[A](Protocol):
+    def __call__[R](self, f: Callable[[A], R], /) -> R: ...
+
+def box_const2[A](c: Const[A]) -> Box[str]:
+    return c(Box)  # E: Incompatible callable argument with type vars
