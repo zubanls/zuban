@@ -5999,7 +5999,13 @@ fn intersect<'x>(
     t2: &'x Type,
     add_issue: &mut dyn FnMut(IssueKind) -> bool,
 ) -> Option<Cow<'x, Type>> {
-    Some(if t2.is_simple_sub_type_of(i_s, t1).bool() {
+    // This is kind of isinstance logic and basic TypeVars should be intersected
+    let erased_t1 = if matches!(t1, Type::TypeVar(_)) {
+        Cow::Borrowed(t1)
+    } else {
+        t1.erase_type_var_likes(i_s.db, &|| None)
+    };
+    Some(if t2.is_simple_sub_type_of(i_s, &erased_t1).bool() {
         Cow::Borrowed(t2)
     } else if t2.is_simple_super_type_of(i_s, t1).bool() {
         Cow::Borrowed(t1)

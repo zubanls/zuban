@@ -2356,3 +2356,26 @@ def g(x: A) -> None:
     if isinstance(x, Mixin):
         reveal_type(x.desc)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"
         reveal_type(x.desc2)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"
+
+[case narrowing_type_var_should_not_fail]
+# flags: --warn-unreachable
+# From GH #507
+from abc import ABC, abstractmethod
+
+class Box[A](ABC): # Invariant in A
+    @abstractmethod
+    def get(self) -> A: ...
+    @abstractmethod
+    def set(self, other: A) -> None: ...
+
+class BoxInt(Box[int]):
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def get(self) -> int:
+        return self.x
+    def set(self, other: int) -> None:
+        self.x = other
+
+def use[A](box: Box[A], other: A) -> None:
+    if isinstance(box, BoxInt):
+        other_int: int = other  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
