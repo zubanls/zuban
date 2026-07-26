@@ -115,7 +115,7 @@ impl Bound {
         Some(match self {
             Self::Invariant(t) => Self::Invariant(t.replace_type_var_likes(db, on_type_var_like)?),
             Self::Upper(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)?),
-            Self::Lower(t) => Self::Upper(t.replace_type_var_likes(db, on_type_var_like)?),
+            Self::Lower(t) => Self::Lower(t.replace_type_var_likes(db, on_type_var_like)?),
             Self::UpperAndLower(upper, lower) => {
                 let new_upper = upper.replace_type_var_likes(db, on_type_var_like);
                 let new_lower = lower.replace_type_var_likes(db, on_type_var_like);
