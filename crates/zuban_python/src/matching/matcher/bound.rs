@@ -91,6 +91,18 @@ impl Bound {
         }
     }
 
+    pub fn debug_format(&self, db: &Database) -> Box<str> {
+        let formatted = self.format_with_fallback(
+            &FormatData::new_short(db),
+            ParamsStyle::CallableParams,
+            |_| MatcherFormatResult::Str("?".into()),
+        );
+        let MatcherFormatResult::Str(s) = formatted else {
+            unreachable!()
+        };
+        s
+    }
+
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         let t = match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) => t,

@@ -5,10 +5,8 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
-    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::Match,
-    matching::MatcherFormatResult,
     recoverable_error,
     type_::{
         AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
@@ -369,17 +367,11 @@ impl TypeVarMatcher {
     }
 
     pub fn debug_format(&self, db: &Database) -> String {
-        join_with_commas(self.calculating_type_args.iter().map(|arg| {
-            let formatted = arg.type_.format_with_fallback(
-                &FormatData::new_short(db),
-                ParamsStyle::CallableParams,
-                |_| MatcherFormatResult::Str("?".into()),
-            );
-            let MatcherFormatResult::Str(s) = formatted else {
-                unreachable!()
-            };
-            s
-        }))
+        join_with_commas(
+            self.calculating_type_args
+                .iter()
+                .map(|arg| arg.type_.debug_format(db)),
+        )
     }
 
     pub fn into_generics_list(self, db: &Database, avoid_implicit_literals: bool) -> GenericsList {
