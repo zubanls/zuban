@@ -1603,7 +1603,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(i_s.db);
         if !class_infos.abstract_attributes.is_empty()
             && !class_infos.incomplete_mro
-            && matches!(self.generics, Generics::NotDefinedYet { .. })
+            && !from_type_type
         {
             args.add_issue(
                 i_s,
