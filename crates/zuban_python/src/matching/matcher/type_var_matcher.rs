@@ -57,6 +57,8 @@ impl CalculatingTypeArg {
             Bound::Lower(t) => (t, Variance::Covariant),
             Bound::Invariant(t) => (t, Variance::Invariant),
             Bound::UpperAndLower(upper, t) => {
+                debug!("Trying to merge the upper bound first, because there's upper and lower");
+                let _indent = debug_indent();
                 m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
                 (t, Variance::Covariant)
             }
@@ -112,7 +114,7 @@ impl CalculatingTypeArg {
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
                         let m = t.is_simple_super_type_of(i_s, &other);
-                        if let Some(new) = t.common_base_type(i_s, &other) {
+                        if let Some(new) = t.common_base_type(i_s, &other, i_s.flags().use_joins) {
                             *t = new;
                             Match::new_true()
                         } else {
@@ -122,11 +124,11 @@ impl CalculatingTypeArg {
                     Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
                     Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
-                        if let Some(new) = lower.common_base_type(i_s, &other)
-                            && upper.is_simple_super_type_of(i_s, &new).bool()
-                        {
-                            *lower = new;
-                            return Match::new_true();
+                        if let Some(new) = lower.common_base_type(i_s, &other, false) {
+                            if upper.is_simple_super_type_of(i_s, &new).bool() {
+                                *lower = new;
+                                return Match::new_true();
+                            }
                         }
                         matches
                     }
@@ -182,12 +184,13 @@ impl CalculatingTypeArg {
 
     fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
         let common = |b: &BoundKind, lower: BoundKind| {
-            b.common_base_type(i_s, &lower).unwrap_or_else(|| {
-                recoverable_error!(
-                    "Why is there no common base type when matching happened before?"
-                );
-                lower
-            })
+            b.common_base_type(i_s, &lower, i_s.flags().use_joins)
+                .unwrap_or_else(|| {
+                    recoverable_error!(
+                        "Why is there no common base type when matching happened before?"
+                    );
+                    lower
+                })
         };
         self.type_ = match &self.type_ {
             Bound::Lower(old) => Bound::Lower(common(old, lower)),

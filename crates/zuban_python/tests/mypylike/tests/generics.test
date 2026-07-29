@@ -2068,7 +2068,6 @@ def false_positive_2_2[E, O](r: ChurchResult[E, O]):
     reveal_type(r(mk_error, Ok))  # N: Revealed type is "__main__.Error[E] | __main__.Ok[Any] | __main__.Ok[O]"
 
 [case higher_order_generics_for_callable3]
-# flags: --mode default
 # From GH #493
 from typing import Protocol, Any, Callable
 from dataclasses import dataclass

@@ -1456,6 +1456,7 @@ impl<'a> Matcher<'a> {
 
             let m = current.merge_full(i_s, std::mem::take(used));
             if !m.bool() {
+                debug!("Wasn't able to merge cycle");
                 return Err(m);
             }
 
@@ -1481,6 +1482,7 @@ impl<'a> Matcher<'a> {
                         if !c.unresolved_transitive_constraints.is_empty() {
                             let m = self.resolve_cycle(i_s, cycles, depending_on);
                             if let Err(err) = m {
+                                debug!("Wasn't able to resolve nested cycle");
                                 had_error = Some(err);
                                 return None;
                             }
@@ -1543,12 +1545,22 @@ impl<'a> Matcher<'a> {
                     None
                 });
                 if let Some(err) = had_error {
+                    debug!("Had mismatch while trying to resolve a nested cycle");
                     return Err(err);
                 }
                 if !is_in_cycle {
                     // This means we hit a cycle and are now just trying to merge.
-                    let m = current.merge(i_s, replaced_unresolved.unwrap_or(unresolved));
+                    let to_be_merged = replaced_unresolved.unwrap_or(unresolved);
+                    debug!(
+                        "Trying to merge {:?} with {:?} for cycle",
+                        current.type_.debug_format(i_s.db),
+                        to_be_merged.debug_format(i_s.db),
+                    );
+                    let indent = debug_indent();
+                    let m = current.merge(i_s, to_be_merged);
                     if !m.bool() {
+                        drop(indent);
+                        debug!("Wasn't able to merge cycle");
                         return Err(m);
                     }
                 }

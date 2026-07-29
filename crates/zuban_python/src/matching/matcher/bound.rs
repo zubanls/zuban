@@ -283,16 +283,19 @@ impl BoundKind {
         self.simple_matches(i_s, other, Variance::Contravariant)
     }
 
-    pub(super) fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
+    pub(super) fn common_base_type(
+        &self,
+        i_s: &InferenceState,
+        other: &Self,
+        use_joins: bool,
+    ) -> Option<Self> {
         match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => {
-                Some(Self::TypeVar(if i_s.flags().use_joins {
-                    t1.common_base_type(i_s, t2)
-                } else {
-                    t1.avoid_implicit_literal_cow(i_s.db)
-                        .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
-                }))
-            }
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(if use_joins {
+                t1.common_base_type(i_s, t2)
+            } else {
+                t1.avoid_implicit_literal_cow(i_s.db)
+                    .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
+            })),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => Some(Self::TypeVarTuple(
                 tup1.simplified_union_for_type_var_tuple(i_s, tup2)?,
             )),
