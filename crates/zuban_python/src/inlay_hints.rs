@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use lsp_types::InlayHintKind;
 use parsa_python_cst::{
     AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, PotentialInlayHint,
