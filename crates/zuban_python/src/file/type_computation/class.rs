@@ -2099,7 +2099,7 @@ pub fn linearize_mro_and_return_linearizable(
             type_: if new_base.needs_remapping {
                 new_base
                     .t
-                    .maybe_replace_type_var_likes(db, &mut |usage| {
+                    .replace_type_var_likes(db, &mut |usage| {
                         Some(match &bases[base_index] {
                             Type::Tuple(tup) => tup
                                 .class(db)
@@ -2135,7 +2135,7 @@ pub fn linearize_mro_and_return_linearizable(
                             _ => unreachable!(),
                         })
                     })
-                    .unwrap_or_else(|| new_base.t.as_ref().clone())
+                    .into_owned()
             } else {
                 *allowed_to_use += 1;
                 new_base.t.as_ref().clone()

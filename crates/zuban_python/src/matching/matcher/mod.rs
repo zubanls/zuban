@@ -1055,7 +1055,7 @@ impl<'a> Matcher<'a> {
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Cow<'x, Type> {
-        t.maybe_replace_type_var_likes(
+        t.replace_type_var_likes(
             db,
             &mut self.as_usage_closure(
                 db,
@@ -1066,8 +1066,6 @@ impl<'a> Matcher<'a> {
                 on_uncalculated,
             ),
         )
-        .map(Cow::Owned)
-        .unwrap_or_else(|| Cow::Borrowed(t))
     }
 
     pub fn replace_usage_if_calculated(

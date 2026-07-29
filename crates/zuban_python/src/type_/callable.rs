@@ -611,16 +611,13 @@ impl CallableContent {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            let replaced = type_.maybe_replace_type_var_likes(db, &mut |usage| {
+            type_.replace_type_var_likes(db, &mut |usage| {
                 if usage.in_definition() == self.defined_at {
                     Some(usage.as_any_generic_item())
                 } else {
                     None
                 }
-            });
-            replaced
-                .map(Cow::Owned)
-                .unwrap_or_else(|| Cow::Borrowed(type_))
+            })
         }
     }
 

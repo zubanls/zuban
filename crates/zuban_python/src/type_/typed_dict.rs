@@ -197,10 +197,10 @@ impl TypedDict {
                 .map(|extra| ExtraItemsType {
                     t: extra
                         .t
-                        .maybe_replace_type_var_likes(db, &mut |usage| {
+                        .replace_type_var_likes(db, &mut |usage| {
                             Some(generics[usage.index()].clone())
                         })
-                        .unwrap_or_else(|| extra.t.clone()),
+                        .into_owned(),
                     read_only: extra.read_only,
                 }),
         }

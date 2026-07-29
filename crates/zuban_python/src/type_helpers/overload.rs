@@ -605,14 +605,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             OverloadResult::NotFound => {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
-                        if let Some(new) = c
-                            .return_type
-                            .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
-                                maybe_class_usage(i_s.db, &cls, &usage)
-                            })
-                        {
-                            return Cow::Owned(new);
-                        }
+                        return c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                            maybe_class_usage(i_s.db, &cls, &usage)
+                        });
                     }
                     Cow::Borrowed(&c.return_type)
                 };
