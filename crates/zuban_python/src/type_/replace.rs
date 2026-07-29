@@ -91,6 +91,17 @@ where
         self.maybe_replace_type_var_likes_and_self(db, callable, &|| None)
     }
 
+    fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Cow<'_, Self>
+    where
+        Self: Clone,
+    {
+        if let Some(r) = self.maybe_replace_self(db, replace_self) {
+            Cow::Owned(r)
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
     fn maybe_replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
         self.maybe_replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
     }

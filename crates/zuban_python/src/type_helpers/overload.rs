@@ -632,11 +632,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if iterator
                         .all(|other_callable| first.is_equal_type(i_s.db, &to_type(other_callable)))
                     {
-                        Inferred::from_type(
-                            first
-                                .maybe_replace_self(i_s.db, replace_self)
-                                .unwrap_or_else(|| first.into_owned()),
-                        )
+                        Inferred::from_type(first.replace_self(i_s.db, replace_self).into_owned())
                     } else {
                         Inferred::new_any_from_error()
                     }

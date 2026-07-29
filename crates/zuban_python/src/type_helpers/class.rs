@@ -441,10 +441,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_lookup_error = true;
                         } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
-                            let mut protocol_t = protocol_inf.as_cow_type(i_s);
-                            if let Some(new) = protocol_t.maybe_replace_self(i_s.db, &|| Some(other.clone())) {
-                                protocol_t = Cow::Owned(new);
-                            }
+                            let protocol_t = protocol_inf.as_cow_type(i_s);
+                            let protocol_t = protocol_t.replace_self(i_s.db, &|| Some(other.clone()));
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let other_setter_type = lookup_details.attr_kind.property_setter_type();
