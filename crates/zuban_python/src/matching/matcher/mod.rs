@@ -405,6 +405,7 @@ impl<'a> Matcher<'a> {
                     self.replace_implicit_type_var_likes(i_s.db, &usage)
                 })
             } else {
+                // TODO I'm not sure why we cannot/shouldn't remap for multiple type var matchers.
                 Cow::Borrowed(value_type)
             };
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
