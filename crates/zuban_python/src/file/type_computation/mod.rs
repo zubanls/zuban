@@ -1069,7 +1069,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Some(Type::NamedTuple(nt))
                     } else {
                         let defined_at = nt.__new__.defined_at;
-                        Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
+                        Type::NamedTuple(nt).maybe_replace_type_var_likes(db, &mut |usage| {
                             (usage.in_definition() == defined_at)
                                 .then(|| usage.as_default_or_any_generic_item(db))
                         })
@@ -2106,7 +2106,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut is_single_param_spec = false;
         let db = self.i_s.db;
         let resolve_default = |generics: &[GenericItem], g: GenericItem| {
-            g.replace_type_var_likes_and_self(
+            g.maybe_replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
                     let tvl_found = usage.as_type_var_like();

@@ -1822,7 +1822,7 @@ impl Inference<'_, '_, '_> {
                                     .enumerate()
                                 {
                                     let mut has_unrelated_type_var = false;
-                                    generic.replace_type_var_likes(i_s.db, &mut |usage| {
+                                    generic.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                                         if usage.in_definition() == definition
                                             && usage.index().as_usize() != i
                                         {

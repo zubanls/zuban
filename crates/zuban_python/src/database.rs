@@ -972,7 +972,7 @@ impl TypeAlias {
             type_.clone()
         } else {
             type_
-                .replace_type_var_likes(db, &mut |t| {
+                .maybe_replace_type_var_likes(db, &mut |t| {
                     (t.in_definition() == self.location)
                         .then(|| t.as_default_or_any_generic_item(db))
                 })

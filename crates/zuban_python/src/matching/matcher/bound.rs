@@ -140,7 +140,7 @@ impl Bound {
                 )
             }
             Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
-                fallback: Some(t.replace_type_var_likes(db, on_type_var_like)?),
+                fallback: Some(t.maybe_replace_type_var_likes(db, on_type_var_like)?),
             },
             Self::Uncalculated { fallback: None } => Self::Uncalculated { fallback: None },
         })
@@ -352,15 +352,15 @@ impl BoundKind {
         on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Option<Self> {
         Some(match self {
-            Self::TypeVar(t) => Self::TypeVar(t.replace_type_var_likes(db, on_type_var_like)?),
-            Self::TypeVarTuple(tup) => {
-                Self::TypeVarTuple(tup.replace_type_var_likes(db, on_type_var_like)?)
+            Self::TypeVar(t) => {
+                Self::TypeVar(t.maybe_replace_type_var_likes(db, on_type_var_like)?)
             }
-            Self::ParamSpec(params) => Self::ParamSpec(params.replace_type_var_likes_and_self(
-                db,
-                on_type_var_like,
-                &|| None,
-            )?),
+            Self::TypeVarTuple(tup) => {
+                Self::TypeVarTuple(tup.maybe_replace_type_var_likes(db, on_type_var_like)?)
+            }
+            Self::ParamSpec(params) => Self::ParamSpec(
+                params.maybe_replace_type_var_likes_and_self(db, on_type_var_like, &|| None)?,
+            ),
         })
     }
 

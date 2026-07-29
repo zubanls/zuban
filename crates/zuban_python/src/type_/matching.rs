@@ -920,8 +920,8 @@ impl Type {
                 // To not break defaultdict partials, we run the normal code for a very specific
                 // case.
                 if has_type_var_matcher
-                    && let Some(Type::FunctionOverload(o)) =
-                        value_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                    && let Some(Type::FunctionOverload(o)) = value_type
+                        .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                             overload
                                 .iter_functions()
                                 .any(|c| c.defined_at == usage.in_definition())

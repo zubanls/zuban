@@ -129,7 +129,7 @@ impl NamedTuple {
                                 t.format(&format_data)
                             }
                             _ => {
-                                let replaced = t.replace_type_var_likes_and_self(
+                                let replaced = t.maybe_replace_type_var_likes_and_self(
                                     format_data.db,
                                     &mut |usage| {
                                         Some(

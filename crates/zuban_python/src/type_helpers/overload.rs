@@ -605,8 +605,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             OverloadResult::NotFound => {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
-                        if let Some(new) =
-                            c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                        if let Some(new) = c
+                            .return_type
+                            .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                                 maybe_class_usage(i_s.db, &cls, &usage)
                             })
                         {
@@ -627,7 +628,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
 
                     let t = t.unwrap();
-                    Inferred::from_type(t.replace_self(i_s.db, replace_self).unwrap_or(t))
+                    Inferred::from_type(t.maybe_replace_self(i_s.db, replace_self).unwrap_or(t))
                 } else {
                     // Conformance tests define the fallback as Any if the return types are not all
                     // equivalent.
@@ -638,7 +639,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     {
                         Inferred::from_type(
                             first
-                                .replace_self(i_s.db, replace_self)
+                                .maybe_replace_self(i_s.db, replace_self)
                                 .unwrap_or_else(|| first.into_owned()),
                         )
                     } else {

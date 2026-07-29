@@ -139,7 +139,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     found.unwrap_or_else(|| {
                         generic_t
-                            .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                            .maybe_replace_type_var_likes(self.i_s.db, &mut |tv| {
                                 Some(tv.as_any_generic_item())
                             })
                             .unwrap_or(generic_t)
@@ -759,10 +759,14 @@ pub fn infer_dict_like(
                 new_class!(
                     i_s.db.python_state.dict_node_ref().as_link(),
                     key_t
-                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .maybe_replace_type_var_likes(i_s.db, &mut |tv| Some(
+                            tv.as_any_generic_item()
+                        ))
                         .unwrap_or(key_t),
                     value_t
-                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .maybe_replace_type_var_likes(i_s.db, &mut |tv| Some(
+                            tv.as_any_generic_item()
+                        ))
                         .unwrap_or(value_t)
                 )
             })))

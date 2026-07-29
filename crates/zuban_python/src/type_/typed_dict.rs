@@ -185,7 +185,7 @@ impl TypedDict {
                 .iter()
                 .map(|m| {
                     m.replace_type(|_| {
-                        m.type_.replace_type_var_likes(db, &mut |usage| {
+                        m.type_.maybe_replace_type_var_likes(db, &mut |usage| {
                             Some(generics[usage.index()].clone())
                         })
                     })
@@ -197,7 +197,7 @@ impl TypedDict {
                 .map(|extra| ExtraItemsType {
                     t: extra
                         .t
-                        .replace_type_var_likes(db, &mut |usage| {
+                        .maybe_replace_type_var_likes(db, &mut |usage| {
                             Some(generics[usage.index()].clone())
                         })
                         .unwrap_or_else(|| extra.t.clone()),
@@ -521,7 +521,7 @@ impl TypedDict {
         let generics =
             TypedDictGenerics::Generics(type_var_likes.as_default_or_any_generic_list(db));
         self.replace(generics, &mut |t| {
-            t.replace_type_var_likes(db, &mut |u| Some(u.as_default_or_any_generic_item(db)))
+            t.maybe_replace_type_var_likes(db, &mut |u| Some(u.as_default_or_any_generic_item(db)))
         })
     }
 

@@ -238,7 +238,7 @@ pub(crate) fn execute_assert_type<'db>(
 
     // The untyped TypeVars are not really assertable and are internal types mostly for type
     // inference. Type assertion should simply report Any.
-    if let Some(new) = first_type.replace_type_var_likes(i_s.db, &mut |usage| {
+    if let Some(new) = first_type.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
         usage
             .as_type_var_like()
             .is_untyped()

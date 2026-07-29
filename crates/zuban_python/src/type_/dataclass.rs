@@ -217,7 +217,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
             // We need to remap generics in case of inheritance or more complex types.
             match &mut new_param.type_ {
                 ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => {
-                    if let Some(new_t) = t.replace_type_var_likes(i_s.db, &mut |usage| {
+                    if let Some(new_t) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                         maybe_class_usage(db, &cls, &usage)
                     }) {
                         *t = new_t
@@ -737,9 +737,11 @@ fn field_options_from_args(
                     if let Some(c) = converter.as_ref() {
                         // TODO We avoid generics here, is this correct? It feels like we should
                         // type check them, but that gets extremely complicated quickly.
-                        if let new @ Some(_) = c.replace_type_var_likes(i_s.db, &mut |usage| {
-                            Some(usage.as_any_generic_item())
-                        }) {
+                        if let new @ Some(_) = c
+                            .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
+                                Some(usage.as_any_generic_item())
+                            })
+                        {
                             converter = new;
                         }
                     }

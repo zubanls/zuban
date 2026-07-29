@@ -19,7 +19,7 @@ pub fn maybe_replace_class_type_vars(
     attribute_class: &Class,
     self_instance: ReplaceSelf,
 ) -> Option<Type> {
-    t.replace_type_var_likes_and_self(
+    t.maybe_replace_type_var_likes_and_self(
         db,
         &mut |usage| maybe_class_usage(db, attribute_class, &usage),
         self_instance,

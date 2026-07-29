@@ -442,7 +442,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
                             let mut protocol_t = protocol_inf.as_cow_type(i_s);
-                            if let Some(new) = protocol_t.replace_self(i_s.db, &|| Some(other.clone())) {
+                            if let Some(new) = protocol_t.maybe_replace_self(i_s.db, &|| Some(other.clone())) {
                                 protocol_t = Cow::Owned(new);
                             }
                             let lookup = lookup_details.lookup.into_inferred();
@@ -2241,7 +2241,7 @@ pub(crate) fn check_type_var_variance_validity_for_type(
     type_var_index: TypeVarIndex,
     base_t: &Type,
 ) -> Option<CoContra> {
-    let with_object_t = base_t.replace_type_var_likes(i_s.db, &mut |usage| {
+    let with_object_t = base_t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
         if usage.index() == type_var_index
             && usage.in_definition() == in_definition
             && let TypeVarLikeUsage::TypeVar(_) = usage
@@ -2496,7 +2496,7 @@ fn apply_generics_to_base_class<'a>(
             TypeOrClass::Type(Cow::Borrowed(t))
         }
         _ => {
-            let new_t = t.replace_type_var_likes_and_self(
+            let new_t = t.maybe_replace_type_var_likes_and_self(
                 db,
                 &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item()),
                 &|| None,

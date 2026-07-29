@@ -246,7 +246,7 @@ impl CalculatedTypeArgs {
         }
 
         let mut type_ = return_type
-            .replace_type_var_likes_and_self(
+            .maybe_replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
                     if let Some(c) = class
@@ -323,7 +323,7 @@ impl CalculatedTypeArgs {
             }
             if !unused_type_vars.is_empty() {
                 type_ = type_
-                    .replace_type_var_likes(i_s.db, &mut |usage| {
+                    .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                         (usage.in_definition() == self.in_definition)
                             .then(|| usage.as_type_var_like().as_never_generic_item(i_s.db))
                     })

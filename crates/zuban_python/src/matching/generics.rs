@@ -16,7 +16,7 @@ macro_rules! replace_class_vars {
         match $type_var_generics {
             None | Some(Generics::None) => Generic::new($g),
             Some(type_var_generics) => Generic::owned(
-                $g.replace_type_var_likes_and_self(
+                $g.maybe_replace_type_var_likes_and_self(
                     $db,
                     &mut |t| {
                         Some({

@@ -611,7 +611,7 @@ impl CallableContent {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            let replaced = type_.replace_type_var_likes(db, &mut |usage| {
+            let replaced = type_.maybe_replace_type_var_likes(db, &mut |usage| {
                 if usage.in_definition() == self.defined_at {
                     Some(usage.as_any_generic_item())
                 } else {
@@ -888,7 +888,7 @@ impl CallableContent {
                 }
                 Some(
                     result
-                        .replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
+                        .maybe_replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
                         .unwrap_or(result),
                 )
             },
@@ -900,7 +900,8 @@ impl CallableContent {
                         if !needs_additional_remap {
                             return Some(t);
                         }
-                        t.replace_type_var_likes(db, &mut &remap_usage).unwrap_or(t)
+                        t.maybe_replace_type_var_likes(db, &mut &remap_usage)
+                            .unwrap_or(t)
                     }
                 })
             },

@@ -401,7 +401,7 @@ impl<'a> Matcher<'a> {
                 return Some(Match::new_true());
             }
             let replaced = if self.type_var_matchers.len() > 1 {
-                value_type.replace_type_var_likes_cow(i_s.db, &mut |usage| {
+                value_type.replace_type_var_likes(i_s.db, &mut |usage| {
                     self.replace_implicit_type_var_likes(i_s.db, &usage)
                 })
             } else {
@@ -1016,7 +1016,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         ts: TupleArgs,
     ) -> TupleArgs {
-        ts.replace_type_var_likes(
+        ts.maybe_replace_type_var_likes(
             db,
             &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
         )
@@ -1029,7 +1029,7 @@ impl<'a> Matcher<'a> {
         p: ParamSpecArg,
     ) -> ParamSpecArg {
         p.params
-            .replace_type_var_likes_and_self(
+            .maybe_replace_type_var_likes_and_self(
                 db,
                 &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
                 &|| None,
@@ -1055,7 +1055,7 @@ impl<'a> Matcher<'a> {
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Cow<'x, Type> {
-        t.replace_type_var_likes(
+        t.maybe_replace_type_var_likes(
             db,
             &mut self.as_usage_closure(
                 db,
@@ -1793,7 +1793,7 @@ impl<'a> Matcher<'a> {
                         if !had_temporary_matcher_id {
                             return None;
                         }
-                        t.replace_type_var_likes(db, &mut |mut usage| {
+                        t.maybe_replace_type_var_likes(db, &mut |mut usage| {
                             usage.update_temporary_matcher_index(0);
                             Some(usage.into_generic_item())
                         })

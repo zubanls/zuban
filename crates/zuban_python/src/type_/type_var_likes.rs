@@ -807,7 +807,7 @@ impl TypeVarLike {
     ) -> Option<Self> {
         if let Some(default) = self.default(db) {
             let mut had_issue = false;
-            let replaced = default.replace_type_var_likes(db, &mut |usage| {
+            let replaced = default.maybe_replace_type_var_likes(db, &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
                 if previous_type_vars.clone().any(|tvl| tvl == &tvl_found) {
                     None

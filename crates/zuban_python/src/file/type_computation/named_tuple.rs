@@ -128,7 +128,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
         let defined_at = named_tuple.__new__.defined_at;
         let nt = Type::NamedTuple(named_tuple);
         TypeContent::Type(
-            nt.replace_type_var_likes(db, &mut |usage| {
+            nt.maybe_replace_type_var_likes(db, &mut |usage| {
                 (usage.in_definition() == defined_at)
                     .then(|| generics[usage.index().as_usize()].clone())
             })

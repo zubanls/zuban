@@ -45,14 +45,14 @@ pub(crate) trait ReplaceTypeVarLikes
 where
     Self: Sized,
 {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Option<Self>;
 
-    fn replace_type_var_likes_cow(
+    fn replace_type_var_likes(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
@@ -60,23 +60,23 @@ where
     where
         Self: Clone,
     {
-        if let Some(r) = self.replace_type_var_likes_and_self(db, callable, &|| None) {
+        if let Some(r) = self.maybe_replace_type_var_likes_and_self(db, callable, &|| None) {
             Cow::Owned(r)
         } else {
             Cow::Borrowed(self)
         }
     }
 
-    fn replace_type_var_likes(
+    fn maybe_replace_type_var_likes(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
     ) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, callable, &|| None)
+        self.maybe_replace_type_var_likes_and_self(db, callable, &|| None)
     }
 
-    fn replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
+    fn maybe_replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
+        self.maybe_replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
     }
 }
 
@@ -91,7 +91,7 @@ impl Type {
     }
 
     pub fn replace_unknown_type_params_with_any(&self, db: &Database) -> Option<Self> {
-        self.replace_type_var_likes(db, &mut |usage| {
+        self.maybe_replace_type_var_likes(db, &mut |usage| {
             usage
                 .as_type_var_like()
                 .is_untyped()
@@ -294,7 +294,7 @@ impl Type {
         db: &Database,
         replace_self: ReplaceSelf,
     ) -> Option<Self> {
-        self.replace_type_var_likes_and_self(
+        self.maybe_replace_type_var_likes_and_self(
             db,
             &mut |u| Some(u.as_any_generic_item()),
             replace_self,
@@ -309,7 +309,7 @@ impl Type {
 }
 
 impl ReplaceTypeVarLikes for Type {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -383,7 +383,7 @@ impl GenericItem {
     }
 
     pub fn resolve_recursive_defaults_or_set_any(self, db: &Database) -> Self {
-        self.replace_type_var_likes_and_self(
+        self.maybe_replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
@@ -399,7 +399,7 @@ impl GenericItem {
     }
 
     pub fn resolve_recursive_defaults_or_set_never(self, db: &Database) -> Self {
-        self.replace_type_var_likes_and_self(
+        self.maybe_replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
@@ -416,7 +416,7 @@ impl GenericItem {
 }
 
 impl ReplaceTypeVarLikes for GenericItem {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -680,7 +680,7 @@ impl CallableParams {
 }
 
 impl ReplaceTypeVarLikes for CallableParams {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -722,7 +722,7 @@ fn replace_param_spec_internal(
         if let Some(in_definition) = in_definition {
             let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
             *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-            let new_params = new.params.replace_type_var_likes_and_self(
+            let new_params = new.params.maybe_replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
                     replace_param_spec_inner_type_var_likes(
@@ -811,7 +811,7 @@ impl TupleArgs {
 }
 
 impl ReplaceTypeVarLikes for TupleArgs {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -898,7 +898,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
         let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
         if let Some(remap_data) = remap_data {
             return_type = return_type
-                .replace_type_var_likes_and_self(
+                .maybe_replace_type_var_likes_and_self(
                     self.db,
                     &mut |usage| {
                         replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)

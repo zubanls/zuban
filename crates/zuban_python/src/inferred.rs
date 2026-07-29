@@ -2842,7 +2842,7 @@ fn proper_classmethod_callable(
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.
                 if let Some(class) = class_generics_not_defined_yet {
-                    return result.replace_type_var_likes_and_self(
+                    return result.maybe_replace_type_var_likes_and_self(
                         i_s.db,
                         &mut |usage| {
                             if usage.in_definition() == class.node_ref.as_link() {

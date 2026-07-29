@@ -640,7 +640,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     if let Some(cls) = i_s.current_class()
                         && let Some(replaced) = inf
                             .as_cow_type(&i_s)
-                            .replace_self(db, &|| Some(cls.as_type(db)))
+                            .maybe_replace_self(db, &|| Some(cls.as_type(db)))
                     {
                         return Some(Inferred::from_type(replaced));
                     }

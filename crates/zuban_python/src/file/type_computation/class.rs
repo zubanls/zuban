@@ -298,7 +298,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
 
     pub fn as_type_with_erased_type_vars(&self, db: &Database) -> Type {
         let t = Class::with_self_generics(db, *self).as_type(db);
-        t.replace_type_var_likes(db, &mut |usage| {
+        t.maybe_replace_type_var_likes(db, &mut |usage| {
             (self.as_link() == usage.in_definition()).then(|| usage.as_any_generic_item())
         })
         .unwrap_or(t)
@@ -2099,7 +2099,7 @@ pub fn linearize_mro_and_return_linearizable(
             type_: if new_base.needs_remapping {
                 new_base
                     .t
-                    .replace_type_var_likes(db, &mut |usage| {
+                    .maybe_replace_type_var_likes(db, &mut |usage| {
                         Some(match &bases[base_index] {
                             Type::Tuple(tup) => tup
                                 .class(db)
