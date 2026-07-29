@@ -1625,7 +1625,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let Some(func_class) = self.class else {
                 return t.clone();
             };
-            t.maybe_replace_type_var_likes_and_self(
+            t.replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| maybe_class_usage(i_s.db, &func_class, &usage),
                 &|| {
@@ -1636,7 +1636,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                 },
             )
-            .unwrap_or_else(|| t.clone())
+            .into_owned()
         };
         let return_type = as_type(&options.return_type);
         let type_vars = self.type_vars(i_s.db).clone();

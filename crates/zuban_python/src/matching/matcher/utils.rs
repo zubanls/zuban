@@ -246,7 +246,7 @@ impl CalculatedTypeArgs {
         }
 
         let mut type_ = return_type
-            .maybe_replace_type_var_likes_and_self(
+            .replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
                     if let Some(c) = class
@@ -268,7 +268,7 @@ impl CalculatedTypeArgs {
                 },
                 replace_self_type,
             )
-            .unwrap_or_else(|| return_type.clone());
+            .into_owned();
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
                 db: &Database,

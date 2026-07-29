@@ -2495,14 +2495,11 @@ fn apply_generics_to_base_class<'a>(
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet { .. }) => {
             TypeOrClass::Type(Cow::Borrowed(t))
         }
-        _ => {
-            let new_t = t.maybe_replace_type_var_likes_and_self(
-                db,
-                &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item()),
-                &|| None,
-            );
-            TypeOrClass::Type(new_t.map(Cow::Owned).unwrap_or_else(|| Cow::Borrowed(t)))
-        }
+        _ => TypeOrClass::Type(t.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item()),
+            &|| None,
+        )),
     }
 }
 

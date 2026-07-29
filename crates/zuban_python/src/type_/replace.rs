@@ -45,6 +45,22 @@ pub(crate) trait ReplaceTypeVarLikes
 where
     Self: Sized,
 {
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Cow<'_, Self>
+    where
+        Self: Clone,
+    {
+        if let Some(r) = self.maybe_replace_type_var_likes_and_self(db, callable, replace_self) {
+            Cow::Owned(r)
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
     fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -722,23 +738,25 @@ fn replace_param_spec_internal(
         if let Some(in_definition) = in_definition {
             let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
             *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-            let new_params = new.params.maybe_replace_type_var_likes_and_self(
-                db,
-                &mut |usage| {
-                    replace_param_spec_inner_type_var_likes(
-                        usage,
-                        in_definition,
-                        replace_data.unwrap(),
-                    )
-                },
-                replace_self,
-            );
+            new.params = new
+                .params
+                .replace_type_var_likes_and_self(
+                    db,
+                    &mut |usage| {
+                        replace_param_spec_inner_type_var_likes(
+                            usage,
+                            in_definition,
+                            replace_data.unwrap(),
+                        )
+                    },
+                    replace_self,
+                )
+                .into_owned();
             if let Some(type_vars) = type_vars.as_mut() {
                 type_vars.extend(new_spec_type_vars.type_vars.as_vec());
             } else {
                 *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
             }
-            new.params = new_params.unwrap_or_else(|| new.params.clone());
         } else {
             debug_assert!(type_vars.is_none());
         }
@@ -898,14 +916,14 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
         let mut return_type = new_return_type.unwrap_or_else(|| c.return_type.clone());
         if let Some(remap_data) = remap_data {
             return_type = return_type
-                .maybe_replace_type_var_likes_and_self(
+                .replace_type_var_likes_and_self(
                     self.db,
                     &mut |usage| {
                         replace_param_spec_inner_type_var_likes(usage, c.defined_at, remap_data)
                     },
                     self.replace_self,
                 )
-                .unwrap_or_else(|| return_type.clone());
+                .into_owned()
         }
         Some(CallableContent {
             name: c.name.clone(),

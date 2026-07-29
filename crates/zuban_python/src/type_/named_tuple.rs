@@ -128,8 +128,8 @@ impl NamedTuple {
                             Generics::NotDefinedYet { .. } | Generics::None => {
                                 t.format(&format_data)
                             }
-                            _ => {
-                                let replaced = t.maybe_replace_type_var_likes_and_self(
+                            _ => t
+                                .replace_type_var_likes_and_self(
                                     format_data.db,
                                     &mut |usage| {
                                         Some(
@@ -139,12 +139,8 @@ impl NamedTuple {
                                         )
                                     },
                                     &|| None,
-                                );
-                                match replaced {
-                                    Some(t) => t.format(&format_data),
-                                    None => t.format(&format_data),
-                                }
-                            }
+                                )
+                                .format(&format_data),
                         }
                     })),
                 };
