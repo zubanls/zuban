@@ -188,12 +188,12 @@ impl<'a> Matcher<'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        let _indent = debug_indent();
         debug!(
             "Matching callable {} against {}",
             c1.format(&FormatData::new_short(i_s.db)),
             c2.format(&FormatData::new_short(i_s.db)),
         );
+        let indent = debug_indent();
         let mut c2 = Cow::Borrowed(c2);
         let type_var_matchers_len = self.type_var_matchers.len() as u32;
         if !c2.type_vars.is_empty() {
@@ -228,6 +228,7 @@ impl<'a> Matcher<'a> {
             }
         }
 
+        drop(indent);
         if cfg!(feature = "zuban_debug") && !c2.type_vars.is_empty() {
             let i = self
                 .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
@@ -392,6 +393,11 @@ impl<'a> Matcher<'a> {
                 |found_type_var| value_type.search_type_vars(found_type_var),
                 || Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
             ) {
+                debug!(
+                    "Saved unresolved transitive constraint for {:?} for value_type {:?}",
+                    t1.type_var.format(&FormatData::new_short(i_s.db)),
+                    value_type.format_short(i_s.db),
+                );
                 return Some(Match::new_true());
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
@@ -408,6 +414,11 @@ impl<'a> Matcher<'a> {
                 self.class = None;
                 let m = g.matches(i_s, self, value_type, variance);
                 self.class = Some(class);
+                debug!(
+                    "Used class type argument {:?} to match {:?}: {m:?}",
+                    g.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 return Some(m);
             }
             // If we're in a class context, we must also be in a method.
@@ -422,6 +433,11 @@ impl<'a> Matcher<'a> {
                 let taken_func_like = self.func_like.take();
                 let result = Some(g.matches(i_s, self, value_type, variance));
                 self.func_like = taken_func_like;
+                debug!(
+                    "Used func type argument {:?} to match {:?}: {result:?}",
+                    g.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 return result;
             }
             // The case that the if does not hit happens e.g. for
@@ -1194,6 +1210,7 @@ impl<'a> Matcher<'a> {
         cycles: &TypeVarCycles,
     ) -> Match {
         debug!("Start calculating secondary transitive constraints");
+        let _indent = debug_indent();
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
@@ -1292,6 +1309,7 @@ impl<'a> Matcher<'a> {
         // testInferenceAgainstGenericParamSpecSecondary.
         let m = self.find_secondary_transitive_constraints(i_s.db, &cycles);
         if !m.bool() {
+            debug!("Secondary transitive constraint mismatch -> abort");
             return (self, Err(m));
         }
         // If constraints were added, that we rescan for cycles, because the information is out of

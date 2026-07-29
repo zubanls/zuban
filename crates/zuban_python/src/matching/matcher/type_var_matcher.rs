@@ -5,6 +5,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
+    format_data::FormatData,
     inference_state::InferenceState,
     match_::Match,
     recoverable_error,
@@ -12,7 +13,7 @@ use crate::{
         AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarUsage, Variance,
     },
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 #[derive(Debug, Default, Clone)]
@@ -294,6 +295,16 @@ impl TypeVarMatcher {
         variance: Variance,
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
+        debug!(
+            "Try to add TypeVar #{}/{} for {:?}: {:?}",
+            type_var_usage.temporary_matcher_id,
+            type_var_usage.index.as_usize(),
+            type_var_usage
+                .type_var
+                .format(&FormatData::new_short(i_s.db)),
+            value_type.format_short(i_s.db)
+        );
+        let indent = debug_indent();
         let Some(current) = self
             .calculating_type_args
             .get_mut(type_var_usage.index.as_usize())
@@ -360,10 +371,21 @@ impl TypeVarMatcher {
                 }
             }
         }
-        current.merge(
+        let m = current.merge(
             i_s,
             Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
-        )
+        );
+        drop(indent);
+        debug!(
+            "TypeVar #{}/{} {:?} is now: {}",
+            type_var_usage.temporary_matcher_id,
+            type_var_usage.index.as_usize(),
+            type_var_usage
+                .type_var
+                .format(&FormatData::new_short(i_s.db)),
+            self.debug_format(i_s.db)
+        );
+        m
     }
 
     pub fn debug_format(&self, db: &Database) -> String {
