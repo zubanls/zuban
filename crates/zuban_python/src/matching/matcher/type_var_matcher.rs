@@ -122,14 +122,13 @@ impl CalculatingTypeArg {
                     Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
                     Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
-                        let m = lower.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = lower.common_base_type(i_s, &other)
                             && upper.is_simple_super_type_of(i_s, &new).bool()
                         {
                             *lower = new;
                             return Match::new_true();
                         }
-                        m
+                        matches
                     }
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
@@ -145,14 +144,13 @@ impl CalculatingTypeArg {
                     }
                     Bound::Invariant(t) => t.is_simple_sub_type_of(i_s, &other),
                     Bound::UpperAndLower(upper, lower) => {
-                        let m = upper.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = upper.common_sub_type(i_s, &other)
                             && lower.is_simple_sub_type_of(i_s, &new).bool()
                         {
                             *upper = new;
                             return Match::new_true();
                         }
-                        m
+                        matches
                     }
                     Bound::Lower(_) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
