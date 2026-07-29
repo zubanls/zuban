@@ -400,8 +400,15 @@ impl<'a> Matcher<'a> {
                 );
                 return Some(Match::new_true());
             }
+            let replaced = if self.type_var_matchers.len() > 1 {
+                value_type.replace_type_var_likes_cow(i_s.db, &mut |usage| {
+                    self.replace_implicit_type_var_likes(i_s.db, &usage)
+                })
+            } else {
+                Cow::Borrowed(value_type)
+            };
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return Some(tv_matcher.match_or_add_type_var(i_s, t1, value_type, variance));
+            return Some(tv_matcher.match_or_add_type_var(i_s, t1, &replaced, variance));
         }
         if !self.match_reverse {
             if let Some(class) = self.class
@@ -411,14 +418,14 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
-                self.class = None;
-                let m = g.matches(i_s, self, value_type, variance);
-                self.class = Some(class);
                 debug!(
-                    "Used class type argument {:?} to match {:?}: {m:?}",
+                    "Use class type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
                     value_type.format_short(i_s.db),
                 );
+                self.class = None;
+                let m = g.matches(i_s, self, value_type, variance);
+                self.class = Some(class);
                 return Some(m);
             }
             // If we're in a class context, we must also be in a method.
@@ -429,15 +436,15 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
+                debug!(
+                    "Use func type argument {:?} to match {:?}",
+                    g.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 // Avoid matching the function again to avoid recursions
                 let taken_func_like = self.func_like.take();
                 let result = Some(g.matches(i_s, self, value_type, variance));
                 self.func_like = taken_func_like;
-                debug!(
-                    "Used func type argument {:?} to match {:?}: {result:?}",
-                    g.format_short(i_s.db),
-                    value_type.format_short(i_s.db),
-                );
                 return result;
             }
             // The case that the if does not hit happens e.g. for
@@ -499,9 +506,17 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
+        debug!(
+            "Match TypeVar {:?} against {:?}",
+            tv1.type_var.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        let _indent = debug_indent();
         let other_side = match other {
             Type::TypeVar(tv2) => self
                 .match_reverse(|matcher| {
+                    debug!("Since both sides are TypeVars also match TypeVar against other side");
+                    let _indent = debug_indent();
                     matcher.match_or_add_type_var_if_responsible(
                         i_s,
                         tv2,
@@ -1084,40 +1099,48 @@ impl<'a> Matcher<'a> {
                     .clone()
                     .into_maybe_generic_item(db, true, |_| on_uncalculated(usage));
             }
-            if let Some(c) = self.class
-                && c.node_ref.as_link() == usage.in_definition()
-            {
-                return Some(c.generics().nth_usage(db, &usage).into_generic_item());
-            }
-            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
-                let g = func_class
-                    .generics()
-                    .nth_usage(db, &usage)
-                    .into_generic_item();
-                // We want to make sure that we don't remap the func_class again (otherwise we
-                // cause infinite recursions)
-                let without_func_class = Self {
-                    type_var_matchers: self.type_var_matchers.clone(),
-                    ..Self::default()
-                };
-                return Some(match g {
-                    GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context(db, &t)
-                            .into_owned(),
-                    ),
-                    GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
-                    )),
-                    GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
-                    ),
-                });
-            }
-            None
+            self.replace_implicit_type_var_likes(db, &usage)
         }
+    }
+
+    fn replace_implicit_type_var_likes(
+        &self,
+        db: &Database,
+        usage: &TypeVarLikeUsage,
+    ) -> Option<GenericItem> {
+        if let Some(c) = self.class
+            && c.node_ref.as_link() == usage.in_definition()
+        {
+            return Some(c.generics().nth_usage(db, &usage).into_generic_item());
+        }
+        if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
+            let g = func_class
+                .generics()
+                .nth_usage(db, usage)
+                .into_generic_item();
+            // We want to make sure that we don't remap the func_class again (otherwise we
+            // cause infinite recursions)
+            let without_func_class = Self {
+                type_var_matchers: self.type_var_matchers.clone(),
+                ..Self::default()
+            };
+            return Some(match g {
+                GenericItem::TypeArg(t) => GenericItem::TypeArg(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context(db, &t)
+                        .into_owned(),
+                ),
+                GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
+                )),
+                GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
+                ),
+            });
+        }
+        None
     }
 
     fn maybe_func_class_for_usage(&self, usage: &TypeVarLikeUsage) -> Option<Class<'a>> {

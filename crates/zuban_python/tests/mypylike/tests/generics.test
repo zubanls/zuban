@@ -2048,3 +2048,58 @@ class Const[A](Protocol):
 
 def box_const2[A](c: Const[A]) -> Box[str]:
     return c(Box)  # E: Incompatible callable argument with type vars
+
+[case higher_order_generics_for_callable2]
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+class ChurchResult[E, O](Protocol):
+    def __call__[R](self, err: Callable[[E], R], ok: Callable[[O], R], /) -> R: ...
+type UnionResult[E, O] = Error[E] | Ok[O]
+@dataclass
+class Error[E]:
+    err: E
+@dataclass
+class Ok[O]:
+    ok: O
+def mk_error[E](err: E) -> UnionResult[E, Any]: return Error(err)
+def false_positive_2_2[E, O](r: ChurchResult[E, O]):
+    reveal_type(r(mk_error, Ok))  # N: Revealed type is "__main__.Error[E] | __main__.Ok[Any] | __main__.Ok[O]"
+
+[case higher_order_generics_for_callable3]
+# flags: --mode default
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+class ChurchResult[E1, O](Protocol):
+    def __call__[R](self, err: Callable[[E1], R], ok: Callable[[O], R], /) -> R: ...
+type UnionResult[E2, O2] = Error[E2] | Ok[O2]
+@dataclass
+class Error[E3]:
+    err: E3
+@dataclass
+class Ok[O3]:
+    ok: O3
+def mk_error[E4](err: E4) -> UnionResult[E4, Any]: return Error(err)
+def mk_ok[O4](ok: O4) -> UnionResult[Any, O4]: return Ok(ok)
+
+def false_negative_1[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(Error, Ok)
+def true_positive_1[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(lambda e: Error(e), lambda o: Ok(o))
+def true_positive_2[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(mk_error, mk_ok)
+
+def false_positive_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(mk_error, mk_ok) # E: Incompatible callable argument with type vars
+def union_any_assignability[E](u: UnionResult[E, Any]) -> UnionResult[int, str]:
+    return u # E: Incompatible return value type (got "Error[E] | Ok[Any]", expected "Error[int] | Ok[str]")
+
+def false_positive_2_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(Error, mk_ok) # E: Incompatible callable argument with type vars
+def false_positive_2_2[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(mk_error, Ok) # E: Incompatible callable argument with type vars
+def true_negative_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(Error, Ok) # E: Incompatible callable argument with type vars

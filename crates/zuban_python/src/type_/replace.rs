@@ -52,6 +52,21 @@ where
         replace_self: ReplaceSelf,
     ) -> Option<Self>;
 
+    fn replace_type_var_likes_cow(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Cow<'_, Self>
+    where
+        Self: Clone,
+    {
+        if let Some(r) = self.replace_type_var_likes_and_self(db, callable, &|| None) {
+            Cow::Owned(r)
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
     fn replace_type_var_likes(
         &self,
         db: &Database,
