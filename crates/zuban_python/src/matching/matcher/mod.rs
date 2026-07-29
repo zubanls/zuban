@@ -395,7 +395,7 @@ impl<'a> Matcher<'a> {
             ) {
                 debug!(
                     "Saved unresolved transitive constraint for {:?} for value_type {:?}",
-                    t1.type_var.format(&FormatData::new_short(i_s.db)),
+                    t1.type_var.format_short(i_s.db),
                     value_type.format_short(i_s.db),
                 );
                 return Some(Match::new_true());

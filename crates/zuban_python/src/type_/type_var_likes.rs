@@ -1194,6 +1194,10 @@ impl TypeVar {
         }
     }
 
+    pub fn format_short(&self, db: &Database) -> String {
+        self.format(&FormatData::new_short(db))
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         let mut s = self.name(format_data.db).into_owned();
         match self.kind(format_data.db) {

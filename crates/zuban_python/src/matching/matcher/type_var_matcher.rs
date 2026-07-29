@@ -5,7 +5,6 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
-    format_data::FormatData,
     inference_state::InferenceState,
     match_::Match,
     recoverable_error,
@@ -299,9 +298,7 @@ impl TypeVarMatcher {
             "Try to add TypeVar #{}/{} for {:?}: {:?}",
             type_var_usage.temporary_matcher_id,
             type_var_usage.index.as_usize(),
-            type_var_usage
-                .type_var
-                .format(&FormatData::new_short(i_s.db)),
+            type_var_usage.type_var.format_short(i_s.db),
             value_type.format_short(i_s.db)
         );
         let indent = debug_indent();
@@ -380,9 +377,7 @@ impl TypeVarMatcher {
             "TypeVar #{}/{} {:?} is now: {}",
             type_var_usage.temporary_matcher_id,
             type_var_usage.index.as_usize(),
-            type_var_usage
-                .type_var
-                .format(&FormatData::new_short(i_s.db)),
+            type_var_usage.type_var.format_short(i_s.db),
             self.debug_format(i_s.db)
         );
         m
