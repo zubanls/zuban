@@ -1530,10 +1530,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn is_abstract(&self) -> bool {
         match self.node_ref.maybe_complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_abstract,
-            Some(ComplexPoint::FunctionOverload(o)) => o.functions.is_abstract(),
+            Some(ComplexPoint::FunctionOverload(o)) => o.is_abstract(),
             _ => {
                 if let Some(overload) = self.maybe_part_of_unreachable_overload() {
-                    overload.functions.is_abstract()
+                    overload.is_abstract()
                 } else {
                     false
                 }

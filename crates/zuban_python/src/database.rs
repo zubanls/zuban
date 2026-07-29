@@ -782,6 +782,13 @@ impl OverloadDefinition {
     pub fn kind(&self) -> &FunctionKind {
         self.functions.kind()
     }
+
+    pub fn is_abstract(&self) -> bool {
+        self.implementation
+            .as_ref()
+            .is_some_and(|i| i.callable.is_abstract)
+            || self.functions.is_abstract()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

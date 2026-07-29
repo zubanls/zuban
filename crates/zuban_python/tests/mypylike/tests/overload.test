@@ -1427,3 +1427,22 @@ class CanA2(CanA, Protocol):
     def a(self, x: str) -> str: ...
     @overload
     def a(self, x: bytes) -> bytes: ...
+
+[case abstract_overload_can_miss_return]
+# flags: --disallow-empty-bodies
+# From GH #511
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class Foo(metaclass=ABCMeta):
+    @overload
+    async def abstract(self, x: str) -> str:
+        pass
+
+    @overload
+    async def abstract(self, x: int) -> int:
+        pass
+
+    @abstractmethod
+    async def abstract(self, x: int | str) -> str | int:
+        pass
