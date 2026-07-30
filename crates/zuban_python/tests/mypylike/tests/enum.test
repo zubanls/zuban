@@ -621,3 +621,17 @@ class Operation(str, enum.Enum):
     SELL = ("sell", "Sell")
 
 assert_type(Operation.BUY.value, Any)
+
+[case enum_with_all_members_equivalency]
+# From GH #514
+import enum
+from typing import Literal, assert_type
+class Answer(enum.Enum):
+    Yes = 1
+    No = 2
+
+def test4(a: Answer) -> None:
+    x: Literal[Answer.Yes, Answer.No] = a
+    y: Answer = x
+    assert_type(a, Literal[Answer.Yes, Answer.No])
+    assert_type(x, Answer)

@@ -481,6 +481,12 @@ impl Type {
             }
             (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
             (Type::TypeForm(t1), Type::TypeForm(t2)) => eq(t1, t2),
+            (Type::Enum(_), Type::Union(u)) | (Type::Union(u), Type::Enum(_))
+                if u.iter().all(|t| matches!(t, Type::EnumMember(_))) =>
+            {
+                self.is_simple_same_type(&InferenceState::new_in_unknown_file(db), other)
+                    .bool()
+            }
             _ => self == other,
         }
     }

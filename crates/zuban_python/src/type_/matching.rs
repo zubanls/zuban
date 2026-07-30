@@ -654,6 +654,18 @@ impl Type {
             {
                 Match::new_true()
             }
+            Type::Enum(e2)
+                if u1
+                    .iter()
+                    .filter(|t| match t {
+                        Type::EnumMember(e1) => e1.enum_.defined_at == e2.defined_at,
+                        _ => false,
+                    })
+                    .count()
+                    == e2.members.len() =>
+            {
+                Match::new_true()
+            }
             _ => {
                 if let Type::TypeVar(type_var2) = value_type {
                     if matcher.is_matching_reverse() {
