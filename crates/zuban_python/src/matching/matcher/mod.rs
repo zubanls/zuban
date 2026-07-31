@@ -40,7 +40,7 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
-        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
+        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf, ReplaceTypeVarLikes, StarParamType,
         StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack, add_param_spec_to_params,
@@ -325,6 +325,11 @@ impl<'a> Matcher<'a> {
                     && let Some(other_class) = i_s.current_class()
                     && !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link())
                 {
+                    debug!(
+                        "Mismatched Self, because the func class {:?} is different from the i_s class {:?}",
+                        class.qualified_name(i_s.db),
+                        other_class.qualified_name(i_s.db),
+                    );
                     return Match::new_false();
                 }
                 Match::new_true()
@@ -996,20 +1001,30 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, true, |usage| {
-            Some(
-                if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
+        self.replace_type_var_likes(
+            db,
+            t,
+            true,
+            |usage| {
+                Some(
+                    if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
                     // Self names for TypeVars are a bit special, the context is probably wanted
                     // unlike other TypeVars.
                     && tv_usage.type_var.is_self_name()
                     && let TypeVarKind::Bound(bound) = tv_usage.type_var.kind(db)
-                {
-                    GenericItem::TypeArg(bound.clone())
-                } else {
-                    usage.as_any_generic_item()
-                },
-            )
-        })
+                    {
+                        GenericItem::TypeArg(bound.clone())
+                    } else {
+                        usage.as_any_generic_item()
+                    },
+                )
+            },
+            &|| {
+                let func_like = self.func_like?;
+                let class = func_like.class()?;
+                Some(class.as_type(db))
+            },
+        )
     }
 
     pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
@@ -1044,9 +1059,13 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, false, |usage| {
-            Some(usage.as_type_var_like().as_never_generic_item(db))
-        })
+        self.replace_type_var_likes(
+            db,
+            t,
+            false,
+            |usage| Some(usage.as_type_var_like().as_never_generic_item(db)),
+            &|| None,
+        )
     }
 
     fn replace_type_var_likes<'x>(
@@ -1055,8 +1074,9 @@ impl<'a> Matcher<'a> {
         t: &'x Type,
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
+        replace_self: ReplaceSelf,
     ) -> Cow<'x, Type> {
-        t.replace_type_var_likes(
+        t.replace_type_var_likes_and_self(
             db,
             &mut self.as_usage_closure(
                 db,
@@ -1066,6 +1086,7 @@ impl<'a> Matcher<'a> {
                 for_context && !t.find_in_type(db, &mut |t| matches!(t, Type::Callable(_))),
                 on_uncalculated,
             ),
+            replace_self,
         )
     }
 

@@ -753,3 +753,18 @@ class C(Generic[T]):
     @overload
     def f(self: C[tuple[int]]) -> int: ...
     def f(self): ...
+
+[case self_should_not_mismatch]
+# From GH #515
+from typing import Callable, Self
+
+class Bar:
+    def add_cb(self, cb: Callable[[Self], object]) -> object: ...
+    def add_cb2(self, cb: Callable[[Self], Self]) -> object: ...
+
+class Foo:
+    def foo(self) -> None:
+        Bar().add_cb(lambda _: object())
+
+    def foo2(self) -> None:
+        Bar().add_cb2(lambda x: x)
