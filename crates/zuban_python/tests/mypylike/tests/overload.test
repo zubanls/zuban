@@ -1446,3 +1446,7 @@ class Foo(metaclass=ABCMeta):
     @abstractmethod
     async def abstract(self, x: int | str) -> str | int:
         pass
+
+[case sum_overload]
+# From GH #520
+sum((1, 2, 3), ())

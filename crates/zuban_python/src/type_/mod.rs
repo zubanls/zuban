@@ -942,6 +942,9 @@ impl Type {
                 TypeVarKind::Bound(bound) => bound.maybe_callable(i_s),
                 _ => None,
             },
+            Type::CustomBehavior(_) => Some(CallableLike::Callable(  // TODO this should not be Any
+                i_s.db.python_state.any_callable_from_error.clone(),
+            )),
             _ => None,
         }
     }
