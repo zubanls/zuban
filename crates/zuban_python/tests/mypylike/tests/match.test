@@ -510,3 +510,18 @@ def fn1(x: Int) -> None:
             pass
         case Int(i):
             assert_type(i, int)
+
+[case new_type_match_equality]
+# flags: --warn-unreachable
+# From GH #522
+import typing
+
+Id = typing.NewType("Id", int)
+
+x = Id(1)
+match x:
+    case 1: reveal_type(x)  # N: Revealed type is "__main__.Id"
+    case "": reveal_type(x)  # E: Statement is unreachable
+
+if x == 1: reveal_type(x)  # N: Revealed type is "__main__.Id"
+if x == "": reveal_type(x)  # N: Revealed type is "__main__.Id"

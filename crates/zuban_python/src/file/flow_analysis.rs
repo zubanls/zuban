@@ -1386,6 +1386,11 @@ fn split_off_singleton(
                 }
                 _ => add(sub_t.clone()),
             },
+            Type::NewType(new_type) if is_eq => {
+                let (_, f) = split_off_singleton(i_s, &new_type.type_, singleton, is_eq);
+                truthy.union_in_place(sub_t.clone());
+                add(f);
+            }
             _ if singleton == sub_t => truthy.union_in_place(singleton.clone()),
             _ => {
                 if let Type::Literal(literal2) = singleton {
