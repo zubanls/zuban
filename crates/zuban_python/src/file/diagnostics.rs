@@ -142,9 +142,22 @@ lazy_static::lazy_static! {
 
 impl Inference<'_, '_, '_> {
     pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
+        debug!(
+            "Full module analysis for {} ({})",
+            self.file.file_path(self.i_s.db),
+            self.file.file_index(),
+        );
+        debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
+        let indent = debug_indent();
         let result = self.ensure_module_symbols_flow_analysis();
         self.file.process_delayed_diagnostics(self.i_s.db);
         self.file.issues.set_complete_diagnostics();
+        drop(indent);
+        debug!(
+            "End of module analysis for {} ({})",
+            self.file.file_path(self.i_s.db),
+            self.file.file_index(),
+        );
         result
     }
 
@@ -155,11 +168,11 @@ impl Inference<'_, '_, '_> {
                     let file_path = self.file.file_path(self.i_s.db);
                     let _panic_context = utils::panic_context::enter(file_path.to_string());
                     debug!(
-                        "Diagnostics for module {file_path} ({})",
+                        "Global symbol analysis for module {file_path} ({})",
                         self.file.file_index(),
                     );
                     debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
-                    let _indent = debug_indent();
+                    let indent = debug_indent();
                     fa.with_frame_that_exports_widened_entries(self.i_s, || {
                         self.calc_stmts_diagnostics(
                             self.file.tree.root().iter_stmt_likes(),
@@ -167,6 +180,11 @@ impl Inference<'_, '_, '_> {
                             None,
                         );
                     });
+                    drop(indent);
+                    debug!(
+                        "End of global symbol analysis for module {file_path} ({})",
+                        self.file.file_index(),
+                    );
                 })
             });
 
