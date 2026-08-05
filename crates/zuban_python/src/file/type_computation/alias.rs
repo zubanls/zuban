@@ -191,6 +191,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             assignment.maybe_simple_type_expression_assignment()
         {
             debug!("Started type alias calculation: {}", name_def.as_code());
+            let indent = debug_indent();
             if let Some(type_comment) =
                 self.check_for_type_comment_internal(assignment, || point.calculating())
             {
@@ -231,6 +232,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             let result = self
                 .compute_special_assignments(assignment, name_def, expr)
                 .unwrap_or_else(check_for_alias);
+            drop(indent);
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
         } else {
