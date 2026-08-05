@@ -1274,3 +1274,15 @@ import typing
 
 x: typing.Any = 5  # E: Explicit "Any" is not allowed
 typing.assert_type(x, typing.Any)
+
+[case string_literal_cross_file_usage]
+# From GH #523
+from m import get_value
+
+[file m.py]
+import typing
+
+KEYS = typing.Literal["sites", "pours"]
+
+def get_value(key: KEYS) -> None:
+    pass

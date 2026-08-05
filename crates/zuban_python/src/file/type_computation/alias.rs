@@ -1022,6 +1022,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             return PreClassCalculationLookup::Literal;
                         }
                     }
+                    TypeLike::DottedAsName(dotted) => {
+                        if let Some(ImportResult::File(f)) =
+                            node_ref.file.cache_dotted_as_name_import(db, dotted)
+                        {
+                            return PreClassCalculationLookup::Module(db.loaded_python_file(f));
+                        }
+                    }
                     _ => (),
                 }
             }
