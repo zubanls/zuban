@@ -2741,6 +2741,7 @@ fn django_model_params(i_s: &InferenceState, cls: Class) -> Vec<CallableParam> {
     params
 }
 
+#[derive(Debug)]
 pub(crate) enum ClassConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     DunderNew {

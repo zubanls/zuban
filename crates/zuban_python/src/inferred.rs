@@ -39,6 +39,7 @@ use crate::{
         Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
         execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
+    utils::debug_indent,
 };
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
@@ -1802,6 +1803,8 @@ impl<'db: 'slf, 'slf> Inferred {
         class_of_attribute: Option<Class>,
         add_issue: &dyn Fn(IssueKind) -> bool,
     ) -> Self {
+        debug!("Bind __new__ descriptors");
+        let indent = debug_indent();
         // This method exists for __new__
         let attribute_class = class_of_attribute.unwrap_or(*class);
         let to_class_method = |callable| {
@@ -1848,6 +1851,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             let Some(inf) =
                                 infer_overloaded_class_method(i_s, *class, attribute_class, o)
                             else {
+                                drop(indent);
+                                debug!(
+                                    "Issue: Class method for __new__ cannot be created, using any instead"
+                                );
                                 return Self::new_any_from_error();
                             };
                             return inf;
@@ -2684,8 +2691,15 @@ fn infer_overloaded_class_method(
 ) -> Option<Inferred> {
     let functions: Box<[_]> = o
         .iter_functions()
-        .filter_map(|callable| {
-            let c = infer_class_method(i_s, class, attribute_class, callable, None)?;
+        .enumerate()
+        .filter_map(|(i, callable)| {
+            debug!("Bind class method overload member #{i}");
+            let indent = debug_indent();
+            let Some(c) = infer_class_method(i_s, class, attribute_class, callable, None) else {
+                drop(indent);
+                debug!("Class method overload member #{i} did not match, skipping it");
+                return None;
+            };
             Some(Arc::new(c))
         })
         .collect();
