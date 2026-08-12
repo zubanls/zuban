@@ -947,6 +947,8 @@ impl Type {
                 i_s.db.python_state.any_callable_from_error.clone(),
             )),
             Type::Dataclass(dc) => check_class(dc.class(i_s.db)),
+            Type::Enum(e) => check_class(e.class(i_s.db)),
+            Type::EnumMember(e) => check_class(e.enum_.class(i_s.db)),
             _ => None,
         }
     }

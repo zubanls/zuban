@@ -635,3 +635,37 @@ def test4(a: Answer) -> None:
     y: Answer = x
     assert_type(a, Literal[Answer.Yes, Answer.No])
     assert_type(x, Answer)
+
+[case enum_callable]
+# Related to GH #524
+import enum
+from dataclasses import dataclass
+from typing import Any, cast, Callable, Literal
+
+class D(enum.Enum):
+    X = "A"
+    Y = "B"
+
+    def __call__(self, a: int) -> str:
+        return "x"
+
+class E(enum.Enum):
+    X = "A"
+    Y = "B"
+
+d = D.X
+c1: Callable[..., Any] = d
+
+d(1)
+d("")  # E: Argument 1 to "__call__" of "D" has incompatible type "str"; expected "int"
+
+e = E(1)
+c2: Callable[..., Any] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Callable[..., Any]")
+
+e(1)  # E: "E" not callable
+
+def f(d: D, d2: Literal[D.X]) -> Callable[..., Any]:
+    if bool():
+        return d
+    else:
+        return d2

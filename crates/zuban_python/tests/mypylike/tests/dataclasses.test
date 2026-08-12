@@ -1312,14 +1312,27 @@ assert_type(D4(1).__hash__, Callable[[object], int])
 assert_type(D5(1).__hash__, Callable[[object], int])
 
 [case dataclass_callable]
-from collections.abc import Callable
+# From GH #524
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, cast, Callable
+
+@dataclass
+class E[R]:
+    x: R
 
 @dataclass
 class D[R]:
-    def __call__(self, a: int) -> R:
-        return cast(R, a)
+    x: R
+    def __call__(self, a: R) -> R:
+        return a
 
-d = D[int]()
+d = D(1)
 c1: Callable[..., Any] = d
+
+d(1)
+d("")  # E: Argument 1 to "__call__" of "D" has incompatible type "str"; expected "int"
+
+e = E(1)
+c2: Callable[..., Any] = e  # E: Incompatible types in assignment (expression has type "E[int]", variable has type "Callable[..., Any]")
+
+e(1)  # E: "E[int]" not callable
