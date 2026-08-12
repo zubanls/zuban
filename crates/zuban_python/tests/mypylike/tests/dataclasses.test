@@ -1310,3 +1310,16 @@ assert_type(D2(1).__hash__, None)
 assert_type(D3(1).__hash__, None)
 assert_type(D4(1).__hash__, Callable[[object], int])
 assert_type(D5(1).__hash__, Callable[[object], int])
+
+[case dataclass_callable]
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, cast
+
+@dataclass
+class D[R]:
+    def __call__(self, a: int) -> R:
+        return cast(R, a)
+
+d = D[int]()
+c1: Callable[..., Any] = d

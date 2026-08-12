@@ -913,6 +913,22 @@ impl Type {
     }
 
     pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
+        let check_class = |cls: Class| {
+            let had_issue = Cell::new(false);
+            cls.instance()
+                .type_lookup(
+                    i_s,
+                    |issue| {
+                        debug!("Caught issue: {issue:?}");
+                        had_issue.set(true);
+                        false
+                    },
+                    "__call__",
+                )
+                .into_maybe_inferred()
+                .filter(|_| !had_issue.get())
+                .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
+        };
         match self {
             Type::Callable(c) => Some(CallableLike::Callable(c.clone())),
             Type::Type(t) => t.type_type_maybe_callable(i_s),
@@ -920,31 +936,17 @@ impl Type {
                 i_s.db.python_state.empty_type_var_likes.clone(),
                 *cause,
             )))),
-            Type::Class(c) => {
-                let cls = c.class(i_s.db);
-                let had_issue = Cell::new(false);
-                Instance::new(cls, None)
-                    .type_lookup(
-                        i_s,
-                        |issue| {
-                            debug!("Caught issue: {issue:?}");
-                            had_issue.set(true);
-                            false
-                        },
-                        "__call__",
-                    )
-                    .into_maybe_inferred()
-                    .filter(|_| !had_issue.get())
-                    .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
-            }
+            Type::Class(c) => check_class(c.class(i_s.db)),
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
             Type::TypeVar(t) => match t.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => bound.maybe_callable(i_s),
                 _ => None,
             },
-            Type::CustomBehavior(_) => Some(CallableLike::Callable(  // TODO this should not be Any
+            Type::CustomBehavior(_) => Some(CallableLike::Callable(
+                // TODO this should not be Any
                 i_s.db.python_state.any_callable_from_error.clone(),
             )),
+            Type::Dataclass(dc) => check_class(dc.class(i_s.db)),
             _ => None,
         }
     }
