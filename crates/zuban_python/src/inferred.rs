@@ -2791,9 +2791,11 @@ fn proper_classmethod_callable(
                 let c = Callable::new(original_callable, None);
                 let mut matcher = Matcher::new_callable_matcher(&c);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));
-                if !t
-                    .is_super_type_of(i_s, &mut matcher, &as_type_type())
-                    .bool()
+                // It feels weird to do this here, but this is just annoying currently
+                if !matches!(func_class.generics, Generics::Self_ { .. })
+                    && !t
+                        .is_super_type_of(i_s, &mut matcher, &as_type_type())
+                        .bool()
                 {
                     return None;
                 }

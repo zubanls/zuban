@@ -1450,3 +1450,17 @@ class Foo(metaclass=ABCMeta):
 [case sum_overload]
 # From GH #520
 sum((1, 2, 3), ())
+
+[case array_overload]
+# From GH #519
+import array
+from typing import assert_type
+
+arr = array.array("i")
+assert_type(arr, array.array[int])
+
+class X[T]:
+    @classmethod
+    def x(cls: type[X[int]], y: int) -> X[int]: ...
+
+X.x(1)
