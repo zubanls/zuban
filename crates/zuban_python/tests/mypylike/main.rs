@@ -858,7 +858,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                         Some(_) => "error",
                         None => "note",
                     },
-                    rest[1..].to_string(),
+                    rest.get(1..).unwrap_or(rest).to_string(),
                 ));
             }
         }

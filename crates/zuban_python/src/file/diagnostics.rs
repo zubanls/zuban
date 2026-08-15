@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
+    cell::{Cell, LazyCell},
     collections::{HashMap, HashSet},
     sync::Arc,
 };
@@ -1376,8 +1376,30 @@ impl Inference<'_, '_, '_> {
             }
         };
 
+        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
+        // Calculate if there is an @override decorator
+        let has_override_decorator = LazyCell::new(|| {
+            if let Some(overload) = func_node_ref.maybe_overload() {
+                return overload.is_override;
+            } else if let Some(decorated) = func_def.maybe_decorated() {
+                let decorators = decorated.decorators();
+                for decorator in decorators.iter() {
+                    if let Some(redirect) =
+                        NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
+                        && redirect.as_link() == i_s.db.python_state.typing_override_link
+                    {
+                        return true;
+                    }
+                }
+            }
+            false
+        });
+
+        let is_special_override = IGNORED_INHERITANCE_NAMES.contains(&name);
         // Mypy completely ignores untyped functions.
-        if IGNORED_INHERITANCE_NAMES.contains(&name) || !should_check_func_override() {
+        if is_special_override && (i_s.db.mypy_compatible() || !*has_override_decorator)
+            || !should_check_func_override()
+        {
             let original_details = c.lookup(
                 i_s,
                 name,
@@ -1387,24 +1409,15 @@ impl Inference<'_, '_, '_> {
             return;
         }
 
-        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
         Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func_from_diagnostics(i_s);
-        // Calculate if there is an @override decorator
-        let mut has_override_decorator = false;
-        if let Some(overload) = func_node_ref.maybe_overload() {
-            has_override_decorator = overload.is_override;
-        } else if let Some(decorated) = func_def.maybe_decorated() {
-            let decorators = decorated.decorators();
-            for decorator in decorators.iter() {
-                if let Some(redirect) =
-                    NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
-                    && redirect.as_link() == i_s.db.python_state.typing_override_link
-                {
-                    has_override_decorator = true;
-                }
-            }
-        }
-        find_and_check_override(self.i_s, from, c, name, has_override_decorator)
+        find_and_check_override(
+            self.i_s,
+            from,
+            c,
+            name,
+            *has_override_decorator,
+            is_special_override,
+        )
     }
 
     fn maybe_delay_func_diagnostics(
@@ -2692,6 +2705,7 @@ fn find_and_check_override(
     override_class: Class,
     name: &str,
     has_override_decorator: bool,
+    is_special_override: bool,
 ) {
     let instance = Instance::new(override_class, None);
     let add_lookup_issue = |_issue| {
@@ -2722,6 +2736,7 @@ fn find_and_check_override(
                 .enabled_error_codes
                 .iter()
                 .any(|c| c == "explicit-override")
+            && !is_special_override
         {
             from.add_issue(
                 i_s,
@@ -2756,7 +2771,12 @@ fn find_and_check_override(
                     // NamedTuple / Tuple are special, because they insert an additional type of themselves.
                     InstanceLookupOptions::new(&add_lookup_issue)
                         .with_super_count(mro_index.0 as usize + 1),
-                )
+                );
+                if has_override_decorator && is_special_override {
+                    // For overrides of __init__ we only check the first match, because it can
+                    // change in arbitrary forms without @override.
+                    break;
+                }
             }
         }
     } else if has_override_decorator {

@@ -1082,6 +1082,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     {
                                                         create_signature_without_self_for_callable(
                                                             i_s,
+                                                            for_name,
                                                             callable,
                                                             &instance,
                                                             &attribute_class,
@@ -1282,6 +1283,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         if let Some(f) = c.first_positional_type() {
                             let mut new_c = create_signature_without_self_for_callable(
                                 i_s,
+                                for_name,
                                 c,
                                 &instance,
                                 &attribute_class,

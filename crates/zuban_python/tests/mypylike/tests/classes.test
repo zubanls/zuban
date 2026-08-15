@@ -2846,3 +2846,41 @@ class B(A):
 
 [out]
 __main__:9: error: Method "m" is not using @override but is overriding a method in class "__main__.A"  [explicit-override]
+
+[case class_override_for_dunder_init_and_new]
+# flags: --mode default
+# From conformance tests classes_override.py
+from typing import override
+
+class ParentC:
+    def __init__(self, x: int) -> None: ...
+
+    def __new__(cls, x: int) -> "ParentC":
+        raise NotImplementedError
+
+class ChildC1(ParentC):
+    @override
+    def __init__(self, x: int) -> None: ...  # OK
+
+    @override
+    def __new__(cls, x: int) -> "ChildC1":  # OK
+        raise NotImplementedError
+
+class ChildC2(ParentC):
+    @override
+    def __init__(self, x: str) -> None: ...  # E: Argument 1 of "__init__" is incompatible with supertype "ParentC"; supertype defines the argument type as "int" \
+                                             # N: This violates the Liskov substitution principle \
+                                             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+    @override
+    def __new__(cls, x: str) -> "ChildC2":  # E: Argument 1 of "__new__" is incompatible with supertype "ParentC"; supertype defines the argument type as "int" \
+                                            # N: This violates the Liskov substitution principle \
+                                            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+        raise NotImplementedError
+
+class ChildC3(ParentC):
+    def __init__(self, x: str) -> None: ...  # OK
+
+    def __new__(cls, x: str) -> "ChildC3":  # OK
+        raise NotImplementedError

@@ -6,6 +6,7 @@ use crate::{
     debug,
     format_data::FormatData,
     inference_state::InferenceState,
+    inferred::infer_class_method_on_instance,
     type_::{
         AnyCause, CallableContent, GenericItem, ReplaceSelf, ReplaceTypeVarLikes, Type,
         TypeVarLikeUsage,
@@ -65,6 +66,7 @@ pub fn maybe_class_usage(
 
 pub fn create_signature_without_self_for_callable(
     i_s: &InferenceState,
+    for_name: &str,
     callable: &CallableContent,
     instance: &Type,
     func_class: &Class,
@@ -73,6 +75,11 @@ pub fn create_signature_without_self_for_callable(
     let c = Callable::new(callable, None);
     let mut matcher = Matcher::new_callable_matcher(&c);
     if !match_self_type(i_s, &mut matcher, instance, func_class, first_type) {
+        if for_name == "__new__" {
+            // For some things like @override checking of __new__, the self type of the signature
+            // is actually a classmethod and therefore special.
+            return infer_class_method_on_instance(i_s, instance, *func_class, callable);
+        }
         debug!(
             "Couldn't create signature without self for callable {} with instance {}",
             callable.format(&FormatData::new_short(i_s.db)),
