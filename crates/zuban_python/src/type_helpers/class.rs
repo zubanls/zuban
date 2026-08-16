@@ -1781,6 +1781,20 @@ impl<'db: 'a, 'a> Class<'a> {
             if let Some(co_contra) = check_t(base_t) {
                 co &= co_contra.co;
                 contra &= co_contra.contra;
+                if cfg!(feature = "zuban_debug") {
+                    if !co_contra.co {
+                        debug!(
+                            "Base class variances are not covariant (TypeVar #{})",
+                            type_var_index.as_usize()
+                        );
+                    }
+                    if !co_contra.contra {
+                        debug!(
+                            "Base class variances are not contravariant (TypeVar #{})",
+                            type_var_index.as_usize()
+                        );
+                    }
+                }
                 if !co && !contra {
                     return Variance::Invariant;
                 }
@@ -1804,7 +1818,17 @@ impl<'db: 'a, 'a> Class<'a> {
                     })
                     .with_avoid_inferring_return_types()
                     // object has no generics and is therefore not relevant.
-                    .without_object(),
+                    .without_object()
+                    .with_as_self_instance(&|| {
+                        // Self can be used as
+                        self.as_type(i_s.db)
+                            .replace_type_var_likes(i_s.db, &mut |usage| {
+                                (usage.in_definition() == self.node_ref.as_link()
+                                    && usage.index() == type_var_index)
+                                    .then(|| usage.as_any_generic_item())
+                            })
+                            .into_owned()
+                    }),
                 )
             } else {
                 if is_self_attr {
@@ -1909,8 +1933,21 @@ impl<'db: 'a, 'a> Class<'a> {
                     if let Some(co_contra) = check_t(&t) {
                         co &= co_contra.co;
                         contra &= co_contra.contra;
+                        if cfg!(feature = "zuban_debug") {
+                            if !co_contra.co {
+                                debug!(
+                                    "Variance is not covariant (TypeVar #{})",
+                                    type_var_index.as_usize()
+                                );
+                            }
+                            if !co_contra.contra {
+                                debug!(
+                                    "Variance is not contravariant (TypeVar #{})",
+                                    type_var_index.as_usize()
+                                );
+                            }
+                        }
                         if !co_contra.contra {
-                            contra = false;
                             // Attributes starting with _ are considered private and the variance
                             // of them are inferred as such.
                             let is_underscored = || name.starts_with('_') && !is_magic_method(name);

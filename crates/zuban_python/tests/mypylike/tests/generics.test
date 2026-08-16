@@ -2102,3 +2102,15 @@ def false_positive_2_2[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
     return r(mk_error, Ok) # E: Incompatible callable argument with type vars
 def true_negative_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
     return r(Error, Ok) # E: Incompatible callable argument with type vars
+
+[case conformance_tests_self_variance]
+# Copied from conformance tests (generics_variance_inference.py)
+class ShouldBeCovariant7[T]:
+    def get(self) -> T:
+        raise NotImplementedError
+
+    def add[S](self: "ShouldBeCovariant7[S]", other: list[S]) -> "ShouldBeCovariant7[S]":
+        raise NotImplementedError
+
+d1: ShouldBeCovariant7[object] = ShouldBeCovariant7[int]()
+d2: ShouldBeCovariant7[int] = ShouldBeCovariant7[object]()  # E: Incompatible types in assignment (expression has type "ShouldBeCovariant7[object]", variable has type "ShouldBeCovariant7[int]")
