@@ -226,14 +226,14 @@ pub(crate) enum IssueKind {
     FreeTypeVariableExpectInTypeAliasTypeTypeParams { is_unpack: bool },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
-    TypeVarCoAndContravariant,
+    TypeVarLikeCoAndContravariant { kind: &'static str },
     TypeVarValuesAndUpperBound,
     TypeVarValuesNeedsAtLeastTwo,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     InvalidAssignmentForm { class_name: &'static str },
     TypeVarLikeTooFewArguments { class_name: &'static str },
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
-    TypeVarVarianceMustBeBool { argument: &'static str },
+    TypeVarLikeVarianceMustBeBool { kind: &'static str, argument: &'static str },
     TypeVarTypeExpected,
     TypeVarBoundMustNotContainTypeVars,
     TypeVarBoundMustBeType,
@@ -1553,11 +1553,13 @@ impl<'db> Diagnostic<'db> {
             TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
-            InvalidTypeVarValue{type_var_name, of, actual} =>
-                format!("Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"),
+            InvalidTypeVarValue{type_var_name, of, actual} => format!(
+                "Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"
+            ),
             InvalidCastTarget => "Cast target is not a type".to_string(),
-            TypeVarCoAndContravariant =>
-                "TypeVar cannot be both covariant and contravariant".to_string(),
+            TypeVarLikeCoAndContravariant { kind } => format!(
+                "{kind} cannot be both covariant and contravariant"
+            ),
             TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_string(),
             TypeVarValuesNeedsAtLeastTwo =>
@@ -1571,8 +1573,8 @@ impl<'db> Diagnostic<'db> {
             TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
             TypeVarLikeFirstArgMustBeString{class_name} => format!(
                 "{class_name}() expects a string literal as first argument"),
-            TypeVarVarianceMustBeBool{argument} => format!(
-                "TypeVar \"{argument}\" may only be a literal bool"
+            TypeVarLikeVarianceMustBeBool{ kind, argument } => format!(
+                "{kind} \"{argument}\" may only be a literal bool"
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarBoundMustNotContainTypeVars =>
