@@ -1256,14 +1256,21 @@ pub(crate) struct TypeVarTuple {
     name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<TypeArgs>>,
+    pub variance: TypeVarVariance,
 }
 
 impl TypeVarTuple {
-    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+    pub fn new(
+        name: TypeVarLikeName,
+        scope: ParentScope,
+        default: Option<NodeIndex>,
+        variance: TypeVarVariance,
+    ) -> Self {
         Self {
             name,
             scope,
             default: default.map(TypeLikeInTypeVar::new_lazy),
+            variance,
         }
     }
 
@@ -1335,14 +1342,21 @@ pub(crate) struct ParamSpec {
     pub name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<CallableParams>>,
+    pub variance: TypeVarVariance,
 }
 
 impl ParamSpec {
-    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+    pub fn new(
+        name: TypeVarLikeName,
+        scope: ParentScope,
+        default: Option<NodeIndex>,
+        variance: TypeVarVariance,
+    ) -> Self {
         Self {
             name,
             scope,
             default: default.map(TypeLikeInTypeVar::new_lazy),
+            variance,
         }
     }
 

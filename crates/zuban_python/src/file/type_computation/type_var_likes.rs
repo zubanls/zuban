@@ -383,6 +383,14 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
             },
             i_s.as_parent_scope(),
             default,
+            TypeVarVariance::Known(bool_to_variance(covariant, contravariant, || {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypeVarLikeCoAndContravariant {
+                        kind: "TypeVarTuple",
+                    },
+                );
+            })?),
         ))))
     } else {
         args.add_issue(
@@ -492,10 +500,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                         );
                     })?
                 }
-                ArgKind::Keyword(KeywordArg {
-                    key: "covariant" | "contravariant" | "bound",
-                    ..
-                }) => {
+                ArgKind::Keyword(KeywordArg { key: "bound", .. }) => {
                     arg.add_issue(
                         i_s,
                         IssueKind::ParamSpecKeywordArgumentWithoutDefinedSemantics,
@@ -519,6 +524,12 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
             },
             i_s.as_parent_scope(),
             default,
+            TypeVarVariance::Known(bool_to_variance(covariant, contravariant, || {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypeVarLikeCoAndContravariant { kind: "ParamSpec" },
+                );
+            })?),
         ))))
     } else {
         args.add_issue(
