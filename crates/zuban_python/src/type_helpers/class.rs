@@ -40,8 +40,8 @@ use crate::{
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
         GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
         ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StringSlice, Tuple,
-        TupleArgs, Type, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
-        TypedDictGenerics, Variance, add_any_params_to_params,
+        TupleArgs, Type, TypeArgs, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -1820,7 +1820,13 @@ impl<'db: 'a, 'a> Class<'a> {
                     // object has no generics and is therefore not relevant.
                     .without_object()
                     .with_as_self_instance(&|| {
-                        // Self can be used as
+                        // The type var that we're trying to infer can be remapped in with Self
+                        // like this:
+                        //
+                        //     class X[T]:
+                        //         def x[S](self: X[S]): ...
+                        //
+                        // This is essentially a cycle that we're removing.
                         self.as_type(i_s.db)
                             .replace_type_var_likes(i_s.db, &mut |usage| {
                                 (usage.in_definition() == self.node_ref.as_link()
@@ -2277,11 +2283,19 @@ pub(crate) fn check_type_var_variance_validity_for_type(
     base_t: &Type,
 ) -> Option<CoContra> {
     let with_object_t = base_t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
-        if usage.index() == type_var_index
-            && usage.in_definition() == in_definition
-            && let TypeVarLikeUsage::TypeVar(_) = usage
-        {
-            Some(GenericItem::TypeArg(i_s.db.python_state.object_type()))
+        if usage.index() == type_var_index && usage.in_definition() == in_definition {
+            Some(match usage {
+                TypeVarLikeUsage::TypeVar(_) => {
+                    GenericItem::TypeArg(i_s.db.python_state.object_type())
+                }
+                TypeVarLikeUsage::TypeVarTuple(_) => {
+                    let Type::Tuple(tup) = &i_s.db.python_state.tuple_of_obj else {
+                        unreachable!();
+                    };
+                    GenericItem::TypeArgs(TypeArgs::new(tup.args.clone()))
+                }
+                TypeVarLikeUsage::ParamSpec(param_spec_usage) => return None,
+            })
         } else {
             None
         }

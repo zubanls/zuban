@@ -1098,7 +1098,7 @@ pub fn match_arbitrary_len_vs_unpack(
                 i_s,
                 tvt,
                 TupleArgs::ArbitraryLen(t1.clone().into()),
-                variance,
+                variance.invert(),
             )
         }
         TupleUnpack::ArbitraryLen(inner_t2) => {

@@ -278,12 +278,12 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 .position(|tvl| tvl.type_var_like_name().is_some_and(|n| n == *name))
                 .unwrap();
             lazy_variance.get_or_init(|| {
-                debug!("Infer variance for TypeVar #{type_var_index:?}");
+                debug!("Infer variance for TypeVar-like #{type_var_index:?}");
                 let indent = debug_indent();
                 let variance =
                     class.infer_variance_for_index(db, type_var_index.into(), check_narrowed);
                 drop(indent);
-                debug!("Variance for TypeVar #{type_var_index:?} inferred as {variance:?}");
+                debug!("Variance for TypeVar-like #{type_var_index:?} inferred as {variance:?}");
                 variance
             });
         }
