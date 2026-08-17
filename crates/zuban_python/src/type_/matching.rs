@@ -1162,7 +1162,7 @@ fn match_unpack_internal(
         }
         match_
     };
-    let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs| {
+    let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs, variance| {
         let m = matcher.match_or_add_type_var_tuple(i_s, tvt, args.clone(), variance);
         if !m.bool()
             && let Match::False { reason, .. } = &m
@@ -1207,6 +1207,7 @@ fn match_unpack_internal(
                             matcher,
                             tvt,
                             TupleArgs::FixedLen(t2_iterator.map(|(_, t2)| t2.clone()).collect()),
+                            variance,
                         )
                     }
                     TupleUnpack::ArbitraryLen(inner_t1) => {
@@ -1273,6 +1274,7 @@ fn match_unpack_internal(
                             unpack: with_unpack2.unpack.clone(),
                             after: after2_it.cloned().collect(),
                         }),
+                        variance,
                     )
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => {
@@ -1288,6 +1290,7 @@ fn match_unpack_internal(
                                 matcher,
                                 tvt2,
                                 TupleArgs::ArbitraryLen(Arc::new(inner_t1.clone())),
+                                variance.invert(),
                             )
                         }
                         TupleUnpack::ArbitraryLen(inner_t2) => {
@@ -1306,8 +1309,12 @@ fn match_unpack_internal(
             }
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    matches &=
-                        check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
+                    matches &= check_type_var_tuple(
+                        matcher,
+                        tvt,
+                        TupleArgs::ArbitraryLen(t2.clone()),
+                        variance,
+                    )
                 }
                 TupleUnpack::ArbitraryLen(_) => {
                     recoverable_error!(

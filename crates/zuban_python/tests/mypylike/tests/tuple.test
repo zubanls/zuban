@@ -460,10 +460,10 @@ def g4(tup: tuple[str, ...], *args: int) -> Any: ...
 
 def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]) -> Any: ...
 
-g1 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g1(tup: tuple[int, int], *args: int) -> Any")
-g2 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g2(tup: tuple[str, str], *args: int) -> Any")
+g1 = c
+g2 = c
 g3 = c
-g4 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g4(tup: tuple[str, ...], *args: int) -> Any")
+g4 = c
 
 [case common_base_type_for_fixed_len_tuple]
 # flags: --use-joins
