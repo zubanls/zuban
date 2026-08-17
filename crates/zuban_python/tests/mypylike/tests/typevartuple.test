@@ -164,3 +164,120 @@ class Base(tuple[*Ts]): ...
 class X(Base[T]): ...
 class Y(X[T]):
     id: int
+
+[case type_var_tuple_invariance]
+# From conformance tests (generics_typevartuple_variance.py)
+class InvariantTypeVarTuple[*InOutTs]:
+    a: tuple[*InOutTs]
+
+in_out_obj: InvariantTypeVarTuple[object] = InvariantTypeVarTuple[int]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[int]", variable has type "InvariantTypeVarTuple[object]")
+in_out_int: InvariantTypeVarTuple[int] = InvariantTypeVarTuple[object]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[object]", variable has type "InvariantTypeVarTuple[int]")
+in_out_int = InvariantTypeVarTuple[int]()
+in_out_variadic_int: InvariantTypeVarTuple[*tuple[int, ...]] = InvariantTypeVarTuple[*tuple[object, ...]]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[Unpack[Tuple[object, ...]]]", variable has type "InvariantTypeVarTuple[Unpack[Tuple[int, ...]]]")
+in_out_variadic_object: InvariantTypeVarTuple[*tuple[object, ...]] = InvariantTypeVarTuple[*tuple[int, ...]]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[Unpack[Tuple[int, ...]]]", variable has type "InvariantTypeVarTuple[Unpack[Tuple[object, ...]]]")
+in_out_empty: InvariantTypeVarTuple[()] = InvariantTypeVarTuple[()]()  # OK
+in_out_fixed_from_variadic: InvariantTypeVarTuple[int] = InvariantTypeVarTuple[*tuple[int, ...]]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[Unpack[Tuple[int, ...]]]", variable has type "InvariantTypeVarTuple[int]")
+in_out_variadic_from_fixed: InvariantTypeVarTuple[*tuple[int, ...]] = InvariantTypeVarTuple[int]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTuple[int]", variable has type "InvariantTypeVarTuple[Unpack[Tuple[int, ...]]]")
+
+
+[case type_var_tuple_contravariance]
+# From conformance tests (generics_typevartuple_variance.py)
+class ContravariantTypeVarTuple[*InTs]:
+    def f(self, t: tuple[*InTs]):
+        raise NotImplementedError
+
+in_obj: ContravariantTypeVarTuple[object, object] = ContravariantTypeVarTuple[object, int]()  # E: Incompatible types in assignment (expression has type "ContravariantTypeVarTuple[object, int]", variable has type "ContravariantTypeVarTuple[object, object]")
+in_int: ContravariantTypeVarTuple[int] = ContravariantTypeVarTuple[object]()  # OK
+in_variadic_int: ContravariantTypeVarTuple[*tuple[int, ...]] = ContravariantTypeVarTuple[*tuple[object, ...]]()  # OK
+in_variadic_object: ContravariantTypeVarTuple[*tuple[object, ...]] = ContravariantTypeVarTuple[*tuple[int, ...]]()  # E: Incompatible types in assignment (expression has type "ContravariantTypeVarTuple[Unpack[Tuple[int, ...]]]", variable has type "ContravariantTypeVarTuple[Unpack[Tuple[object, ...]]]")
+in_empty: ContravariantTypeVarTuple[()] = ContravariantTypeVarTuple[()]()  # OK
+in_fixed_from_variadic: ContravariantTypeVarTuple[int] = ContravariantTypeVarTuple[*tuple[int, ...]]()  # OK
+in_variadic_from_fixed: ContravariantTypeVarTuple[*tuple[int, ...]] = ContravariantTypeVarTuple[int]()  # E: Incompatible types in assignment (expression has type "ContravariantTypeVarTuple[int]", variable has type "ContravariantTypeVarTuple[Unpack[Tuple[int, ...]]]")
+
+
+[case type_var_tuple_covariance]
+# From conformance tests (generics_typevartuple_variance.py)
+class CovariantTypeVarTuple[*OutTs]:
+    def f(self) -> tuple[*OutTs]:
+        raise NotImplementedError
+
+
+out_int: CovariantTypeVarTuple[int] = CovariantTypeVarTuple[object]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[object]", variable has type "CovariantTypeVarTuple[int]")
+out_obj: CovariantTypeVarTuple[object] = CovariantTypeVarTuple[int]()  # OK
+out_multiple1: CovariantTypeVarTuple[int, int] = CovariantTypeVarTuple[bool,  bool]()  # OK
+out_multiple2: CovariantTypeVarTuple[int, int] = CovariantTypeVarTuple[bool,  object]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[bool, object]", variable has type "CovariantTypeVarTuple[int, int]")
+out_multiple3: CovariantTypeVarTuple[int, int] = CovariantTypeVarTuple[object,  bool]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[object, bool]", variable has type "CovariantTypeVarTuple[int, int]")
+out_multiple4: CovariantTypeVarTuple[int, int] = CovariantTypeVarTuple[object,  object]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[object, object]", variable has type "CovariantTypeVarTuple[int, int]")
+out_variadic_int: CovariantTypeVarTuple[*tuple[int, ...]] = CovariantTypeVarTuple[*tuple[object, ...]]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[Unpack[Tuple[object, ...]]]", variable has type "CovariantTypeVarTuple[Unpack[Tuple[int, ...]]]")
+out_variadic_object: CovariantTypeVarTuple[*tuple[object, ...]] = CovariantTypeVarTuple[*tuple[int, ...]]()  # OK
+out_empty: CovariantTypeVarTuple[()] = CovariantTypeVarTuple[()]()  # OK
+out_fixed_from_variadic: CovariantTypeVarTuple[int] = CovariantTypeVarTuple[*tuple[int, ...]]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTuple[Unpack[Tuple[int, ...]]]", variable has type "CovariantTypeVarTuple[int]")
+out_variadic_from_fixed: CovariantTypeVarTuple[*tuple[int, ...]] = CovariantTypeVarTuple[int]()  # OK
+
+[case type_var_tuple_old_variance_specification]
+# From conformance tests (generics_typevartuple_variance.py)
+from typing import Generic, TypeVarTuple
+Ts = TypeVarTuple("Ts")  # OK
+InferTs = TypeVarTuple("InferTs", infer_variance=True)  # OK
+InvTs1 = TypeVarTuple("InvTs1", covariant=True, contravariant=True)  # E: TypeVarTuple cannot be both covariant and contravariant
+InvTs2 = TypeVarTuple("InvTs2", covariant=True, infer_variance=True)  # E:  Cannot use covariant with infer_variance
+InvTs3 = TypeVarTuple("InvTs3", contravariant=True, infer_variance=True)  # E: Cannot use contravariant with infer_variance
+
+class InvariantTypeVarTupleOld(Generic[*Ts]):
+    def in_f(self, *args: *Ts) -> None:  # OK
+        raise NotImplementedError
+
+    def out_f(self) -> tuple[*Ts]:  # OK
+        raise NotImplementedError
+
+
+obj_old: InvariantTypeVarTupleOld[object] = InvariantTypeVarTupleOld[int]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTupleOld[int]", variable has type "InvariantTypeVarTupleOld[object]")
+int_old: InvariantTypeVarTupleOld[int] = InvariantTypeVarTupleOld[object]()  # E: Incompatible types in assignment (expression has type "InvariantTypeVarTupleOld[object]", variable has type "InvariantTypeVarTupleOld[int]")
+int_old = InvariantTypeVarTupleOld[int]()
+
+
+InTs = TypeVarTuple("InTs", contravariant=True)
+
+class ContravariantTypeVarTupleOld(Generic[*InTs]):
+    def in_f(self, *args: *InTs) -> None:  # OK
+        raise NotImplementedError
+
+    def out_f(self) -> tuple[*InTs]:  # E: 
+        raise NotImplementedError
+
+
+in_obj_old: ContravariantTypeVarTupleOld[object] = ContravariantTypeVarTupleOld[int]()  # E: Incompatible types in assignment (expression has type "ContravariantTypeVarTupleOld[int]", variable has type "ContravariantTypeVarTupleOld[object]")
+in_int_old: ContravariantTypeVarTupleOld[int] = ContravariantTypeVarTupleOld[object]()  # OK
+
+
+OutTs = TypeVarTuple("OutTs", covariant=True)
+
+class CovariantTypeVarTupleOld(Generic[*OutTs]):
+    def in_f(self, *args: *OutTs) -> None:  # E: 
+        raise NotImplementedError
+
+    def out_f(self) -> tuple[*OutTs]:  # OK
+        raise NotImplementedError
+
+
+out_int_old: CovariantTypeVarTupleOld[int] = CovariantTypeVarTupleOld[object]()  # E: Incompatible types in assignment (expression has type "CovariantTypeVarTupleOld[object]", variable has type "CovariantTypeVarTupleOld[int]")
+out_obj_old: CovariantTypeVarTupleOld[object] = CovariantTypeVarTupleOld[int]()  # OK
+
+
+# `infer_variance=True` on a traditional `TypeVarTuple`
+class InferredContravariantTypeVarTupleOld(Generic[*InferTs]):
+    def in_f(self, *args: *InferTs) -> None:  # OK
+        raise NotImplementedError
+
+
+infer_in_obj_old: InferredContravariantTypeVarTupleOld[object] = InferredContravariantTypeVarTupleOld[int]()  # E: Incompatible types in assignment (expression has type "InferredContravariantTypeVarTupleOld[int]", variable has type "InferredContravariantTypeVarTupleOld[object]")
+infer_in_int_old: InferredContravariantTypeVarTupleOld[int] = InferredContravariantTypeVarTupleOld[object]()  # OK
+
+
+class InferredCovariantTypeVarTupleOld(Generic[*InferTs]):
+    def out_f(self) -> tuple[*InferTs]:  # OK
+        raise NotImplementedError
+
+
+infer_out_int_old: InferredCovariantTypeVarTupleOld[int] = InferredCovariantTypeVarTupleOld[object]()  # E: Incompatible types in assignment (expression has type "InferredCovariantTypeVarTupleOld[object]", variable has type "InferredCovariantTypeVarTupleOld[int]")
+infer_out_obj_old: InferredCovariantTypeVarTupleOld[object] = InferredCovariantTypeVarTupleOld[int]()  # OK
