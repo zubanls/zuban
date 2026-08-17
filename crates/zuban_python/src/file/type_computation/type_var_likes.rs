@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parsa_python_cst::Expression;
+use parsa_python_cst::NodeIndex;
 
 use crate::{
     arguments::{ArgKind, Args, KeywordArg},
@@ -88,10 +88,7 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
 
         let mut constraints = vec![];
         let mut bound = None;
-        let mut default = None;
-        let mut covariant = false;
-        let mut contravariant = false;
-        let mut infer_variance = false;
+        let mut keys = CommonKeywordHandler::new("TypeVar");
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(pos) => {
@@ -103,59 +100,14 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                     node_ref,
                     expression,
                     ..
-                }) => match key {
-                    "covariant" => {
-                        covariant = as_bool(expression, || {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarLikeVarianceMustBeBool {
-                                    kind: "TypeVar",
-                                    argument: "covariant",
-                                },
-                            );
-                        })?
-                    }
-                    "contravariant" => {
-                        contravariant = as_bool(expression, || {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarLikeVarianceMustBeBool {
-                                    kind: "TypeVar",
-                                    argument: "contravariant",
-                                },
-                            );
-                        })?
-                    }
-                    "bound" => {
-                        if !constraints.is_empty() {
-                            node_ref.add_issue(i_s, IssueKind::TypeVarValuesAndUpperBound);
-                            return None;
-                        }
-                        bound = Some(expression.index());
-                    }
-                    "infer_variance" => {
-                        infer_variance = as_bool(expression, || {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarLikeVarianceMustBeBool {
-                                    kind: "TypeVar",
-                                    argument: "infer_variance",
-                                },
-                            );
-                        })?
-                    }
-                    "default" => default = Some(expression.index()),
-                    _ => {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::UnexpectedArgument {
-                                class_name: "TypeVar",
-                                argument_name: Box::from(key),
-                            },
-                        );
+                }) if key == "bound" => {
+                    if !constraints.is_empty() {
+                        node_ref.add_issue(i_s, IssueKind::TypeVarValuesAndUpperBound);
                         return None;
                     }
-                },
+                    bound = Some(expression.index());
+                }
+                ArgKind::Keyword(kw_arg) => keys.handle_key(i_s, kw_arg)?,
                 ArgKind::Comprehension { .. } => {
                     arg.add_issue(i_s, IssueKind::UnexpectedComprehension);
                     return None;
@@ -190,33 +142,8 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
             },
             i_s.as_parent_scope(),
             kind,
-            default,
-            if infer_variance {
-                if covariant {
-                    args.add_issue(
-                        i_s,
-                        IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
-                            specified: "covariant",
-                        },
-                    );
-                }
-                if contravariant {
-                    args.add_issue(
-                        i_s,
-                        IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
-                            specified: "contravariant",
-                        },
-                    );
-                }
-                TypeVarVariance::Inferred
-            } else {
-                TypeVarVariance::Known(bool_to_variance(covariant, contravariant, || {
-                    args.add_issue(
-                        i_s,
-                        IssueKind::TypeVarLikeCoAndContravariant { kind: "TypeVar" },
-                    );
-                })?)
-            },
+            keys.default,
+            keys.variance(i_s, args)?,
         ))))
     } else {
         args.add_issue(
@@ -229,31 +156,114 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
     }
 }
 
-fn bool_to_variance(
+struct CommonKeywordHandler {
+    kind: &'static str,
     covariant: bool,
     contravariant: bool,
-    on_co_and_contravariant: impl FnOnce(),
-) -> Option<Variance> {
-    Some(match (covariant, contravariant) {
-        (false, false) => Variance::Invariant,
-        (true, false) => Variance::Covariant,
-        (false, true) => Variance::Contravariant,
-        (true, true) => {
-            on_co_and_contravariant();
-            return None;
-        }
-    })
+    infer_variance: bool,
+    default: Option<NodeIndex>,
 }
 
-fn as_bool(expression: Expression, on_non_bool: impl FnOnce()) -> Option<bool> {
-    let code = expression.as_code();
-    match code {
-        "True" => Some(true),
-        "False" => Some(false),
-        _ => {
-            on_non_bool();
-            None
+impl CommonKeywordHandler {
+    fn new(kind: &'static str) -> Self {
+        Self {
+            kind,
+            covariant: false,
+            contravariant: false,
+            infer_variance: false,
+            default: None,
         }
+    }
+
+    fn handle_key(&mut self, i_s: &InferenceState, kw_arg: KeywordArg) -> Option<()> {
+        let as_bool = |for_argument| {
+            let code = kw_arg.expression.as_code();
+            match code {
+                "True" => Some(true),
+                "False" => Some(false),
+                _ => {
+                    kw_arg.node_ref.add_issue(
+                        i_s,
+                        IssueKind::TypeVarLikeVarianceMustBeBool {
+                            kind: self.kind,
+                            argument: for_argument,
+                        },
+                    );
+                    None
+                }
+            }
+        };
+
+        let key = kw_arg.key;
+        match key {
+            "covariant" => self.covariant = as_bool("covariant")?,
+            "contravariant" => self.contravariant = as_bool("contravariant")?,
+            "infer_variance" => self.infer_variance = as_bool("infer_variance")?,
+            "default" => self.default = Some(kw_arg.expression.index()),
+            _ => match self.kind {
+                "TypeVar" => {
+                    kw_arg.node_ref.add_issue(
+                        i_s,
+                        IssueKind::UnexpectedArgument {
+                            class_name: "TypeVar",
+                            argument_name: Box::from(key),
+                        },
+                    );
+                    return None;
+                }
+                "TypeVarTuple" => {
+                    kw_arg.node_ref.add_issue(
+                        i_s,
+                        IssueKind::ArgumentIssue(
+                            format!(r#"Unexpected keyword argument "{key}" for "TypeVarTuple""#)
+                                .into(),
+                        ),
+                    );
+                }
+                "ParamSpec" => {
+                    kw_arg
+                        .node_ref
+                        .add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" });
+                }
+                _ => unreachable!(),
+            },
+        }
+        Some(())
+    }
+
+    fn variance(&self, i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarVariance> {
+        Some(if self.infer_variance {
+            if self.covariant {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
+                        specified: "covariant",
+                    },
+                );
+            }
+            if self.contravariant {
+                args.add_issue(
+                    i_s,
+                    IssueKind::TypeVarInferVarianceCannotSpecifyVariance {
+                        specified: "contravariant",
+                    },
+                );
+            }
+            TypeVarVariance::Inferred
+        } else {
+            TypeVarVariance::Known(match (self.covariant, self.contravariant) {
+                (false, false) => Variance::Invariant,
+                (true, false) => Variance::Covariant,
+                (false, true) => Variance::Contravariant,
+                (true, true) => {
+                    args.add_issue(
+                        i_s,
+                        IssueKind::TypeVarLikeCoAndContravariant { kind: self.kind },
+                    );
+                    return None;
+                }
+            })
+        })
     }
 }
 
@@ -301,9 +311,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
             );
         }
 
-        let mut default = None;
-        let mut covariant = false;
-        let mut contravariant = false;
+        let mut keys = CommonKeywordHandler::new("TypeVarTuple");
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(_) => {
@@ -315,47 +323,7 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                     );
                     break;
                 }
-                ArgKind::Keyword(KeywordArg {
-                    key,
-                    node_ref,
-                    expression,
-                    ..
-                }) => match key {
-                    "default" => default = Some(expression.index()),
-                    "covariant" => {
-                        covariant = as_bool(expression, || {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarLikeVarianceMustBeBool {
-                                    kind: "TypeVarTuple",
-                                    argument: "covariant",
-                                },
-                            );
-                        })?
-                    }
-                    "contravariant" => {
-                        contravariant = as_bool(expression, || {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueKind::TypeVarLikeVarianceMustBeBool {
-                                    kind: "TypeVarTuple",
-                                    argument: "contravariant",
-                                },
-                            );
-                        })?
-                    }
-                    _ => {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::ArgumentIssue(
-                                format!(
-                                    r#"Unexpected keyword argument "{key}" for "TypeVarTuple""#
-                                )
-                                .into(),
-                            ),
-                        );
-                    }
-                },
+                ArgKind::Keyword(kw_arg) => keys.handle_key(i_s, kw_arg)?,
                 ArgKind::Comprehension { .. } => {
                     arg.add_issue(i_s, IssueKind::UnexpectedComprehension);
                     return None;
@@ -382,15 +350,8 @@ fn maybe_type_var_tuple(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVar
                 },
             },
             i_s.as_parent_scope(),
-            default,
-            TypeVarVariance::Known(bool_to_variance(covariant, contravariant, || {
-                args.add_issue(
-                    i_s,
-                    IssueKind::TypeVarLikeCoAndContravariant {
-                        kind: "TypeVarTuple",
-                    },
-                );
-            })?),
+            keys.default,
+            keys.variance(i_s, args)?,
         ))))
     } else {
         args.add_issue(
@@ -447,18 +408,9 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
             );
         }
 
-        let mut default = None;
-        let mut covariant = false;
-        let mut contravariant = false;
+        let mut keys = CommonKeywordHandler::new("ParamSpec");
         for arg in iterator {
             match arg.kind {
-                ArgKind::Keyword(KeywordArg {
-                    key: "default",
-                    expression,
-                    ..
-                }) => {
-                    default = Some(expression.index());
-                }
                 ArgKind::Positional { .. } => {
                     arg.add_issue(
                         i_s,
@@ -468,44 +420,13 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                     );
                     break;
                 }
-                ArgKind::Keyword(KeywordArg {
-                    key: "covariant",
-                    expression,
-                    node_ref,
-                    ..
-                }) => {
-                    covariant = as_bool(expression, || {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::TypeVarLikeVarianceMustBeBool {
-                                kind: "ParamSpec",
-                                argument: "covariant",
-                            },
-                        );
-                    })?
-                }
-                ArgKind::Keyword(KeywordArg {
-                    key: "contravariant",
-                    expression,
-                    node_ref,
-                    ..
-                }) => {
-                    contravariant = as_bool(expression, || {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueKind::TypeVarLikeVarianceMustBeBool {
-                                kind: "ParamSpec",
-                                argument: "contravariant",
-                            },
-                        );
-                    })?
-                }
                 ArgKind::Keyword(KeywordArg { key: "bound", .. }) => {
                     arg.add_issue(
                         i_s,
                         IssueKind::ParamSpecKeywordArgumentWithoutDefinedSemantics,
                     );
                 }
+                ArgKind::Keyword(kw_arg) => keys.handle_key(i_s, kw_arg)?,
                 _ => {
                     arg.add_issue(i_s, IssueKind::UnexpectedArgumentTo { name: "ParamSpec" });
                 }
@@ -523,13 +444,8 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 },
             },
             i_s.as_parent_scope(),
-            default,
-            TypeVarVariance::Known(bool_to_variance(covariant, contravariant, || {
-                args.add_issue(
-                    i_s,
-                    IssueKind::TypeVarLikeCoAndContravariant { kind: "ParamSpec" },
-                );
-            })?),
+            keys.default,
+            keys.variance(i_s, args)?,
         ))))
     } else {
         args.add_issue(
