@@ -10,7 +10,6 @@ goto_doc_contains_stdlib_compiled
 
 completion_no_wrong_range_in_strings
 
-type_var_tuple_contravariance
 type_var_tuple_old_variance_specification
 
 narrow_literals_locally_for_assignments

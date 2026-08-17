@@ -449,8 +449,8 @@ def f3(*args: int | str | bytes) -> Any: ...
 
 def b(*args: *tuple[*Ts, int | str]) -> Any: ...
 
-f1 = b
-f2 = b
+f1 = b  # E: Incompatible types in assignment (expression has type "def [Ts] b(*args: Unpack[tuple[Unpack[Ts], int | str]]) -> Any", variable has type "def f1(*args: int) -> Any")
+f2 = b  # E: Incompatible types in assignment (expression has type "def [Ts] b(*args: Unpack[tuple[Unpack[Ts], int | str]]) -> Any", variable has type "def f2(*args: int | str) -> Any")
 f3 = b  # E: Incompatible types in assignment (expression has type "def [Ts] b(*args: Unpack[tuple[Unpack[Ts], int | str]]) -> Any", variable has type "def f3(*args: int | str | bytes) -> Any")
 
 def g1(tup: tuple[int, int], *args: int) -> Any: ...
@@ -459,11 +459,16 @@ def g3(tup: tuple[int, ...], *args: int) -> Any: ...
 def g4(tup: tuple[str, ...], *args: int) -> Any: ...
 
 def c(tup: tuple[*Ts], *args: *tuple[*Ts, int]) -> Any: ...
+def d(tup: tuple[*Ts], *args: *tuple[*Ts]) -> Any: ...
 
-g1 = c
-g2 = c
-g3 = c
-g4 = c
+g1 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g1(tup: tuple[int, int], *args: int) -> Any")
+g2 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g2(tup: tuple[str, str], *args: int) -> Any")
+g3 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g3(tup: tuple[int, ...], *args: int) -> Any")
+g4 = c  # E: Incompatible types in assignment (expression has type "def [Ts] c(tup: tuple[Unpack[Ts]], *args: Unpack[tuple[Unpack[Ts], int]]) -> Any", variable has type "def g4(tup: tuple[str, ...], *args: int) -> Any")
+g1 = d
+g2 = d
+g3 = d
+g4 = d
 
 [case common_base_type_for_fixed_len_tuple]
 # flags: --use-joins

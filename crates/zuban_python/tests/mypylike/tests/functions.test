@@ -252,7 +252,7 @@ def a2(*args: *tuple[*Ts, str]) -> None: ...
 def b(*args: int) -> None: ...
 
 if bool():
-    b = a1
+    b = a1  # E: Incompatible types in assignment (expression has type "def [Ts] a1(*args: Unpack[tuple[Unpack[Ts], int]]) -> None", variable has type "def b(*args: int) -> None")
     b = a2  # E: Incompatible types in assignment (expression has type "def [Ts] a2(*args: Unpack[tuple[Unpack[Ts], str]]) -> None", variable has type "def b(*args: int) -> None")
 a1 = b  # E: Incompatible types in assignment (expression has type "def b(*args: int) -> None", variable has type "def [Ts] a1(*args: Unpack[tuple[Unpack[Ts], int]]) -> None")
 
