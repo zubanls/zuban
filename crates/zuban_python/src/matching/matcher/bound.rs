@@ -92,15 +92,24 @@ impl Bound {
     }
 
     pub fn debug_format(&self, db: &Database) -> Box<str> {
-        let formatted = self.format_with_fallback(
-            &FormatData::new_short(db),
-            ParamsStyle::CallableParams,
-            |_| MatcherFormatResult::Str("?".into()),
-        );
+        let format_data = &FormatData::new_short(db);
+        let formatted = self.format_with_fallback(format_data, ParamsStyle::CallableParams, |_| {
+            MatcherFormatResult::Str("?".into())
+        });
         let MatcherFormatResult::Str(s) = formatted else {
             unreachable!()
         };
-        s
+        match self {
+            Bound::Uncalculated { .. } => s,
+            Bound::Invariant(_) => format!(":={s}").into(),
+            Bound::Upper(_) => format!("<:{s}").into(),
+            Bound::UpperAndLower(_, lower) => format!(
+                "{s} :> {}",
+                lower.format(format_data, ParamsStyle::CallableParams)
+            )
+            .into(),
+            Bound::Lower(_) => format!(":>{s}").into(),
+        }
     }
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {

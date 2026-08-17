@@ -375,11 +375,11 @@ impl TypeVarMatcher {
         );
         drop(indent);
         debug!(
-            "TypeVar #{}/{} {:?} is now: {}",
+            "TypeVars after changing {:?} (#{}/{}) are now: [{}]",
+            type_var_usage.type_var.format_short(i_s.db),
             type_var_usage.temporary_matcher_id,
             type_var_usage.index.as_usize(),
-            type_var_usage.type_var.format_short(i_s.db),
-            self.debug_format(i_s.db)
+            self.debug_format(i_s.db),
         );
         m
     }

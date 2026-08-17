@@ -605,8 +605,16 @@ impl<'a> Matcher<'a> {
                 return Match::new_true();
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return tv_matcher.calculating_type_args[tvt.index.as_usize()]
+            let m = tv_matcher.calculating_type_args[tvt.index.as_usize()]
                 .merge(i_s, Bound::new_type_args(args2, variance));
+            debug!(
+                "Generics after changing {:?} (#{}/{}) are now: [{}]",
+                tvt.type_var_tuple.format(&FormatData::new_short(i_s.db)),
+                tvt.temporary_matcher_id,
+                tvt.index.as_usize(),
+                tv_matcher.debug_format(i_s.db),
+            );
+            return m;
         }
 
         if !self.match_reverse {
