@@ -1453,8 +1453,7 @@ impl ParamSpec {
     }
 
     pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
-        // TODO this should probably not be covariant
-        Variance::Covariant
+        self.variance.infer(db, class, self.name)
     }
 }
 
