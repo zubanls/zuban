@@ -26,8 +26,8 @@ use crate::{
     type_::{
         CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
         GenericsList, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes, StringSlice, Type,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarName, TypeVarTupleUsage, TypeVarUsage,
-        TypedDict, Variance,
+        TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage,
+        TypeVarUsage, TypedDict, Variance,
     },
     type_helpers::{Class, Function},
     utils::SymbolTable,
@@ -1843,7 +1843,7 @@ pub(crate) struct ClassInfos {
     pub promote_to: Mutex<Option<PointLink>>,
     pub deprecated_reason: Option<Arc<Box<str>>>,
     // Does not need to be a HashMap, because this is typically the size of 1-2
-    pub variance_map: Vec<(TypeVarName, OnceLock<Variance>)>,
+    pub variance_map: Vec<(TypeVarLikeName, OnceLock<Variance>)>,
     // We have this less for caching and more to be able to have different types.
     pub undefined_generics_type: OnceLock<Arc<Type>>,
 }

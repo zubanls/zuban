@@ -275,13 +275,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         for (name, lazy_variance) in class.use_cached_class_infos(db).variance_map.iter() {
             let type_var_index = type_var_likes
                 .iter()
-                .position(|tvl| {
-                    if let TypeVarLike::TypeVar(tv) = tvl {
-                        tv.name == *name
-                    } else {
-                        false
-                    }
-                })
+                .position(|tvl| tvl.type_var_like_name().is_some_and(|n| n == *name))
                 .unwrap();
             lazy_variance.get_or_init(|| {
                 debug!("Infer variance for TypeVar #{type_var_index:?}");
@@ -1263,11 +1257,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 in_django_stubs: Default::default(),
                 variance_map: type_vars
                     .iter()
-                    .filter_map(|tvl| match tvl {
-                        TypeVarLike::TypeVar(tv) if tv.variance == TypeVarVariance::Inferred => {
-                            Some((tv.name, OnceLock::new()))
-                        }
-                        _ => None,
+                    .filter_map(|tvl| {
+                        let name = tvl.type_var_like_name()?;
+                        (tvl.variance() == TypeVarVariance::Inferred)
+                            .then(|| (name, OnceLock::new()))
                     })
                     .collect(),
                 total_ordering: false,

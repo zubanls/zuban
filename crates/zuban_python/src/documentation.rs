@@ -12,7 +12,7 @@ use crate::{
     name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
-    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
+    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarVariance},
     type_helpers::Class,
     utils::debug_indent,
 };
@@ -130,25 +130,17 @@ impl<'project> Document<'project> {
                                     if definition.maybe_class().is_some() {
                                         let class_ref = ClassNodeRef::from_node_ref(definition);
                                         doc += &format!("Bound in class `{}`", class_ref.name());
-                                        if let TypeVarLikeUsage::TypeVar(tv) = usage {
-                                            let variance = tv.type_var.inferred_variance(
-                                                db,
-                                                &Class::from_undefined_generics(
-                                                    i_s.db,
-                                                    in_definition,
-                                                ),
-                                            );
-                                            doc += &format!(
-                                                "\n\n`{}` is `{}`",
-                                                tv.type_var.name(i_s.db),
-                                                variance.name().to_lowercase()
-                                            );
-                                            if matches!(
-                                                tv.type_var.variance,
-                                                TypeVarVariance::Inferred
-                                            ) {
-                                                doc += " (inferred)";
-                                            }
+                                        let variance = usage.inferred_variance(
+                                            db,
+                                            &Class::from_undefined_generics(i_s.db, in_definition),
+                                        );
+                                        doc += &format!(
+                                            "\n\n`{}` is `{}`",
+                                            usage.name(i_s.db),
+                                            variance.name().to_lowercase()
+                                        );
+                                        if matches!(usage.variance(), TypeVarVariance::Inferred) {
+                                            doc += " (inferred)";
                                         }
                                     }
                                     if definition.maybe_function().is_some() {

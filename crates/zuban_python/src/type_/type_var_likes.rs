@@ -20,6 +20,7 @@ use crate::{
     inference_state::InferenceState,
     matching::Matcher,
     node_ref::NodeRef,
+    recoverable_error,
     type_helpers::Class,
     utils::join_with_commas,
 };
@@ -406,6 +407,37 @@ pub(crate) enum TypeVarVariance {
     Inferred,
 }
 
+impl TypeVarVariance {
+    fn infer(self, db: &Database, class: &Class, name: TypeVarLikeName) -> Variance {
+        match self {
+            TypeVarVariance::Known(variance) => variance,
+            TypeVarVariance::Inferred => {
+                let Some(class_infos) = class.maybe_cached_class_infos(db) else {
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because of uncalculated class infos",
+                        name.as_str(db)
+                    );
+                    return Variance::Covariant;
+                };
+                let variance = class_infos
+                    .variance_map
+                    .iter()
+                    .find_map(|(n, variance)| (name == *n).then_some(variance))
+                    .unwrap();
+                variance.get().copied().unwrap_or_else(|| {
+                    // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
+                    // while calculating.
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because the variance is not yet ready",
+                        name.as_str(db)
+                    );
+                    Variance::Covariant
+                })
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeVarLikes(Arc<[TypeVarLike]>);
 
@@ -625,6 +657,17 @@ impl TypeVarLike {
         }
     }
 
+    pub fn type_var_like_name(&self) -> Option<TypeVarLikeName> {
+        match self {
+            Self::TypeVar(t) => match t.name {
+                TypeVarName::Name(n) => Some(n),
+                _ => None,
+            },
+            Self::TypeVarTuple(t) => Some(t.name),
+            Self::ParamSpec(s) => Some(s.name),
+        }
+    }
+
     pub fn has_default(&self) -> bool {
         match self {
             TypeVarLike::TypeVar(tv) => tv.default.is_some(),
@@ -836,6 +879,22 @@ impl TypeVarLike {
             _ => false,
         }
     }
+
+    pub fn variance(&self) -> TypeVarVariance {
+        match self {
+            TypeVarLike::TypeVar(type_var) => type_var.variance,
+            TypeVarLike::TypeVarTuple(type_var_tuple) => type_var_tuple.variance,
+            TypeVarLike::ParamSpec(param_spec) => param_spec.variance,
+        }
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        match self {
+            TypeVarLike::TypeVar(type_var) => type_var.inferred_variance(db, class),
+            TypeVarLike::TypeVarTuple(tvt) => tvt.inferred_variance(db, class),
+            TypeVarLike::ParamSpec(param_spec) => param_spec.inferred_variance(db, class),
+        }
+    }
 }
 
 impl Hash for TypeVarLike {
@@ -862,6 +921,16 @@ pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
     UntypedParam { nth: usize },
     Self_,
+}
+
+impl TypeVarName {
+    pub fn as_str<'db>(&self, db: &'db Database) -> Cow<'db, str> {
+        match self {
+            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
+            TypeVarName::Self_ => Cow::Borrowed("Self"),
+            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
+        }
+    }
 }
 
 impl TypeVarLikeName {
@@ -1041,40 +1110,21 @@ impl TypeVar {
     }
 
     pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
-        match self.variance {
-            TypeVarVariance::Known(variance) => variance,
-            TypeVarVariance::Inferred => {
-                let Some(class_infos) = class.maybe_cached_class_infos(db) else {
-                    debug!(
-                        "Using covariant variance for TypeVar {}, because of uncalculated class infos",
-                        self.name(db)
-                    );
-                    return Variance::Covariant;
-                };
-                let variance = class_infos
-                    .variance_map
-                    .iter()
-                    .find_map(|(n, variance)| (self.name == *n).then_some(variance))
-                    .unwrap();
-                variance.get().copied().unwrap_or_else(|| {
-                    // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
-                    // while calculating.
-                    debug!(
-                        "Using covariant variance for TypeVar {}, because the variance is not yet ready",
-                        self.name(db)
-                    );
+        match self.name {
+            //
+            TypeVarName::Name(n) => self.variance.infer(db, class, n),
+            _ => match self.variance {
+                TypeVarVariance::Known(variance) => variance,
+                TypeVarVariance::Inferred => {
+                    recoverable_error!("Variance should be known for non-standard names");
                     Variance::Covariant
-                })
-            }
+                }
+            },
         }
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
-        match &self.name {
-            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
-            TypeVarName::Self_ => Cow::Borrowed("Self"),
-            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
-        }
+        self.name.as_str(db)
     }
 
     fn is_from_type_var_syntax(&self) -> bool {
@@ -1316,6 +1366,10 @@ impl TypeVarTuple {
                 .unwrap_or(&db.python_state.type_args_from_err),
         )
     }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        self.variance.infer(db, class, self.name)
+    }
 }
 
 impl PartialEq for TypeVarTuple {
@@ -1396,6 +1450,11 @@ impl ParamSpec {
                 })
                 .unwrap_or(&CallableParams::ERROR),
         )
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        // TODO this should probably not be covariant
+        Variance::Covariant
     }
 }
 
@@ -1717,6 +1776,32 @@ impl TypeVarLikeUsage {
                 ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)),
                 ParamsStyle::Unreachable => unreachable!(),
             },
+        }
+    }
+
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.name(db),
+            TypeVarLikeUsage::TypeVarTuple(usage) => Cow::Borrowed(usage.type_var_tuple.name(db)),
+            TypeVarLikeUsage::ParamSpec(usage) => Cow::Borrowed(usage.param_spec.name(db)),
+        }
+    }
+
+    pub fn variance(&self) -> TypeVarVariance {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.variance,
+            TypeVarLikeUsage::TypeVarTuple(usage) => usage.type_var_tuple.variance,
+            TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.variance,
+        }
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.inferred_variance(db, class),
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                usage.type_var_tuple.inferred_variance(db, class)
+            }
+            TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.inferred_variance(db, class),
         }
     }
 }

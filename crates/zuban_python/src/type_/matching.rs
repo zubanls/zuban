@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use super::{
-    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, TypeVarLike,
-    UnionType, WithUnpack,
+    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
+    WithUnpack,
 };
 use crate::{
     database::MetaclassState,
@@ -712,17 +712,10 @@ impl Type {
                 .zip(class2.generics().iter(i_s.db))
                 .zip(type_vars.iter())
             {
-                let v = match tv {
-                    TypeVarLike::TypeVar(t) if variance == Variance::Covariant => {
-                        t.inferred_variance(i_s.db, class1)
-                    }
-                    TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
-                        t.inferred_variance(i_s.db, class1).invert()
-                    }
-                    TypeVarLike::TypeVar(_) => Variance::Invariant,
-                    TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
-                    // TODO this should probably not be covariant
-                    TypeVarLike::ParamSpec(_) => Variance::Covariant,
+                let v = match variance {
+                    Variance::Covariant => tv.inferred_variance(i_s.db, class1),
+                    Variance::Invariant => Variance::Invariant,
+                    Variance::Contravariant => tv.inferred_variance(i_s.db, class1).invert(),
                 };
                 matches &= t1.matches(i_s, matcher, &t2, v);
             }
