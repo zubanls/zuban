@@ -281,3 +281,7 @@ class InferredCovariantTypeVarTupleOld(Generic[*InferTs]):
 
 infer_out_int_old: InferredCovariantTypeVarTupleOld[int] = InferredCovariantTypeVarTupleOld[object]()  # E: Incompatible types in assignment (expression has type "InferredCovariantTypeVarTupleOld[object]", variable has type "InferredCovariantTypeVarTupleOld[int]")
 infer_out_obj_old: InferredCovariantTypeVarTupleOld[object] = InferredCovariantTypeVarTupleOld[int]()  # OK
+
+[case typevartuple_assignable_to_object_tuple]
+def f[*Ts](*x: *Ts) -> None:
+    y: tuple[object, ...] = x

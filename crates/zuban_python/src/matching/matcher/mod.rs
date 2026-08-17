@@ -647,7 +647,7 @@ impl<'a> Matcher<'a> {
                     && u.after.is_empty()
                     && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
             }
-            TupleArgs::ArbitraryLen(t) => t.is_any(),
+            TupleArgs::ArbitraryLen(t) => t.is_any() || t.is_object(i_s.db),
             TupleArgs::FixedLen(_) => false,
         }
         .into()
