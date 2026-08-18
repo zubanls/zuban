@@ -2559,14 +2559,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         // before F, this might happen.
         let inferred = inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true);
         if self.flags().disallow_any_expr && !self.file.is_stub() {
-            let t = inferred.as_cow_type(self.i_s);
-            if t.has_any(self.i_s.db) {
-                self.add_issue(
-                    expr.index(),
-                    IssueKind::DisallowedAnyExpr {
-                        type_: t.format_short(self.i_s.db),
-                    },
-                );
+            // Classes can always have any in them but assigning them should be ok.
+            if inferred
+                .maybe_saved_node_ref(self.i_s.db)
+                .is_none_or(|node_ref| node_ref.maybe_class().is_none())
+            {
+                let t = inferred.as_cow_type(self.i_s);
+                if t.has_any(self.i_s.db) {
+                    debug!("Has any in {:?}: {t:?}", t.format_short(self.i_s.db));
+                    self.add_issue(
+                        expr.index(),
+                        IssueKind::DisallowedAnyExpr {
+                            type_: t.format_short(self.i_s.db),
+                        },
+                    );
+                }
             }
         }
         if result_context.expects_type_form()

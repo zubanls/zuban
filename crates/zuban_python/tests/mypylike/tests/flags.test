@@ -1077,3 +1077,16 @@ class Y:
 
 class Z:
     def __init__(self, x: int, y): ...  # E: Function is missing a type annotation for one or more parameters
+
+[case staticmethod_should_not_contain_any]
+# flags: --disallow-any-expr
+# From GH #528
+class One:
+    @staticmethod
+    def test1() -> None: ...
+
+    @staticmethod
+    def test2(x) -> None: ...
+
+    @staticmethod
+    def test3(x: int) -> None: ...
