@@ -8,6 +8,7 @@ use crate::{
     database::MetaclassState,
     debug,
     file::ClassNodeRef,
+    format_data::FormatData,
     inference_state::InferenceState,
     match_::{Match, MismatchReason},
     matching::{ErrorStrs, ErrorTypes, GotType, Matcher, format_got_expected},
@@ -1021,29 +1022,37 @@ pub fn match_tuple_type_arguments(
     tup2: &TupleArgs,
     variance: Variance,
 ) -> Match {
-    if variance == Variance::Contravariant {
-        return matcher.match_reverse(|matcher| {
+    let m = if variance == Variance::Contravariant {
+        matcher.match_reverse(|matcher| {
             match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
-        });
-    }
-    debug_assert_ne!(variance, Variance::Contravariant);
-    let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
-    if !m.bool()
-        && matcher.has_type_var_matcher()
-        && matches!(
-            tup2,
-            TupleArgs::WithUnpack(WithUnpack {
-                unpack: TupleUnpack::TypeVarTuple(_),
-                ..
+        })
+    } else {
+        debug_assert_ne!(variance, Variance::Contravariant);
+        let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
+        if !m.bool()
+            && matcher.has_type_var_matcher()
+            && matches!(
+                tup2,
+                TupleArgs::WithUnpack(WithUnpack {
+                    unpack: TupleUnpack::TypeVarTuple(_),
+                    ..
+                })
+            )
+        {
+            m.or(|| {
+                matcher.match_reverse(|matcher| {
+                    match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+                })
             })
-        )
-    {
-        return m.or(|| {
-            matcher.match_reverse(|matcher| {
-                match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
-            })
-        });
-    }
+        } else {
+            m
+        }
+    };
+    debug!(
+        "Matched tuples {} against {}: {m:?}",
+        tup1.format(&FormatData::new_short(i_s.db)),
+        tup2.format(&FormatData::new_short(i_s.db))
+    );
     m
 }
 
@@ -1170,19 +1179,21 @@ fn match_unpack_internal(
     };
     let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs, variance| {
         let m = matcher.match_or_add_type_var_tuple(i_s, tvt, args.clone(), variance);
-        if !m.bool()
-            && let Match::False { reason, .. } = &m
-            && let Some(on_mismatch) = on_mismatch
-        {
-            on_mismatch(
-                ErrorTypes {
-                    matcher: Some(matcher),
-                    reason,
-                    expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(with_unpack1.clone()))),
-                    got: GotType::Type(&Type::Tuple(Tuple::new(args))),
-                },
-                with_unpack1.before.len() as isize,
-            );
+        if let Match::False { reason, .. } = &m {
+            debug!("Unpack mismatch of TypeVarTuple");
+            if let Some(on_mismatch) = on_mismatch {
+                on_mismatch(
+                    ErrorTypes {
+                        matcher: Some(matcher),
+                        reason,
+                        expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
+                            with_unpack1.clone(),
+                        ))),
+                        got: GotType::Type(&Type::Tuple(Tuple::new(args))),
+                    },
+                    with_unpack1.before.len() as isize,
+                );
+            }
         }
         m
     };
@@ -1202,6 +1213,7 @@ fn match_unpack_internal(
                 matches &= check_type(matcher, t1, t2, i as isize);
             }
             if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
+                debug!("Unpack mismatch because there was a fixed len and one side is too short");
                 if let Some(on_too_few_args) = on_too_few_args {
                     on_too_few_args()
                 }
@@ -1251,6 +1263,7 @@ fn match_unpack_internal(
                     let len_before_1 = with_unpack1.before.len();
                     let len_before_2 = with_unpack2.before.len();
                     if len_before_1 > len_before_2 {
+                        debug!("Unpack mismatch because of different lengths");
                         if let Some(on_mismatch) = on_mismatch {
                             on_mismatch(
                                 ErrorTypes {
@@ -1267,6 +1280,7 @@ fn match_unpack_internal(
                         }
                         return Match::new_false();
                     } else if with_unpack1.after.len() > with_unpack2.after.len() {
+                        debug!("Unpack mismatch because one side is too short");
                         if let Some(on_too_few_args) = on_too_few_args {
                             on_too_few_args()
                         }
@@ -1311,6 +1325,9 @@ fn match_unpack_internal(
                 return Match::True { with_any: true };
             }
             if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
+                debug!(
+                    "Unpack mismatch because there were before or after elements matching vs. arbitrary len"
+                );
                 return Match::new_false();
             }
             match &with_unpack1.unpack {
