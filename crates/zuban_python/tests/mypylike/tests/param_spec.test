@@ -364,7 +364,7 @@ class ContravariantParamSpecOld(Generic[InP]):
         raise NotImplementedError
 
 
-in_obj_old: ContravariantParamSpecOld[object] = ContravariantParamSpecOld[int]()  # E: 
+in_obj_old: ContravariantParamSpecOld[object] = ContravariantParamSpecOld[int]()  # E: Incompatible types in assignment (expression has type "ContravariantParamSpecOld[[int]]", variable has type "ContravariantParamSpecOld[[object]]")
 in_int_old: ContravariantParamSpecOld[int] = ContravariantParamSpecOld[object]()  # OK
 
 
@@ -375,7 +375,7 @@ class CovariantParamSpecOld(Generic[OutP]):
         raise NotImplementedError
 
 
-out_int_old: CovariantParamSpecOld[int] = CovariantParamSpecOld[object]()  # E: 
+out_int_old: CovariantParamSpecOld[int] = CovariantParamSpecOld[object]()  # E: Incompatible types in assignment (expression has type "CovariantParamSpecOld[[object]]", variable has type "CovariantParamSpecOld[[int]]")
 out_obj_old: CovariantParamSpecOld[object] = CovariantParamSpecOld[int]()  # OK
 
 

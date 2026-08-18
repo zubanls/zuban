@@ -432,6 +432,14 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
                 }
             }
         }
+        let mut variance = keys.variance(i_s, args)?;
+        if let TypeVarVariance::Known(variance) = &mut variance {
+            // Variance is used in an inverted way for ParamSpec, because Zuban treats param
+            // signatures in a covariant way and only inverts variance once param types are
+            // matched. This could be changed, but it shouldn't matter too much so we keep this
+            // historical artifact.
+            *variance = variance.invert();
+        }
         Some(TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(
             TypeVarLikeName::InString {
                 name_node: PointLink {
@@ -445,7 +453,7 @@ fn maybe_param_spec(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike
             },
             i_s.as_parent_scope(),
             keys.default,
-            keys.variance(i_s, args)?,
+            variance,
         ))))
     } else {
         args.add_issue(
