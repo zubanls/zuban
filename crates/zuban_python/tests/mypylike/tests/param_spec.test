@@ -248,8 +248,7 @@ class InvariantParamSpec[**InOutP]:
     a: Callable[InOutP, None]
 
 in_out_obj: InvariantParamSpec[object] = InvariantParamSpec[int]()  # E: Incompatible types in assignment (expression has type "InvariantParamSpec[[int]]", variable has type "InvariantParamSpec[[object]]")
-in_out_int: InvariantParamSpec[int] = InvariantParamSpec[object]()  # E: 
-
+in_out_int: InvariantParamSpec[int] = InvariantParamSpec[object]()  # E: Incompatible types in assignment (expression has type "InvariantParamSpec[[object]]", variable has type "InvariantParamSpec[[int]]")
 
 [case paramspec_contravariance]
 # From conformance tests (generics_paramspec_variance.py)
@@ -269,8 +268,7 @@ class CovariantParamSpec[**OutP]:
     def f(self, fn: Callable[OutP, None]) -> None:
         raise NotImplementedError
 
-
-out_int: CovariantParamSpec[int] = CovariantParamSpec[object]()  # E: 
+out_int: CovariantParamSpec[int] = CovariantParamSpec[object]()  # E: Incompatible types in assignment (expression has type "CovariantParamSpec[[object]]", variable has type "CovariantParamSpec[[int]]")
 out_obj: CovariantParamSpec[object] = CovariantParamSpec[int]()  # OK
 
 [case paramspec_conformance_more_cases]
@@ -333,7 +331,7 @@ out_box.t = out_pos_p  # OK
 out_names_p = OutitP(names)
 out_box.t = out_names_p  # E: Incompatible types in assignment (expression has type "OutitP[[b: int]]", variable has type "OutitP[[a: int]]")
 out_default_p = OutitP(default)
-out_box.t = out_default_p  # E: 
+out_box.t = out_default_p  # E: Incompatible types in assignment (expression has type "OutitP[[a: int =]]", variable has type "OutitP[[a: int]]")
 out_arity_p = OutitP(arity)
 out_box.t = out_arity_p  # E: Incompatible types in assignment (expression has type "OutitP[[a: int, b: str]]", variable has type "OutitP[[a: int]]")
 
@@ -396,5 +394,5 @@ class InferredCovariantParamSpecOld(Generic[InferP]):
         raise NotImplementedError
 
 
-infer_out_int_old: InferredCovariantParamSpecOld[int] = InferredCovariantParamSpecOld[object]()  # E: 
+infer_out_int_old: InferredCovariantParamSpecOld[int] = InferredCovariantParamSpecOld[object]()  # E: Incompatible types in assignment (expression has type "InferredCovariantParamSpecOld[[object]]", variable has type "InferredCovariantParamSpecOld[[int]]")
 infer_out_obj_old: InferredCovariantParamSpecOld[object] = InferredCovariantParamSpecOld[int]()  # OK

@@ -741,7 +741,9 @@ impl<'a> Matcher<'a> {
                     return Match::new_false();
                 }
             };
-            star_count += !t.is_some_and(|t| !matches!(t.as_ref(), Type::Any(_))) as usize;
+            star_count += t.is_none_or(|t| {
+                t.is_any() || variance == Variance::Covariant && t.is_object(i_s.db)
+            }) as usize;
         }
         (star_count == 2).into()
     }

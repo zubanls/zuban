@@ -39,9 +39,9 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
         GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
-        ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StringSlice, Tuple,
-        TupleArgs, Type, TypeArgs, TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
+        ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeVarIndex, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -2294,7 +2294,17 @@ pub(crate) fn check_type_var_variance_validity_for_type(
                     };
                     GenericItem::TypeArgs(TypeArgs::new(tup.args.clone()))
                 }
-                TypeVarLikeUsage::ParamSpec(param_spec_usage) => return None,
+                TypeVarLikeUsage::ParamSpec(_) => {
+                    let params = CallableParams::new_simple(Arc::new([
+                        CallableParam::new_anonymous(ParamType::Star(StarParamType::ArbitraryLen(
+                            i_s.db.python_state.object_type(),
+                        ))),
+                        CallableParam::new_anonymous(ParamType::StarStar(
+                            StarStarParamType::ValueType(i_s.db.python_state.object_type()),
+                        )),
+                    ]));
+                    GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
+                }
             })
         } else {
             None
