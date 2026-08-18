@@ -360,7 +360,7 @@ class ContravariantParamSpecOld(Generic[InP]):
     def in_f(self) -> Callable[InP, None]:  # OK
         raise NotImplementedError
 
-    def out_f(self, fn: Callable[InP, None]) -> None:  # E: 
+    def out_f(self, fn: Callable[InP, None]) -> None:  # E: Cannot use a contravariant param spec as a parameter
         raise NotImplementedError
 
 
@@ -369,7 +369,7 @@ in_int_old: ContravariantParamSpecOld[int] = ContravariantParamSpecOld[object]()
 
 
 class CovariantParamSpecOld(Generic[OutP]):
-    def in_f(self) -> Callable[OutP, None]:  # E: 
+    def in_f(self) -> Callable[OutP, None]:  # E: Cannot use a covariant param spec as return type
         raise NotImplementedError
     def out_f(self, fn: Callable[OutP, None]) -> None:  # OK
         raise NotImplementedError

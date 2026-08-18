@@ -220,7 +220,7 @@ from typing import Generic, TypeVarTuple
 Ts = TypeVarTuple("Ts")  # OK
 InferTs = TypeVarTuple("InferTs", infer_variance=True)  # OK
 InvTs1 = TypeVarTuple("InvTs1", covariant=True, contravariant=True)  # E: TypeVarTuple cannot be both covariant and contravariant
-InvTs2 = TypeVarTuple("InvTs2", covariant=True, infer_variance=True)  # E:  Cannot use covariant with infer_variance
+InvTs2 = TypeVarTuple("InvTs2", covariant=True, infer_variance=True)  # E: Cannot use covariant with infer_variance
 InvTs3 = TypeVarTuple("InvTs3", contravariant=True, infer_variance=True)  # E: Cannot use contravariant with infer_variance
 
 class InvariantTypeVarTupleOld(Generic[*Ts]):
@@ -242,7 +242,7 @@ class ContravariantTypeVarTupleOld(Generic[*InTs]):
     def in_f(self, *args: *InTs) -> None:  # OK
         raise NotImplementedError
 
-    def out_f(self) -> tuple[*InTs]:  # E: 
+    def out_f(self) -> tuple[*InTs]:  # E: Cannot use a contravariant type var tuples as return type
         raise NotImplementedError
 
 
@@ -253,7 +253,7 @@ in_int_old: ContravariantTypeVarTupleOld[int] = ContravariantTypeVarTupleOld[obj
 OutTs = TypeVarTuple("OutTs", covariant=True)
 
 class CovariantTypeVarTupleOld(Generic[*OutTs]):
-    def in_f(self, *args: *OutTs) -> None:  # E: 
+    def in_f(self, *args: *OutTs) -> None:  # E: Cannot use a covariant type var tuples as a parameter
         raise NotImplementedError
 
     def out_f(self) -> tuple[*OutTs]:  # OK

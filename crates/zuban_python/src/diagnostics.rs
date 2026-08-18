@@ -249,8 +249,8 @@ pub(crate) enum IssueKind {
         variable_name: Box<str>
     },
     TypeVarInReturnButNotArgument { note: Option<Box<str>> },
-    TypeVarCovariantInParamType,
-    TypeVarContravariantInReturnType,
+    TypeVarWrongVarianceInParamType { variance: &'static str, kind: &'static str } ,
+    TypeVarContravariantInReturnType { variance: &'static str, kind: &'static str },
     TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
     UnexpectedTypeForTypeVar,
     ParamSpecKeywordArgumentWithoutDefinedSemantics,
@@ -571,8 +571,8 @@ impl IssueKind {
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument { .. }
-            | TypeVarCovariantInParamType
-            | TypeVarContravariantInReturnType
+            | TypeVarWrongVarianceInParamType { .. }
+            | TypeVarContravariantInReturnType { .. }
             | TypeVarVarianceIncompatibleWithParentType { .. }
             | InvalidTypeVarValue { .. }
             | TypeVarBoundViolation { .. } => "type-var",
@@ -1601,10 +1601,12 @@ impl<'db> Diagnostic<'db> {
                 }
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string()
             }
-            TypeVarCovariantInParamType =>
-                "Cannot use a covariant type variable as a parameter".to_string(),
-            TypeVarContravariantInReturnType =>
-                "Cannot use a contravariant type variable as return type".to_string(),
+            TypeVarWrongVarianceInParamType { variance, kind } => format!(
+                "Cannot use a {variance} {kind} as a parameter"
+            ),
+            TypeVarContravariantInReturnType { variance, kind } => format!(
+                "Cannot use a {variance} {kind} as return type"
+            ),
             TypeVarVarianceIncompatibleWithParentType{ type_var_name } => format!(
                 r#"Variance of TypeVar "{type_var_name}" incompatible with variance in parent type"#
             ),

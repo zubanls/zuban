@@ -38,9 +38,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
-        LookupArgs, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type,
-        TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarVariance, Variance,
-        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
+        LookupArgs, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, StarParamType,
+        TupleArgs, TupleUnpack, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarVariance,
+        Variance, dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -1888,11 +1888,15 @@ impl Inference<'_, '_, '_> {
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
-                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
-                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
+                if let Some((variance, kind)) =
+                    t.maybe_type_var_like_invalid_variance(Variance::Covariant)
                 {
-                    NodeRef::new(self.file, annotation.index())
-                        .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
+                    if !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code()) {
+                        NodeRef::new(self.file, annotation.index()).add_issue(
+                            i_s,
+                            IssueKind::TypeVarWrongVarianceInParamType { variance, kind },
+                        );
+                    }
                 }
 
                 if param.kind() == ParamKind::StarStar
@@ -1926,11 +1930,14 @@ impl Inference<'_, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             let t = self.use_cached_return_annotation_type(return_annotation);
-            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Contravariant))
+            if let Some((variance, kind)) =
+                t.maybe_type_var_like_invalid_variance(Variance::Contravariant)
             {
-                NodeRef::new(self.file, return_annotation.index())
-                    .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
-            }
+                NodeRef::new(self.file, return_annotation.index()).add_issue(
+                    i_s,
+                    IssueKind::TypeVarContravariantInReturnType { variance, kind },
+                );
+            };
             if function.is_generator() {
                 let expected = if function.is_async() {
                     &i_s.db.python_state.async_generator_with_any_generics
@@ -2531,6 +2538,42 @@ impl Inference<'_, '_, '_> {
         }
         if had_return {
             function.add_issue_for_declaration(self.i_s, IssueKind::IncorrectExitReturn);
+        }
+    }
+}
+
+impl Type {
+    fn maybe_type_var_like_invalid_variance(
+        &self,
+        unwanted_variance: Variance,
+    ) -> Option<(&'static str, &'static str)> {
+        let check = |variance| variance == TypeVarVariance::Known(unwanted_variance);
+        let variance_to_name = |v| match v {
+            Variance::Covariant => "covariant",
+            Variance::Contravariant => "contravariant",
+            Variance::Invariant => unreachable!(),
+        };
+        match self {
+            Type::TypeVar(tv) => check(tv.type_var.variance)
+                .then(|| (variance_to_name(unwanted_variance), "type variable")),
+            Type::Tuple(tup)
+                if let TupleArgs::WithUnpack(w) = &tup.args
+                    && let TupleUnpack::TypeVarTuple(tvt) = &w.unpack =>
+            {
+                check(tvt.type_var_tuple.variance)
+                    .then(|| (variance_to_name(unwanted_variance), "type var tuples"))
+            }
+            Type::Callable(c) if let CallableParams::Simple(params) = &c.params => {
+                for p in params.iter() {
+                    if let ParamType::Star(StarParamType::ParamSpecArgs(usage)) = &p.type_
+                        && check(usage.param_spec.variance)
+                    {
+                        return Some((variance_to_name(unwanted_variance.invert()), "param spec"));
+                    }
+                }
+                None
+            }
+            _ => None,
         }
     }
 }
