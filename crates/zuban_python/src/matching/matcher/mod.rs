@@ -1744,10 +1744,37 @@ impl<'a> Matcher<'a> {
         has_bound
     }
 
-    pub fn reset_invalid_bounds_of_context(&mut self, db: &Database) {
+    pub fn reset_invalid_bounds_of_context(
+        &mut self,
+        db: &Database,
+        context_matches: bool,
+        calculated_before_context: &[bool],
+    ) -> bool {
+        let mut had_incompatible_context = false;
+        let mut calc_index = 0;
         for tv_matcher in &mut self.type_var_matchers {
             for calc in tv_matcher.calculating_type_args.iter_mut() {
-                // Make sure that the fallback is never used from a context.
+                let was_calculated = calculated_before_context
+                    .get(calc_index)
+                    .copied()
+                    .unwrap_or(false);
+                calc_index += 1;
+                if !context_matches
+                    && calc.uninferrable
+                    && !was_calculated
+                    && let Bound::Invariant(BoundKind::TypeVar(fallback)) = &calc.type_
+                {
+                    // Arguments can still override this, but without any other inference the
+                    // conflicting context must not fall back to Any.
+                    let fallback = fallback.clone();
+                    *calc = Default::default();
+                    calc.type_ = Bound::Uncalculated {
+                        fallback: Some(fallback),
+                    };
+                    had_incompatible_context = true;
+                    continue;
+                }
+                // Make sure that an ordinary fallback is never used from a context.
                 // Also None as a type is a partial type, so don't use that either.
                 if calc.type_.is_none() || !calc.calculated() || calc.uninferrable {
                     *calc = Default::default();
@@ -1757,6 +1784,7 @@ impl<'a> Matcher<'a> {
                 }
             }
         }
+        had_incompatible_context
     }
 
     pub(crate) fn cache_match_result(

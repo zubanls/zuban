@@ -211,6 +211,30 @@ d: Foo[str] | Any = Foo("")
 e: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
 f: Any | Foo[str] = Foo("")
 
+[case conflicting_constructor_result_context]
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Eq(Generic[T, U]): ...
+class Refl(Eq[T, T], Generic[T]): ...
+class ValueRefl(Eq[T, T], Generic[T]):
+    def __init__(self, value: T) -> None: ...
+
+bad: Eq[int, str] = Refl()  # E: Incompatible types in assignment (expression has type "Refl[int]", variable has type "Eq[int, str]")
+good: Eq[int, int] = Refl()
+reveal_type(Refl())  # N: Revealed type is "__main__.Refl[Any]"
+with_any: Eq[Any, Any] = Refl()
+bad_with_argument: Eq[int, str] = ValueRefl("")  # E: Incompatible types in assignment (expression has type "ValueRefl[str]", variable has type "Eq[int, str]")
+
+def consume(value: Eq[int, str]) -> None: ...
+consume(Refl())  # E: Argument 1 to "consume" has incompatible type "Refl[int]"; expected "Eq[int, str]"
+
+def make_refl(value: T | None = None) -> Eq[T, T]: ...
+bad_from_function: Eq[int, str] = make_refl()  # E: Incompatible types in assignment (expression has type "Eq[int, int]", variable has type "Eq[int, str]")
+good_from_function: Eq[int, int] = make_refl()
+
 [case union_context_class_matching_with_overload]
 # flags: --mode mypy
 from typing import TypeVar, Generic, overload

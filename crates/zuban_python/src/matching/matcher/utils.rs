@@ -489,6 +489,15 @@ fn apply_result_context(
         return;
     }
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+        let calculated_before_context = matcher
+            .type_var_matchers
+            .iter()
+            .flat_map(|tvm| {
+                tvm.calculating_type_args
+                    .iter()
+                    .map(|calc| calc.calculated())
+            })
+            .collect::<Vec<_>>();
         if let Some(return_class) = return_class {
             // This is kind of a special case. Since __init__ has no return annotation, we simply
             // check if the classes match and then push the generics there.
@@ -498,13 +507,16 @@ fn apply_result_context(
                 && !expected.is_any()
                 && matches!(return_class.generics, Generics::NotDefinedYet { .. })
             {
-                if Class::with_self_generics(i_s.db, return_class.node_ref)
+                let matches = Class::with_self_generics(i_s.db, return_class.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, matcher, expected)
-                    .bool()
-                {
-                    matcher.reset_invalid_bounds_of_context(i_s.db)
-                } else {
+                    .bool();
+                let had_incompatible_context = matcher.reset_invalid_bounds_of_context(
+                    i_s.db,
+                    matches,
+                    &calculated_before_context,
+                );
+                if !matches && !had_incompatible_context {
                     // Here we reset all bounds, because it did not match.
                     for tv_matcher in &mut matcher.type_var_matchers {
                         for calc in tv_matcher.calculating_type_args.iter_mut() {
@@ -517,8 +529,8 @@ fn apply_result_context(
         } else if !expected.has_untyped_type_params(i_s.db) {
             let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
-            return_type.is_sub_type_of(i_s, matcher, expected);
-            matcher.reset_invalid_bounds_of_context(i_s.db)
+            let matches = return_type.is_sub_type_of(i_s, matcher, expected).bool();
+            matcher.reset_invalid_bounds_of_context(i_s.db, matches, &calculated_before_context);
         }
         debug!(
             "Finished trying to infer context type arguments: [{}]",
