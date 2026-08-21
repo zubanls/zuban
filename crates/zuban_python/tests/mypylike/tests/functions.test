@@ -507,3 +507,28 @@ def f(x: int | None = None, **kwargs): ...
 def check(*args) -> None:
     f(*args, scope='file')
     f(scope='file', *args)
+
+[case function_assignability_keyword_params_different_order]
+def f(*, x: str, y: int = 1) -> None: ...
+def g(*, y: int = 2, x: str) -> None: ...
+
+if bool():
+    g = f
+else:
+    f = g
+
+def n(*, x: str, y: int = 1) -> None: ...
+def m(*, y: int, x: str) -> None: ...
+
+if bool():
+    n = m  # E: Incompatible types in assignment (expression has type "def m(*, y: int, x: str) -> None", variable has type "def n(*, x: str, y: int = ...) -> None")
+else:
+    m = n
+
+def p(*, x: str, y: int) -> None: ...
+def q(*, y: int = 1, x: str) -> None: ...
+
+if bool():
+    p = q
+else:
+    q = p  # E: Incompatible types in assignment (expression has type "def p(*, x: str, y: int) -> None", variable has type "def q(*, y: int = ..., x: str) -> None")

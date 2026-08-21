@@ -199,20 +199,18 @@ fn matches_simple_params_part2<
                 );
                 return matches;
             }
-            if param1.has_default()
-                && !(param2.has_default()
-                    || matches!(
-                        specific2,
-                        WrappedParamType::Star(_) | WrappedParamType::StarStar(_)
-                    ))
-            {
-                debug!(
-                    "Mismatch callable, because {:?} has default and {:?} hasn't",
-                    param1.name(i_s.db),
-                    param2.name(i_s.db)
-                );
-                return Match::new_false();
-            }
+            let mismatches_defaults = |param1: &P1, param2: &P2| {
+                let has_issue = param1.has_default() && !(param2.has_default());
+                if cfg!(debug_assertions) && !has_issue {
+                    debug!(
+                        "Mismatch callable, because {:?} has default and {:?} hasn't",
+                        param1.name(i_s.db),
+                        param2.name(i_s.db)
+                    );
+                }
+                has_issue
+            };
+
             let specific1 = param1.specific(i_s.db);
 
             if let Some(m) =
@@ -231,6 +229,9 @@ fn matches_simple_params_part2<
                 WrappedParamType::PositionalOnly(t1) => match &specific2 {
                     WrappedParamType::PositionalOnly(t2)
                     | WrappedParamType::PositionalOrKeyword(t2) => {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamType::Star(WrappedStar::ArbitraryLen(t2)) => {
@@ -248,6 +249,9 @@ fn matches_simple_params_part2<
                 },
                 WrappedParamType::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamType::PositionalOrKeyword(t2) => {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         let name1 = param1.name(i_s.db);
                         let name2 = param2.name(i_s.db);
                         if name1 != name2 {
@@ -334,6 +338,9 @@ fn matches_simple_params_part2<
                     WrappedParamType::PositionalOnly(t2)
                         if matcher.ignore_positional_param_names() =>
                     {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     _ => {
@@ -369,6 +376,9 @@ fn matches_simple_params_part2<
                         _ => {
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
                                 if param1.name(i_s.db) == p2.name(i_s.db) {
+                                    if mismatches_defaults(&param1, &p2) {
+                                        return Match::new_false();
+                                    }
                                     match unused_keyword_params.remove(i).specific(i_s.db) {
                                         WrappedParamType::KeywordOnly(t2)
                                         | WrappedParamType::PositionalOrKeyword(t2) => {
@@ -383,6 +393,9 @@ fn matches_simple_params_part2<
                             while params2.peek().is_some() {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    if mismatches_defaults(&param1, &param2) {
+                                        return Match::new_false();
+                                    }
                                     match &param2.specific(i_s.db) {
                                         WrappedParamType::PositionalOrKeyword(t2)
                                         | WrappedParamType::KeywordOnly(t2) => {
