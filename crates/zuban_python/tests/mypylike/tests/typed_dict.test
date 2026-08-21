@@ -261,13 +261,18 @@ def func3() -> None:
 
 [case typed_dict_in_callable_unpack_protocol_matching]
 # Copied in parts from conformance tests (callables_kwargs.py)
-from typing import TypedDict, Required, NotRequired, Unpack, Protocol
+from typing import TypedDict, Required, NotRequired, Unpack, Protocol, Never, TypeVar
 class TD1(TypedDict):
     v1: Required[int]
     v2: NotRequired[str]
 
-
 class TD2(TD1):
+    v3: Required[str]
+
+class TD3(TD1, closed=True):
+    v3: Required[str]
+
+class TD4(TD1, extra_items=Never):
     v3: Required[str]
 
 def func1(**kwargs: Unpack[TD2]) -> None: ...
@@ -285,6 +290,10 @@ class TDProtocol5(Protocol):
     def __call__(self, v1: int, v3: str) -> None: ...
 class TDProtocol6(Protocol):
     def __call__(self, **kwargs: Unpack[TD2]) -> None: ...
+class TDProtocol7(Protocol):
+    def __call__(self, **kwargs: Unpack[TD3]) -> None: ...
+class TDProtocol8(Protocol):
+    def __call__(self, **kwargs: Unpack[TD4]) -> None: ...
 
 v1: TDProtocol1 = func1  # OK
 v2: TDProtocol2 = func1  # OK
@@ -292,6 +301,96 @@ v3: TDProtocol3 = func1  # E: Incompatible types in assignment (expression has t
 v4: TDProtocol4 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol4")
 v5: TDProtocol5 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol5")
 v6: TDProtocol6 = func1  # OK
+
+def func4(v1: int, /, **kwargs: Unpack[TD2]) -> None: ...
+def func5(v1: int, **kwargs: Unpack[TD2]) -> None:  ...  # E: Overlap between parameter names and ** TypedDict items: "v1"
+
+T = TypeVar("T", bound=TD2)
+
+def func6(**kwargs: Unpack[T]) -> None: ...  # E: Unpack item in ** parameter must be a TypedDict
+def func7(*, v1: int, v3: str, v2: str = "") -> None: ...
+
+v7: TDProtocol6 = func7  # E: Incompatible types in assignment (expression has type "def func7(*, v1: int, v3: str, v2: str = ...) -> None", variable has type "TDProtocol6")
+v8: TDProtocol7 = func7  # OK, unpacked TypedDict has closed=True
+v9: TDProtocol8 = func7  # OK, unpacked TypedDict has extra_items=Never
+
+[case typed_dict_in_callable_unpack_matching]
+# Copied in parts from conformance tests (callables_kwargs.py)
+from typing import TypedDict, Unpack, Never
+
+class TDOpenImplicit(TypedDict):
+    name: str
+
+class TDOpenExplicit(TypedDict, closed=False):
+    name: str
+
+class TDClosed(TypedDict, closed=True):
+    name: str
+
+class TDExtraItems(TypedDict, extra_items=int):
+    name: str
+
+class TDExtraItemsNever(TypedDict, extra_items=Never):
+    name: str
+
+def takes_name(name: str) -> None: ...
+def takes_name_kwargs(name: str, **kwargs) -> None: ...
+def takes_name_str_kwargs(name: str, **kwargs: str) -> None: ...
+def takes_name_int_kwargs(name: str, **kwargs: int) -> None: ...
+def takes_optional_label_int_kwargs(name: str, *, label: str = "", **kwargs: int) -> None: ...
+def takes_closed(**kwargs: Unpack[TDClosed]) -> None: ...
+
+def open_implicit(value: TDOpenImplicit, **kwargs: Unpack[TDOpenImplicit]) -> None:
+    takes_name(**value)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenImplicit"; expected "str"
+    takes_name(**kwargs)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenImplicit"; expected "str"
+    takes_closed(**value)  # E?: a subtype may contain unknown keys
+    takes_closed(**kwargs)  # E?: a subtype may contain unknown keys
+
+def open_explicit(value:TDOpenExplicit, **kwargs: Unpack[TDOpenExplicit]) -> None:
+    takes_name(**value)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenExplicit"; expected "str"
+    takes_name(**kwargs)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenExplicit"; expected "str"
+    takes_closed(**value)  # E?: a subtype may contain unknown keys
+    takes_closed(**kwargs)  # E?: a subtype may contain unknown keys
+
+def kwargs_closed(value: TDClosed, **kwargs: Unpack[TDClosed]) -> None:
+    takes_name(**value)
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value)
+    takes_name(**kwargs)
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs)
+    takes_closed(**value)
+    takes_closed(**kwargs)
+
+def kwargs_extra_items(value: TDExtraItems, **kwargs: Unpack[TDExtraItems]) -> None:
+    takes_name(**value)  # E: Too many arguments for "takes_name"
+    takes_name_str_kwargs(**value)  # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_name_int_kwargs(**value)
+    takes_name(**kwargs)  # E: Too many arguments for "takes_name"
+    takes_name_str_kwargs(**kwargs)  # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_name_int_kwargs(**kwargs)
+    takes_closed(**value) # E: Argument 1 to "takes_closed" has incompatible type "**TDExtraItems"; expected "Never"
+    takes_closed(**kwargs) # E: Argument 1 to "takes_closed" has incompatible type "**TDExtraItems"; expected "Never"
+    takes_optional_label_int_kwargs(**value)  # E: Argument 1 to "takes_optional_label_int_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_optional_label_int_kwargs(**kwargs)  # E: Argument 1 to "takes_optional_label_int_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+
+def kwargs_extra_items_never(value: TDExtraItemsNever, **kwargs: Unpack[TDExtraItemsNever]) -> None:
+    takes_name(**value)
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value)
+    takes_name(**kwargs)
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs)
+    takes_closed(**value)
+    takes_closed(**kwargs)
 
 [case invalid_typed_dict_definitions_in_class_args]
 # Copied from conformance tests (typeddicts_class_syntax.py)
@@ -896,7 +995,7 @@ def e(x: str, **kwargs: int) -> None: ...
 
 def f(x: X):
     a(**x)  # E: Extra argument "x" from **args for "a"  # E: Too many arguments for "a"
-    b(**x)
+    b(**x)  # E: Too many arguments for "b"
     c(**x)  # E: Argument "x" to "c" has incompatible type "str"; expected "int"
     d(**x)  # E: Argument 1 to "d" has incompatible type "**X"; expected "str"
     e(**x)

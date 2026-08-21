@@ -405,6 +405,12 @@ impl KeywordArg<'_, '_> {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) enum TypedDictExtraItemsOrigin {
+    ExtraItems,
+    UnknownDueToLength,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(KeywordArg<'db, 'a>),
@@ -413,6 +419,7 @@ pub(crate) enum ArgKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
+        typed_dict_extra_items_origin: Option<TypedDictExtraItemsOrigin>,
         is_keyword: Option<Option<DbString>>,
     },
     InferredWithCustomAddIssue {
@@ -835,6 +842,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                         position: 1,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
+                        typed_dict_extra_items_origin: None,
                         is_keyword: None,
                     }))
                 } else {
@@ -1007,6 +1015,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                     position: 1,
                     node_ref: slice_type.as_argument_node_ref(),
                     in_args_or_kwargs_and_arbitrary_len: false,
+                    typed_dict_extra_items_origin: None,
                     is_keyword: None,
                 }))
             }
@@ -1185,6 +1194,7 @@ impl<'a> ArgsKwargsIterator<'a> {
                             position,
                             node_ref,
                             in_args_or_kwargs_and_arbitrary_len: arbitrary_len,
+                            typed_dict_extra_items_origin: None,
                             is_keyword: None,
                         },
                         index,
@@ -1213,6 +1223,7 @@ impl<'a> ArgsKwargsIterator<'a> {
                         position,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,
+                        typed_dict_extra_items_origin: None,
                         is_keyword: Some(None),
                     },
                     index,
@@ -1232,14 +1243,30 @@ impl<'a> ArgsKwargsIterator<'a> {
                     .get(iterator_index)
                     .map(|member| (member.name.clone(), member.type_.clone()))
                 else {
-                    let e = ms.extra_items.as_ref()?;
+                    let e = ms.extra_items.as_ref();
+                    let (inferred, typed_dict_extra_items_origin) = if let Some(e) = e {
+                        if e.t.is_never() {
+                            return None;
+                        }
+                        (
+                            Inferred::from_type(e.t.clone()),
+                            Some(TypedDictExtraItemsOrigin::ExtraItems),
+                        )
+                    } else {
+                        return None;
+                        (
+                            Inferred::new_object(db),
+                            Some(TypedDictExtraItemsOrigin::UnknownDueToLength),
+                        )
+                    };
                     *counter += 1;
                     return Some(Arg {
                         kind: ArgKind::Inferred {
-                            inferred: Inferred::from_type(e.t.clone()),
+                            inferred,
                             position,
                             node_ref,
                             in_args_or_kwargs_and_arbitrary_len: true,
+                            typed_dict_extra_items_origin,
                             is_keyword: Some(None),
                         },
                         index,
@@ -1259,6 +1286,7 @@ impl<'a> ArgsKwargsIterator<'a> {
                         position,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
+                        typed_dict_extra_items_origin: None,
                         is_keyword: Some(Some(name)),
                     },
                     index,
@@ -1287,6 +1315,7 @@ impl<'a> ArgsKwargsIterator<'a> {
                             position,
                             node_ref,
                             in_args_or_kwargs_and_arbitrary_len: false,
+                            typed_dict_extra_items_origin: None,
                             is_keyword: None,
                         },
                         // counter was increased before

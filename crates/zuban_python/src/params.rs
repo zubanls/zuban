@@ -3,7 +3,7 @@ use std::{borrow::Cow, iter::Peekable, sync::Arc};
 use parsa_python_cst::ParamKind;
 
 use crate::{
-    arguments::{Arg, ArgKind},
+    arguments::{Arg, ArgKind, TypedDictExtraItemsOrigin},
     database::Database,
     debug,
     format_data::{FormatData, ParamsStyle},
@@ -1095,6 +1095,17 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     pub fn has_unused_arguments(&mut self) -> bool {
         while let Some(arg) = self.next_arg() {
             if arg.in_args_or_kwargs_and_arbitrary_len() {
+                if matches!(
+                    arg.kind,
+                    ArgKind::Inferred {
+                        typed_dict_extra_items_origin: Some(TypedDictExtraItemsOrigin::ExtraItems),
+                        ..
+                    }
+                ) {
+                    // Extra items should always be handled
+                    self.current_arg = Some(arg);
+                    return true;
+                }
                 self.current_arg = None;
             } else {
                 // Should not modify arguments that are uncalled-for, because we use them later for
