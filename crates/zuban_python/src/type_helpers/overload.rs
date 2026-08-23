@@ -120,6 +120,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
             debug!("Checking overload item #{i}");
+            let _indent = debug_indent();
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
                 i_s.avoid_errors_within(|i_s| match_signature(i_s, result_context, callable));
@@ -212,41 +213,45 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(callable);
         }
         // Mypy has a bit of a different way of working than the conformance tests
-        if (first_similar.is_none() || !i_s.db.mypy_compatible())
-            && args.should_do_union_math_for_overloads(i_s)
-        {
-            let mut non_union_args = vec![];
-            match self.check_union_math(
-                i_s,
-                result_context,
-                args.iter(i_s.mode),
-                skip_first_argument,
-                &mut non_union_args,
-                &|issue| args.add_issue(i_s, issue),
-                search_init,
-                class,
-                replace_self,
-                as_union_math_type,
-                0,
-            ) {
-                UnionMathResult::Match { result, .. } => {
-                    debug!(
-                        "Decided overload as union math result {} (called on #{}): {:?}",
-                        self.name(i_s.db),
-                        args.starting_line(i_s.db),
-                        result.format(&FormatData::new_short(i_s.db))
-                    );
-                    return OverloadResult::Union(result);
-                }
-                UnionMathResult::FirstSimilarIndex(index) => {
-                    first_similar = Some(Callable::new(
-                        self.overload.iter_functions().nth(index).unwrap(),
-                        self.class,
-                    ))
-                }
-                UnionMathResult::NoMatch => (),
-                UnionMathResult::TooManyUnions => {
-                    args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+        if first_similar.is_none() || !i_s.db.mypy_compatible() {
+            debug!("Find out if we want to check union math");
+            let _indent = debug_indent();
+            if args.should_do_union_math_for_overloads(i_s) {
+                debug!("Checking overload union math");
+                let _indent = debug_indent();
+                let mut non_union_args = vec![];
+                match self.check_union_math(
+                    i_s,
+                    result_context,
+                    args.iter(i_s.mode),
+                    skip_first_argument,
+                    &mut non_union_args,
+                    &|issue| args.add_issue(i_s, issue),
+                    search_init,
+                    class,
+                    replace_self,
+                    as_union_math_type,
+                    0,
+                ) {
+                    UnionMathResult::Match { result, .. } => {
+                        debug!(
+                            "Decided overload as union math result {} (called on #{}): {:?}",
+                            self.name(i_s.db),
+                            args.starting_line(i_s.db),
+                            result.format(&FormatData::new_short(i_s.db))
+                        );
+                        return OverloadResult::Union(result);
+                    }
+                    UnionMathResult::FirstSimilarIndex(index) => {
+                        first_similar = Some(Callable::new(
+                            self.overload.iter_functions().nth(index).unwrap(),
+                            self.class,
+                        ))
+                    }
+                    UnionMathResult::NoMatch => (),
+                    UnionMathResult::TooManyUnions => {
+                        args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+                    }
                 }
             }
         }
@@ -285,6 +290,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch()
         } else {
+            debug!("Fallback: Infer arguments ot add errors since no overload was found");
+            let _indent = debug_indent();
             let c = Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
             let t = IssueKind::OverloadMismatch {
                 name: (on_type_error.generate_diagnostic_string)(&c, i_s.db)
