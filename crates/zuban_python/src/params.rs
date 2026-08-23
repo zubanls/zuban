@@ -1122,11 +1122,22 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     }
 
     pub fn next_arg(&mut self) -> Option<Arg<'db, 'a>> {
+        self.next_arg_part2(true)
+    }
+
+    pub fn next_arg_part2(
+        &mut self,
+        disallow_unknown_typed_dict_extra_items: bool,
+    ) -> Option<Arg<'db, 'a>> {
         let arg = self.current_arg.take().or_else(|| self.arguments.next())?;
         if arg.in_args_or_kwargs_and_arbitrary_len() {
             self.arbitrary_length_handled = false;
             self.current_arg = Some(arg.clone());
-            if arg.is_arbitrary_kwargs() {
+            if disallow_unknown_typed_dict_extra_items && arg.is_arbitrary_kwargs() {
+                if arg.has_unknown_typed_dict_extra_items() {
+                    self.current_arg = None;
+                    return self.next_arg_part2(disallow_unknown_typed_dict_extra_items);
+                }
                 // A **kwargs
                 for next_arg in self.arguments.by_ref() {
                     if next_arg.is_from_star_star_args() {
@@ -1143,7 +1154,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     }
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Arg<'db, 'a>> {
-        self.next_arg().and_then(|arg| {
+        self.next_arg_part2(false).and_then(|arg| {
             if arg.is_keyword_argument() == is_keyword_arg
                 || is_keyword_arg && matches!(&arg.kind, ArgKind::ParamSpec { .. })
             {

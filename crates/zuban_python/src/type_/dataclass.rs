@@ -680,7 +680,9 @@ fn field_options_from_args(
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
-            arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
+            if !arg.has_unknown_typed_dict_extra_items() {
+                arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
+            }
             continue;
         }
         if let Some(key) = arg.keyword_name(i_s.db) {

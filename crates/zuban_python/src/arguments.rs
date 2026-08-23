@@ -739,6 +739,16 @@ impl<'db, 'a> Arg<'db, 'a> {
             | ArgKind::Inferred { .. } => None,
         }
     }
+
+    pub fn has_unknown_typed_dict_extra_items(&self) -> bool {
+        matches!(
+            self.kind,
+            ArgKind::Inferred {
+                typed_dict_extra_items_origin: Some(TypedDictExtraItemsOrigin::UnknownDueToLength),
+                ..
+            }
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1253,7 +1263,6 @@ impl<'a> ArgsKwargsIterator<'a> {
                             Some(TypedDictExtraItemsOrigin::ExtraItems),
                         )
                     } else {
-                        return None;
                         (
                             Inferred::new_object(db),
                             Some(TypedDictExtraItemsOrigin::UnknownDueToLength),

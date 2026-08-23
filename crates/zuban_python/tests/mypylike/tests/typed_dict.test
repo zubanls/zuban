@@ -999,7 +999,7 @@ def f(x: X):
     c(**x)  # E: Argument "x" to "c" has incompatible type "str"; expected "int"
     d(**x)  # E: Argument 1 to "d" has incompatible type "**X"; expected "str"
     e(**x)
-    e(**x, **x)  # TODO this should also raise an error, because a param is used twice
+    e(**x, **x)  # E: Argument "x" to "e" has incompatible type "str"; expected "int"
 
 [case additional_extra_items_inheritance]
 from typing import TypedDict, ReadOnly

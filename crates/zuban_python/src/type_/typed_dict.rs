@@ -1332,7 +1332,7 @@ pub(crate) fn check_typed_dict_call<'db>(
                 &mut extra_keys,
                 |context| arg.infer_inferrable(i_s, context),
             );
-        } else {
+        } else if !arg.has_unknown_typed_dict_extra_items() {
             arg.add_issue(
                 i_s,
                 IssueKind::ArgumentIssue(

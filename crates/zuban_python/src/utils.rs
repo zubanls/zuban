@@ -11,7 +11,7 @@ use parsa_python_cst::{Name, NodeIndex};
 
 thread_local!(pub(crate) static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 
-#[inline]
+#[inline(always)]
 #[must_use]
 pub(crate) fn debug_indent() -> DebugIndent {
     if cfg!(feature = "zuban_debug") {
@@ -25,7 +25,7 @@ pub(crate) fn debug_indent() -> DebugIndent {
 pub(crate) struct DebugIndent();
 
 impl Drop for DebugIndent {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         if cfg!(feature = "zuban_debug") {
             DEBUG_INDENTATION.with(|i| i.set(i.get() - 1));
