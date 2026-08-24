@@ -249,7 +249,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     false,
                     Some(self),
                     true,
-                    result_context,
                     None,
                     on_type_error,
                     &|_, calculated_type_args| {

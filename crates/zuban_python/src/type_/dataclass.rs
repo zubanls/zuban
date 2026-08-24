@@ -785,7 +785,6 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
                     false,
                     None,
                     false,
-                    &mut ResultContext::Unknown,
                     None,
                     OnTypeError::new(&|_, _, _, _| ()),
                     &|_, _| Type::Never(NeverCause::Other),

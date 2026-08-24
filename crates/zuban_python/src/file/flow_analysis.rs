@@ -4495,7 +4495,6 @@ impl<'file> Inference<'_, 'file, '_> {
                     false,
                     None,
                     false,
-                    &mut ResultContext::ValueExpected,
                     None,
                     OnTypeError::new(&on_argument_type_error),
                     &|c, calculated_type_args| {

@@ -58,14 +58,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         skip_first_argument: bool,
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
-        result_context: &mut ResultContext,
         replace_self: Option<ReplaceSelf>,
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
-        let match_signature = |i_s: &InferenceState<'db, '_>,
-                               result_context: &mut ResultContext,
-                               callable: Callable| {
+        let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
             if search_init {
                 calc_callable_dunder_init_type_vars(
                     i_s,
@@ -74,7 +71,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     true,
-                    result_context,
+                    &mut ResultContext::Unknown,
                     None,
                 )
             } else {
@@ -84,7 +81,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
-                    result_context,
+                    &mut ResultContext::Unknown,
                     replace_self,
                     None,
                 )
@@ -123,7 +120,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let _indent = debug_indent();
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
-                i_s.avoid_errors_within(|i_s| match_signature(i_s, result_context, callable));
+                i_s.avoid_errors_within(|i_s| match_signature(i_s, callable));
             if had_error && had_error_in_func.is_none() {
                 had_error_in_func = Some(callable);
             }
@@ -222,7 +219,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let mut non_union_args = vec![];
                 match self.check_union_math(
                     i_s,
-                    result_context,
                     args.iter(i_s.mode),
                     skip_first_argument,
                     &mut non_union_args,
@@ -254,26 +250,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                 }
             }
-        }
-        if result_context.has_explicit_type() {
-            // In case the context causes issues where an overload cannot be resolved, we just try
-            // to run it without it. Note that we know at this point that the overload failed, it's
-            // just a matter of what to display in case of failure. It's also a bit weird that we
-            // run everything again, but in normal code overloads almost always do not fail, so
-            // it shouldn't impact performance, really.
-            debug!("Rerun overload without context");
-            let _indent = debug_indent();
-            return self.find_matching_function(
-                i_s,
-                args,
-                skip_first_argument,
-                class,
-                search_init,
-                &mut ResultContext::Unknown,
-                replace_self,
-                on_type_error,
-                as_union_math_type,
-            );
         }
         if let Some(callable) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
@@ -309,7 +285,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, result_context, callable);
+            match_signature(i_s, callable);
         }
         OverloadResult::NotFound
     }
@@ -317,7 +293,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     fn check_union_math<'x>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
         mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
@@ -335,11 +310,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
 
         if let Some(next_arg) = args.next() {
-            let InferredArg::Inferred(inf) = next_arg.infer(result_context) else {
+            let InferredArg::Inferred(inf) = next_arg.infer(&mut ResultContext::Unknown) else {
                 non_union_args.push(next_arg);
                 return self.check_union_math(
                     i_s,
-                    result_context,
                     args,
                     skip_first_argument,
                     non_union_args,
@@ -377,7 +351,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     };
                     let r = self.check_union_math(
                         i_s,
-                        result_context,
                         args.clone(),
                         skip_first_argument,
                         non_union_args,
@@ -424,7 +397,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 non_union_args.push(next_arg);
                 self.check_union_math(
                     i_s,
-                    result_context,
                     args,
                     skip_first_argument,
                     non_union_args,
@@ -448,7 +420,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         non_union_args.clone().into_iter(),
                         add_issue,
                         true,
-                        result_context,
+                        &mut ResultContext::Unknown,
                         None,
                     )
                 } else {
@@ -458,7 +430,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         non_union_args.clone().into_iter(),
                         add_issue,
                         skip_first_argument,
-                        result_context,
+                        &mut ResultContext::Unknown,
                         replace_self,
                         None,
                     )
@@ -580,7 +552,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             skip_first_argument,
             None,
             false,
-            result_context,
             Some(replace_self),
             on_type_error,
             &|callable, calculated_type_args| {
