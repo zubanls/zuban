@@ -786,12 +786,6 @@ fn typed_dict_to_params<'x>(
     let extra_t = if let Some(extra) = members.extra_items.as_ref() {
         (!extra.t.is_never()).then_some(&extra.t)
     } else {
-        let Type::Tuple(tup) = &db.python_state.tuple_of_obj else {
-            unreachable!();
-        };
-        let TupleArgs::ArbitraryLen(x) = &tup.args else {
-            unreachable!();
-        };
         Some(db.python_state.object_type_ref())
     };
     members
