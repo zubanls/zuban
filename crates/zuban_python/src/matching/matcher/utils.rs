@@ -477,16 +477,17 @@ fn get_matcher<'a>(
     Matcher::new(None, func_like, matcher, replace_self)
 }
 
-fn apply_result_context(
+fn apply_result_context_and_return_valid(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     result_context: &mut ResultContext,
     return_class: Option<&Class>,
     func_like: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
-) {
+) -> bool {
+    let mut result = true;
     if result_context.can_be_redefined(i_s) {
-        return;
+        return result;
     }
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
         if let Some(return_class) = return_class {
@@ -498,11 +499,18 @@ fn apply_result_context(
                 && !expected.is_any()
                 && matches!(return_class.generics, Generics::NotDefinedYet { .. })
             {
-                if Class::with_self_generics(i_s.db, return_class.node_ref)
+                let r = Class::with_self_generics(i_s.db, return_class.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, matcher, expected)
-                    .bool()
-                {
+                    .bool();
+                result &= r || {
+                    // Check if any type vars were set, if they were not there is no invalid context that
+                    // matters, it will be type-checked later.
+                    !matcher.has_calculated_type_args()
+                    // One of the union items can be a valid context even if they don't all match
+                    || expected.is_union_like(i_s.db)
+                };
+                if r {
                     matcher.reset_invalid_bounds_of_context(i_s.db)
                 } else {
                     // Here we reset all bounds, because it did not match.
@@ -525,6 +533,7 @@ fn apply_result_context(
             matcher.type_var_matchers[0].debug_format(i_s.db)
         );
     });
+    result
 }
 
 fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
@@ -613,6 +622,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     const INVALID_SELF_TYPE_IN_INIT: &str = "Invalid self type in __init__";
     let mut had_wrong_init_type_var = false;
+    let mut valid_context = true;
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
             if let Some(t) = func_like.first_self_or_class_annotation(i_s)
@@ -652,14 +662,14 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         if let Some(return_class) = return_class {
             add_init_generics(&mut matcher, return_class)
         }
-        apply_result_context(
+        valid_context &= apply_result_context_and_return_valid(
             i_s,
             &mut matcher,
             result_context,
             return_class,
             func_like,
             add_init_generics,
-        )
+        );
     // If there are no TypeVar matchers, we still have to check that the generics for __init__
     // match.
     } else if let Some(return_class) = return_class
@@ -677,7 +687,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
         }
     }
-    let matches = check_params(&mut matcher);
+    let mut matches = check_params(&mut matcher);
     let mut result = matcher.into_type_arguments(
         i_s,
         match_in_definition,
@@ -695,6 +705,21 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         }
         result.matches = SignatureMatch::False { similar: false };
     } else {
+        if !valid_context && matches.bool() {
+            if on_type_error.is_some() {
+                add_issue(IssueKind::ArgumentIssue(
+                    format!(
+                        "The return type for function {} does not match the return context",
+                        func_like
+                            .diagnostic_string(i_s.db)
+                            .as_deref()
+                            .unwrap_or("<unknown>")
+                    )
+                    .into_boxed_str(),
+                ));
+            }
+            matches = SignatureMatch::False { similar: false };
+        }
         result.matches = matches;
     }
     if had_wrong_init_type_var {

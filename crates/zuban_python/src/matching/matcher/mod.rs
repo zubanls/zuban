@@ -294,6 +294,14 @@ impl<'a> Matcher<'a> {
         self.match_reverse
     }
 
+    pub fn has_calculated_type_args(&self) -> bool {
+        self.type_var_matchers.iter().any(|tvm| {
+            tvm.calculating_type_args
+                .iter()
+                .any(|type_arg| type_arg.calculated())
+        })
+    }
+
     pub fn match_reverse<T, C: FnOnce(&mut Self) -> T>(&mut self, callable: C) -> T {
         self.match_reverse = !self.match_reverse;
         let result = callable(self);
