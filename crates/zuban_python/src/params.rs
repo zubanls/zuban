@@ -792,7 +792,7 @@ fn typed_dict_to_params<'x>(
         let TupleArgs::ArbitraryLen(x) = &tup.args else {
             unreachable!();
         };
-        Some(&**x)
+        Some(db.python_state.object_type_ref())
     };
     members
         .named

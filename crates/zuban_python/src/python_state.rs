@@ -14,7 +14,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, CustomBehavior,
-        ParamType, Tuple, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
+        ParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
     },
     type_helpers::{Class, FirstParamProperties, Function, Instance, cache_class_name},
 };
@@ -1297,6 +1297,17 @@ impl PythonState {
             Class::from_non_generic_node_ref(self.module_node_ref()),
             None,
         )
+    }
+
+    pub fn object_type_ref(&self) -> &Type {
+        // This is a bit weird because it retrieves the object type from a strange place
+        let Type::Tuple(tup) = &self.tuple_of_obj else {
+            unreachable!();
+        };
+        let TupleArgs::ArbitraryLen(obj) = &tup.args else {
+            unreachable!();
+        };
+        &**obj
     }
 
     pub fn isinstance_type(&self, db: &Database) -> Type {
