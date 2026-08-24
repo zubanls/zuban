@@ -451,27 +451,43 @@ from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
 class Foo(TypedDict):
     x: int
 
+class Foo2(TypedDict, closed=True):
+    x: int
+
 def foo(**kwargs: Unpack[Foo]) -> None: ...
+def foo2(**kwargs: Unpack[Foo2]) -> None: ...
 def bar(**kwargs: int) -> None: ...
 
 if bool():
-    foo = bar
+    foo = bar  # E: Incompatible types in assignment (expression has type "def bar(**kwargs: int) -> None", variable has type "def foo(**kwargs: Unpack[Foo]) -> None")
 if bool():
     bar = foo  # E: Incompatible types in assignment (expression has type "def foo(**kwargs: Unpack[Foo]) -> None", variable has type "def bar(**kwargs: int) -> None")
+
+if bool():
+    foo2 = bar
+if bool():
+    bar = foo2  # E: Incompatible types in assignment (expression has type "def foo2(**kwargs: Unpack[Foo2]) -> None", variable has type "def bar(**kwargs: int) -> None")
 
 [case unpacked_typeddict_compatible_with_broader_kwargs2]
 from typing import TypedDict, Generic, TypeVar, Unpack, overload, Any
 
 class Foo(TypedDict):
     x: int
+class Foo2(TypedDict, closed=True):
+    x: int
 
 def foo(**kwargs: Unpack[Foo]) -> None: ...
+def foo2(**kwargs: Unpack[Foo2]) -> None: ...
 def bar(*args: str, **kwargs: int) -> None: ...
 
 if bool():
-    foo = bar
+    foo = bar  # E: Incompatible types in assignment (expression has type "def bar(*args: str, **kwargs: int) -> None", variable has type "def foo(**kwargs: Unpack[Foo]) -> None")
 if bool():
     bar = foo  # E: Incompatible types in assignment (expression has type "def foo(**kwargs: Unpack[Foo]) -> None", variable has type "def bar(*args: str, **kwargs: int) -> None")
+if bool():
+    foo2 = bar
+if bool():
+    bar = foo2  # E: Incompatible types in assignment (expression has type "def foo2(**kwargs: Unpack[Foo2]) -> None", variable has type "def bar(*args: str, **kwargs: int) -> None")
 
 [case kwargs_subtyping]
 def foo(*args: int, **kwargs: str) -> None: ...
@@ -617,9 +633,9 @@ def a1(**kwargs: Unpack[TDBase]) -> None: ...
 def a2(**kwargs: Unpack[TD]) -> None: ...
 
 if bool():
-    a1 = a2
+    a1 = a2  # E: Incompatible types in assignment (expression has type "def a2(**kwargs: Unpack[TD]) -> None", variable has type "def a1(**kwargs: Unpack[TDBase]) -> None")
 else:
-    a2 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TDBase]) -> None", variable has type "def a2(**kwargs: Unpack[TD]) -> None")
+    a2 = a1
 
 [case callable_override_of_typeddict_unpacks2]
 from typing import Never, Unpack, TypedDict, ReadOnly
@@ -669,9 +685,9 @@ else:
     a2 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TD1]) -> None", variable has type "def a2(**kwargs: Unpack[TD2]) -> None")
 
 if bool():
-    a1 = a3  # E: Incompatible types in assignment (expression has type "def a3(**kwargs: Unpack[TD3]) -> None", variable has type "def a1(**kwargs: Unpack[TD1]) -> None")
+    a1 = a3
 else:
-    a3 = a1
+    a3 = a1  # E: Incompatible types in assignment (expression has type "def a1(**kwargs: Unpack[TD1]) -> None", variable has type "def a3(**kwargs: Unpack[TD3]) -> None")
 
 [case recursive_callable_should_still_be_callable]
 # From GH #504

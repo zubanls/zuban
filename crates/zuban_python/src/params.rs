@@ -778,21 +778,27 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
 }
 
 fn typed_dict_to_params<'x>(
-    db: &Database,
+    db: &'x Database,
     td1: &'x TypedDict,
 ) -> impl Iterator<Item = impl Param<'x>> {
     let members = td1.members(db);
+    // The extra type is Any if there are no extra types, but
+    let extra_t = if let Some(extra) = members.extra_items.as_ref() {
+        (!extra.t.is_never()).then_some(&extra.t)
+    } else {
+        let Type::Tuple(tup) = &db.python_state.tuple_of_obj else {
+            unreachable!();
+        };
+        let TupleArgs::ArbitraryLen(x) = &tup.args else {
+            unreachable!();
+        };
+        Some(&**x)
+    };
     members
         .named
         .iter()
         .map(TypedDictMemberParam::Member)
-        .chain(
-            members
-                .extra_items
-                .as_ref()
-                .map(|t| TypedDictMemberParam::ExtraItems(&t.t))
-                .into_iter(),
-        )
+        .chain(extra_t.map(TypedDictMemberParam::ExtraItems).into_iter())
 }
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(

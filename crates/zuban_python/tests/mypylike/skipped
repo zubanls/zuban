@@ -13,8 +13,6 @@ completion_no_wrong_range_in_strings
 narrow_literals_locally_for_assignments
 pydantic_mre_fix_non_deterministic_errors
 
-typed_dict_in_callable_unpack_protocol_matching
-
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
