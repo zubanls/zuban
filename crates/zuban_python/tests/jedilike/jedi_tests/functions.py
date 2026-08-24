@@ -445,8 +445,8 @@ nested_kw2(b=1, c=1.0)
 nested_kw2(c=1.0, b=1)
 #? []
 nested_kw2('').
-#? []
-nested_kw2(a='').
+#? object()
+nested_kw2(a='')
 #? []
 nested_kw2('', b=1).
 
