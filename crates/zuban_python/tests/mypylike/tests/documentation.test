@@ -1329,3 +1329,25 @@ f()
 [out]
 __main__:5: error: Missing positional argument "x" in call to "f"
 __main__.py:5:documentation -> "```python\nAny\n```"
+
+[case docs_for_non_alias]
+# From GH #534
+class Node:
+    pass
+
+queue = [Node()]
+#? --codepoint-column 0 documentation
+n = queue[0]
+
+#? --codepoint-column 0 documentation
+Y = 1
+#? --codepoint-column 0 documentation
+X = list[Y]  # E: Variable "__main__.Y" is not valid as a type \
+             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+x: X
+
+[out]
+__main__.py:7:documentation -> "```python\n(variable) n: Node\n```"
+__main__.py:10:documentation -> "```python\n(variable) Y: int\n```"
+__main__.py:12:documentation -> "```python\n(type alias) X = list[Any]\n```"

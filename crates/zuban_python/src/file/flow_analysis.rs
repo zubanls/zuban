@@ -46,7 +46,7 @@ use crate::{
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction,
+        OverloadResult, OverloadedFunction,
     },
     utils::{EitherIterator, debug_indent},
 };

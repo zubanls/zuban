@@ -69,7 +69,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     fn documentation_for_lookup(&self, lookup: Lookup<'file, 'file>) -> Option<TypeDocs<'file>> {
         match lookup {
-            Lookup::T(TypeContent::TypeAlias(alias)) => Some(TypeDocs::TypeAlias(alias)),
+            Lookup::T(TypeContent::TypeAlias(alias))
+                if alias.is_valid() && !alias.type_if_valid().is_any() =>
+            {
+                Some(TypeDocs::TypeAlias(alias))
+            }
             Lookup::T(TypeContent::Class { node_ref, .. }) => {
                 Some(TypeDocs::SimpleClassTypeAlias(node_ref))
             }
