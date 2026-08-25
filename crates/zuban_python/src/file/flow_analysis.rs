@@ -1586,21 +1586,22 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             LiteralKind::Int(i) => check(*i != 0.into()),
             _ => None,
         };
-        let narrow_by_return_literal = |l: LookupDetails| {
-            let inf = l.lookup.into_maybe_inferred()?;
-            Some(match inf.as_cow_type(i_s).maybe_callable(i_s)? {
-                CallableLike::Callable(c) => match &c.return_type {
-                    Type::Literal(literal) => check_literal(literal),
-                    _ => None,
-                },
-                _ => None,
-            })
-        };
 
         let check_class = |class: Class| {
             let narrow_class_by_return_literal = |name| {
-                let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| false));
-                narrow_by_return_literal(l)
+                let l = match t {
+                    Type::EnumMember(e) => lookup_on_enum_instance(i_s, &|_| false, &e.enum_, name),
+                    Type::Enum(e) => lookup_on_enum_instance(i_s, &|_| false, e, name),
+                    _ => class.lookup(i_s, name, ClassLookupOptions::new(&|_| false)),
+                };
+                let inf = l.lookup.into_maybe_inferred()?;
+                Some(match inf.as_cow_type(i_s).maybe_callable(i_s)? {
+                    CallableLike::Callable(c) => match &c.return_type {
+                        Type::Literal(literal) => check_literal(literal),
+                        _ => None,
+                    },
+                    _ => None,
+                })
             };
 
             if let Some(maybe_specific_bool) = narrow_class_by_return_literal("__bool__") {
@@ -1609,23 +1610,13 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                 check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
             } else if let Some(maybe_specific_len) = narrow_class_by_return_literal("__len__") {
                 maybe_specific_len
-            } else if class.use_cached_class_infos(i_s.db).is_final {
+            } else if t.is_final(i_s.db) {
                 Some((t.clone(), Type::Never(NeverCause::Other)))
             } else {
                 None
             }
         };
 
-        let check_enum = |enum_| {
-            // By default bool(<Some Enum Member>) is True, but __bool__/__len__ can change that.
-            let check_dunder = |name| {
-                let l = lookup_on_enum_instance(i_s, &|_| false, enum_, name);
-                narrow_by_return_literal(l)
-            };
-            check_dunder("__bool__")
-                .or_else(|| check_dunder("__len__"))
-                .unwrap_or_else(|| Some((t.clone(), Type::Never(NeverCause::Other))))
-        };
         match t {
             Type::None => Some((Type::Never(NeverCause::Other), Type::None)),
             Type::Literal(literal) => check_literal(literal),
@@ -1662,8 +1653,8 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                     }
                 }),
             Type::Dataclass(c) => check_class(c.class(i_s.db)),
-            Type::EnumMember(member) => check_enum(&member.enum_),
-            Type::Enum(enum_) => check_enum(enum_),
+            Type::EnumMember(member) => check_class(member.enum_.class(i_s.db)),
+            Type::Enum(enum_) => check_class(enum_.class(i_s.db)),
             Type::TypedDict(td) if td.has_required_members(i_s.db) => {
                 Some((t.clone(), Type::NEVER))
             }
