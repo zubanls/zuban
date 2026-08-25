@@ -136,6 +136,21 @@ if int == type(x):
 else:
     reveal_type(x)  # N: Revealed type is "Any"
 
+[case narrowing_type_of_final_dataclass]
+from typing import final, assert_type
+from dataclasses import dataclass
+
+@dataclass
+@final
+class D:
+    x: int
+
+def f(x: D | None):
+    if type(x) is D:
+        assert_type(x, D)
+    else:
+        assert_type(x, None)
+
 [case avoid_narrowing_of_len_with_big_unpack]
 from typing import Tuple
 from typing_extensions import Unpack

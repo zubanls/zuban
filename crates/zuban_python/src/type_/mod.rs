@@ -718,6 +718,7 @@ impl Type {
     pub fn is_final(&self, db: &Database) -> bool {
         match self {
             Type::Class(c) => c.class(db).use_cached_class_infos(db).is_final,
+            Type::Dataclass(d) => d.class(db).use_cached_class_infos(db).is_final,
             _ => false,
         }
     }
