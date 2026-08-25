@@ -715,6 +715,20 @@ impl Type {
         }
     }
 
+    pub fn is_final(&self, db: &Database) -> bool {
+        match self {
+            Type::Class(c) => c.class(db).use_cached_class_infos(db).is_final,
+            _ => false,
+        }
+    }
+
+    pub fn is_metaclass(&self, db: &Database) -> bool {
+        match self {
+            Type::Class(c) => c.class(db).is_metaclass(db),
+            _ => false,
+        }
+    }
+
     pub fn maybe_remove_none(&self, db: &Database) -> Option<Type> {
         if self.is_none_or_none_in_union(db) {
             let might_have_defined_type_vars = match self {

@@ -5512,16 +5512,11 @@ fn check_for_comparison_guard(
                     return None;
                 }
                 let mut truthy = (**base_truthy).clone();
-                let is_final = match &truthy {
-                    Type::Class(c) => {
-                        if c.class(i_s.db).is_metaclass(i_s.db) {
-                            // For now ignore this, Mypy has only very few tests about this.
-                            return None;
-                        }
-                        c.class(i_s.db).use_cached_class_infos(i_s.db).is_final
-                    }
-                    _ => false,
-                };
+                if truthy.is_metaclass(i_s.db) {
+                    // For now ignore this, Mypy has only very few tests about this.
+                    return None;
+                }
+                let is_final = truthy.is_final(i_s.db);
                 let inf_t = inf.as_cow_type(i_s);
                 if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
                     truthy = Type::Never(NeverCause::Other);
