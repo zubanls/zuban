@@ -27,7 +27,7 @@ use crate::{
     result_context::ResultContext,
     type_::{AnyCause, Type},
     type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
-    utils::{arc_slice_into_vec, join_with_commas},
+    utils::{arc_slice_into_vec, debug_indent, join_with_commas},
 };
 
 thread_local! {
@@ -89,12 +89,15 @@ impl Tuple {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         debug_assert!(!self.currently_calculating_generics.load(Ordering::Relaxed));
         self.tuple_class_generics.get_or_init(|| {
+            debug!("Calculate tuple class generics");
+            let indent = debug_indent();
             self.currently_calculating_generics
                 .store(true, Ordering::Relaxed);
             let t = self
                 .args
                 .simplified_union_of_tuple_entries(&InferenceState::new_in_unknown_file(db))
                 .avoid_implicit_literal(db);
+            drop(indent);
             debug!("Calculated tuple class generics: {}", t.format_short(db));
             self.currently_calculating_generics
                 .store(false, Ordering::Relaxed);
