@@ -65,15 +65,9 @@ impl Type {
                     _ => Match::new_false(),
                 },
                 _ => match t1.as_ref() {
-                    Type::Any(_)
-                        if value_type
-                            .maybe_class(i_s.db)
-                            .is_some_and(|c| c.is_metaclass(i_s.db)) =>
-                    {
-                        Match::True {
-                            with_any: matcher.is_matching_reverse(),
-                        }
-                    }
+                    Type::Any(_) if value_type.is_metaclass(i_s.db) => Match::True {
+                        with_any: matcher.is_matching_reverse(),
+                    },
                     _ => Match::new_false(),
                 },
             },
