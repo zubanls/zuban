@@ -5521,6 +5521,14 @@ fn check_for_comparison_guard(
                 if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
                     truthy = Type::Never(NeverCause::Other);
                 }
+                if inf_t
+                    .iter_with_unpacked_unions(i_s.db)
+                    .any(|t| matches!(t, Type::EnumMember(_)))
+                {
+                    // TODO enum members should be narrowed, but otherwise have weird behavior if
+                    // we don't special case them.
+                    return None;
+                }
                 Some(FramesWithParentUnions {
                     truthy: Frame::from_type(key.clone(), truthy),
                     falsey: match is_final {

@@ -719,6 +719,7 @@ impl Type {
         match self {
             Type::Class(c) => c.class(db).use_cached_class_infos(db).is_final,
             Type::Dataclass(d) => d.class(db).use_cached_class_infos(db).is_final,
+            Type::Enum(_) | Type::EnumMember(_) => true, // Enums are always final
             _ => false,
         }
     }

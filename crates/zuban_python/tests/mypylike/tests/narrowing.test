@@ -151,6 +151,26 @@ def f(x: D | None):
     else:
         assert_type(x, None)
 
+[case narrowing_type_of_enum]
+# flags: --warn-unreachable
+from typing import final, assert_type, Literal
+from enum import Enum
+
+class E(Enum):
+    X = 1
+    Y = 2
+
+def f(x: E | None, y: Literal[E.X] | None):
+    if type(x) is E:
+        assert_type(x, E)
+    else:
+        assert_type(x, None)
+
+    if type(y) is E:
+        assert_type(y, Literal[E.X] | None)  # TODO enum members are a bit hard to narrow
+    else:
+        assert_type(y, Literal[E.X] | None)
+
 [case avoid_narrowing_of_len_with_big_unpack]
 from typing import Tuple
 from typing_extensions import Unpack
