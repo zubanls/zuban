@@ -1597,6 +1597,25 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             })
         };
 
+        let check_class = |class: Class| {
+            let narrow_class_by_return_literal = |name| {
+                let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| false));
+                narrow_by_return_literal(l)
+            };
+
+            if let Some(maybe_specific_bool) = narrow_class_by_return_literal("__bool__") {
+                maybe_specific_bool
+            } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
+                check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
+            } else if let Some(maybe_specific_len) = narrow_class_by_return_literal("__len__") {
+                maybe_specific_len
+            } else if class.use_cached_class_infos(i_s.db).is_final {
+                Some((t.clone(), Type::Never(NeverCause::Other)))
+            } else {
+                None
+            }
+        };
+
         let check_enum = |enum_| {
             // By default bool(<Some Enum Member>) is True, but __bool__/__len__ can change that.
             let check_dunder = |name| {
@@ -1623,12 +1642,6 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             },
             Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
                 .or_else(|| {
-                    let class = c.class(i_s.db);
-                    let narrow_class_by_return_literal = |name| {
-                        let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| false));
-                        narrow_by_return_literal(l)
-                    };
-
                     if c.link == i_s.db.python_state.int_link() {
                         Some((
                             t.clone(),
@@ -1644,22 +1657,11 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                             t.clone(),
                             Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Static(b"")))),
                         ))
-                    } else if let Some(maybe_specific_bool) =
-                        narrow_class_by_return_literal("__bool__")
-                    {
-                        maybe_specific_bool
-                    } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
-                        check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
-                    } else if let Some(maybe_specific_len) =
-                        narrow_class_by_return_literal("__len__")
-                    {
-                        maybe_specific_len
-                    } else if class.use_cached_class_infos(i_s.db).is_final {
-                        Some((t.clone(), Type::Never(NeverCause::Other)))
                     } else {
-                        None
+                        check_class(c.class(i_s.db))
                     }
                 }),
+            Type::Dataclass(c) => check_class(c.class(i_s.db)),
             Type::EnumMember(member) => check_enum(&member.enum_),
             Type::Enum(enum_) => check_enum(enum_),
             Type::TypedDict(td) if td.has_required_members(i_s.db) => {
@@ -3950,7 +3952,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         split_truthy_and_falsey(self.i_s, &inf)
                     {
                         debug!(
-                            "Narrowed {} to true: {} and false: {}",
+                            "Walrus: Narrowed {} to true: {} and false: {}",
                             named_expr.as_code(),
                             walrus_truthy.format_short(self.i_s.db),
                             walrus_falsey.format_short(self.i_s.db)
@@ -4347,7 +4349,6 @@ impl<'file> Inference<'_, 'file, '_> {
             &isinstance_type,
             |issue| self.flags().warn_unreachable && self.add_issue(args.index(), issue),
         );
-        // dbg!(&truthy, &falsey);
         Some(if let Some(key) = input.key {
             FramesWithParentUnions {
                 truthy: Frame::from_type(key.clone(), truthy),

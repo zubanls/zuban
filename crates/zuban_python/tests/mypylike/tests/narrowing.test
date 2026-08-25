@@ -2414,3 +2414,22 @@ class BoxInt(Box[int]):
 def use[A](box: Box[A], other: A) -> None:
     if isinstance(box, BoxInt):
         other_int: int = other  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+
+[case dataclass_narrowing]
+# From GH #535
+from dataclasses import dataclass
+from typing import assert_type, final
+
+@dataclass
+@final
+class A:
+    flag: bool
+
+    @staticmethod
+    def new() -> 'A|None':
+        return A(flag=True)
+
+
+one = A.new()
+two = one and one.flag
+assert_type(two, None | bool)
