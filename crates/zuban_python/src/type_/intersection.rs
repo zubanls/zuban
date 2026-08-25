@@ -157,12 +157,13 @@ impl Intersection {
                 .into()
         };
         for t in intersection.iter_entries() {
-            if let Some(cls) = t.maybe_class(i_s.db)
-                && cls.use_cached_class_infos(i_s.db).is_final
-            {
+            if t.is_final(i_s.db) {
                 add_issue(IssueKind::IntersectionCannotExistDueToFinalClass {
                     intersection: fmt_intersection(&intersection),
-                    final_class: cls.name().into(),
+                    final_class: match t {
+                        Type::Class(c) => c.class(i_s.db).name().into(),
+                        _ => t.format_short(i_s.db),
+                    },
                 });
                 had_issue = true;
             }
