@@ -2257,28 +2257,30 @@ impl<'file> Inference<'_, 'file, '_> {
         let Some(if_block) = if_blocks.next() else {
             return;
         };
-        let name_binder_check = self
-            .point(if_block.first_leaf_index())
-            .maybe_calculated_and_specific();
-        if name_binder_check == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
-            return self.process_ifs(if_blocks, class, func);
-        }
 
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-                match name_binder_check {
+                match self
+                    .point(if_block.first_leaf_index())
+                    .maybe_calculated_and_specific()
+                {
                     Some(Specific::IfBranchAlwaysReachableInTypeCheckingBlock) => {
                         FLOW_ANALYSIS.with(|fa| {
                             fa.with_in_type_checking_only_block(|| {
                                 self.calc_block_diagnostics(block, class, func);
                             })
                         });
-                        self.process_ifs(if_blocks, class, func)
                     }
                     Some(Specific::IfBranchAlwaysReachableInNameBinder) => {
                         self.calc_block_diagnostics(block, class, func);
-                        self.process_ifs(if_blocks, class, func)
+                        FLOW_ANALYSIS.with(|fa| {
+                            if let Some(mut tos) = fa.maybe_tos_frame() {
+                                // Since the other branches might be reachable on other operating
+                                // systems/Python versions we just say
+                                tos.reported_unreachable = true;
+                            }
+                        });
                     }
                     Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
                         self.process_ifs(if_blocks, class, func)

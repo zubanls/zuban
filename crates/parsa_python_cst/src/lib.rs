@@ -1784,6 +1784,7 @@ impl<'db> IfStmt<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum IfBlockType<'db> {
     If(NamedExpression<'db>, Block<'db>),
     Else(ElseBlock<'db>),

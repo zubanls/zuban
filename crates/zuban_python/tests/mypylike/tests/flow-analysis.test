@@ -649,3 +649,25 @@ class C:
 reveal_type(C().n2)  # N: Revealed type is "Any"
 reveal_type(C().a)  # N: Revealed type is "int"
 reveal_type(C().b)  # N: Revealed type is "int"
+
+[case better_reachability_for_operating_system_ifs]
+# flags: --warn-unreachable
+# From GH #537
+import sys
+
+def foo() -> str:
+    if sys.platform == "darwin":
+        return "mac"
+    if sys.platform == "linux":
+        return "linux"
+    class UnreachableClass: ...
+    return "win"
+
+def bar() -> str:
+    if sys.platform == "darwin":
+        return "mac"
+    if sys.platform == "linux":
+        return "linux"
+    else:
+        class UnreachableClass: ...
+        return "win"
