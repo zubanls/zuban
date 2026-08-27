@@ -4135,6 +4135,8 @@ impl<'file> Inference<'_, 'file, '_> {
                     let first = self.infer_primary_or_atom(primary.first());
                     match first.maybe_saved_specific(self.i_s.db) {
                         Some(Specific::BuiltinsIsinstance) => {
+                            debug!("Calculate isinstance for {}", primary.as_code());
+                            let _indent = debug_indent();
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, false)
                             {
@@ -4142,6 +4144,8 @@ impl<'file> Inference<'_, 'file, '_> {
                             }
                         }
                         Some(Specific::BuiltinsIssubclass) => {
+                            debug!("Calculate issubclass for {}", primary.as_code());
+                            let _indent = debug_indent();
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, true)
                             {
@@ -4467,6 +4471,11 @@ impl<'file> Inference<'_, 'file, '_> {
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
+        debug!(
+            "Check TypeGuard/TypeIs for {}",
+            might_have_guard.format(&FormatData::new_short(self.i_s.db))
+        );
+        let _indent = debug_indent();
         match &might_have_guard {
             CallableLike::Callable(c) => self.check_type_guard_callable(simple_args, args, c, None),
             CallableLike::Overload(o) => {
