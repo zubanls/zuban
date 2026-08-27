@@ -267,3 +267,17 @@ def bar(model: KnownModelName | int):
         reveal_type(model)  # N: Revealed type is "int"
     #else:
         #model + "asdf"
+
+# From GH #533
+from collections.abc import Awaitable, Callable
+from typing import Any, Literal, TypeIs
+type ModelSelection = KnownModelName | str
+type ModelSelector = Callable[[Any], ModelSelection | Awaitable[ModelSelection]]
+type AgentModel = ModelSelection | ModelSelector
+
+def _is_model(value: object) -> TypeIs[str]:
+    return isinstance(value, str)
+
+def evaluate_model_contribution(contribution: AgentModel):
+    if callable(contribution) and not _is_model(contribution):
+        pass

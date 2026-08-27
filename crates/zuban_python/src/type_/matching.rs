@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use utils::FastHashSet;
+
 use super::{
     CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
     WithUnpack,
@@ -626,13 +628,48 @@ impl Type {
                 if !u1.might_have_type_vars && !u2.might_have_type_vars && u1 == u2 {
                     return Match::new_true();
                 }
-                Match::all(u2.iter(), |g2| {
+                debug!("Match union against union");
+                let _indent = debug_indent();
+                const MAX_UNION_WITHOUT_HASHING: usize = 5;
+                let check = |matcher: &mut Matcher, g2: &_| {
                     if matches!(g2, Type::None) && i_s.should_ignore_none_in_untyped_context() {
                         Match::new_true()
                     } else {
                         self.union_is_super_type_of(i_s, matcher, u1, g2)
                     }
-                })
+                };
+                if u1.entries.len() > MAX_UNION_WITHOUT_HASHING
+                    && u2.entries.len() > MAX_UNION_WITHOUT_HASHING
+                {
+                    let literals1: FastHashSet<_> = u1
+                        .iter()
+                        .filter_map(|t| match t {
+                            Type::Literal(l) => Some(l.value(i_s.db)),
+                            _ => None,
+                        })
+                        .collect();
+                    let non_literals1: Vec<_> = u1
+                        .iter()
+                        .filter(|t| !matches!(t, Type::Literal(_)))
+                        .collect();
+                    Match::all(u2.iter(), |g2| {
+                        if let Type::Literal(l2) = g2 {
+                            if literals1.contains(&l2.value(i_s.db)) {
+                                Match::new_true()
+                            } else if non_literals1.is_empty() {
+                                Match::new_false()
+                            } else {
+                                Match::any(non_literals1.iter(), |g1| {
+                                    g1.is_super_type_of(i_s, matcher, g2)
+                                })
+                            }
+                        } else {
+                            check(matcher, g2)
+                        }
+                    })
+                } else {
+                    Match::all(u2.iter(), |g2| check(matcher, g2))
+                }
             }
             Type::Type(t) if matches!(t.as_ref(), Type::Union(_)) => {
                 let Type::Union(u) = t.as_ref() else {

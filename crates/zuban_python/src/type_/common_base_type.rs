@@ -9,11 +9,13 @@ use super::{
 };
 use crate::{
     database::Database,
+    debug,
     inference_state::InferenceState,
     match_::Match,
     matching::{CheckedTypeRecursion, Matcher},
     type_::{AnyCause, CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::{Class, TypeOrClass},
+    utils::debug_indent,
 };
 
 impl Type {
@@ -35,6 +37,12 @@ impl Type {
     }
 
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Type {
+        debug!(
+            "Find common base type for {} and {}",
+            self.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        let _indent = debug_indent();
         self.common_base_type_internal(i_s, other, None)
     }
 

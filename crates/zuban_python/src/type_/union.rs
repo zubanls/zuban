@@ -9,12 +9,18 @@ use utils::FastHashMap;
 
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
-    database::Database, format_data::FormatData, inference_state::InferenceState,
-    matching::Matcher, type_::AnyCause,
+    database::Database, debug, format_data::FormatData, inference_state::InferenceState,
+    matching::Matcher, type_::AnyCause, utils::debug_indent,
 };
 
 impl Type {
     pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Self {
+        debug!(
+            "Simplify union for {} and {}",
+            self.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        let _indent = debug_indent();
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
         let highest_union_format_index = self

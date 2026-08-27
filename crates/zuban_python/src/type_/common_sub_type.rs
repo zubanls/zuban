@@ -10,10 +10,17 @@ use crate::{
     debug,
     inference_state::InferenceState,
     type_::{self, Tuple, TupleArgs, TupleUnpack},
+    utils::debug_indent,
 };
 
 impl Type {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
+        debug!(
+            "Find common subtype for {} and {}",
+            self.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        let _indent = debug_indent();
         match (self, other) {
             (Type::Union(union), _) => common_sub_type_for_union(i_s, union, other),
             (_, Type::Union(union)) => common_sub_type_for_union(i_s, union, self),
