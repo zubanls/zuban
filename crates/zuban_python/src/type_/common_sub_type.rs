@@ -15,6 +15,14 @@ use crate::{
 
 impl Type {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
+        let x = self.common_sub_type_part2(i_s, other)?;
+        if x.is_never() {
+            return None;
+        }
+        Some(x)
+    }
+
+    fn common_sub_type_part2(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
         debug!(
             "Find common subtype for {} and {}",
             self.format_short(i_s.db),
