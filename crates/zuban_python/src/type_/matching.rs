@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use utils::FastHashSet;
 
@@ -385,11 +385,24 @@ impl Type {
                 if let Some(class1) = self.maybe_class(i_s.db)
                     && class1.is_protocol(i_s.db)
                 {
+                    let value_type = if let Type::Literal(l) = value_type {
+                        // If there are literals involved, we can simply check protocols without
+                        // the literals. This makes cases much better where we need to check 100+
+                        // literals, where we can simply use the cache in this case.
+                        //
+                        // Note: This could in theory be a problem if typeshed ever adds some
+                        // method that returns Self on a literal. This is probably unlikely,
+                        // because I don't know of such a method, but in that case we might need to
+                        // change this.
+                        Cow::Owned(l.fallback_type(i_s.db))
+                    } else {
+                        Cow::Borrowed(value_type)
+                    };
                     matcher.avoid_structural_matching_recursion(
                         i_s.db,
                         self,
-                        value_type,
-                        |matcher| class1.check_protocol_match(i_s, matcher, value_type),
+                        &value_type,
+                        |matcher| class1.check_protocol_match(i_s, matcher, &value_type),
                     )
                 } else {
                     Match::new_false()
