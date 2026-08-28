@@ -541,7 +541,7 @@ impl Type {
         might_have_defined_type_vars: bool,
     ) -> Self {
         match entries.len() {
-            0 => Type::Never(NeverCause::Other),
+            0 => Type::NEVER,
             1 => entries.into_iter().next().unwrap().type_,
             _ => {
                 let mut union = UnionType::new(entries, might_have_defined_type_vars);

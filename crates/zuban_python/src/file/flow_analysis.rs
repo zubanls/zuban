@@ -43,6 +43,7 @@ use crate::{
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
         TypeVarKind, TypedDict, UnionEntry, UnionType, WithUnpack, lookup_on_enum_instance,
+        simplified_union_from_iterators_with_format_index,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -5783,11 +5784,11 @@ fn split_and_intersect(
     mut add_issue: impl Fn(IssueKind) -> bool,
 ) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
-    let mut true_type = Type::Never(NeverCause::Other);
+    let mut true_types = vec![];
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
     let mut type_var_split = false;
-    for t in original_t.iter_with_unpacked_unions(i_s.db) {
+    for e in original_t.iter_with_unpacked_union_entries(i_s.db, true) {
         let mut split = |t: &Type| {
             let mut matched = false;
             let mut matched_with_any = true;
@@ -5818,21 +5819,21 @@ fn split_and_intersect(
                     }
                     Match::False { .. } => {
                         if isinstance_t.is_sub_type_of(i_s, matcher, t).bool() {
-                            true_type.simplified_union_in_place(i_s, isinstance_t);
+                            true_types.push((e.format_index, isinstance_t.clone()));
                         }
                     }
                 }
             }
             if matched {
                 if matched_with_any {
-                    true_type.simplified_union_in_place(i_s, isinstance_type);
+                    true_types.push((e.format_index, isinstance_type.clone()));
                     other_side.union_in_place(t.clone());
                 } else {
                     // This used to just use union_in_place. However this caused problems with bool
                     // | int, which could not be added to complex. I'm still not sure what's
                     // correct here. This feels like a very weird consequence of type promotions.
                     // This caused issues when type checking Mypy.
-                    true_type.simplified_union_in_place(i_s, t);
+                    true_types.push((e.format_index, t.clone()));
                 }
             } else {
                 other_side.union_in_place(t.clone())
@@ -5842,12 +5843,13 @@ fn split_and_intersect(
                 // Any ordering.
                 if matches!(isinstance_type, Type::Union(u) if u.entries.first().unwrap().format_index > 0)
                 {
-                    true_type = any.union(true_type.clone());
+                    true_types.push((0, any));
                 } else {
-                    true_type.union_in_place(any);
+                    true_types.push((e.format_index, any));
                 }
             }
         };
+        let t = e.type_;
         match t {
             Type::Type(inner) => match inner.as_ref() {
                 Type::Union(union) => {
@@ -5858,13 +5860,13 @@ fn split_and_intersect(
                 _ => split(t),
             },
             Type::Any(_) => {
-                true_type = isinstance_type.clone();
+                true_types.push((e.format_index, isinstance_type.clone()));
                 other_side.union_in_place(t.clone())
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
                 if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
                     type_var_split = true;
-                    true_type = new.into_owned();
+                    true_types.push((e.format_index, new.into_owned()));
                     other_side.union_in_place(t.clone())
                 } else {
                     split(t)
@@ -5873,6 +5875,18 @@ fn split_and_intersect(
             _ => split(t),
         }
     }
+    let highest_union_format_index = true_types
+        .iter()
+        .map(|(format_index, _)| *format_index)
+        .max()
+        .unwrap_or(0);
+    let mut true_type = simplified_union_from_iterators_with_format_index(
+        i_s,
+        true_types
+            .iter()
+            .map(|(format_index, t)| (*format_index, t)),
+        highest_union_format_index,
+    );
     if true_type.is_never() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
             true_type = isinstance_type.clone();
