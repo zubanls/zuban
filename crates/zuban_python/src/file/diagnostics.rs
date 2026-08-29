@@ -1659,7 +1659,24 @@ impl Inference<'_, '_, '_> {
                 if let Some(annotation) = param.annotation()
                     && let Some(default) = param.default()
                 {
-                    let t = self.use_cached_param_annotation_type(annotation);
+                    let mut t = self.use_cached_param_annotation_type(annotation);
+                    if let Some(new) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
+                        let from = usage.in_definition();
+                        if function.as_link() == from
+                            || function.class?.as_link() == from
+                                && (matches!(
+                                    function.kind(i_s),
+                                    FunctionKind::Classmethod { .. } | FunctionKind::Staticmethod
+                                ) || function.name() == "__init__"
+                                    || function.name() == "__new__")
+                        {
+                            usage.as_type_var_like().default(i_s.db)
+                        } else {
+                            None
+                        }
+                    }) {
+                        t = Cow::Owned(new)
+                    }
                     let inf = self
                         .infer_expression_with_context(default, &mut ResultContext::new_known(&t));
                     t.error_if_not_assignable(

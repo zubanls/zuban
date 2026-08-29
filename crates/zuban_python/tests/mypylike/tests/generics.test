@@ -1727,6 +1727,36 @@ def func_error2(
     reveal_type(b)  # N: Revealed type is "__main__.C[int, str]"
     reveal_type(c)  # N: Revealed type is "__main__.C[int, float]"
 
+[case type_var_default_valid_param_defaults]
+# From GH #538
+from typing import Literal
+
+type _T = Literal[True]
+type _F = Literal[False]
+type _E = Literal[""]
+
+class C[
+    B: (bool, _T, _F) = _F,
+    S: (str, _E) = _E,
+]:
+    def __init__(self,
+        b: B = False,
+        s: S = "",
+        b2: S = True,  # E: Incompatible default for parameter "b2" (default has type "Literal[True]", parameter has type "Literal['']")
+        ) -> None:
+        pass
+
+    def f(self,
+          b: B = False,  # E: Incompatible default for parameter "b" (default has type "bool", parameter has type "B = Literal[False]")
+          s: S = "") -> None:  # E: Incompatible default for parameter "s" (default has type "str", parameter has type "S = Literal['']")
+        pass
+
+def f[
+    B: (bool, _T, _F) = _F,
+    S: (str, _E) = _E,
+](self, b: B = False, s: S = "") -> None:
+        pass
+
 [case no_crash_on_self_access_for_class_with_type_var_values]
 import typing
 T = typing.TypeVar("T", str, bytes)
