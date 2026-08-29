@@ -161,3 +161,23 @@ __main__.py:13:call signatures:
 - "(a: str) -> int", valid with params: true, on nth param: Some(0)
 __main__.py:19:call signatures:
 - "(x: Any) -> Any", valid with params: true, on nth param: Some(0)
+
+[case dataclass_signature]
+# From GH #539
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    flag1: bool
+    flag2: bool
+
+    def __init__(self, key: str):
+        self.flag1 = 'a' in key
+        self.flag2 = 'b' in key
+
+#? signatures
+A(  # E: Missing positional argument "key" in call to "A"
+)
+[out]
+__main__.py:14:call signatures:
+- "(key: str) -> A", valid with params: true, on nth param: Some(0)

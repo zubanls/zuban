@@ -988,7 +988,8 @@ impl Type {
             Type::Class(c) => cls_callable(c.class(i_s.db)),
             Type::Dataclass(d) => {
                 let cls = d.class(i_s.db);
-                if d.options.init {
+                // A dataclass cannot generate __init__ or overwrite it in its class body
+                if d.options.init && cls.lookup_symbol(i_s, "__init__").is_none() {
                     let mut init = dataclass_init_func(d, i_s.db).clone();
                     if d.class.generics != ClassGenerics::NotDefinedYet
                         || cls.use_cached_type_vars(i_s.db).is_empty()
