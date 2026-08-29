@@ -1684,14 +1684,14 @@ impl Type {
             })
     }
 
-    pub(crate) fn error_if_not_matches(
+    pub(crate) fn error_if_not_assignable(
         &self,
         i_s: &InferenceState,
         value: &Inferred,
         add_issue: impl Fn(IssueKind) -> bool,
         mut on_error: impl FnMut(&ErrorTypes) -> Option<IssueKind>,
     ) {
-        self.error_if_not_matches_with_matcher(
+        self.error_if_not_assignable_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
@@ -1700,7 +1700,7 @@ impl Type {
         );
     }
 
-    pub(crate) fn error_if_not_matches_with_matcher(
+    pub(crate) fn error_if_not_assignable_with_matcher(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -1709,10 +1709,10 @@ impl Type {
         on_error: impl FnMut(&ErrorTypes, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
-        self.error_if_t_not_matches_with_matcher(i_s, matcher, &value_type, add_issue, on_error);
+        self.error_if_t_not_assignable_with_matcher(i_s, matcher, &value_type, add_issue, on_error);
     }
 
-    pub(crate) fn error_if_t_not_matches_with_matcher(
+    pub(crate) fn error_if_t_not_assignable_with_matcher(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,

@@ -1007,7 +1007,7 @@ fn typed_dict_setitem_internal<'db>(
                     IssueKind::TypedDictReadOnlyKeyMutated { key: key.into() },
                 );
             }
-            member.type_.error_if_not_matches(
+            member.type_.error_if_not_assignable(
                 i_s,
                 &value,
                 |issue| args.add_issue(i_s, issue),
@@ -1035,7 +1035,7 @@ fn typed_dict_setitem_internal<'db>(
             .is_simple_same_type(i_s, &i_s.db.python_state.str_type())
             .bool()
     {
-        expected.error_if_not_matches(
+        expected.error_if_not_assignable(
             i_s,
             &value,
             |issue| args.add_issue(i_s, issue),
@@ -1295,7 +1295,7 @@ pub(crate) fn infer_typed_dict_arg(
             matcher,
         });
 
-        member.type_.error_if_not_matches_with_matcher(
+        member.type_.error_if_not_assignable_with_matcher(
             i_s,
             matcher,
             &inferred,

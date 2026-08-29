@@ -682,7 +682,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         );
                     }
                 } else {
-                    original_t.error_if_not_matches(
+                    original_t.error_if_not_assignable(
                         i_s,
                         &Inferred::from_type(redefinition_t.as_ref().clone()),
                         |issue| self.add_issue_for_declaration(i_s, issue),

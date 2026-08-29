@@ -68,7 +68,7 @@ impl<'a> Instance<'a> {
         }
         let check_compatible = |t: &Type, value: &_| {
             let mut had_errors = false;
-            t.error_if_not_matches(
+            t.error_if_not_assignable(
                 i_s,
                 value,
                 |issue| from.add_issue(i_s, issue),

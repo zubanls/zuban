@@ -578,7 +578,7 @@ fn check_elements_with_context<'db>(
     for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             let value_t = inferred.as_cow_type(i_s);
-            let m = generic_t.error_if_t_not_matches_with_matcher(
+            let m = generic_t.error_if_t_not_assignable_with_matcher(
                 i_s,
                 matcher,
                 &value_t,

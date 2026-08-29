@@ -1662,7 +1662,7 @@ impl Inference<'_, '_, '_> {
                     let t = self.use_cached_param_annotation_type(annotation);
                     let inf = self
                         .infer_expression_with_context(default, &mut ResultContext::new_known(&t));
-                    t.error_if_not_matches(
+                    t.error_if_not_assignable(
                         i_s,
                         &inf,
                         |issue| self.add_issue(default.index(), issue),
@@ -2199,7 +2199,7 @@ impl Inference<'_, '_, '_> {
                         );
                     }
 
-                    t.error_if_not_matches(
+                    t.error_if_not_assignable(
                         i_s,
                         &inf,
                         |issue| self.add_issue(star_exprs.index(), issue),

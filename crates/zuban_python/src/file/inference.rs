@@ -317,7 +317,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             let ErrorStrs { expected, got } = error_types.as_boxed_strs(self.i_s.db);
             Some(IssueKind::IncompatibleAssignment { got, expected })
         };
-        expected.error_if_not_matches(
+        expected.error_if_not_assignable(
             self.i_s,
             &right,
             |issue| self.add_issue(right_side.index(), issue),
@@ -752,7 +752,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 );
                 Inferred::from_type(generator.yield_type)
                     .as_cow_type(i_s)
-                    .error_if_not_matches(
+                    .error_if_not_assignable(
                         i_s,
                         &inf,
                         |issue| from.add_issue(i_s, issue),
@@ -772,7 +772,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return Inferred::new_any_from_error();
                 }
                 let (iter_result, yields) = self.infer_yield_from_details(yield_from);
-                generator.yield_type.error_if_not_matches(
+                generator.yield_type.error_if_not_assignable(
                     i_s,
                     &yields,
                     |issue| from.add_issue(i_s, issue),
@@ -1210,7 +1210,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         assign_kind: AssignKind,
     ) -> bool {
         let mut had_error = false;
-        declaration_t.error_if_not_matches(
+        declaration_t.error_if_not_assignable(
             self.i_s,
             value,
             |issue| from.add_issue(self.i_s, issue),
@@ -1959,7 +1959,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     Cow::Owned(declaration_t.into_owned().avoid_implicit_literal(i_s.db));
                 save_narrowed.set(false);
             }
-            declaration_t.error_if_not_matches(
+            declaration_t.error_if_not_assignable(
                 i_s,
                 value,
                 |issue| from.add_issue(i_s, issue),
@@ -4669,7 +4669,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             type_: &inner_expected,
                         },
                     );
-                    inner_expected.error_if_not_matches_with_matcher(
+                    inner_expected.error_if_not_assignable_with_matcher(
                         i_s,
                         matcher,
                         &inf,
