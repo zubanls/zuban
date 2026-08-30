@@ -196,8 +196,7 @@ struct Inits {
     non_init_fields: Box<[DbString]>,
 }
 
-fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Inits {
-    let cls = dataclass.class(db);
+fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: Class) -> Inits {
     let mut with_indexes = vec![];
     let file = cls.node_ref.file;
     let i_s = &InferenceState::new(db, file);
@@ -1037,23 +1036,44 @@ pub fn dataclass_converter_fields_lookup<'a>(
 
 pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
-        debug!("Calculate dataclass {}", self_.class(db).name());
+        let cls = self_.class(db);
+        // Some dataclasses have things like `name: str = Field(_REGEX)`, which would lead to
+        // inference to local identifiers and not just type computation.
+        if might_have_complicated_field_inference(&cls) {
+            let _ = cls.file.ensure_module_symbols_flow_analysis(db);
+            if self_.inits.get().is_some() {
+                return;
+            }
+        }
+        debug!("Calculate dataclass {}", cls.name());
         let indent = debug_indent();
         // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
         if self_
             .inits
-            .set(calculate_init_of_dataclass(db, self_))
+            .set(calculate_init_of_dataclass(db, self_, cls))
             .is_err()
         {
-            recoverable_error!(
-                "Looped dataclass initialization for {:?}",
-                self_.class(db).name()
-            );
+            recoverable_error!("Looped dataclass initialization for {:?}", cls.name());
         }
         drop(indent);
-        debug!("Finished calculating dataclass {}", self_.class(db).name());
+        debug!("Finished calculating dataclass {}", cls.name());
     }
+}
+
+fn might_have_complicated_field_inference(cls: &Class) -> bool {
+    cls.class_storage
+        .class_symbol_table
+        .iter()
+        .any(|(_, name_index)| {
+            let name = NodeRef::new(cls.file, *name_index).expect_name();
+            if let Some(assignment) = name.maybe_assignment_definition_name()
+                && let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack()
+            {
+                return true;
+            }
+            false
+        })
 }
 
 pub fn dataclass_post_init_func<'a>(
