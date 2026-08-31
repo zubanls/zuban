@@ -3437,11 +3437,16 @@ impl<'file> Inference<'_, 'file, '_> {
             )
         };
         let mut added_no_match_args_issue = false;
-        let mut inner_mismatch = false;
+        let inner_mismatch = Cell::new(false);
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
-        let mut falsey_unreachable = true;
-        let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
+        let falsey_unreachable = Cell::new(true);
+        let find_inner_guards = |inf, subject_key, pat| {
+            let inner_result = self.find_guards_in_pattern(inf, subject_key, pat);
+            inner_mismatch.update(|i| i || inner_result.truthy_t.as_cow_type(i_s).is_never());
+            falsey_unreachable.update(|f| f && inner_result.is_falsey_unreachable(i_s));
+        };
+        let infer_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
             let lookup = lookup(truthy, name);
             let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
                 node_ref.add_issue(
@@ -3453,10 +3458,8 @@ impl<'file> Inference<'_, 'file, '_> {
                 );
                 Inferred::new_any_from_error()
             });
-            let inner_result = self.find_guards_in_pattern(inf, None, pat);
-            inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
-            falsey_unreachable &= inner_result.is_falsey_unreachable(i_s);
-            inner_mismatch
+            find_inner_guards(inf, None, pat);
+            inner_mismatch.get()
         };
         let mut used_keywords: Vec<(&str, bool)> = vec![];
         for param in params.clone() {
@@ -3478,7 +3481,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 {
                                     let key = s.as_str(i_s.db);
                                     used_keywords.push((key, false));
-                                    if find_inner_guards_and_return_unreachable(
+                                    if infer_inner_guards_and_return_unreachable(
                                         NodeRef::new(self.file, pat.index()),
                                         key,
                                         pat,
@@ -3489,11 +3492,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                     // If the type is not a literal, an error should be added
                                     // in diagnostics that __match_args__ is not correct and we
                                     // can simply work with Any here.
-                                    self.find_guards_in_pattern(
-                                        Inferred::new_any_from_error(),
-                                        None,
-                                        pat,
-                                    );
+                                    find_inner_guards(Inferred::new_any_from_error(), None, pat);
                                 }
                             } else if !added_no_match_args_issue {
                                 node_ref.add_issue(
@@ -3511,11 +3510,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             return (truthy.clone(), truthy.clone());
                         }
                     } else if params.clone().count() == 1 && is_self_match_type(i_s.db, truthy) {
-                        self.find_guards_in_pattern(
-                            Inferred::from_type(truthy.clone()),
-                            subject_key,
-                            pat,
-                        );
+                        find_inner_guards(Inferred::from_type(truthy.clone()), subject_key, pat);
                     } else {
                         if !added_no_match_args_issue {
                             node_ref.add_issue(
@@ -3526,7 +3521,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             );
                         }
                         added_no_match_args_issue = true;
-                        self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
+                        find_inner_guards(Inferred::new_any_from_error(), None, pat);
                     }
                     nth_positional += 1;
                 }
@@ -3545,7 +3540,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             );
                         }
                     }
-                    if find_inner_guards_and_return_unreachable(
+                    if infer_inner_guards_and_return_unreachable(
                         NodeRef::new(self.file, keyword_pattern.index()),
                         key,
                         pat,
@@ -3556,12 +3551,12 @@ impl<'file> Inference<'_, 'file, '_> {
                 }
             }
         }
-        if inner_mismatch {
+        if inner_mismatch.get() {
             (Type::NEVER, truthy.clone())
         } else {
             (
                 truthy.clone(),
-                if falsey_unreachable {
+                if falsey_unreachable.get() {
                     Type::NEVER
                 } else {
                     truthy.clone()

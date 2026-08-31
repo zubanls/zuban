@@ -525,3 +525,21 @@ match x:
 
 if x == 1: reveal_type(x)  # N: Revealed type is "__main__.Id"
 if x == "": reveal_type(x)  # N: Revealed type is "__main__.Id"
+
+[case narrowing_match_case_classes]
+# flags: --warn-unreachable
+# From GH #546
+from typing import assert_never
+
+def f(x: int | tuple[int, int] | None) -> float | None:
+    match x:
+        case None:
+            return None
+        case int(0):
+            return 0.0
+        case int(bits):
+            return bits / 8.0
+        case int(bits), int(seconds):
+            return bits / 8.0 / seconds
+        case _:
+            assert_never(x)
