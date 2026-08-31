@@ -1,0 +1,15 @@
+# HACK: On Windows only, set the stack size to 16MB. This prevents an overflow from
+# occurring on deep code paths.
+
+# 64 bit MSVC
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+	"-C", "link-arg=/STACK:16000000"
+]
+
+# NOTE: Pretty sure we don't need this, but just in case.
+# 64 bit Mingw
+[target.x86_64-pc-windows-gnu]
+rustflags = [
+    "-C", "link-arg=-Wl,--stack,16000000"
+]
