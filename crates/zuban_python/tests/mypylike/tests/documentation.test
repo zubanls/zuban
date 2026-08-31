@@ -1351,3 +1351,27 @@ x: X
 __main__.py:7:documentation -> "```python\n(variable) n: Node\n```"
 __main__.py:10:documentation -> "```python\n(variable) Y: int\n```"
 __main__.py:12:documentation -> "```python\n(type alias) X = list[Any]\n```"
+
+[case docs_self_attribute_of_test_case_base_class]
+from case import TestCase
+
+class MyTest(TestCase):
+    def test_something(self):
+        #? documentation
+        self.assertEqual
+
+# This mimics unittest.TestCase.  The assert methods before assertEqual matter:
+# they push the node index of assertEqual past the number of nodes of
+# __main__.py, so that index is out of bounds for __main__.py.
+[file case.pyi]
+from typing import Any
+
+class TestCase:
+    def assertTrue(self, expr: Any, msg: Any = None) -> None: ...
+    def assertFalse(self, expr: Any, msg: Any = None) -> None: ...
+    def assertIs(self, expr1: object, expr2: object, msg: Any = None) -> None: ...
+    def assertIsNone(self, obj: object, msg: Any = None) -> None: ...
+    def assertEqual(self, first: Any, second: Any, msg: Any = None) -> None: ...
+
+[out]
+__main__.py:6:documentation -> "```python\n(function) def assertEqual(first: Any, second: Any, msg: Any = ...) -> None\n```"

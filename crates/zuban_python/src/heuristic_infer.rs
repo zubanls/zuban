@@ -1255,7 +1255,9 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         )))
                     }
                 }
-            } else if matches!(base_t, Type::Self_) {
+            } else if matches!(base_t, Type::Self_)
+                && directed_to.file.file_index == file.file_index
+            {
                 // TODO this might be the wrong function context
                 out = self.infer_name(new_name)
             } else {
