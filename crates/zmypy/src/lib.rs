@@ -1649,4 +1649,28 @@ mod tests {
             )
         }
     }
+
+    #[test]
+    fn deterministic_cycles() {
+        // Related to GH #311
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file x.py]
+            from y import a
+            print(a)
+
+            [file y.py]
+            from x import a
+            print(a)
+            "#,
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        // The error should only appear once, not multiple times
+        assert_eq!(
+            ds,
+            [r#"y.py:1: error: Cannot resolve name "a" (possible cyclic definition)  [misc]"#]
+        );
+    }
 }

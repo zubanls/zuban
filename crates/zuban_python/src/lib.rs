@@ -112,13 +112,16 @@ impl Project {
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
         known_file_indexes
             .into_par_iter()
+            .map(|(file_index, _)| file_index)
             // Make sure the file can be loaded, because this is not guaranteed when retrieving a
             // FileIndex.
             .filter(|file_index| self.db.ensure_file_for_file_index(*file_index).is_ok())
             .chain(
                 files_to_be_loaded
                     .into_par_iter()
-                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
+                    .filter_map(|(_, entry, _)| {
+                        self.db.load_file_index_from_workspace(&entry, false)
+                    }),
             )
             .map(|file_index| Document {
                 project: self,

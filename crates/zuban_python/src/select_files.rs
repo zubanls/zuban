@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use config::TypeCheckerFlags;
 use rayon::prelude::*;
-use utils::FastHashSet;
+use utils::{FastHashMap, FastHashSet};
 use vfs::{
     DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex, GitignoreFile,
     GlobAbsPath, LocalFS, PathWithScheme,
@@ -16,14 +16,17 @@ use crate::{
     utils::{is_file_with_python_ending, join_with_commas},
 };
 
+type ToBeLoaded = (usize, Arc<FileEntry>, PathWithScheme);
+type OrderedFileIndexes = FastHashMap<FileIndex, usize>;
+
 pub(crate) fn diagnostics_for_relevant_files<'db>(
     db: &'db Database,
-    on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
+    mut on_file: impl FnMut(&'db PythonFile) -> Vec<Diagnostic<'db>>,
 ) -> anyhow::Result<Vec<Diagnostic<'db>>> {
     let files = FileSelector::find_files(db)?;
     Ok(files
         .into_iter()
-        .map(on_file)
+        .map(|o| on_file(o.file))
         .reduce(|mut vec1, vec2| {
             vec1.extend(vec2);
             vec1
@@ -31,16 +34,11 @@ pub(crate) fn diagnostics_for_relevant_files<'db>(
         .unwrap_or_default())
 }
 
-pub(crate) fn all_typechecked_files(
-    db: &Database,
-) -> (
-    FastHashSet<FileIndex>,
-    Vec<(Arc<FileEntry>, PathWithScheme)>,
-) {
+pub(crate) fn all_typechecked_files(db: &Database) -> (OrderedFileIndexes, Vec<ToBeLoaded>) {
     let mut selector = FileSelector::new(db);
     selector.search_all_typechecked_files();
     (
-        selector.file_indexes.into_inner().unwrap(),
+        selector.file_indexes_to_order_map.into_inner().unwrap(),
         selector.to_be_loaded,
     )
 }
@@ -56,12 +54,18 @@ fn should_skip_dir_or_file(flags: &TypeCheckerFlags, rel_path: &str) -> bool {
     flags.excludes.iter().any(|e| e.regex.is_match(rel_path))
 }
 
+struct OrderableFile<'db> {
+    order_index: usize,
+    file: &'db PythonFile,
+}
+
 struct FileSelector<'db> {
     db: &'db Database,
-    to_be_loaded: Vec<(Arc<FileEntry>, PathWithScheme)>,
-    file_indexes: RwLock<FastHashSet<FileIndex>>,
+    to_be_loaded: Vec<ToBeLoaded>,
+    file_indexes_to_order_map: RwLock<OrderedFileIndexes>,
     added_file: bool,
     current_gitignores: Vec<Arc<GitignoreFile>>,
+    order_counter: usize,
 }
 
 impl<'db> FileSelector<'db> {
@@ -69,43 +73,46 @@ impl<'db> FileSelector<'db> {
         Self {
             db,
             to_be_loaded: vec![],
-            file_indexes: Default::default(),
+            file_indexes_to_order_map: Default::default(),
             added_file: false,
             current_gitignores: vec![],
+            order_counter: 0,
         }
     }
 
-    fn find_files(db: &'db Database) -> anyhow::Result<Vec<&'db PythonFile>> {
+    fn find_files(db: &'db Database) -> anyhow::Result<Vec<OrderableFile<'db>>> {
         let mut selector = Self::new(db);
         selector.search_in_workspaces()?;
         let loaded_file_entries: Mutex<FastHashSet<ArcPtrWrapper>> = Mutex::new(
             selector
                 .to_be_loaded
                 .iter()
-                .map(|l| ArcPtrWrapper(Arc::as_ptr(&l.0)))
+                .map(|l| ArcPtrWrapper(Arc::as_ptr(&l.1)))
                 .collect(),
         );
-        selector.to_be_loaded.par_iter().for_each(|(file, _)| {
-            if let Some(file) = db.load_file_from_workspace(file) {
-                selector
-                    .file_indexes
-                    .write()
-                    .unwrap()
-                    .insert(file.file_index);
-                find_imports_and_preload_files(db, file, &loaded_file_entries)
-            }
-        });
+        selector
+            .to_be_loaded
+            .par_iter()
+            .for_each(|(order_index, file, _)| {
+                if let Some(file) = db.load_file_from_workspace(file) {
+                    selector.add_file_index(*order_index, file.file_index);
+                    find_imports_and_preload_files(db, file, &loaded_file_entries)
+                }
+            });
         let vfs_handler = &*db.vfs.handler;
         let mut vec: Vec<_> = selector
-            .file_indexes
+            .file_indexes_to_order_map
             .into_inner()
             .unwrap()
             .into_iter()
-            .map(|file_index| db.loaded_python_file(file_index))
+            .map(|(file_index, order_index)| OrderableFile {
+                order_index,
+                file: db.loaded_python_file(file_index),
+            })
             // TODO shouldn't this be done before name binding?
-            .filter(|file| {
-                let p = file.file_entry(db).relative_path(vfs_handler);
-                if let Some(more_specific_flags) = file.maybe_more_specific_flags(db) {
+            .filter(|o| {
+                let p = o.file.file_entry(db).relative_path(vfs_handler);
+                if let Some(more_specific_flags) = o.file.maybe_more_specific_flags(db) {
                     // We need to recheck, because we might have more specific information now for this
                     // file now that it's parsed.
                     if should_skip_file(more_specific_flags, &p) {
@@ -115,9 +122,7 @@ impl<'db> FileSelector<'db> {
                 true
             })
             .collect();
-        // Sort to have at least somewhat of a deterministic order, it's probably easier to debug
-        // it that way.
-        vec.sort_by_key(|file| file.file_index);
+        vec.sort_by_key(|o| o.order_index);
         Ok(vec)
     }
 
@@ -237,12 +242,22 @@ impl<'db> FileSelector<'db> {
 
     fn add_file(&mut self, file: Arc<FileEntry>) {
         self.added_file = true;
+        let order_index = self.order_counter;
+        self.order_counter += 1;
         if let Some(file_index) = file.get_file_index() {
-            self.file_indexes.write().unwrap().insert(file_index);
+            self.add_file_index(order_index, file_index)
         } else {
             let path = file.absolute_path(&*self.db.vfs.handler);
-            self.to_be_loaded.push((file, path));
+            self.to_be_loaded.push((order_index, file, path));
         }
+    }
+
+    fn add_file_index(&self, order_index: usize, file_index: FileIndex) {
+        self.file_indexes_to_order_map
+            .write()
+            .unwrap()
+            .entry(file_index)
+            .or_insert(order_index);
     }
 
     fn ignored_by_gitignore(&self, path: impl FnOnce() -> PathWithScheme, is_dir: bool) -> bool {
@@ -298,7 +313,12 @@ impl<'db> FileSelector<'db> {
             need_to_drop_gitignore = true
         }
 
-        for (_, entry) in entries.borrow().iter() {
+        let borrowed = entries.borrow();
+        let mut sorted_entries: Vec<_> = borrowed.iter().filter(|(_, e)| !e.is_missing()).collect();
+        // Sorting entries by name to have at least some form of determinism by sorting
+        sorted_entries.sort_by_key(|(key, _)| *key);
+
+        for (_, entry) in sorted_entries {
             self.handle_entry(entries, entry)
         }
 
