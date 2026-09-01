@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex, RwLock};
 
 use config::TypeCheckerFlags;
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use utils::FastHashSet;
 use vfs::{
@@ -85,7 +86,19 @@ impl<'db> FileSelector<'db> {
                 .map(|l| ArcPtrWrapper(Arc::as_ptr(&l.0)))
                 .collect(),
         );
+        #[cfg(feature = "parallel")]
         selector.to_be_loaded.par_iter().for_each(|(file, _)| {
+            if let Some(file) = db.load_file_from_workspace(file) {
+                selector
+                    .file_indexes
+                    .write()
+                    .unwrap()
+                    .insert(file.file_index);
+                find_imports_and_preload_files(db, file, &loaded_file_entries)
+            }
+        });
+        #[cfg(not(feature = "parallel"))]
+        selector.to_be_loaded.iter().for_each(|(file, _)| {
             if let Some(file) = db.load_file_from_workspace(file) {
                 selector
                     .file_indexes
@@ -345,7 +358,15 @@ fn find_imports_and_preload_files(
             },
         )
     }
+    #[cfg(feature = "parallel")]
     need_to_load_files.into_par_iter().for_each(|file_index| {
+        if let Ok(_file) = db.ensure_file_for_file_index(file_index) {
+            // TODO should we preload all files? At the moment this seems not necessary
+            //find_imports_and_preload_files(db, file, loaded_file_entries)
+        }
+    });
+    #[cfg(not(feature = "parallel"))]
+    need_to_load_files.into_iter().for_each(|file_index| {
         if let Ok(_file) = db.ensure_file_for_file_index(file_index) {
             // TODO should we preload all files? At the moment this seems not necessary
             //find_imports_and_preload_files(db, file, loaded_file_entries)

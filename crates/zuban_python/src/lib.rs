@@ -47,6 +47,7 @@ use goto::{GotoResolver, PositionalDocument, ReferencesResolver};
 use lsp_types::{FoldingRangeKind, Position};
 use name::Range;
 use parsa_python_cst::{GotoNode, Scope, Tree};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
@@ -69,6 +70,20 @@ use crate::{goto::HeuristicDetail, node_ref::NodeRef, select_files::all_typechec
 
 pub struct Project {
     db: Database,
+}
+
+#[cfg(feature = "playground-single")]
+#[derive(Clone, Debug)]
+pub struct PlaygroundDiagnostic {
+    pub message: String,
+    pub notes: Vec<String>,
+    pub severity: Severity,
+    pub code: String,
+    pub start_line: usize,
+    pub start_column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+    pub snippet: String,
 }
 
 impl Project {
@@ -107,6 +122,7 @@ impl Project {
         }
     }
 
+    #[cfg(feature = "parallel")]
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
         invalidate_matching_cache();
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
@@ -126,8 +142,45 @@ impl Project {
             })
     }
 
+    #[cfg(not(feature = "parallel"))]
+    pub fn workspace_documents(&self) -> impl Iterator<Item = Document<'_>> {
+        let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
+        known_file_indexes
+            .into_iter()
+            .chain(
+                files_to_be_loaded
+                    .into_iter()
+                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
+            )
+            .map(|file_index| Document {
+                project: self,
+                file_index,
+            })
+    }
+
     pub fn store_in_memory_file(&mut self, path: PathWithScheme, code: Box<str>) {
         self.db.store_in_memory_file(path, code, None);
+    }
+
+    pub fn diagnostics_for_file_index(
+        &mut self,
+        file_index: FileIndex,
+    ) -> Box<[diagnostics::Diagnostic<'_>]> {
+        self.db.loaded_python_file(file_index).diagnostics(&self.db)
+    }
+
+    #[cfg(feature = "playground-single")]
+    pub fn store_in_memory_file_with_index(
+        &mut self,
+        path: PathWithScheme,
+        code: Box<str>,
+    ) -> FileIndex {
+        let stored_path = path.clone();
+        self.db.store_in_memory_file(path, code, None);
+        self.db
+            .vfs
+            .in_memory_file(&stored_path)
+            .expect("a regular in-memory file should have a file index")
     }
 
     pub fn store_file_with_lsp_changes(
@@ -182,6 +235,35 @@ impl Project {
 
     pub fn close_in_memory_file(&mut self, path: &PathWithScheme) -> Result<(), &'static str> {
         self.db.close_in_memory_file(path)
+    }
+
+    #[cfg(feature = "playground-single")]
+    pub fn playground_diagnostics_for_file(
+        &mut self,
+        file_index: FileIndex,
+    ) -> Vec<PlaygroundDiagnostic> {
+        self.db
+            .loaded_python_file(file_index)
+            .diagnostics(&self.db)
+            .iter()
+            .map(|diagnostic| {
+                let mut notes = Vec::new();
+                let message = diagnostic.message_with_notes(&mut notes);
+                let start = diagnostic.start_position();
+                let end = diagnostic.end_position();
+                PlaygroundDiagnostic {
+                    message,
+                    notes,
+                    severity: diagnostic.severity(),
+                    code: diagnostic.mypy_error_code().to_string(),
+                    start_line: start.line_one_based(),
+                    start_column: start.utf8_bytes_column() + 1,
+                    end_line: end.line_one_based(),
+                    end_column: end.utf8_bytes_column() + 1,
+                    snippet: start.code_until(end).to_string(),
+                }
+            })
+            .collect()
     }
 
     pub fn diagnostics(&mut self) -> anyhow::Result<Diagnostics<'_>> {

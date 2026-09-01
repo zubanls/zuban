@@ -1,4 +1,5 @@
 /target
+/crates/playground_wasm/dist
 /.vscode
 # insta creates these files
 *.snap.new

@@ -14,8 +14,8 @@ workspace = true
 licensing.workspace = true
 logging_config.workspace = true
 config.workspace = true
-vfs.workspace = true
-zuban_python.workspace = true
+vfs = { workspace = true, features = ["watch"] }
+zuban_python = { workspace = true, features = ["parallel", "fs-watch"] }
 
 anyhow.workspace = true
 clap.workspace = true

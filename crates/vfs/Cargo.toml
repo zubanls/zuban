@@ -16,8 +16,12 @@ utils.workspace = true
 anyhow.workspace = true
 arc-swap = "*"
 tracing.workspace = true
-crossbeam-channel.workspace = true
+crossbeam-channel = { workspace = true, optional = true }
 ignore = "*"
-notify.workspace = true
+notify = { workspace = true, optional = true }
 glob = "*"
-same-file = "*"
+same-file = { version = "*", optional = true }
+
+[features]
+default = ["watch"]
+watch = ["dep:notify", "dep:same-file", "dep:crossbeam-channel"]

@@ -9,6 +9,7 @@ use parsa_python_cst::{
     CodeIndex, DottedImportName, DottedImportNameContent, LevelWithDottedName, Name,
     NameImportParent, Scope,
 };
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use utils::FastHashMap;
@@ -138,7 +139,7 @@ impl<'db> ImportFinder<'db> {
                 _ => None,
             })
             .collect();
-        entries.into_par_iter().for_each(|entry| match entry {
+        let process_entry = |entry| match entry {
             DirectoryEntry::File(entry) => {
                 // Only find importable files like foo.py that have importable file endings and
                 // don't have symbols in there like dashes and spaces.
@@ -158,7 +159,11 @@ impl<'db> ImportFinder<'db> {
             _ => {
                 unreachable!("Removed above")
             }
-        })
+        };
+        #[cfg(feature = "parallel")]
+        entries.into_par_iter().for_each(process_entry);
+        #[cfg(not(feature = "parallel"))]
+        entries.into_iter().for_each(process_entry);
     }
 
     fn find_importable_name_in_file_entry(
@@ -494,70 +499,70 @@ impl TypeshedSymbols {
         let found: Mutex<Self> = Default::default();
         for workspace in db.vfs.workspaces.load().iter() {
             if matches!(&workspace.kind, WorkspaceKind::Typeshed) {
-                all_recursive_public_typeshed_file_entries(db, &workspace.entries)
-                    .par_iter()
-                    .for_each(|entry| {
-                        let file = db
-                            .load_file_from_workspace(entry)
-                            .expect("Expected there to be all typeshed files");
+                let entries = all_recursive_public_typeshed_file_entries(db, &workspace.entries);
+                let process_entry = |entry: &Arc<FileEntry>| {
+                    let file = db
+                        .load_file_from_workspace(entry)
+                        .expect("Expected there to be all typeshed files");
 
-                        let mut found = found.lock().unwrap();
-                        let index = found.files.len() as u32;
-                        found.files.push(TypeshedFile {
-                            path: (**file.file_path(db)).to_string(),
-                        });
-                        let insert_symbol = |found: &mut Self, name: &str| match found
-                            .symbols_to_files
-                            .entry(name.to_string())
-                        {
-                            Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
-                            Entry::Vacant(vacant) => {
-                                vacant.insert_entry(SingleLinkedList::new(index));
-                            }
-                        };
-                        match &entry.parent {
-                            Parent::Directory(dir) => {
-                                let dir = dir.upgrade().unwrap();
-                                if entry.name.as_ref() == "__init__.pyi" {
-                                    Directory::entries(&db.vfs, &dir).borrow().iter().for_each(
-                                        |(_, dir_entry)| {
-                                            let name = dir_entry.name();
-                                            if name != "__init__.pyi" {
-                                                insert_symbol(
-                                                    &mut found,
-                                                    name.trim_end_matches(".pyi"),
-                                                )
-                                            }
-                                        },
-                                    )
-                                }
-                            }
-                            Parent::Workspace(_) => {
-                                let result = found
-                                    .toplevel_import_names
-                                    .insert(file.name(db).to_string(), index);
-                                debug_assert!(result.is_none());
+                    let mut found = found.lock().unwrap();
+                    let index = found.files.len() as u32;
+                    found.files.push(TypeshedFile {
+                        path: (**file.file_path(db)).to_string(),
+                    });
+                    let insert_symbol = |found: &mut Self, name: &str| match found
+                        .symbols_to_files
+                        .entry(name.to_string())
+                    {
+                        Entry::Occupied(mut occupied) => occupied.get_mut().insert_last(index),
+                        Entry::Vacant(vacant) => {
+                            vacant.insert_entry(SingleLinkedList::new(index));
+                        }
+                    };
+                    match &entry.parent {
+                        Parent::Directory(dir) => {
+                            let dir = dir.upgrade().unwrap();
+                            if entry.name.as_ref() == "__init__.pyi" {
+                                Directory::entries(&db.vfs, &dir).borrow().iter().for_each(
+                                    |(_, dir_entry)| {
+                                        let name = dir_entry.name();
+                                        if name != "__init__.pyi" {
+                                            insert_symbol(&mut found, name.trim_end_matches(".pyi"))
+                                        }
+                                    },
+                                )
                             }
                         }
-                        // Builtins are already reachable
-                        if file.file_index == db.python_state.builtins().file_index
+                        Parent::Workspace(_) => {
+                            let result = found
+                                .toplevel_import_names
+                                .insert(file.name(db).to_string(), index);
+                            debug_assert!(result.is_none());
+                        }
+                    }
+                    // Builtins are already reachable
+                    if file.file_index == db.python_state.builtins().file_index
                             // For now disable typing_extensions, because it essentially contains
                             // the almost exact same items as typing.pyi
                             || entry.name.as_ref() == "typing_extensions.pyi"
-                        {
-                            return;
+                    {
+                        return;
+                    }
+                    for (name, &node_index) in file.symbol_table.iter() {
+                        if is_private_import_and_not_in_dunder_all(
+                            db,
+                            NodeRef::new(file, node_index),
+                            |_| true,
+                        ) {
+                            continue;
                         }
-                        for (name, &node_index) in file.symbol_table.iter() {
-                            if is_private_import_and_not_in_dunder_all(
-                                db,
-                                NodeRef::new(file, node_index),
-                                |_| true,
-                            ) {
-                                continue;
-                            }
-                            insert_symbol(&mut found, name)
-                        }
-                    })
+                        insert_symbol(&mut found, name)
+                    }
+                };
+                #[cfg(feature = "parallel")]
+                entries.par_iter().for_each(process_entry);
+                #[cfg(not(feature = "parallel"))]
+                entries.iter().for_each(process_entry);
             }
         }
         found.into_inner().unwrap()
