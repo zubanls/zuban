@@ -60,7 +60,9 @@ impl<'project> Document<'project> {
             let issue_end = diag.end_position().byte_position as CodeIndex;
             if !diag.is_note()
                 && intersects(&check_range, &(issue_start..issue_end))
-                && let Some(insertion) = file.tree.insertion_point_for_type_ignore(issue_start)
+                && let Some(insertion) = file
+                    .tree
+                    .insertion_point_for_type_ignore(&file.ignore_directives, issue_start)
             {
                 let error_code = diag.mypy_error_code();
                 if error_code == "syntax" {

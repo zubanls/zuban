@@ -1730,6 +1730,43 @@ open([])  # zuban: ignore[call-overload]
 __main__:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 __main__:4: note: Error code "assignment" not covered by "type: ignore[asdf]" comment
 
+[case type_ignore_on_non_first_line_of_multiline_issue]
+def f(x: int) -> None: ...
+# Issues on single tokens only respect ignores on the line of that token
+f(
+    "a"  # type: ignore[arg-type]
+)
+f(
+    "b"  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)  # type: ignore[arg-type]
+# Issues that span multiple lines respect an ignore on any of their lines
+open(
+    []  # type: ignore[call-overload]
+)
+open(
+    []
+)  # type: ignore[call-overload]
+
+[case multiple_error_codes_in_type_ignore]
+# The conventional syntax for ignoring multiple error codes on one line
+a: int = ""  # type: ignore[foo, assignment]
+b: int = ""  # type: ignore[assignment,foo]
+# The note about non-covered error codes quotes the full bracket content
+c: int = ""  # type: ignore[foo, bar] # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+             # N: Error code "assignment" not covered by "type: ignore[foo, bar]" comment
+
+[case multiple_type_ignore_comments_on_one_line]
+# Unconventional (the comma syntax above is preferred and is what Mypy
+# supports), but Zuban has always accumulated the codes of multiple ignore
+# comments on one line; this pins that behavior.
+a: int = ""  # type: ignore[foo] # type: ignore[assignment]
+# The note about non-covered error codes quotes the first ignore comment
+b: int = ""  # type: ignore[foo] # type: ignore[bar] # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+             # N: Error code "assignment" not covered by "type: ignore[foo]" comment
+# A bare ignore combined with a coded one ignores everything
+c: int = ""  # type: ignore[foo] # type: ignore
+d: int = ""  # type: ignore # type: ignore[foo]
+
 [case try_except_attribute_error_non_lookups_allowed]
 # flags: --check-untyped-defs
 def union() -> int | str: ...
