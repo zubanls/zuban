@@ -350,6 +350,9 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             }
             Ok(ResolvedFileType::Directory)
         } else if file_type.is_symlink() {
+            tracing::debug!(
+                "Following symlink repeatedly: Coming from {path:?} link to {target_path:?} (originally from {origin_path:?})"
+            );
             self.follow_symlink_internal(origin_path, &target_path)
         } else {
             debug_assert!(file_type.is_file());
