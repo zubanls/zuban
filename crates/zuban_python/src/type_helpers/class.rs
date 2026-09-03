@@ -2743,17 +2743,12 @@ fn init_as_callable(
     };
     Some(match callable {
         CallableLike::Callable(c) => CallableLike::Callable(to_callable(&c)?),
-        CallableLike::Overload(callables) => {
-            let funcs: Arc<_> = callables
+        CallableLike::Overload(callables) => CallableLike::from_overload_funcs(
+            callables
                 .iter_functions()
                 .filter_map(|c| to_callable(c))
-                .collect();
-            match funcs.len() {
-                0 => return None,
-                1 => CallableLike::Callable(arc_slice_into_vec(funcs).into_iter().next().unwrap()),
-                _ => CallableLike::Overload(FunctionOverload::new(funcs)),
-            }
-        }
+                .collect(),
+        )?,
     })
 }
 

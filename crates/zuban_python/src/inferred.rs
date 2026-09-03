@@ -39,7 +39,7 @@ use crate::{
         Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
         execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
-    utils::{arc_slice_into_vec, debug_indent},
+    utils::debug_indent,
 };
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
@@ -2705,11 +2705,9 @@ fn infer_overloaded_class_method(
             Some(Arc::new(c))
         })
         .collect();
-    Some(Inferred::from_type(match functions.len() {
-        0 => return None,
-        1 => Type::Callable(arc_slice_into_vec(functions).into_iter().next().unwrap()),
-        _ => Type::FunctionOverload(FunctionOverload::new(functions)),
-    }))
+    Some(Inferred::from_type(
+        CallableLike::from_overload_funcs(functions)?.into(),
+    ))
 }
 
 pub fn infer_class_method_on_instance<'db: 'class, 'class>(

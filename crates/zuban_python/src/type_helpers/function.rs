@@ -2178,14 +2178,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 (!had_errors.get()).then_some(c)
             })
             .collect();
-        if funcs.len() == 0 {
-            // No overload matched, therefore we can return
-            return None;
-        }
-        // TODO what about funcs.len == 1?
-        Some(Inferred::from_type(Type::FunctionOverload(
-            FunctionOverload::new(funcs),
-        )))
+        Some(Inferred::from_type(
+            CallableLike::from_overload_funcs(funcs)?.into(),
+        ))
     }
 
     pub fn diagnostic_string(&self) -> String {

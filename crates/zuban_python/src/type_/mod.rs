@@ -2298,6 +2298,14 @@ pub(crate) enum CallableLike {
 }
 
 impl CallableLike {
+    pub fn from_overload_funcs(funcs: Arc<[Arc<CallableContent>]>) -> Option<Self> {
+        Some(match funcs.len() {
+            0 => return None,
+            1 => Self::Callable(funcs.iter().next().unwrap().clone()),
+            _ => Self::Overload(FunctionOverload::new(funcs)),
+        })
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         match self {
             Self::Callable(c) => c.format(format_data),
