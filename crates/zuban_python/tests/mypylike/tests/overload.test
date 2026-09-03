@@ -1464,3 +1464,12 @@ class X[T]:
     def x(cls: type[X[int]], y: int) -> X[int]: ...
 
 X.x(1)
+
+[case overload_match_union_special_case]
+# From GH #426
+from collections.abc import Iterable, Mapping
+
+def xx() -> Iterable[tuple[str, str]] | Mapping[str, str]:
+    return [("a", "b")]
+
+a = dict(xx())
