@@ -3057,7 +3057,8 @@ pub(super) fn check_override(
                                 if let Some(func) = maybe_func()
                                     && let node = func.node()
                                     && let type_ignore_comment =
-                                        from.file.tree.type_ignore_comment_for(
+                                        from.file.ignore_directives.type_ignore_comment_for(
+                                            from.file.tree.code(),
                                             node.start(),
                                             node.end_position_of_colon(),
                                         )

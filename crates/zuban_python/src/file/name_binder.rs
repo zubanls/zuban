@@ -70,6 +70,7 @@ pub(crate) struct DbInfos<'db> {
     pub settings: &'db Settings,
     pub flags: &'db FinalizedTypeCheckerFlags,
     pub tree: &'db Tree,
+    pub ignore_directives: &'db IgnoreDirectives,
     pub points: &'db Points,
     pub complex_points: &'db ComplexValues,
     pub issues: &'db Diagnostics,
@@ -254,10 +255,11 @@ impl<'db> NameBinder<'db> {
             return;
         }
         let issue = Issue::from_node_index(self.db_infos.tree, node_index, kind, true);
-        let maybe_ignored = self
-            .db_infos
-            .tree
-            .type_ignore_comment_for(issue.start_position, issue.end_position);
+        let maybe_ignored = self.db_infos.ignore_directives.type_ignore_comment_for(
+            self.db_infos.tree.code(),
+            issue.start_position,
+            issue.end_position,
+        );
         match self
             .db_infos
             .issues
