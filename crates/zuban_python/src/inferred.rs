@@ -39,7 +39,7 @@ use crate::{
         Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
         execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
-    utils::debug_indent,
+    utils::{arc_slice_into_vec, debug_indent},
 };
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
@@ -2691,7 +2691,7 @@ fn infer_overloaded_class_method(
     attribute_class: Class,
     o: &OverloadDefinition,
 ) -> Option<Inferred> {
-    let functions: Box<[_]> = o
+    let functions: Arc<[_]> = o
         .iter_functions()
         .enumerate()
         .filter_map(|(i, callable)| {
@@ -2707,7 +2707,7 @@ fn infer_overloaded_class_method(
         .collect();
     Some(Inferred::from_type(match functions.len() {
         0 => return None,
-        1 => Type::Callable(functions.into_vec().into_iter().next().unwrap()),
+        1 => Type::Callable(arc_slice_into_vec(functions).into_iter().next().unwrap()),
         _ => Type::FunctionOverload(FunctionOverload::new(functions)),
     }))
 }

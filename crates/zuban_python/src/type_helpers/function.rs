@@ -1499,7 +1499,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         Some(OverloadDefinition {
             functions: {
                 debug_assert!(functions.len() > 1);
-                FunctionOverload::new(functions.into_boxed_slice())
+                FunctionOverload::new(functions.into())
             },
             implementation,
             is_final,
@@ -2149,7 +2149,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let CallableLike::Overload(overload) = first_t.maybe_callable(i_s)? else {
             return None;
         };
-        let funcs: Box<[_]> = overload
+        let funcs: Arc<[_]> = overload
             .iter_functions()
             .filter_map(|overload_callable| {
                 let had_errors = Cell::new(false);
@@ -2182,6 +2182,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // No overload matched, therefore we can return
             return None;
         }
+        // TODO what about funcs.len == 1?
         Some(Inferred::from_type(Type::FunctionOverload(
             FunctionOverload::new(funcs),
         )))

@@ -360,12 +360,12 @@ impl Hash for Namespace {
 impl std::cmp::Eq for Namespace {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct FunctionOverload(Box<[Arc<CallableContent>]>);
+pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Box<[Arc<CallableContent>]>) -> Arc<Self> {
+    pub fn new(functions: Arc<[Arc<CallableContent>]>) -> Self {
         debug_assert!(!functions.is_empty());
-        Arc::new(Self(functions))
+        Self(functions)
     }
 
     pub fn kind(&self) -> &FunctionKind {
@@ -493,7 +493,7 @@ pub(crate) enum Type {
     Class(GenericClass),
     Union(UnionType),
     Intersection(Intersection),
-    FunctionOverload(Arc<FunctionOverload>),
+    FunctionOverload(FunctionOverload),
     TypeVar(TypeVarUsage),
     Type(Arc<Type>),
     Tuple(Arc<Tuple>),
@@ -2294,7 +2294,7 @@ impl Literal {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) enum CallableLike {
     Callable(Arc<CallableContent>),
-    Overload(Arc<FunctionOverload>),
+    Overload(FunctionOverload),
 }
 
 impl CallableLike {

@@ -25,7 +25,7 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct OverloadedFunction<'a> {
-    overload: &'a Arc<FunctionOverload>,
+    overload: &'a FunctionOverload,
     class: Option<Class<'a>>,
 }
 
@@ -47,7 +47,7 @@ pub(crate) enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(overload: &'a Arc<FunctionOverload>, class: Option<Class<'a>>) -> Self {
+    pub fn new(overload: &'a FunctionOverload, class: Option<Class<'a>>) -> Self {
         Self { overload, class }
     }
 

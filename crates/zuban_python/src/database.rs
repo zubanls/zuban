@@ -768,7 +768,7 @@ impl OverloadImplementation {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OverloadDefinition {
     pub implementation: Option<OverloadImplementation>,
-    pub functions: Arc<FunctionOverload>,
+    pub functions: FunctionOverload,
     pub is_final: bool,    // Had @final
     pub is_override: bool, // Had @override
     pub dataclass_transform: Option<DataclassTransformObj>,

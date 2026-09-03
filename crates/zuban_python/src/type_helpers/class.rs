@@ -44,7 +44,7 @@ use crate::{
         TypeVarLikes, TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
-    utils::{debug_indent, is_magic_method},
+    utils::{arc_slice_into_vec, debug_indent, is_magic_method},
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {
@@ -2008,7 +2008,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     t
                 } else {
                     Cow::Owned(Type::FunctionOverload(FunctionOverload::new(
-                        overloads.into_boxed_slice(),
+                        overloads.into(),
                     )))
                 }
             }
@@ -2744,13 +2744,13 @@ fn init_as_callable(
     Some(match callable {
         CallableLike::Callable(c) => CallableLike::Callable(to_callable(&c)?),
         CallableLike::Overload(callables) => {
-            let funcs: Box<_> = callables
+            let funcs: Arc<_> = callables
                 .iter_functions()
                 .filter_map(|c| to_callable(c))
                 .collect();
             match funcs.len() {
                 0 => return None,
-                1 => CallableLike::Callable(funcs.into_vec().into_iter().next().unwrap()),
+                1 => CallableLike::Callable(arc_slice_into_vec(funcs).into_iter().next().unwrap()),
                 _ => CallableLike::Overload(FunctionOverload::new(funcs)),
             }
         }
