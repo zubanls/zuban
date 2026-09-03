@@ -1282,7 +1282,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         };
-        let mut add_func = |func: &Function, inf: Inferred, is_first: bool, is_override| {
+        let mut add_func = |func: &Function<'a, '_>, inf: Inferred, is_first: bool, is_override| {
             let base = inf.as_cow_type(i_s);
             if let Some(CallableLike::Callable(callable)) = base.maybe_callable(i_s) {
                 if callable.is_final || is_override {
@@ -1293,7 +1293,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 } else {
                     has_non_abstract = true;
                 }
-                functions.push(callable)
+                functions.push((func.node_ref, callable))
             } else {
                 func.add_issue_onto_start_including_decorator(
                     i_s,
@@ -1467,14 +1467,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && !has_abstract
         {
             if i_s.db.mypy_compatible() {
-                name_def_node_ref(functions.first().unwrap().defined_at)
-                    .name_ref_of_name_def()
+                functions
+                    .first()
+                    .unwrap()
+                    .0
                     .add_issue_onto_start_including_decorator(
                         i_s,
                         IssueKind::OverloadImplementationNeeded,
                     );
             } else {
-                name_def_node_ref(functions.first().unwrap().defined_at)
+                functions
+                    .first()
+                    .unwrap()
+                    .0
                     .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
             }
         }
@@ -1486,7 +1491,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
 
         let is_final = if in_stub {
-            functions.first().is_some_and(|f| f.is_final)
+            functions.first().is_some_and(|(_, f)| f.is_final)
         } else {
             implementation
                 .as_ref()
@@ -1499,7 +1504,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         Some(OverloadDefinition {
             functions: {
                 debug_assert!(functions.len() > 1);
-                FunctionOverload::new(functions.into())
+                FunctionOverload::new(functions.into_iter().map(|(_, c)| c).collect())
             },
             implementation,
             is_final,

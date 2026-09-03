@@ -44,7 +44,7 @@ use crate::{
         TypeVarLikes, TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
-    utils::{arc_slice_into_vec, debug_indent, is_magic_method},
+    utils::{debug_indent, is_magic_method},
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {

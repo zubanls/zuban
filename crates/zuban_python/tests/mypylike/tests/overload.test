@@ -1473,3 +1473,15 @@ def xx() -> Iterable[tuple[str, str]] | Mapping[str, str]:
     return [("a", "b")]
 
 a = dict(xx())
+
+[case overload_decorator_that_does_not_exist]
+# flags: --mode default
+# From GH #429
+from typing import overload
+
+@overload
+@foo  # E: Name "foo" is not defined
+def f(): ...  # E: An overloaded function outside a stub file must have an implementation
+
+@overload
+def f() -> int: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
