@@ -2171,3 +2171,13 @@ class ShouldBeCovariant7[T]:
 
 d1: ShouldBeCovariant7[object] = ShouldBeCovariant7[int]()
 d2: ShouldBeCovariant7[int] = ShouldBeCovariant7[object]()  # E: Incompatible types in assignment (expression has type "ShouldBeCovariant7[object]", variable has type "ShouldBeCovariant7[int]")
+
+[case generic_context_with_multi_lists]
+# From GH #407
+x: dict[str, int] = {"a": 1}
+
+def f(x: list[int] | list[str]) -> None: ...
+def g(x: list[str] | list[int]) -> None: ...
+
+f(list(x))
+g(list(x))

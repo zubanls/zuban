@@ -732,7 +732,38 @@ impl Type {
                         return m;
                     }
                 }
-                Match::any(u1.iter(), |g| g.is_super_type_of(i_s, matcher, value_type))
+                if matcher.is_matching_context && matcher.has_type_var_matcher() {
+                    // If we're matching the context we want to make sure that types are marked as
+                    // uninferrable if the union TypeVars differ. For normal matching we would need
+                    // o do something like this as well, but without some sort of backtracking or
+                    // advanced solving of type vars, it's just making results worse so we only use
+                    // it for the context.
+                    let mut result = Match::new_true();
+                    let mut matched = false;
+                    let value_type_has_type_vars = value_type.has_type_vars();
+                    for g in u1.iter() {
+                        if matched {
+                            if g.has_type_vars() || value_type_has_type_vars {
+                                // The result here is irrelevant, because one of the union entries
+                                // already matched. We only want to make sure the type vars
+                                // are matched.
+                                let mut new_matcher = matcher.clone();
+                                new_matcher.set_all_type_vars_uncalculated();
+                                g.is_super_type_of(i_s, &mut new_matcher, value_type);
+                                matcher.mark_mismatching_type_vars_uninferrable(i_s, new_matcher);
+                            }
+                        } else {
+                            let r = g.is_super_type_of(i_s, matcher, value_type);
+                            matched |= r.bool();
+                            if !matches!(result, Match::False { similar: true, .. }) {
+                                result = r;
+                            }
+                        }
+                    }
+                    result
+                } else {
+                    Match::any(u1.iter(), |g| g.is_super_type_of(i_s, matcher, value_type))
+                }
             }
         }
     }

@@ -79,6 +79,7 @@ pub(crate) struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     func_like: Option<&'a dyn FuncLike>,
     ignore_promotions: bool,
+    pub is_matching_context: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     pub replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
@@ -179,6 +180,40 @@ impl<'a> Matcher<'a> {
         Self {
             type_var_matchers: type_var_matcher.into_iter().collect(),
             ..Self::default()
+        }
+    }
+
+    pub fn set_all_type_vars_uncalculated(&mut self) {
+        for tvm in &mut self.type_var_matchers {
+            for ta in &mut tvm.calculating_type_args {
+                *ta = Default::default();
+            }
+        }
+    }
+
+    pub fn mark_mismatching_type_vars_uninferrable(&mut self, i_s: &InferenceState, other: Self) {
+        for (self_tvm, other_tvm) in self
+            .type_var_matchers
+            .iter_mut()
+            .zip(other.type_var_matchers.iter())
+        {
+            for (self_ta, other_ta) in self_tvm
+                .calculating_type_args
+                .iter_mut()
+                .zip(other_tvm.calculating_type_args.iter())
+            {
+                if other_ta.uninferrable {
+                    self_ta.uninferrable = true;
+                    continue;
+                }
+                if let Some(self_kind) = self_ta.maybe_calculated()
+                    && let Some(other_kind) = other_ta.maybe_calculated()
+                {
+                    if !self_kind.is_simple_same_type(i_s, other_kind).bool() {
+                        self_ta.uninferrable = true;
+                    }
+                }
+            }
         }
     }
 
@@ -1243,6 +1278,7 @@ impl<'a> Matcher<'a> {
             type_var_specific_matching_cache: std::mem::take(
                 &mut self.type_var_specific_matching_cache,
             ),
+            is_matching_context: self.is_matching_context,
         };
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.

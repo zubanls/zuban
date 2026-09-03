@@ -662,6 +662,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         if let Some(return_class) = return_class {
             add_init_generics(&mut matcher, return_class)
         }
+        matcher.is_matching_context = true;
         valid_context &= apply_result_context_and_return_valid(
             i_s,
             &mut matcher,
@@ -670,6 +671,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             func_like,
             add_init_generics,
         );
+        matcher.is_matching_context = false;
     // If there are no TypeVar matchers, we still have to check that the generics for __init__
     // match.
     } else if let Some(return_class) = return_class

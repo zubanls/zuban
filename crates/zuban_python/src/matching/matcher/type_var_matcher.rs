@@ -231,6 +231,17 @@ impl CalculatingTypeArg {
                 }
             })
     }
+
+    pub fn maybe_calculated(&self) -> Option<&BoundKind> {
+        match &self.type_ {
+            Bound::Uncalculated { .. } => None,
+            Bound::Invariant(t)
+            | Bound::Upper(t)
+            // TODO we're not using the lower bound here
+            | Bound::UpperAndLower(t, _)
+            | Bound::Lower(t) => Some(t),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
