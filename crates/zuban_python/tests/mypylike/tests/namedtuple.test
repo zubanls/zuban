@@ -245,3 +245,11 @@ class ConditionalField(NamedTuple):
 
 ConditionalField(1, 2)  # E: Missing positional argument "z" in call to "ConditionalField"
 ConditionalField(1, 2, 3)
+
+[case invalid_named_tuple_get_item]
+# From GH #427
+from typing import NamedTuple
+from collections import namedtuple
+
+NamedTuple[1]  # E: Type application is only supported for generic classes
+namedtuple[1]  # E: Type application is only supported for generic classes

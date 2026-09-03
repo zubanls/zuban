@@ -5,6 +5,7 @@ use parsa_python_cst::Name;
 
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
+use crate::recoverable_error;
 use crate::{
     database::{Specific, TypeAlias},
     diagnostics::IssueKind,
@@ -248,7 +249,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     compute_get_item_on_flexible_alias(slice_type)
                 )
             }
-            _ => unreachable!("{:?}", specific),
+            _ => {
+                recoverable_error!("Got unexpected type application: {specific:?}");
+                Inferred::new_any_from_error()
+            }
         };
         Inferred::from_type(self.i_s.db.python_state.typing_special_form_type())
     }

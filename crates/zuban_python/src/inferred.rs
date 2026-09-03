@@ -149,7 +149,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::from_type(new_class!(db.python_state.list_node_ref().as_link(), inner,))
     }
 
-    pub fn new_any_from_error() -> Self {
+    pub const fn new_any_from_error() -> Self {
         Self::from_type(Type::ERROR)
     }
 
@@ -172,7 +172,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn from_type(t: Type) -> Self {
+    pub const fn from_type(t: Type) -> Self {
         Self {
             state: InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)),
         }
@@ -2435,8 +2435,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::TypingType
                     | Specific::TypingLiteral
                     | Specific::TypingAnnotated
-                    | Specific::TypingNamedTuple
-                    | Specific::CollectionsNamedTuple
                     | Specific::TypingCallable
                     | Specific::MypyExtensionsFlexibleAlias),
                 ) => {
@@ -2448,6 +2446,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             *slice_type,
                             result_context,
                         );
+                }
+                Some(Specific::TypingNamedTuple) => {
+                    // The situation around NamedTuple is weird, because it's actually a function,
+                    // but in Typeshed it's a class that inherits from tuple.
+                    slice_type
+                        .as_node_ref()
+                        .add_issue(i_s, IssueKind::OnlyClassTypeApplication);
                 }
                 _ => {
                     let node_ref = NodeRef::from_link(i_s.db, link);
