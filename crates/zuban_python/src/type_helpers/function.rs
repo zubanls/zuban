@@ -802,14 +802,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn is_method_or_property(&self, i_s: &InferenceState) -> bool {
-        self.class.is_some()
-            && matches!(
-                self.kind(i_s),
-                FunctionKind::Function { .. } | FunctionKind::Property { .. }
-            )
-    }
-
     pub fn original_func_for_overload(&self) -> Option<FuncNodeRef<'a>> {
         let is_ov_unreachable =
             |p: Point| p.maybe_specific() == Some(Specific::OverloadUnreachable);
