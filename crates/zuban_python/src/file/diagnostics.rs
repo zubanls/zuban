@@ -1905,8 +1905,9 @@ impl Inference<'_, '_, '_> {
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
-                if let Some((variance, kind)) =
-                    t.maybe_type_var_like_invalid_variance(Variance::Covariant)
+                if let Some(cls) = function.class
+                    && let Some((variance, kind)) =
+                        t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Covariant)
                 {
                     if !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code()) {
                         NodeRef::new(self.file, annotation.index()).add_issue(
@@ -1947,8 +1948,9 @@ impl Inference<'_, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             let t = self.use_cached_return_annotation_type(return_annotation);
-            if let Some((variance, kind)) =
-                t.maybe_type_var_like_invalid_variance(Variance::Contravariant)
+            if let Some(cls) = function.class
+                && let Some((variance, kind)) =
+                    t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Contravariant)
             {
                 NodeRef::new(self.file, return_annotation.index()).add_issue(
                     i_s,
@@ -2562,6 +2564,7 @@ impl Inference<'_, '_, '_> {
 impl Type {
     fn maybe_type_var_like_invalid_variance(
         &self,
+        for_cls: PointLink,
         unwanted_variance: Variance,
     ) -> Option<(&'static str, &'static str)> {
         let check = |variance| variance == TypeVarVariance::Known(unwanted_variance);
@@ -2583,6 +2586,7 @@ impl Type {
             Type::Callable(c) if let CallableParams::Simple(params) = &c.params => {
                 for p in params.iter() {
                     if let ParamType::Star(StarParamType::ParamSpecArgs(usage)) = &p.type_
+                        && for_cls == usage.in_definition
                         && check(usage.param_spec.variance)
                     {
                         return Some((variance_to_name(unwanted_variance.invert()), "param spec"));

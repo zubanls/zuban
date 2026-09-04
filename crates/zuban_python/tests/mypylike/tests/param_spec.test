@@ -396,3 +396,41 @@ class InferredCovariantParamSpecOld(Generic[InferP]):
 
 infer_out_int_old: InferredCovariantParamSpecOld[int] = InferredCovariantParamSpecOld[object]()  # E: Incompatible types in assignment (expression has type "InferredCovariantParamSpecOld[[object]]", variable has type "InferredCovariantParamSpecOld[[int]]")
 infer_out_obj_old: InferredCovariantParamSpecOld[object] = InferredCovariantParamSpecOld[int]()  # OK
+
+[case param_spec_can_be_covariant]
+from typing import Concatenate, Generic, ParamSpec, TypeVar, Callable
+
+P1 = ParamSpec("P1", contravariant=True)
+P2 = ParamSpec("P2", covariant=True)
+
+def task1(func: Callable[P1, None]) -> Callable[P1, None]: ...
+def task2(func: Callable[P2, None]) -> Callable[P2, None]: ...
+
+[case param_spec_bounds_for_inferred_param_signatures_should_be_covariant]
+# From GH #550
+from collections.abc import Callable
+from typing import Concatenate, Generic, ParamSpec, TypeVar
+
+class Task[**P, R, **Args]():
+    def __init__(self, func: Callable[P, R]) -> None:
+        self.func = func
+
+def task[**P, R](func: Callable[P, R]) -> Task[P, R, P]:
+    return Task(func)
+
+def periodic[**P, R, **Args]() -> Callable[
+    [Task[P, R, Concatenate[int, Args]]],
+    Task[P, R, Args],
+]:
+    raise NotImplementedError
+
+@periodic()
+@task
+def named_param(timestamp: int) -> int:
+    return timestamp
+
+# Accepted: identical but positional-only.
+@periodic()
+@task
+def positional_only(timestamp: int, /) -> int:
+    return timestamp
