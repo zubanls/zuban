@@ -5,7 +5,7 @@ use crate::{
     database::PointLink,
     file::ClassNodeRef,
     matching::Matcher,
-    type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
+    type_::{AnyCause, ReplaceTypeVarLikes as _, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
 };
 
@@ -99,9 +99,15 @@ impl<'a> ResultContext<'a, '_> {
                     let c = Class::from_non_generic_node_ref(class);
                     let mut matcher = Matcher::new_class_matcher(i_s, c);
                     let self_class = Class::with_self_generics(i_s.db, class);
+                    let t = t.replace_type_var_likes(i_s.db, &mut |usage| {
+                        // In case of nested container inference we have to remove the previous
+                        // type vars to avoid leaking type vars.
+                        (usage.in_definition() == class.as_link())
+                            .then(|| usage.as_any_generic_item())
+                    });
                     self_class
                         .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, t)
+                        .is_sub_type_of(i_s, &mut matcher, &t)
                         .bool()
                         .then_some(matcher)
                 },

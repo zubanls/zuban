@@ -2181,3 +2181,13 @@ def g(x: list[str] | list[int]) -> None: ...
 
 f(list(x))
 g(list(x))
+
+[case avoid_dict_recursion_inference_crash]
+# From GH #409
+from collections import OrderedDict
+
+d = OrderedDict({"a": {}})
+d["a"]["b"] = 1
+
+e = dict({"a": {}})
+e["a"]["b"] = 1
