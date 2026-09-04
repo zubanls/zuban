@@ -455,8 +455,8 @@ impl<'a, T: Token> Grammar<T> {
                     {
                         let t = reset(backtracking, stack, backtracking_tokenizer);
                         // Pop the LastAlternative that is still on the stack.
-                        stack.stack_nodes.pop();
-                        stack.tos_mut().children_count = 0;
+                        let popped = stack.stack_nodes.pop().unwrap();
+                        stack.tos_mut().children_count = popped.children_count;
                         self.apply_plan(
                             stack,
                             backtracking.replay_plan,

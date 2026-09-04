@@ -1987,3 +1987,7 @@ reveal_type(str | None)  # N: Revealed type is "types.UnionType"
 from collections.abc import Generator, Callable
 
 yield_once: Callable[[int], Generator[int]] = lambda x: (yield x)
+
+[case unclosed_paren_should_not_crash]
+# From GH #411
+a[()[()-1-2-3-4-()-5][0],6,(),(),(),7,(),(  # E: Invalid syntax
