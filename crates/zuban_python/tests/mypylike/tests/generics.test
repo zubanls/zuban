@@ -2185,9 +2185,13 @@ g(list(x))
 [case avoid_dict_recursion_inference_crash]
 # From GH #409
 from collections import OrderedDict
+from typing import assert_type
 
-d = OrderedDict({"a": {}})
+d = OrderedDict({"a": {}})  # E: Need type annotation for "d"
 d["a"]["b"] = 1
 
-e = dict({"a": {}})
+e = dict({"a": {}})  # E: Need type annotation for "e"
 e["a"]["b"] = 1
+
+f = list([1])
+assert_type(f, list[int])

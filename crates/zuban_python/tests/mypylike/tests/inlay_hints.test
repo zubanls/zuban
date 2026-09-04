@@ -248,12 +248,11 @@ class F:
         c = C(1)
         td = TD(x=1)
 
-# TODO why does it infer list[Any]
 [out]
 __main__.py:3: Inlay Hints:
 - 12:5: ": list[int]"
 - 13:5: ": Iterator[int]"
-- 14:5: ": list[Any]"
+- 14:5: ": list[int]"
 - 17:9: ": set[int]"
 - 18:9: ": Iterator[int]"
 - 19:9: ": dict[int, str]"
