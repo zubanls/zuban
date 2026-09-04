@@ -1991,3 +1991,7 @@ yield_once: Callable[[int], Generator[int]] = lambda x: (yield x)
 [case unclosed_paren_should_not_crash]
 # From GH #411
 a[()[()-1-2-3-4-()-5][0],6,(),(),(),7,(),(  # E: Invalid syntax
+
+[case lambda_repeated_should_not_crash]
+# From GH #410
+a[lambda _:b,c,d,e,f,lambda:  # E: Invalid syntax
