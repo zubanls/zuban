@@ -2158,9 +2158,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 } = &result_context
                                 {
                                     debug!("Execute type definition with {}", stringify!($name));
-                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
-                                    return n
-                                        .file
+                                    return assignment_definition.file(i_s.db)
                                         .name_resolution_for_types(i_s)
                                         .$name($($args)?);
                                 }
@@ -2214,13 +2212,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     assignment_definition,
                                 } = &result_context
                                 {
-                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
-                                    return n
-                                        .file
+                                    return assignment_definition
+                                        .file(i_s.db)
                                         .name_resolution_for_types(i_s)
                                         .compute_special_alias_assignment(
                                             specific,
-                                            n.expect_assignment(),
+                                            assignment_definition.as_node(i_s.db),
                                         );
                                 }
                             }
@@ -2247,13 +2244,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     assignment_definition,
                                 } = &result_context
                                 {
-                                    let n = NodeRef::from_link(i_s.db, *assignment_definition);
-                                    if let Some(inf) = n
-                                        .file
+                                    if let Some(inf) = assignment_definition
+                                        .file(i_s.db)
                                         .name_resolution_for_types(i_s)
                                         .execute_type_alias_from_type_alias_type(
                                             args,
-                                            n.expect_assignment(),
+                                            assignment_definition.as_node(i_s.db),
                                         )
                                     {
                                         return inf;

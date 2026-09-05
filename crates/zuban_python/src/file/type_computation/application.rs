@@ -12,7 +12,6 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    node_ref::NodeRef,
     result_context::ResultContext,
     type_::{Dataclass, NamedTuple, Type, TypeVarLike, TypedDict},
     type_helpers::Class,
@@ -24,8 +23,7 @@ macro_rules! maybe_compute_new_type_alias_definition {
             ResultContext::AssignmentNewDefinition {
                 assignment_definition,
             } => {
-                let node_ref = NodeRef::from_link($self.i_s.db, *assignment_definition);
-                let assignment = node_ref.expect_assignment();
+                let assignment = assignment_definition.as_node($self.i_s.db);
                 return $self.compute_explicit_type_assignment(assignment);
             }
             _ => (),

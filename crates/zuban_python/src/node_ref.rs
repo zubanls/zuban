@@ -521,3 +521,21 @@ impl<'file, N> std::ops::Deref for KnownNodeRef<'file, N> {
         &self.0
     }
 }
+
+pub(crate) struct KnownPointLink<N>(PointLink, PhantomData<N>);
+
+impl<'file, N: CstNode<'file>> KnownPointLink<N> {
+    #[inline]
+    pub fn new(file_index: FileIndex, node: N) -> Self {
+        Self(PointLink::new(file_index, node.index()), PhantomData)
+    }
+
+    pub fn as_node(&self, db: &'file Database) -> N {
+        let file = self.file(db);
+        N::by_index(&file.tree, self.0.node_index)
+    }
+
+    pub fn file(&self, db: &'file Database) -> &'file PythonFile {
+        db.loaded_python_file(self.0.file)
+    }
+}

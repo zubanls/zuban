@@ -34,7 +34,7 @@ use crate::{
         TupleLenInfos, format_got_expected,
     },
     new_class,
-    node_ref::{KnownNodeRef, NodeRef},
+    node_ref::{KnownNodeRef, KnownPointLink, NodeRef},
     params::matches_simple_params,
     pytest::maybe_infer_pytest_param,
     recoverable_error,
@@ -454,7 +454,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     origin: ResultContextOrigin::NormalAssignment,
                 },
                 None => ResultContext::AssignmentNewDefinition {
-                    assignment_definition: PointLink::new(self.file.file_index, assignment.index()),
+                    assignment_definition: KnownPointLink::new(self.file.file_index, assignment),
                 },
             };
             self.infer_assignment_right_side(right_side, &mut result_context)
@@ -2648,8 +2648,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     && self.bitwise_or_might_be_a_type(or)
                 {
                     debug!("Found a BitwiseOr expression that looks like a type alias");
-                    let node_ref = NodeRef::from_link(self.i_s.db, *assignment_definition);
-                    let assignment = node_ref.expect_assignment();
+                    let assignment = assignment_definition.as_node(self.i_s.db);
                     if let Some((_, None, _)) = assignment.maybe_simple_type_expression_assignment()
                     {
                         self.compute_explicit_type_assignment(assignment);

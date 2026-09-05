@@ -1,10 +1,12 @@
 use core::fmt;
 
+use parsa_python_cst::Assignment;
+
 use crate::{
     InferenceState,
-    database::PointLink,
     file::ClassNodeRef,
     matching::Matcher,
+    node_ref::KnownPointLink,
     type_::{AnyCause, ReplaceTypeVarLikes as _, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
 };
@@ -20,7 +22,7 @@ pub(crate) enum ResultContext<'a, 'b> {
         type_: &'a Type,
     },
     AssignmentNewDefinition {
-        assignment_definition: PointLink,
+        assignment_definition: KnownPointLink<Assignment<'a>>,
     },
     ValueExpected,
     Unknown,
