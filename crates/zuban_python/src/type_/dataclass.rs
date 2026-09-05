@@ -28,7 +28,7 @@ use crate::{
         replace_class_type_vars,
     },
     new_class,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     result_context::ResultContext,
@@ -389,7 +389,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                 inference.assign_for_annotation(
                     annotation,
                     target,
-                    NodeRef::new(file, assignment.index()),
+                    KnownNodeRef::new(file, assignment),
                 );
                 file.points.set(
                     assignment.index(),

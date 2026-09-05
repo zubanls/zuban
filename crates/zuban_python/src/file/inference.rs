@@ -340,11 +340,16 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.check_right_side_against_expected(expected, right, right_side)
     }
 
-    pub fn assign_for_annotation(&self, annotation: Annotation, target: Target, node_ref: NodeRef) {
+    pub fn assign_for_annotation(
+        &self,
+        annotation: Annotation,
+        target: Target,
+        node_ref: KnownNodeRef<Assignment>,
+    ) {
         let inf_annot = self.use_cached_annotation(annotation);
         self.assign_single_target(
             target,
-            node_ref,
+            *node_ref,
             &inf_annot,
             AssignKind::Annotation {
                 specific: inf_annot.maybe_saved_specific(self.i_s.db),
@@ -491,7 +496,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         right_side,
                     )
                 }
-                self.assign_for_annotation(annotation, target, *node_ref);
+                self.assign_for_annotation(annotation, target, node_ref);
                 if let Some(right_side) = right_side
                     && !checked
                 {
