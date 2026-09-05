@@ -204,10 +204,6 @@ impl<'file> NodeRef<'file> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn expect_import_from(&self) -> ImportFrom<'file> {
-        ImportFrom::by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn expect_import_name(&self) -> ImportName<'file> {
         ImportName::by_index(&self.file.tree, self.node_index)
     }

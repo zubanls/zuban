@@ -290,7 +290,7 @@ impl PythonFile {
                 Ok(db.loaded_python_file(point.file_index()))
             };
         }
-        let import_from = NodeRef::new(self, star_import.import_from_node).expect_import_from();
+        let import_from = ImportFrom::by_index(&self.tree, star_import.import_from_node);
         self.assign_star_import(db, import_from, star_import.star_node);
         debug_assert!(self.points.get(star_import.star_node).calculated());
         self.star_import_file(db, star_import)
