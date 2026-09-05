@@ -576,11 +576,38 @@ macro_rules! create_interesting_node_searcher {
     };
 }
 
+pub trait CstNode<'db> {
+    fn by_index(tree: &'db Tree, index: NodeIndex) -> Self;
+    fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn index(&self) -> NodeIndex;
+}
+
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'db> {
             node: PyNode<'db>,
+        }
+
+        impl<'db> CstNode<'db> for $name<'db> {
+            #[inline]
+            fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
+                Self::new(tree.0.node_by_index(index))
+            }
+
+            #[inline]
+            fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
+                let node = tree.0.node_by_index(node_index);
+                node.is_type($type).then(|| Self::new(node))
+            }
+
+            #[inline]
+            fn index(&self) -> NodeIndex {
+                self.node.index
+            }
         }
 
         impl<'db> $name<'db> {

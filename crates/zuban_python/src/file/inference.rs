@@ -34,7 +34,7 @@ use crate::{
         TupleLenInfos, format_got_expected,
     },
     new_class,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     params::matches_simple_params,
     pytest::maybe_infer_pytest_param,
     recoverable_error,
@@ -370,7 +370,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     }
 
     pub fn ensure_cached_assignment(&self, assignment: Assignment) {
-        let node_ref = NodeRef::new(self.file, assignment.index());
+        let node_ref = KnownNodeRef::new(self.file, assignment);
         if node_ref.point().calculated() {
             return;
         }
@@ -463,7 +463,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     #[inline]
     fn cache_annotation_assignment(
         &self,
-        assignment_node_ref: NodeRef,
+        node_ref: KnownNodeRef<Assignment>,
         target: Target,
         annotation: Annotation,
         right_side: Option<AssignmentRightSide>,
@@ -473,7 +473,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         let specific = self.point(annotation.index()).maybe_specific();
         match specific {
             Some(Specific::AnnotationTypeAlias) => {
-                self.assign_annotation_type_alias(assignment_node_ref, target);
+                self.assign_annotation_type_alias(node_ref, target);
             }
             _ => {
                 let mut checked = false;
@@ -491,7 +491,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         right_side,
                     )
                 }
-                self.assign_for_annotation(annotation, target, assignment_node_ref);
+                self.assign_for_annotation(annotation, target, *node_ref);
                 if let Some(right_side) = right_side
                     && !checked
                 {
@@ -502,11 +502,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    fn assign_annotation_type_alias(&self, assignment_node_ref: NodeRef, target: Target) {
-        let inf = self.compute_explicit_type_assignment(assignment_node_ref.expect_assignment());
+    fn assign_annotation_type_alias(&self, node_ref: KnownNodeRef<Assignment>, target: Target) {
+        let inf = self.compute_explicit_type_assignment(node_ref.as_node());
         self.assign_single_target(
             target,
-            assignment_node_ref,
+            *node_ref,
             &inf,
             AssignKind::Annotation {
                 specific: Some(Specific::AnnotationTypeAlias),
@@ -520,7 +520,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     #[inline]
     fn cache_aug_assign(
         &self,
-        node_ref: NodeRef,
+        node_ref: KnownNodeRef<Assignment>,
         target: Target,
         aug_assign: AugAssign,
         right_side: AssignmentRightSide,
@@ -533,7 +533,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 self.i_s,
                 node_ref.file,
                 inplace_method,
-                &KnownArgs::new(&right, node_ref),
+                &KnownArgs::new(&right, *node_ref),
                 &mut ResultContext::ValueExpected,
                 &|_type| had_lookup_error.set(true),
             );
@@ -605,7 +605,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 // Invalid syntax
                 Target::Tuple(_) | Target::Starred(_) => unreachable!(),
             };
-            self.assign_any_to_target(target, node_ref)
+            self.assign_any_to_target(target, *node_ref)
         }
     }
 

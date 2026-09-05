@@ -1,10 +1,10 @@
-use std::fmt;
+use std::{fmt, marker::PhantomData};
 
 use parsa_python_cst::{
-    Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, Expression, FunctionDef, ImportFrom,
-    ImportName, Int, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NameDefParent, NameImportParent,
-    NamedExpression, NodeIndex, Primary, PrimaryTarget, Scope, Slices, StarExpression,
-    StarStarExpression, StarredExpression, StringLiteral,
+    Annotation, Assignment, BytesLiteral, ClassDef, CodeIndex, CstNode, Expression, FunctionDef,
+    ImportFrom, ImportName, Int, NAME_DEF_TO_NAME_DIFFERENCE, Name, NameDef, NameDefParent,
+    NameImportParent, NamedExpression, NodeIndex, Primary, PrimaryTarget, Scope, Slices,
+    StarExpression, StarStarExpression, StarredExpression, StringLiteral,
 };
 use vfs::FileIndex;
 
@@ -498,5 +498,26 @@ impl fmt::Debug for NodeRef<'_> {
         s.field("file_index", &self.file.file_index);
         s.field("node_index", &self.node_index);
         s.finish()
+    }
+}
+
+pub(crate) struct KnownNodeRef<'file, N>(NodeRef<'file>, PhantomData<N>);
+
+impl<'file, N: CstNode<'file>> KnownNodeRef<'file, N> {
+    #[inline]
+    pub fn new(file: &'file PythonFile, node: N) -> Self {
+        Self(NodeRef::new(file, node.index()), PhantomData)
+    }
+
+    pub fn as_node(&self) -> N {
+        N::by_index(&self.file.tree, self.node_index)
+    }
+}
+
+impl<'file, N> std::ops::Deref for KnownNodeRef<'file, N> {
+    type Target = NodeRef<'file>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
