@@ -1191,11 +1191,10 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                 // This means it's a recursive type definition.
                 Lookup::T(TypeContent::RecursiveAlias(node_ref.as_link()))
             } else if !a.is_valid() {
-                let assignment = NodeRef::new(
-                    node_ref.file,
+                let assignment = Assignment::by_index(
+                    &node_ref.file.tree,
                     node_ref.node_index - ASSIGNMENT_TYPE_CACHE_OFFSET,
-                )
-                .expect_assignment();
+                );
                 let name_def = assignment
                     .maybe_simple_type_expression_assignment()
                     .unwrap()
