@@ -389,7 +389,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                 inference.assign_for_annotation(
                     annotation,
                     target,
-                    NodeRef::new(file, right_side.index()),
+                    NodeRef::new(file, assignment.index()),
                 );
                 file.points.set(
                     assignment.index(),
