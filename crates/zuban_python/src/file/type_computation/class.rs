@@ -158,7 +158,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub(crate) fn add_issue_on_name(&self, db: &Database, kind: IssueKind) -> bool {
-        NodeRef::new(self.file, self.node_index).add_type_issue(db, kind)
+        NodeRef::new(self.file, self.node().index()).add_type_issue(db, kind)
     }
 
     #[inline]
