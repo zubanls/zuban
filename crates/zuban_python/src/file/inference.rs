@@ -471,20 +471,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         self.set_calculating_on_target(target.clone());
         self.ensure_cached_annotation(annotation, right_side.is_some());
         let specific = self.point(annotation.index()).maybe_specific();
-        let assign_kind = AssignKind::Annotation { specific };
         match specific {
             Some(Specific::AnnotationTypeAlias) => {
-                let inf =
-                    self.compute_explicit_type_assignment(assignment_node_ref.expect_assignment());
-                self.assign_single_target(
-                    target,
-                    assignment_node_ref,
-                    &inf,
-                    assign_kind,
-                    |index, inf| {
-                        inf.clone().save_redirect(self.i_s, self.file, index);
-                    },
-                );
+                self.assign_annotation_type_alias(assignment_node_ref, target);
             }
             _ => {
                 let mut checked = false;
@@ -511,6 +500,21 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             }
         }
+    }
+
+    fn assign_annotation_type_alias(&self, assignment_node_ref: NodeRef, target: Target) {
+        let inf = self.compute_explicit_type_assignment(assignment_node_ref.expect_assignment());
+        self.assign_single_target(
+            target,
+            assignment_node_ref,
+            &inf,
+            AssignKind::Annotation {
+                specific: Some(Specific::AnnotationTypeAlias),
+            },
+            |index, inf| {
+                inf.clone().save_redirect(self.i_s, self.file, index);
+            },
+        );
     }
 
     #[inline]
@@ -2000,15 +2004,24 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         && let FirstParamKind::Self_ = func.first_param_kind(self.i_s)
                         && let Some(in_class) = func.parent_class(self.i_s.db)
                     {
-                        self.check_self_assign(
-                            in_class,
-                            primary_target,
-                            name_def,
-                            from,
-                            value,
-                            assign_kind,
-                            save,
-                        );
+                        if let AssignKind::Annotation {
+                            specific: Some(Specific::TypingTypeAlias),
+                        } = assign_kind
+                            && false
+                        // TODO reenable
+                        {
+                            // self.assign_annotation_type_alias(assignment_node_ref, target)
+                        } else {
+                            self.check_self_assign(
+                                in_class,
+                                primary_target,
+                                name_def,
+                                from,
+                                value,
+                                assign_kind,
+                                save,
+                            );
+                        }
                         return;
                     }
                 }

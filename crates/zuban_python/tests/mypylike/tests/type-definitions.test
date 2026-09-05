@@ -1286,3 +1286,18 @@ KEYS = typing.Literal["sites", "pours"]
 
 def get_value(key: KEYS) -> None:
     pass
+
+[case type_alias_used_as_an_invalid_type_definition]
+# From GH #428
+from typing import TypeAlias, Any
+
+class C:
+    def m(self):
+        self.a: TypeAlias = int
+
+        x: Any
+        x.y: TypeAlias = int
+        assert_type(x.y, Any)
+
+C().a.foo
+assert_type(C().a, int)

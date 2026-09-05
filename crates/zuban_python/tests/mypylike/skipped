@@ -7,6 +7,7 @@ testLiteralAndGenericsRespectsUpperBound
 testNewRedefineForStatementIndexNarrowing
 testDefaultsMustBeInScope
 goto_doc_contains_stdlib_compiled
+type_alias_used_as_an_invalid_type_definition
 
 completion_no_wrong_range_in_strings
 
