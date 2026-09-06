@@ -1991,11 +1991,13 @@ impl<'file> Inference<'_, 'file, '_> {
                     }
                     let inference = self.file.inference(i_s);
                     inference.ensure_cached_annotation(annotation, right_side.is_some());
-                    if !matches!(
-                        self.file.points.get(annotation.index()).specific(),
-                        Specific::AnnotationOrTypeCommentClassVar
-                            | Specific::AnnotationOrTypeCommentFinal
-                    ) {
+                    if self
+                        .file
+                        .points
+                        .get(annotation.index())
+                        .specific()
+                        .is_guaranteed_complete_annotation_or_type_comment()
+                    {
                         return Ok(Some(inference.use_cached_annotation(annotation)));
                     }
                 }

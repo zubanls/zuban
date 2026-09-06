@@ -651,6 +651,15 @@ impl Specific {
                 | Specific::AnnotationOrTypeCommentFinal
         )
     }
+
+    pub fn is_guaranteed_complete_annotation_or_type_comment(self) -> bool {
+        matches!(
+            self,
+            Specific::AnnotationOrTypeCommentSimpleClassInstance
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentWithTypeVars
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

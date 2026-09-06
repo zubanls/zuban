@@ -256,13 +256,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 self.ensure_cached_annotation(annotation, right.is_some());
 
                 // Final/ClassVar may not have been calculated like x: Final = 1
-                if !matches!(
-                    self.file.points.get(annotation.index()).maybe_specific(),
-                    Some(
-                        Specific::AnnotationOrTypeCommentFinal
-                            | Specific::AnnotationOrTypeCommentClassVar,
-                    )
-                ) && let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref()
+                if self
+                    .file
+                    .points
+                    .get(annotation.index())
+                    .specific()
+                    .is_guaranteed_complete_annotation_or_type_comment()
+                    && let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref()
                 {
                     return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
                 }

@@ -2009,24 +2009,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         && let FirstParamKind::Self_ = func.first_param_kind(self.i_s)
                         && let Some(in_class) = func.parent_class(self.i_s.db)
                     {
-                        if let AssignKind::Annotation {
-                            specific: Some(Specific::TypingTypeAlias),
-                        } = assign_kind
-                            && false
-                        // TODO reenable
-                        {
-                            // self.assign_annotation_type_alias(assignment_node_ref, target)
-                        } else {
-                            self.check_self_assign(
-                                in_class,
-                                primary_target,
-                                name_def,
-                                from,
-                                value,
-                                assign_kind,
-                                save,
-                            );
-                        }
+                        self.check_self_assign(
+                            in_class,
+                            primary_target,
+                            name_def,
+                            from,
+                            value,
+                            assign_kind,
+                            save,
+                        );
                         return;
                     }
                 }

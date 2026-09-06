@@ -1289,15 +1289,18 @@ def get_value(key: KEYS) -> None:
 
 [case type_alias_used_as_an_invalid_type_definition]
 # From GH #428
-from typing import TypeAlias, Any
+from typing import TypeAlias, Any, assert_type
 
 class C:
     def m(self):
         self.a: TypeAlias = int
 
+    def n(self) -> None:
+        self.b: TypeAlias = int
         x: Any
-        x.y: TypeAlias = int
+        x.y: TypeAlias = int  # E: Type cannot be declared in assignment to non-self attribute
         assert_type(x.y, Any)
 
 C().a.foo
-assert_type(C().a, int)
+assert_type(C().a, Any)
+assert_type(C().b, Any)
