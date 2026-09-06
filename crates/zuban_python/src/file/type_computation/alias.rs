@@ -120,10 +120,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             match self.file.points.get(annotation.index()).maybe_specific() {
                 Some(Specific::AnnotationTypeAlias) => cause = AliasCause::TypingTypeAlias,
                 // Final/ClassVar may not have been calculated like x: Final = 1
-                Some(
-                    Specific::AnnotationOrTypeCommentFinal
-                    | Specific::AnnotationOrTypeCommentClassVar,
-                ) => (),
+                Some(specific) if !specific.is_guaranteed_complete_annotation_or_type_comment() => {
+                    ()
+                }
                 _ => {
                     if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
                         return Lookup::T(TypeContent::Unknown(UnknownCause::AnyCause(*cause)));
