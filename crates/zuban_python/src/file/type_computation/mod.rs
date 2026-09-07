@@ -3873,6 +3873,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
     }
 
+    pub fn has_complete_annotation_type(&self, annotation: Annotation) -> bool {
+        // The annotation might be incomplete in e.g. an uncalculated y for `x: Final = y`
+        let p = self.file.points.get(annotation.index());
+        debug_assert!(p.calculated());
+        match p.specific() {
+            Specific::AnnotationOrTypeCommentSimpleClassInstance => true,
+            _ => self
+                .file
+                .points
+                .get(annotation.expression().index())
+                .calculated(),
+        }
+    }
+
     pub(crate) fn use_cached_return_annotation_type(
         &self,
         annotation: ReturnAnnotation,

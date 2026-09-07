@@ -1288,12 +1288,13 @@ def get_value(key: KEYS) -> None:
     pass
 
 [case type_alias_used_as_an_invalid_type_definition]
+# flags: --no-check-untyped-defs
 # From GH #428
 from typing import TypeAlias, Any, assert_type
 
 class C:
     def m(self):
-        self.a: TypeAlias = int
+        self.a: TypeAlias = int  # N: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs
 
     def n(self) -> None:
         self.b: TypeAlias = int

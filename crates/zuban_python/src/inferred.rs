@@ -3144,7 +3144,10 @@ pub fn specific_to_type<'db>(
         Specific::BuiltinsSentinel => {
             Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.sentinel_type())))
         }
-        actual => unreachable!("{actual:?}"),
+        actual => {
+            recoverable_error!("Wanted to make invalid Specific to a type: {actual:?}");
+            Cow::Borrowed(&Type::ERROR)
+        }
     }
 }
 

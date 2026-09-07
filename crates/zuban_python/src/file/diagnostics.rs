@@ -744,15 +744,19 @@ impl Inference<'_, '_, '_> {
                             }
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
-                            if let Target::Name(n) | Target::NameExpression(_, n) = target {
-                                self.set_point(
-                                    n.index(),
-                                    Point::new_redirect(
-                                        self.file.file_index,
-                                        annotation.index(),
-                                        Locality::Todo,
-                                    ),
-                                );
+                            if self.has_complete_annotation_type(annotation) {
+                                if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                    self.set_point(
+                                        n.index(),
+                                        Point::new_redirect(
+                                            self.file.file_index,
+                                            annotation.index(),
+                                            Locality::Todo,
+                                        ),
+                                    );
+                                }
+                            } else {
+                                self.assign_any_to_untyped_target(target)
                             }
                             add_annotation_in_untyped_issue()
                         }
