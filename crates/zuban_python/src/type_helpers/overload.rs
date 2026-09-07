@@ -17,8 +17,8 @@ use crate::{
     },
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableContent, FunctionOverload, NeverCause, ReplaceSelf,
-        ReplaceTypeVarLikes as _, Type,
+        AnyCause, CallableContent, FunctionOverload, NeverCause, PrettyCallableOptions,
+        ReplaceSelf, ReplaceTypeVarLikes as _, Type,
     },
     utils::debug_indent,
 };
@@ -93,8 +93,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             {
                 let fmt = callable.content.format_pretty_detailed(
                     &FormatData::new_reveal_type(i_s.db),
-                    false,
-                    true,
+                    PrettyCallableOptions {
+                        add_classmethod_param: true,
+                        ..Default::default()
+                    },
                 );
                 args.add_issue(
                     i_s,

@@ -660,25 +660,30 @@ impl CallableContent {
 
     pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
         let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
-        self.format_pretty_detailed(format_data, avoid_self_annotation, true)
+        self.format_pretty_detailed(
+            format_data,
+            PrettyCallableOptions {
+                avoid_self_annotation,
+                add_classmethod_param: true,
+            },
+        )
     }
 
     pub fn format_pretty_detailed(
         &self,
         format_data: &FormatData,
-        avoid_self_annotation: bool,
-        add_classmethod_param: bool,
+        options: PrettyCallableOptions,
     ) -> Box<str> {
         match &self.params {
             CallableParams::Simple(params) => {
                 let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
                 let mut params = format_callable_params(
                     format_data,
-                    avoid_self_annotation && not_reveal_type,
+                    options.avoid_self_annotation && not_reveal_type,
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
                 );
-                if add_classmethod_param
+                if options.add_classmethod_param
                     && matches!(self.kind, FunctionKind::Classmethod { .. })
                     && not_reveal_type
                 {
@@ -943,6 +948,12 @@ impl CallableContent {
         c.deprecated_reason = None;
         Arc::new(c)
     }
+}
+
+#[derive(Default)]
+pub(crate) struct PrettyCallableOptions {
+    pub avoid_self_annotation: bool,
+    pub add_classmethod_param: bool,
 }
 
 pub(crate) enum WrongPositionalCount {

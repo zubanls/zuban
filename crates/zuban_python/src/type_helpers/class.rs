@@ -39,9 +39,10 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
         GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
-        ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
-        StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeVarIndex, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypedDict, TypedDictGenerics, Variance, add_any_params_to_params,
+        ParamSpecUsage, ParamType, PrettyCallableOptions, ReplaceTypeVarLikes, StarParamType,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeVarIndex,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
+        add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -2620,8 +2621,11 @@ fn format_callable_like(
             "{prefix}{}",
             c.format_pretty_detailed(
                 &FormatData::new_short(db),
-                !c.kind.had_first_self_or_class_annotation() && !other_had_first_annotation,
-                false,
+                PrettyCallableOptions {
+                    avoid_self_annotation: !c.kind.had_first_self_or_class_annotation()
+                        && !other_had_first_annotation,
+                    ..Default::default()
+                }
             )
         )
     };
