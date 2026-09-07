@@ -309,7 +309,6 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
         c.format_pretty_detailed(
             &FormatData::new_short(db),
             PrettyCallableOptions {
-                add_classmethod_param: true,
                 try_to_format_default: Some(&|db, name| {
                     let func = c.maybe_original_function(db)?;
                     func.params()

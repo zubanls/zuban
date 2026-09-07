@@ -94,7 +94,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let fmt = callable.content.format_pretty_detailed(
                     &FormatData::new_reveal_type(i_s.db),
                     PrettyCallableOptions {
-                        add_classmethod_param: true,
+                        avoid_classmethod_param: true,
                         ..Default::default()
                     },
                 );

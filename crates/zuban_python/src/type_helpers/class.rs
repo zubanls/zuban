@@ -2623,6 +2623,7 @@ fn format_callable_like(
                 &FormatData::new_short(db),
                 PrettyCallableOptions {
                     show_self_annotation: other_had_first_annotation,
+                    avoid_classmethod_param: true,
                     ..Default::default()
                 }
             )

@@ -659,13 +659,7 @@ impl CallableContent {
     }
 
     pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
-        self.format_pretty_detailed(
-            format_data,
-            PrettyCallableOptions {
-                add_classmethod_param: true,
-                ..Default::default()
-            },
-        )
+        self.format_pretty_detailed(format_data, PrettyCallableOptions::default())
     }
 
     pub fn format_pretty_detailed(
@@ -685,7 +679,7 @@ impl CallableContent {
                     format_data.style != FormatStyle::MypyRevealType,
                     options.try_to_format_default,
                 );
-                if options.add_classmethod_param
+                if !options.avoid_classmethod_param
                     && matches!(self.kind, FunctionKind::Classmethod { .. })
                     && not_reveal_type
                 {
@@ -958,7 +952,7 @@ type PrettyDefaultFormatter<'func> =
 #[derive(Default)]
 pub(crate) struct PrettyCallableOptions<'func> {
     pub show_self_annotation: bool,
-    pub add_classmethod_param: bool,
+    pub avoid_classmethod_param: bool,
     pub try_to_format_default: PrettyDefaultFormatter<'func>,
 }
 
