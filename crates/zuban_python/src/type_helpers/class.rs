@@ -2622,8 +2622,7 @@ fn format_callable_like(
             c.format_pretty_detailed(
                 &FormatData::new_short(db),
                 PrettyCallableOptions {
-                    avoid_self_annotation: !c.kind.had_first_self_or_class_annotation()
-                        && !other_had_first_annotation,
+                    show_self_annotation: other_had_first_annotation,
                     ..Default::default()
                 }
             )

@@ -318,7 +318,7 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
                         .map(|param| param.default().map(|expr| expr.as_code()))
                         .flatten()
                 }),
-                avoid_self_annotation: !c.kind.had_first_self_or_class_annotation(),
+                ..Default::default()
             },
         )
     };
