@@ -12,7 +12,10 @@ use crate::{
     name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
-    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarVariance},
+    type_::{
+        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, Type, TypeVarLike,
+        TypeVarVariance,
+    },
     type_helpers::Class,
     utils::debug_indent,
 };
@@ -302,22 +305,39 @@ impl<'project> Document<'project> {
 
 fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) -> Box<str> {
     let db = i_s.db;
+    let format_callable = |c: &CallableContent| {
+        c.format_pretty_detailed(
+            &FormatData::new_short(db),
+            PrettyCallableOptions {
+                add_classmethod_param: true,
+                try_to_format_default: Some(&|db, name| {
+                    let func = c.maybe_original_function(db)?;
+                    func.params()
+                        .iter()
+                        .find(|param| param.name_def().as_code() == name)
+                        .map(|param| param.default().map(|expr| expr.as_code()))
+                        .flatten()
+                }),
+                avoid_self_annotation: !c.kind.had_first_self_or_class_annotation(),
+            },
+        )
+    };
     match t {
         Type::FunctionOverload(o) => format!(
             "Overload(\n    {})",
             o.iter_functions()
-                .map(|callable| { callable.format_pretty(&FormatData::new_short(db)) })
+                .map(|callable| format_callable(callable))
                 .collect::<Vec<_>>()
                 .join("\n    ")
         )
         .into(),
-        Type::Callable(c) => c.format_pretty(&FormatData::new_short(db)),
+        Type::Callable(c) => format_callable(c),
         Type::Type(inner) => {
             let mut out = inner.format_short(db).into_string();
             if let Some(CallableLike::Callable(callable)) =
                 t.maybe_callable(&InferenceState::new_in_unknown_file(db))
             {
-                let formatted = callable.format_pretty(&FormatData::new_short(db));
+                let formatted = format_callable(&callable);
                 out += "(";
                 out += formatted.split_once('(').unwrap().1;
             }

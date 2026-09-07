@@ -1365,6 +1365,7 @@ impl Inference<'_, '_, '_> {
                         false,
                         __post_init__.expect_simple_params().iter(),
                         false,
+                        None,
                     );
                     format!("def __post_init__(self, {params}) -> None")
                 }),

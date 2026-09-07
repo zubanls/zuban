@@ -665,6 +665,7 @@ impl CallableContent {
             PrettyCallableOptions {
                 avoid_self_annotation,
                 add_classmethod_param: true,
+                ..Default::default()
             },
         )
     }
@@ -682,6 +683,7 @@ impl CallableContent {
                     options.avoid_self_annotation && not_reveal_type,
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
+                    options.try_to_format_default,
                 );
                 if options.add_classmethod_param
                     && matches!(self.kind, FunctionKind::Classmethod { .. })
@@ -950,10 +952,14 @@ impl CallableContent {
     }
 }
 
+type PrettyDefaultFormatter<'func> =
+    Option<&'func dyn for<'db> Fn(&'db Database, /* name: */ &str) -> Option<&'db str>>;
+
 #[derive(Default)]
-pub(crate) struct PrettyCallableOptions {
+pub(crate) struct PrettyCallableOptions<'func> {
     pub avoid_self_annotation: bool,
     pub add_classmethod_param: bool,
+    pub try_to_format_default: PrettyDefaultFormatter<'func>,
 }
 
 pub(crate) enum WrongPositionalCount {
@@ -966,6 +972,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     avoid_self_annotation: bool,
     params: impl Iterator<Item = P>,
     show_additional_information: bool,
+    try_to_format_default: PrettyDefaultFormatter,
 ) -> String {
     let db = format_data.db;
     let mut previous_kind = None;
@@ -1031,7 +1038,13 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         }
         had_kwargs_separator |= matches!(specific, WrappedParamType::Star(_));
         if p.has_default() {
-            if show_additional_information {
+            if let Some(try_to_format_default) = try_to_format_default
+                && let Some(name) = p.name(db)
+                && let Some(default) = try_to_format_default(db, name)
+            {
+                out += " = ";
+                out += default;
+            } else if show_additional_information {
                 out += " = ...";
             } else {
                 out += " =";

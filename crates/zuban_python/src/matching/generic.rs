@@ -54,7 +54,7 @@ impl<'a> Generic<'a> {
                     .unwrap_or_else(|| {
                         format!(
                             "[{}]",
-                            &format_callable_params(format_data, false, params.iter(), false)
+                            &format_callable_params(format_data, false, params.iter(), false, None)
                         )
                         .into()
                     }),

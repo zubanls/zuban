@@ -1154,10 +1154,10 @@ basedep.func2(1)
 follow_untyped_imports = false
 
 [out]
-__main__.py:8:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
-__main__.py:11:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
-__main__.py:15:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
-__main__.py:19:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = ...) -> BaseDep\n```"
+__main__.py:8:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = 1.0) -> BaseDep\n```"
+__main__.py:11:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = 1.0) -> BaseDep\n```"
+__main__.py:15:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = 1.0) -> BaseDep\n```"
+__main__.py:19:documentation -> "```python\n(class) Any\n\nMight be: BaseDep(x = 1.0) -> BaseDep\n```"
 __main__.py:23:documentation -> "```python\nclass_var: Any\n```"
 __main__.py:26:documentation -> "```python\n(variable) class_var: Any\n\nMight be: int\n```"
 __main__.py:28:documentation -> "```python\n(variable) class_var: Any\n\nMight be: int\n```"
@@ -1374,4 +1374,13 @@ class TestCase:
     def assertEqual(self, first: Any, second: Any, msg: Any = None) -> None: ...
 
 [out]
-__main__.py:6:documentation -> "```python\n(function) def assertEqual(first: Any, second: Any, msg: Any = ...) -> None\n```"
+__main__.py:6:documentation -> "```python\n(function) def assertEqual(first: Any, second: Any, msg: Any = None) -> None\n```"
+
+[case docs_show_function_defaults]
+# From GH #555
+def foo(x, y=5, z: str = "") -> None: ...
+#? documentation
+foo
+
+[out]
+__main__.py:4:documentation -> "```python\n(function) def foo(x: Any, y: Any = 5, z: str = \"\") -> None\n```"
