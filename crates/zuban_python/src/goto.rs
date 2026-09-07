@@ -11,7 +11,7 @@ use parsa_python_cst::{
     PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
-use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex};
+use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex, Parent};
 
 use crate::{
     InputPosition, ValueName,
@@ -955,6 +955,14 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     PythonFile::from_file_entry_and_code(&db.project, file_index, file_entry, code)
                 },
             ) {
+                if let Parent::Directory(dir) = &file_entry.parent
+                    && dir.upgrade().is_none()
+                {
+                    recoverable_error!(
+                        "Parent for file should be available. Avoiding a potential crash, see GitHub #552"
+                    );
+                    return;
+                }
                 files.push(db.loaded_python_file(file_index));
             }
         };
