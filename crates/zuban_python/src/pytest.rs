@@ -114,6 +114,7 @@ fn is_fixture(db: &Database, file: &PythonFile, decorators: Option<Decorators>) 
             // people redefine fixture like `foo = fixture` result in Any, but that's probably
             // fine, since it's not annoying for users.
             dec.as_code().contains("fixture") && {
+                debug!("Found a decorator that might point to a fixture");
                 let i_s = &InferenceState::new(db, file);
                 let inference = file.inference(i_s);
                 // We have to remove the call to `@fixture()`, because otherwise we would not get a
