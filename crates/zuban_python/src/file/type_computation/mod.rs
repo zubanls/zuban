@@ -4402,7 +4402,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         type_params: TypeParams,
         allow_multi_type_var_tuples: bool,
     ) -> TypeVarLikes {
-        let mut type_var_likes: Vec<TypeVarLike> = vec![];
+        let mut type_var_likes: Vec<(TypeParam, TypeVarLike)> = vec![];
+        let mut type_var_tuple_count = 0;
         for type_param in type_params.iter() {
             let (name_def, kind) = type_param.unpack();
             let name_def_ref = NodeRef::new(self.file, name_def.index());
@@ -4479,19 +4480,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             // It might feel a bit weird, that we insert the TypeVars and also return them
             // as a list. This is because the list is needed for class/alias/func
             // definitions and the individual TypeVar is used whenever a type accesses it.
-            name_def_ref.insert_complex(ComplexPoint::TypeVarLike(type_var_like), Locality::Todo);
-        }
+            name_def_ref.insert_complex(
+                ComplexPoint::TypeVarLike(type_var_like.clone()),
+                Locality::Todo,
+            );
 
-        // We do a separate pass here, since using the defaults might need access to the above
-        // initialized type vars.
-        let mut type_var_tuple_count = 0;
-        for type_param in type_params.iter() {
-            let (name_def, _) = type_param.unpack();
-            let name_def_ref = NodeRef::new(self.file, name_def.index());
-            let Some(ComplexPoint::TypeVarLike(type_var_like)) = name_def_ref.maybe_complex()
-            else {
-                unreachable!()
-            };
+            let mut add_to_list = true;
             if let TypeVarLike::TypeVarTuple(_) = type_var_like {
                 type_var_tuple_count += 1;
                 if !allow_multi_type_var_tuples && type_var_tuple_count >= 2 {
@@ -4501,12 +4495,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             in_type_alias_type: false,
                         },
                     );
-                    continue;
+                    add_to_list = false;
                 }
             }
             let mut type_var_like = type_var_like.clone();
             if !type_var_like.has_default()
-                && let Some(previous) = type_var_likes.last()
+                && let Some((_, previous)) = type_var_likes.last()
                 && previous.has_default()
             {
                 type_var_like = type_var_like.set_any_default();
@@ -4518,24 +4512,36 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     },
                 );
             }
-            let type_var_like = if let Some(replaced) = type_var_like
+            if add_to_list {
+                type_var_likes.push((type_param, type_var_like.clone()));
+            }
+        }
+        self.validate_type_params_defaults(&mut type_var_likes);
+        TypeVarLikes::new(type_var_likes.into_iter().map(|(_, tvl)| tvl).collect())
+    }
+
+    fn validate_type_params_defaults(&self, type_var_likes: &mut Vec<(TypeParam, TypeVarLike)>) {
+        // We do a separate pass here, since using the defaults might need access to the above
+        // initialized type vars.
+        for i in 0..type_var_likes.len() {
+            let (type_param, type_var_like) = &type_var_likes[i];
+            let node_ref = || {
+                let (name_def, _) = type_param.unpack();
+                NodeRef::new(self.file, name_def.index())
+            };
+            if let Some(replaced) = type_var_like
                 .replace_type_var_like_defaults_that_are_out_of_scope(
                     self.i_s.db,
-                    type_var_likes.iter(),
-                    |issue| {
-                        NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
-                    },
-                ) {
+                    type_var_likes.iter().take(i).map(|(_, tvl)| tvl),
+                    |issue| node_ref().add_type_issue(self.i_s.db, issue),
+                )
+            {
                 // Need to overwrite the old definition
-                name_def_ref
+                node_ref()
                     .insert_complex(ComplexPoint::TypeVarLike(replaced.clone()), Locality::Todo);
-                replaced
-            } else {
-                type_var_like
-            };
-            type_var_likes.push(type_var_like)
+                type_var_likes[i].1 = replaced
+            }
         }
-        TypeVarLikes::from_vec(type_var_likes)
     }
 
     fn lookup_decorator_if_only_names(&self, decorator: Decorator) -> Option<Lookup<'db, 'db>> {
