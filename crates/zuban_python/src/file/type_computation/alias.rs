@@ -738,9 +738,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         expr: Expression,
         cause: AliasCause,
     ) -> Lookup<'file, 'file> {
+        let node_ref = NodeRef::new(self.file, expr.index());
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(
-            type_var_likes,
+            type_var_likes
+                .maybe_replace_invalid_type_var_defaults(self.i_s.db, |issue| {
+                    node_ref.add_issue(self.i_s, issue)
+                })
+                .unwrap_or(type_var_likes),
             in_definition,
             PointLink::new(self.file.file_index, name_def.name().index()),
             matches!(cause, AliasCause::SyntaxOrTypeAliasType),
@@ -797,7 +802,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             CalculatingAliasType::Normal => {
                 comp.errors_already_calculated = p.calculated();
                 let tc = comp.compute_type(expr);
-                let node_ref = NodeRef::new(self.file, expr.index());
                 match tc {
                     TypeContent::InvalidVariable(_)
                     | TypeContent::Unknown(UnknownCause::UnknownName(_))

@@ -12,7 +12,7 @@ use super::{
     ReplaceTypeVarLikes, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
-    database::{ComplexPoint, Database, ParentScope, PointLink},
+    database::{ComplexPoint, Database, Locality, ParentScope, PointLink},
     debug,
     diagnostics::IssueKind,
     file::{PythonFile, TypeVarTupleDefaultOrigin},
@@ -300,24 +300,6 @@ impl TypeVarManager<PointLink> {
                 has_default |= current_default
             }
             prev = Some(unfinished)
-        }
-        if has_default {
-            for index in 0..self.type_vars.len() {
-                let unfinished = &self.type_vars[index];
-                let current = &unfinished.type_var_like;
-                if current.default(db).is_some() {
-                    if let Some(new) = current.replace_type_var_like_defaults_that_are_out_of_scope(
-                        db,
-                        self.iter().take(index),
-                        &|kind| {
-                            NodeRef::new(in_file, unfinished.defined_at.unwrap())
-                                .add_type_issue(db, kind)
-                        },
-                    ) {
-                        self.type_vars[index].type_var_like = new;
-                    }
-                }
-            }
         }
         self.into_type_vars()
     }
@@ -630,6 +612,41 @@ impl TypeVarLikes {
                 TypeVarLike::ParamSpec(_) => defaults_allowed = true,
             }
         }
+    }
+
+    pub fn maybe_replace_invalid_type_var_defaults(
+        &self,
+        db: &Database,
+        add_issue: impl Fn(IssueKind) -> bool,
+    ) -> Option<Self> {
+        let mut new = None;
+        for (i, tvl) in self.iter().enumerate() {
+            if let Some(replaced) = tvl.replace_type_var_like_defaults_that_are_out_of_scope(
+                db,
+                self.iter().take(i),
+                &add_issue,
+            ) {
+                if let Some(name) = tvl.type_var_like_name() {
+                    if let TypeVarLikeName::SyntaxNode(link) = name {
+                        let name_ref = NodeRef::from_link(db, link);
+                        debug_assert!(name_ref.maybe_name_def().is_some());
+                        name_ref.insert_complex(
+                            ComplexPoint::TypeVarLike(replaced.clone()),
+                            Locality::Todo,
+                        );
+                    }
+                } else {
+                    recoverable_error!("There should always be a known position");
+                }
+                // Need to overwrite the old definition
+                let mut n: Vec<_> = self.iter().cloned().take(i).collect();
+                n.push(replaced);
+                new = Some(n);
+            } else if let Some(new) = &mut new {
+                new.push(tvl.clone())
+            }
+        }
+        new.map(TypeVarLikes::from_vec)
     }
 }
 
@@ -1801,6 +1818,22 @@ impl TypeVarLikeUsage {
                 usage.type_var_tuple.inferred_variance(db, class)
             }
             TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.inferred_variance(db, class),
+        }
+    }
+}
+
+impl NodeRef<'_> {
+    pub fn insert_type_var_likes(&self, db: &Database, type_var_likes: TypeVarLikes) {
+        self.insert_complex(
+            ComplexPoint::TypeVarLikes(type_var_likes.clone()),
+            Locality::Todo,
+        );
+        if let Some(new) = type_var_likes
+            .maybe_replace_invalid_type_var_defaults(db, |issue| self.add_type_issue(db, issue))
+        {
+            // The type var defaults might have invalid cycles. In that case we have to replace the
+            // type vars again with the correct type vars.
+            self.insert_complex(ComplexPoint::TypeVarLikes(new), Locality::Todo);
         }
     }
 }

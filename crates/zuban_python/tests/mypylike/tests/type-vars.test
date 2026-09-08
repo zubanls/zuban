@@ -485,3 +485,18 @@ def f() -> Callable[[T], T]:
         return cls
 
     return decorator
+
+[case recursive_default]
+# From GH #323 and #469
+from typing import assert_type, Any
+
+class C[T=C]: pass
+
+# TODO 
+#type T[U = T] = int
+
+def f(c: C,
+      #t: T
+      ):
+    assert_type(c, C[C[Any]])
+    # assert_type(t, int)

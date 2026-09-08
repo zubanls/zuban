@@ -198,7 +198,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         if type_var_likes.is_empty() {
             node_ref.set_point(Point::new_specific(Specific::Analyzed, Locality::Todo));
         } else {
-            node_ref.insert_complex(ComplexPoint::TypeVarLikes(type_var_likes), Locality::Todo);
+            node_ref.insert_type_var_likes(i_s.db, type_var_likes);
         }
         self.type_vars(i_s)
     }

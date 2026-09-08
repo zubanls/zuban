@@ -4408,7 +4408,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             let (name_def, kind) = type_param.unpack();
             let name_def_ref = NodeRef::new(self.file, name_def.index());
             let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
-            let type_var_like = match kind {
+            let mut type_var_like = match kind {
                 TypeParamKind::TypeVar(bound, default) => {
                     let kind = match bound {
                         Some(bound) => {
@@ -4498,7 +4498,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     add_to_list = false;
                 }
             }
-            let mut type_var_like = type_var_like.clone();
             if !type_var_like.has_default()
                 && let Some((_, previous)) = type_var_likes.last()
                 && previous.has_default()
@@ -4516,32 +4515,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 type_var_likes.push((type_param, type_var_like.clone()));
             }
         }
-        self.validate_type_params_defaults(&mut type_var_likes);
         TypeVarLikes::new(type_var_likes.into_iter().map(|(_, tvl)| tvl).collect())
-    }
-
-    fn validate_type_params_defaults(&self, type_var_likes: &mut Vec<(TypeParam, TypeVarLike)>) {
-        // We do a separate pass here, since using the defaults might need access to the above
-        // initialized type vars.
-        for i in 0..type_var_likes.len() {
-            let (type_param, type_var_like) = &type_var_likes[i];
-            let node_ref = || {
-                let (name_def, _) = type_param.unpack();
-                NodeRef::new(self.file, name_def.index())
-            };
-            if let Some(replaced) = type_var_like
-                .replace_type_var_like_defaults_that_are_out_of_scope(
-                    self.i_s.db,
-                    type_var_likes.iter().take(i).map(|(_, tvl)| tvl),
-                    |issue| node_ref().add_type_issue(self.i_s.db, issue),
-                )
-            {
-                // Need to overwrite the old definition
-                node_ref()
-                    .insert_complex(ComplexPoint::TypeVarLike(replaced.clone()), Locality::Todo);
-                type_var_likes[i].1 = replaced
-            }
-        }
     }
 
     fn lookup_decorator_if_only_names(&self, decorator: Decorator) -> Option<Lookup<'db, 'db>> {

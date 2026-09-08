@@ -226,8 +226,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         match type_vars.is_empty() {
             true => type_var_reference
                 .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
-            false => type_var_reference
-                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
+            false => type_var_reference.insert_type_var_likes(i_s.db, type_vars),
         }
         debug_assert!(type_var_reference.point().calculated());
         Some((type_guard, star_annotation))
