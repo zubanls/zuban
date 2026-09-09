@@ -1038,12 +1038,14 @@ impl TypeLikeInTypeVar<Type> {
         db: &Database,
         name: TypeVarName,
         scope: ParentScope,
-        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> Type,
+        calculate_type: impl FnOnce(&InferenceState, TypeVarLikeName, NodeRef) -> Type,
     ) -> Result<&Type, ()> {
         let TypeVarName::Name(name) = name else {
             return Ok(self.t.get().unwrap());
         };
-        self.get_type_like(db, name, scope, calculate_type)
+        self.get_type_like(db, name, scope, |i_s, node_ref| {
+            calculate_type(i_s, name, node_ref)
+        })
     }
 }
 
@@ -1164,11 +1166,12 @@ impl TypeVar {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(
                 bound
-                    .get_type(db, self.name, self.scope, |i_s, node_ref| {
+                    .get_type(db, self.name, self.scope, |i_s, name, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
                             .compute_type_var_bound(
+                                name,
                                 node_ref.expect_expression(),
                                 self.is_from_type_var_syntax(),
                             )
@@ -1178,7 +1181,7 @@ impl TypeVar {
             ),
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter().map(|c| {
-                    c.get_type(db, self.name, self.scope, |i_s, node_ref| {
+                    c.get_type(db, self.name, self.scope, |i_s, _, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -1199,11 +1202,11 @@ impl TypeVar {
         let default = self.default.as_ref()?;
         Some(
             default
-                .get_type(db, self.name, self.scope, |i_s, node_ref| {
+                .get_type(db, self.name, self.scope, |i_s, name, node_ref| {
                     let default = if let Some(t) = node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_default(node_ref.expect_expression())
+                        .compute_type_var_default(name, node_ref.expect_expression())
                     {
                         t
                     } else {
@@ -1374,7 +1377,7 @@ impl TypeVarTuple {
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_tuple_default(origin)
+                        .compute_type_var_tuple_default(self.name, origin)
                         .unwrap_or_else(|| {
                             node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
                             TypeArgs::new_arbitrary_from_error()
@@ -1460,7 +1463,7 @@ impl ParamSpec {
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_param_spec_default(node_ref.expect_expression())
+                        .compute_param_spec_default(self.name, node_ref.expect_expression())
                         .unwrap_or_else(|| {
                             node_ref.add_issue(i_s, IssueKind::ParamSpecInvalidDefault);
                             CallableParams::ERROR

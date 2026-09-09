@@ -11,8 +11,6 @@ type_alias_used_as_an_invalid_type_definition
 
 completion_no_wrong_range_in_strings
 
-avoid_overflow_for_recursive_type_var_default
-
 narrow_literals_locally_for_assignments
 
 super_explicit_type_var_method
