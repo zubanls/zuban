@@ -628,6 +628,7 @@ impl TypeVarLikes {
             ) {
                 if let Some(name) = tvl.type_var_like_name() {
                     if let TypeVarLikeName::SyntaxNode(link) = name {
+                        debug!("Replace type var syntax node because of invalid defaults");
                         let name_ref = NodeRef::from_link(db, link);
                         debug_assert!(name_ref.maybe_name_def().is_some());
                         name_ref.insert_complex(
@@ -1831,6 +1832,7 @@ impl NodeRef<'_> {
         if let Some(new) = type_var_likes
             .maybe_replace_invalid_type_var_defaults(db, |issue| self.add_type_issue(db, issue))
         {
+            debug!("Replace type vars because of invalid defaults");
             // The type var defaults might have invalid cycles. In that case we have to replace the
             // type vars again with the correct type vars.
             self.insert_complex(ComplexPoint::TypeVarLikes(new), Locality::Todo);
