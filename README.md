@@ -42,6 +42,24 @@ bash scripts/install-locally.sh
 
 Note that your build will not properly work if submodules are not cloned.
 
+### Using zuban as a pre-commit / prek hook
+
+Zuban can be used as a [pre-commit](https://pre-commit.com) or
+[prek](https://github.com/j178/prek) hook. Both hook ids install the published
+`zuban` wheel from PyPI, so no Rust toolchain or from-source build is required:
+
+```yaml
+repos:
+  - repo: https://github.com/zubanls/zuban
+    rev: v0.9.0  # a zuban tag; see https://github.com/zubanls/zuban/tags
+    hooks:
+      - id: zuban   # zuban check: PyRight-like mode
+      # - id: zmypy # zuban mypy: mypy-compatible mode
+```
+
+Use `zuban` for PyRight-like checking or `zmypy` for mypy-compatible checking;
+pick whichever mode matches your project's existing configuration.
+
 ## License
 
 This project is dual licensed:
