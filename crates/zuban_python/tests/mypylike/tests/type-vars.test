@@ -492,11 +492,8 @@ from typing import assert_type, Any
 
 class C[T=C]: pass
 
-# TODO 
-#type T[U = T] = int
+type T[U = T] = int
 
-def f(c: C,
-      #t: T
-      ):
+def f(c: C, t: T):
     assert_type(c, C[C[Any]])
-    # assert_type(t, int)
+    assert_type(t, int)

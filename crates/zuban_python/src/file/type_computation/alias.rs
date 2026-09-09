@@ -741,19 +741,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let node_ref = NodeRef::new(self.file, expr.index());
         let in_definition = cached_type_node_ref.as_link();
         let alias = TypeAlias::new(
-            type_var_likes
-                .maybe_replace_invalid_type_var_defaults(self.i_s.db, |issue| {
-                    node_ref.add_issue(self.i_s, issue)
-                })
-                .unwrap_or(type_var_likes),
+            type_var_likes,
             in_definition,
             PointLink::new(self.file.file_index, name_def.name().index()),
             matches!(cause, AliasCause::SyntaxOrTypeAliasType),
         );
-        save_alias(cached_type_node_ref, alias);
-        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.maybe_complex().unwrap() else {
-            unreachable!()
-        };
+        let alias = save_alias(self.i_s.db, cached_type_node_ref, alias, |issue| {
+            node_ref.add_issue(self.i_s, issue)
+        });
 
         #[allow(clippy::mutable_key_type)]
         let mut unbound_type_vars = FastHashSet::default();
@@ -1363,11 +1358,36 @@ fn check_for_and_replace_type_type_in_finished_alias(
             alias.from_type_syntax,
         );
         alias.set_valid(Type::ERROR, false, false);
-        save_alias(alias_origin, alias)
+        save_alias(i_s.db, alias_origin, alias, |issue| {
+            alias_origin.add_issue(i_s, issue)
+        });
     }
 }
 
-fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
-    let complex = ComplexPoint::TypeAlias(Box::new(alias));
-    alias_origin.insert_complex(complex, Locality::Todo);
+fn save_alias<'f>(
+    db: &Database,
+    alias_origin: NodeRef<'f>,
+    alias: TypeAlias,
+    add_issue: impl Fn(IssueKind) -> bool,
+) -> &'f TypeAlias {
+    let insert = |alias| {
+        let complex = ComplexPoint::TypeAlias(Box::new(alias));
+        alias_origin.insert_complex(complex, Locality::Todo);
+        let ComplexPoint::TypeAlias(alias) = alias_origin.maybe_complex().unwrap() else {
+            unreachable!()
+        };
+        alias
+    };
+
+    let alias = insert(alias);
+
+    if let Some(new_type_vars) = alias
+        .type_vars
+        .maybe_replace_invalid_type_var_defaults(db, add_issue)
+    {
+        let mut new_alias = (**alias).clone();
+        new_alias.type_vars = new_type_vars;
+        return insert(new_alias);
+    }
+    alias
 }
