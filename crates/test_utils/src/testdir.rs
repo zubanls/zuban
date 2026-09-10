@@ -33,8 +33,13 @@ impl TestDir {
                 continue;
             }
             fs::create_dir_all(&path).unwrap();
-
-            #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "freebsd"))]
+            
+            #[cfg(any(
+                target_os = "macos",
+                target_os = "linux",
+                target_os = "windows",
+                target_os = "freebsd"
+            ))]
             if symlink {
                 let symlink_path = base.join(format!("{pid}_{cnt}_symlink"));
                 create_symlink_dir(path, &symlink_path).unwrap();
