@@ -2,6 +2,7 @@ use std::{
     borrow::{Borrow, Cow},
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
+    rc::Rc,
     sync::Arc,
 };
 
@@ -65,8 +66,79 @@ type ParentUnions = Vec<(FlowKey, UnionType)>;
 
 const MAX_PRECISE_TUPLE_SIZE: usize = 8; // Constant taken from Mypy
 
+pub const FLOW_ANALYSIS: FlowAnalysisHelper = FlowAnalysisHelper();
 thread_local! {
-    pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
+    static FLOW_ANALYSIS_INNER: RefCell<Rc<FlowAnalysis>> = RefCell::new(Rc::new(FlowAnalysis::default()));
+}
+
+pub struct FlowAnalysisHelper();
+
+impl FlowAnalysisHelper {
+    pub fn with<T>(&self, callback: impl FnOnce(&FlowAnalysis) -> T) -> T {
+        let fa = FLOW_ANALYSIS_INNER.with(|fa| fa.borrow().clone());
+        callback(&fa)
+    }
+
+    fn with_new_empty<T>(&self, db: &Database, callable: impl FnOnce(&FlowAnalysis) -> T) -> T {
+        let FlowAnalysisResult {
+            result,
+            unfinished_partials,
+        } = self.with_new_empty_without_unfinished_partial_checking(callable);
+        process_unfinished_partials(db, unfinished_partials);
+        result
+    }
+
+    pub fn with_new_empty_for_file<T>(
+        &self,
+        db: &Database,
+        file: &PythonFile,
+        callable: impl FnOnce(&FlowAnalysis) -> T,
+    ) -> T {
+        self.with_new_empty(db, |flow_analysis| {
+            debug_assert!(flow_analysis.delayed_diagnostics.borrow().is_empty());
+            *flow_analysis.delayed_diagnostics.borrow_mut() =
+                std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
+            let result = callable(flow_analysis);
+            let mut delayed = flow_analysis.delayed_diagnostics.take();
+            if db.project.flags.local_partial_types {
+                let mut file_delayed = file.delayed_diagnostics.write().unwrap();
+                delayed.extend(file_delayed.drain(..));
+                *file_delayed = delayed;
+            } else {
+                flow_analysis.process_delayed_diagnostics(db, delayed)
+            }
+            result
+        })
+    }
+
+    pub fn with_new_empty_and_delay_further<T>(
+        &self,
+        db: &Database,
+        callable: impl FnOnce() -> T,
+    ) -> T {
+        let (result, delayed) = self.with_new_empty(db, |flow_analysis| {
+            let result = callable();
+            let delayed: VecDeque<_> =
+                std::mem::take(&mut flow_analysis.delayed_diagnostics.borrow_mut());
+            (result, delayed)
+        });
+        self.with(|fa| fa.delayed_diagnostics.borrow_mut().extend(delayed));
+        result
+    }
+
+    pub fn with_new_empty_without_unfinished_partial_checking<T>(
+        &self,
+        callable: impl FnOnce(&FlowAnalysis) -> T,
+    ) -> FlowAnalysisResult<T> {
+        let new = Rc::new(FlowAnalysis::default());
+        let old = FLOW_ANALYSIS_INNER.replace(new.clone());
+        let result = callable(&new);
+        let inner = FLOW_ANALYSIS_INNER.replace(old);
+        return FlowAnalysisResult {
+            result,
+            unfinished_partials: inner.partials_in_module.take(),
+        };
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -423,90 +495,6 @@ pub(crate) struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_new_empty<T>(&self, db: &Database, callable: impl FnOnce() -> T) -> T {
-        let FlowAnalysisResult {
-            result,
-            unfinished_partials,
-        } = self.with_new_empty_without_unfinished_partial_checking(callable);
-        process_unfinished_partials(db, unfinished_partials);
-        result
-    }
-
-    pub fn with_new_empty_for_file<T>(
-        &self,
-        db: &Database,
-        file: &PythonFile,
-        callable: impl FnOnce() -> T,
-    ) -> T {
-        self.with_new_empty(db, || {
-            debug_assert!(self.delayed_diagnostics.borrow().is_empty());
-            *self.delayed_diagnostics.borrow_mut() =
-                std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
-            let result = callable();
-            let mut delayed = self.delayed_diagnostics.take();
-            if db.project.flags.local_partial_types {
-                let mut file_delayed = file.delayed_diagnostics.write().unwrap();
-                delayed.extend(file_delayed.drain(..));
-                *file_delayed = delayed;
-            } else {
-                self.process_delayed_diagnostics(db, delayed)
-            }
-            result
-        })
-    }
-    pub fn with_new_empty_and_delay_further<T>(
-        &self,
-        db: &Database,
-        callable: impl FnOnce() -> T,
-    ) -> T {
-        let (result, delayed) = self.with_new_empty(db, || {
-            let result = callable();
-            let delayed: VecDeque<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
-            (result, delayed)
-        });
-        self.delayed_diagnostics.borrow_mut().extend(delayed);
-        result
-    }
-
-    pub fn with_new_empty_without_unfinished_partial_checking<T>(
-        &self,
-        callable: impl FnOnce() -> T,
-    ) -> FlowAnalysisResult<T> {
-        if self.frames.try_borrow_mut().is_err() {
-            // TODO This is completely wrong, but is related to the test
-            // narrowing_with_key_in_different_file and executing narrows
-            return FlowAnalysisResult {
-                result: callable(),
-                unfinished_partials: Default::default(),
-            };
-        }
-        let old_frames = self.frames.take();
-        let try_frames = self.try_frames.take();
-        let loop_details = self.loop_details.take();
-        let delayed = self.delayed_diagnostics.take();
-        let partials = self.partials_in_module.take();
-        let in_type_checking_only_block = self.in_type_checking_only_block.take();
-        let accumulating_types = self.accumulating_types.take();
-        let in_pattern_matching = self.in_pattern_matching.take();
-
-        let result = FlowAnalysisResult {
-            result: callable(),
-            unfinished_partials: self.partials_in_module.take(),
-        };
-        self.debug_assert_is_empty();
-
-        *self.frames.borrow_mut() = old_frames;
-        *self.try_frames.borrow_mut() = try_frames;
-        *self.loop_details.borrow_mut() = loop_details;
-        *self.delayed_diagnostics.borrow_mut() = delayed;
-        *self.partials_in_module.borrow_mut() = partials;
-        self.in_type_checking_only_block
-            .set(in_type_checking_only_block);
-        self.accumulating_types.set(accumulating_types);
-        self.in_pattern_matching.set(in_pattern_matching);
-        result
-    }
-
     pub(crate) fn add_delayed_func_with_reused_narrowings_for_nested_function(
         &self,
         func_node_ref: FuncNodeRef,
@@ -549,17 +537,6 @@ impl FlowAnalysis {
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
                 reused_narrowings,
             }))
-    }
-
-    pub fn debug_assert_is_empty(&self) {
-        debug_assert!(self.frames.borrow().is_empty());
-        debug_assert!(self.try_frames.borrow().is_empty());
-        debug_assert!(self.loop_details.borrow().is_none());
-        debug_assert!(self.delayed_diagnostics.borrow().is_empty());
-        debug_assert!(self.partials_in_module.borrow().is_empty());
-        debug_assert!(!self.in_type_checking_only_block.get());
-        debug_assert!(!self.in_type_checking_only_block.get());
-        debug_assert_eq!(self.in_pattern_matching.get(), 0);
     }
 
     fn lookup_narrowed_key_and_deleted(
@@ -2016,10 +1993,8 @@ impl<'file> Inference<'_, 'file, '_> {
             if !recheck_if_on_actual_self() {
                 return Ok(None);
             }
-            let result = FLOW_ANALYSIS.with(|fa| {
-                // The class should have self generics within the functions
-                self.ensure_func_diagnostics_for_self_attribute(fa, func)
-            });
+            // The class should have self generics within the functions
+            let result = self.ensure_func_diagnostics_for_self_attribute(func);
             if result.is_err() {
                 // It is possible that the self variable is defined in a super class and we are
                 // accessing it before definition in the current class, so use the one from the
@@ -2049,11 +2024,7 @@ impl<'file> Inference<'_, 'file, '_> {
         ))
     }
 
-    fn ensure_func_diagnostics_for_self_attribute(
-        &self,
-        fa: &FlowAnalysis,
-        function: Function,
-    ) -> Result<(), ()> {
+    fn ensure_func_diagnostics_for_self_attribute(&self, function: Function) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
             let result = class.ensure_calculated_diagnostics_for_class(self.i_s.db);
@@ -2067,7 +2038,7 @@ impl<'file> Inference<'_, 'file, '_> {
             result?
         }
 
-        fa.with_new_empty_and_delay_further(self.i_s.db, || {
+        FLOW_ANALYSIS.with_new_empty_and_delay_further(self.i_s.db, || {
             function.ensure_body_diagnostics(self.i_s.db)
         })
     }

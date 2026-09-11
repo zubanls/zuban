@@ -4170,11 +4170,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     {
                         return result;
                     }
-                    let r = FLOW_ANALYSIS.with(|fa| {
-                        fa.with_new_empty_without_unfinished_partial_checking(|| {
+                    let r =
+                        FLOW_ANALYSIS.with_new_empty_without_unfinished_partial_checking(|_| {
                             inference.infer_name_def(node_ref.expect_name_def())
-                        })
-                    });
+                        });
                     if !r.unfinished_partials.is_empty() {
                         if let Some(result) = ensure_flow_analysis() {
                             return result;
@@ -4238,14 +4237,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         callable: impl FnOnce(&Inference) -> T,
     ) -> T {
         if global_redirect {
-            FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_and_delay_further(self.i_s.db, || {
-                    callable(
-                        &self
-                            .file
-                            .inference(&InferenceState::new(self.i_s.db, self.file)),
-                    )
-                })
+            FLOW_ANALYSIS.with_new_empty_and_delay_further(self.i_s.db, || {
+                callable(
+                    &self
+                        .file
+                        .inference(&InferenceState::new(self.i_s.db, self.file)),
+                )
             })
         } else {
             callable(self)

@@ -163,29 +163,27 @@ impl Inference<'_, '_, '_> {
 
     pub fn ensure_module_symbols_flow_analysis(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
-            FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_for_file(self.i_s.db, self.file, || {
-                    let file_path = self.file.file_path(self.i_s.db);
-                    let _panic_context = utils::panic_context::enter(file_path.to_string());
-                    debug!(
-                        "Global symbol analysis for module {file_path} ({})",
-                        self.file.file_index(),
+            FLOW_ANALYSIS.with_new_empty_for_file(self.i_s.db, self.file, |flow_analysis| {
+                let file_path = self.file.file_path(self.i_s.db);
+                let _panic_context = utils::panic_context::enter(file_path.to_string());
+                debug!(
+                    "Global symbol analysis for module {file_path} ({})",
+                    self.file.file_index(),
+                );
+                debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
+                let indent = debug_indent();
+                flow_analysis.with_frame_that_exports_widened_entries(self.i_s, || {
+                    self.calc_stmts_diagnostics(
+                        self.file.tree.root().iter_stmt_likes(),
+                        None,
+                        None,
                     );
-                    debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
-                    let indent = debug_indent();
-                    fa.with_frame_that_exports_widened_entries(self.i_s, || {
-                        self.calc_stmts_diagnostics(
-                            self.file.tree.root().iter_stmt_likes(),
-                            None,
-                            None,
-                        );
-                    });
-                    drop(indent);
-                    debug!(
-                        "End of global symbol analysis for module {file_path} ({})",
-                        self.file.file_index(),
-                    );
-                })
+                });
+                drop(indent);
+                debug!(
+                    "End of global symbol analysis for module {file_path} ({})",
+                    self.file.file_index(),
+                );
             });
 
             let classes: Vec<_> = self

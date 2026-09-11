@@ -1718,12 +1718,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
             }
             result?;
-            let result = FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_and_delay_further(db, || {
-                    self.file
-                        .inference(&InferenceState::from_class(db, self))
-                        .calculate_class_block_diagnostics(*self, class_block)
-                })
+            let result = FLOW_ANALYSIS.with_new_empty_and_delay_further(db, || {
+                self.file
+                    .inference(&InferenceState::from_class(db, self))
+                    .calculate_class_block_diagnostics(*self, class_block)
             });
             if result.is_err() {
                 debug!(
