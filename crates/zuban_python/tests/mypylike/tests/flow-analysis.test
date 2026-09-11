@@ -671,3 +671,10 @@ def bar() -> str:
     else:
         class UnreachableClass: ...
         return "win"
+
+[case avoid_crash_for_complex_flow_analysis]
+# From GH #264
+
+def f(d: dict[int, object], b: bool) -> None:
+    if isinstance(d[0], str):
+        y = d[1 if b else 2]

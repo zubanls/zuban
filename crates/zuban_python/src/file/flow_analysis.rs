@@ -4903,6 +4903,27 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 
     fn maybe_has_primary_entry(&self, primary: Primary) -> Option<(FlowKey, Inferred)> {
+        if let PrimaryContent::GetItem(getitem) = primary.second() {
+            if !matches!(getitem, parsa_python_cst::SliceType::NamedExpression(_)) {
+                return None;
+            }
+            // Here we skip some cases that are typically type applications and should not be
+            // inferred.
+            let base = self.infer_primary_or_atom(primary.first());
+            if let Some(ComplexPoint::Class(_) | ComplexPoint::TypeAlias(_)) =
+                base.maybe_complex_point(self.i_s.db)
+            {
+                // Classes can be part of typing and would therefore cause problems with things
+                // like Sequence[] and other classes probably don't narrow.
+                return None;
+            }
+            if let Some(specific) = base.maybe_specific(self.i_s.db)
+                && specific.might_be_used_in_alias()
+            {
+                return None;
+            }
+            SliceType::new(self.file, primary.index(), getitem).infer(self.i_s);
+        }
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
