@@ -1336,3 +1336,20 @@ e = E(1)
 c2: Callable[..., Any] = e  # E: Incompatible types in assignment (expression has type "E[int]", variable has type "Callable[..., Any]")
 
 e(1)  # E: "E[int]" not callable
+
+[case dataclass_narrowed_from_any]
+# From GH #561
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar, assert_type
+
+T = TypeVar("T")
+
+@dataclass(frozen=True)
+class Box(Generic[T]):
+    value: T
+
+def check(value: Any, z: Box[int]) -> None:
+    assert isinstance(value, Box)
+    assert_type(value.value, Any)
+    assert value.value == 3
+    assert_type(z.value, int)

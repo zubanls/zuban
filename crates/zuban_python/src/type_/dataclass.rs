@@ -1237,11 +1237,20 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if self_.options.frozen == Some(true)
         && let Some(param) = Dataclass::lookup(i_s.db, self_, name)
     {
+        let mut t = param.type_.maybe_type().unwrap().clone();
+        if matches!(self_.class.generics, ClassGenerics::NotDefinedYet)
+            && let Some(new) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
+                if usage.in_definition() == self_.class.link {
+                    return Some(usage.as_any_generic_item());
+                }
+                None
+            })
+        {
+            t = new
+        }
         return LookupDetails::new(
             Type::Dataclass(self_.clone()),
-            LookupResult::UnknownName(Inferred::from_type(
-                param.type_.maybe_type().unwrap().clone(),
-            )),
+            LookupResult::UnknownName(Inferred::from_type(t)),
             AttributeKind::Property {
                 setter_type: None,
                 is_final: false,
