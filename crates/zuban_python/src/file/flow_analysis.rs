@@ -756,25 +756,24 @@ impl FlowAnalysis {
         i_s: &InferenceState,
         search_for: &Entry,
     ) -> Entry {
-        self.frames
-            .borrow()
-            .iter()
-            .rev()
-            .find_map(|frame| {
-                frame.entries.iter().find_map(|e| {
-                    if e.key.equals(i_s.db, &search_for.key) {
-                        return Some(e.union_of_refs(i_s, search_for));
-                    }
-                    None
-                })
-            })
+        // We have to use a separate way of borrowing frames and create a union, because that might
+        // need mutable access to frames again.
+        let found = self.frames.borrow().iter().rev().find_map(|frame| {
+            frame
+                .entries
+                .iter()
+                .find_map(|e| e.key.equals(i_s.db, &search_for.key).then(|| e.clone()))
+        });
+        if let Some(mut found) = found {
+            found.union(i_s, search_for, false);
+            found
+        } else {
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
             // not be able to know if the entry invalidated entries further up the stack.
-            .unwrap_or_else(|| {
-                search_for.with_declaration(
-                    i_s.flags().allow_redefinition || self.in_pattern_matching.get() > 0,
-                )
-            })
+            search_for.with_declaration(
+                i_s.flags().allow_redefinition || self.in_pattern_matching.get() > 0,
+            )
+        }
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {

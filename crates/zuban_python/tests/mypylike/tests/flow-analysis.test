@@ -672,9 +672,31 @@ def bar() -> str:
         class UnreachableClass: ...
         return "win"
 
-[case avoid_crash_for_complex_flow_analysis]
+[case avoid_crash_for_complex_flow_analysis1]
 # From GH #264
 
 def f(d: dict[int, object], b: bool) -> None:
     if isinstance(d[0], str):
         y = d[1 if b else 2]
+
+[case avoid_crash_for_complex_flow_analysis2]
+# From #188
+from typing import Protocol, assert_type
+import m
+
+class P(Protocol):
+    def m(self) -> int:
+        ...
+
+def f(x: m.X, p: P):
+    y = p
+    if bool():
+        if bool():
+            y = x
+        assert_type(y, P)
+    assert_type(y, P)
+
+[file m.py]
+class X:
+    def m(self):
+        return 1
