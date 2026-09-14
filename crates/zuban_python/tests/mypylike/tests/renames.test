@@ -72,3 +72,32 @@ __main__.py:4:rename:  - 2:7 -> 2:10
 __main__.py:4:rename:  - 4:0 -> 4:3
 __main__.py:4:rename: Rename: file:///C:/mypylike/foo.py -> file:///C:/mypylike/foo3.py
 __main__.py:4:rename: Rename: file:///C:/mypylike/foo.pyi -> file:///C:/mypylike/foo3.pyi
+
+[case pep695_recursive_typevar_default_rename]
+-- Regression test for a stack overflow on a recursive PEP 695 type-parameter
+-- default.
+-- A PEP 695 type-parameter default that references its own enclosing class
+-- (`class C[T=C]`) forms a recursive type-default cycle.  Resolving it during
+-- rename (reference resolution / type inference) recurses without a guard and
+-- overflows the stack: `thread 'main' has overflowed its stack`.  Renaming `C`
+-- here must NOT crash; it must produce the edits below.
+--
+-- NOTE: the [out] below is the *expected* result once the unbounded recursion
+-- is guarded.  It cannot be captured before the fix because the process aborts
+-- with a stack overflow (SIGABRT), so confirm/adjust it together with the fix.
+-- The bug is not rename-specific: `zuban check`/`zuban mypy` on the same file
+-- also overflow, so the root fix belongs in type resolution of the default.
+#? --codepoint-column 6 rename R
+class C[T=C]: pass
+
+[out]
+__main__.py:2:rename: C -> R
+__main__.py:2:rename: file:///mypylike/__main__.py:
+__main__.py:2:rename:  - 2:6 -> 2:7
+__main__.py:2:rename:  - 2:10 -> 2:11
+
+[out.windows]
+__main__.py:2:rename: C -> R
+__main__.py:2:rename: file:///C:/mypylike/__main__.py:
+__main__.py:2:rename:  - 2:6 -> 2:7
+__main__.py:2:rename:  - 2:10 -> 2:11
