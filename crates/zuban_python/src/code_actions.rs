@@ -35,6 +35,8 @@ impl<'project> Document<'project> {
             until.byte = changed.end;
         }
         let mut actions: Vec<CodeAction> = vec![];
+
+        // Add auto imports
         for name in file.tree.filter_all_names(Some(pos.byte)) {
             if name.start() > until.byte {
                 break;
@@ -54,6 +56,7 @@ impl<'project> Document<'project> {
                 }
             }
         }
+        // Add actions to add type ignore like: `# type: ignore[assignment]`
         let check_range = pos.byte..until.byte;
         for diag in file.diagnostics(db) {
             let issue_start = diag.start_position().byte_position as CodeIndex;
