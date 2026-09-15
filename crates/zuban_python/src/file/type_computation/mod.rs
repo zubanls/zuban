@@ -3549,7 +3549,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if let Some(specific) = node_ref
             .file
             .points
-            .get(func.node().name_def().index())
+            .get(func.as_node().name_def().index())
             .maybe_calculated_and_specific()
             && let Some(tc) = check_special_case(specific)
         {
@@ -4575,7 +4575,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> Option<DecoratorState<'db>> {
         match self.lookup_decorator_if_only_names(decorator)? {
             Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Function { node_ref })) => {
-                let name_ref = NodeRef::new(node_ref.file, node_ref.node().name_def().index());
+                let name_ref = NodeRef::new(node_ref.file, node_ref.as_node().name_def().index());
                 if name_ref.point().calculating() {
                     return Some(DecoratorState::Calculating);
                 }

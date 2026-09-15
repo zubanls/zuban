@@ -524,7 +524,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                                                 db,
                                                 fixture.file,
                                                 Scope::Module,
-                                                fixture.node().name(),
+                                                fixture.as_node().name(),
                                             ),
                                         ))]);
                                     }

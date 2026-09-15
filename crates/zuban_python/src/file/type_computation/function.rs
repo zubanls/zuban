@@ -32,12 +32,8 @@ use super::{
 pub type FuncNodeRef<'x> = KnownNodeRef<'x, FunctionDef<'x>>;
 
 impl<'db: 'file, 'file> FuncNodeRef<'file> {
-    pub fn node(&self) -> FunctionDef<'file> {
-        FunctionDef::by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn return_annotation(&self) -> Option<ReturnAnnotation<'_>> {
-        self.node().return_annotation()
+        self.as_node().return_annotation()
     }
 
     pub fn expect_return_annotation_node_ref(&self) -> NodeRef<'_> {
@@ -48,7 +44,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn is_typed(&self) -> bool {
-        self.node().is_typed()
+        self.as_node().is_typed()
     }
 
     pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'file> {
@@ -74,7 +70,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
 
     pub fn is_async(&self) -> bool {
         matches!(
-            self.node().parent(),
+            self.as_node().parent(),
             FunctionParent::Async | FunctionParent::DecoratedAsync(_)
         )
     }
@@ -94,11 +90,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn unannotated_return_reference(&self) -> NodeRef<'file> {
-        NodeRef::new(self.file, self.node().colon_index())
+        NodeRef::new(self.file, self.as_node().colon_index())
     }
 
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
-        let node = self.node();
+        let node = self.as_node();
         self.file.add_issue(
             i_s,
             Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind, false),
@@ -110,7 +106,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         i_s: &InferenceState,
         kind: IssueKind,
     ) -> bool {
-        let node = self.node();
+        let node = self.as_node();
         if let Some(decorated) = node.maybe_decorated() {
             self.file.add_issue(
                 i_s,
@@ -127,7 +123,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn name_string_slice(&self) -> StringSlice {
-        let name = self.node().name();
+        let name = self.as_node().name();
         StringSlice::new(self.file_index(), name.start(), name.end())
     }
 
@@ -171,7 +167,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let node = self.node();
+        let node = self.as_node();
         let is_staticmethod = class.is_some()
             && node.maybe_decorated().is_some_and(|decorated| {
                 decorated.decorators().iter().any(|decorator| {
@@ -210,7 +206,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         Option<TypeGuardInfo>,
         Option<ParamAnnotation<'_>>,
     ) {
-        let func_node = self.node();
+        let func_node = self.as_node();
         let type_params = func_node.type_params();
         let mut known_type_vars = None;
         if let Some(type_params) = type_params {

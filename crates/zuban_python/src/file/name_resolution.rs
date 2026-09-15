@@ -863,7 +863,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 // sure this is helpful, since this should ideally be done by the name binder. The
                 // name binder however does currently not support multi-file analysis and this is
                 // an architectural issue.
-                if let Some(ok) = lookup_type_params(func.file, func.node().type_params()) {
+                if let Some(ok) = lookup_type_params(func.file, func.as_node().type_params()) {
                     return Ok(ok);
                 }
                 if let Some(class) = func.class

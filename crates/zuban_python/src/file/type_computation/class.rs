@@ -2305,7 +2305,7 @@ fn maybe_dataclass_transform_func(
     db: &Database,
     func: FuncNodeRef,
 ) -> Option<DataclassTransformObj> {
-    let decorated = func.node().maybe_decorated()?;
+    let decorated = func.as_node().maybe_decorated()?;
     {
         let func_point = func.point();
         if func_point.calculating() {

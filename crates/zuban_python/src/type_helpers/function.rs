@@ -66,7 +66,7 @@ impl fmt::Debug for Function<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("file", self.node_ref.file)
-            .field("node", &self.node())
+            .field("node", &self.as_node())
             .field("class", &self.class)
             .finish()
     }
@@ -104,7 +104,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
-        let mut iterator = self.node().params().iter();
+        let mut iterator = self.as_node().params().iter();
         if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
             iterator.next();
@@ -128,7 +128,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
         // In Mypy this is called "is_trivial_body"
-        match self.node().trivial_body_state() {
+        match self.as_node().trivial_body_state() {
             TrivialBodyState::Known(known) => known,
             TrivialBodyState::RaiseExpr(expr) => {
                 match self
@@ -203,7 +203,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return Inferred::new_any_from_error();
         }
         reference.set_point(Point::new_calculating());
-        let body_node_ref = NodeRef::new(self.file, self.node().body().index());
+        let body_node_ref = NodeRef::new(self.file, self.as_node().body().index());
         if body_node_ref.point().calculating() {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
@@ -348,7 +348,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         // unchecked function are properly initialized. This typically happens with
         // --no-check-untyped-defs, which is the mypy default.
 
-        let body = self.node().body();
+        let body = self.as_node().body();
         let body_ref = NodeRef::new(self.file, body.index());
         let point = body_ref.point();
         if point.function_was_checked() {
@@ -413,7 +413,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         callable: &mut CallableContent,
     ) {
         if let Some(guard) = callable.guard.as_ref() {
-            let mut param_iterator = self.node().params().iter();
+            let mut param_iterator = self.as_node().params().iter();
             if self.class.is_some() && !matches!(callable.kind, FunctionKind::Staticmethod) {
                 param_iterator.next();
             }
@@ -460,7 +460,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.node_ref.point().calculated() {
             return;
         }
-        let maybe_decorated = self.node().maybe_decorated();
+        let maybe_decorated = self.as_node().maybe_decorated();
         let mut no_type_check = false;
         if let Some(decorated) = maybe_decorated {
             no_type_check = self
@@ -516,7 +516,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         // Make sure the callable is created for private names, because they are a bit special.
         needs_callable |= self
-            .node()
+            .as_node()
             .params()
             .iter()
             .any(|param| is_private(param.name_def().as_code()));
@@ -539,7 +539,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn cache_func_from_diagnostics(&self, i_s: &InferenceState) {
         self.cache_func_with_name_def(
             i_s,
-            NodeRef::new(self.node_ref.file, self.node().name_def().index()),
+            NodeRef::new(self.node_ref.file, self.as_node().name_def().index()),
             true,
         )
     }
@@ -593,7 +593,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn needs_flow_analysis_for_decorators(&self, i_s: &InferenceState) -> bool {
-        let node = self.node();
+        let node = self.as_node();
         let Some(decorated) = node.maybe_decorated() else {
             return false;
         };
@@ -634,7 +634,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn check_conditional_function_definition(&self, i_s: &InferenceState) {
-        let node = self.node();
+        let node = self.as_node();
         let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, node.name().index())
         else {
             return;
@@ -723,7 +723,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // When inferring params while inferring the return type, the function might not yet
             // be defined. In that case simply check for static/classmethods
             if self.class.is_some()
-                && let Some(decorated) = self.node().maybe_decorated()
+                && let Some(decorated) = self.as_node().maybe_decorated()
             {
                 for decorator in decorated.decorators().iter() {
                     let inf = self.file.inference(i_s).infer_decorator(decorator);
@@ -747,7 +747,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: true,
             };
         }
-        let node = self.node();
+        let node = self.as_node();
         let had_first_self_or_class_annotation = node
             .params()
             .iter()
@@ -760,7 +760,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             Some(_) => {
                 // We have a type, probably an instance and we need to recheck if it was mapped by
                 // a classmethod or not.
-                if let Some(decorated) = self.node().maybe_decorated() {
+                if let Some(decorated) = self.as_node().maybe_decorated() {
                     for dec in decorated.decorators().iter() {
                         if let InferredDecorator::FunctionKind { kind, .. } =
                             infer_decorator_details(
@@ -896,7 +896,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         let had_first_annotation = self.class.is_none()
             || self
-                .node()
+                .as_node()
                 .params()
                 .iter()
                 .next()
@@ -1101,7 +1101,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let t = inferred.as_cow_type(i_s);
             if t.has_any_but_not_from_coroutine(i_s.db) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
-                NodeRef::new(self.node_ref.file, self.node().name().index())
+                NodeRef::new(self.node_ref.file, self.as_node().name().index())
                     .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got });
             }
         }
@@ -1177,7 +1177,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 _ => PropertyModifier::JustADecorator,
             }
         };
-        let first_index = self.node().name().index();
+        let first_index = self.as_node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
         loop {
@@ -1252,7 +1252,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         details: FunctionDetails,
     ) -> Option<OverloadDefinition> {
-        let first_index = self.node().name().index();
+        let first_index = self.as_node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
         let mut functions = vec![];
@@ -1265,7 +1265,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let should_error_out = Cell::new(false);
         let add_issue_for_decorators_in_wrong_positions = |func: &Function, is_first: bool| {
             if !(in_stub && is_first) && !self.is_in_protocol(i_s.db) {
-                for decorator in func.node().maybe_decorated().unwrap().decorators().iter() {
+                for decorator in func
+                    .as_node()
+                    .maybe_decorated()
+                    .unwrap()
+                    .decorators()
+                    .iter()
+                {
                     let add = |kind| {
                         NodeRef::new(func.node_ref.file, decorator.index()).add_issue(
                             i_s,
@@ -1351,7 +1357,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         ),
                         kind: FunctionKind::Function {
                             had_first_self_or_class_annotation: self
-                                .node()
+                                .as_node()
                                 .params()
                                 .iter()
                                 .next()
@@ -1520,7 +1526,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let file = self.node_ref.file;
         if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
             && let Some(first_index) =
-                first_defined_name_of_multi_def(file, self.node().name().index())
+                first_defined_name_of_multi_def(file, self.as_node().name().index())
             && let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function()
             && let Some(o) = FuncNodeRef::new(self.node_ref.file, func).maybe_overload()
         {
@@ -1685,7 +1691,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             || params
                 .peek()
                 .is_some_and(|p| p.annotation(i_s.db).is_some());
-        let kind = if let Some(decorated) = self.node().maybe_decorated() {
+        let kind = if let Some(decorated) = self.as_node().maybe_decorated() {
             kind_of_decorators(i_s, self.node_ref.file, decorated, had_first_annotation)
         } else {
             FunctionKind::Function {
@@ -1923,7 +1929,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> + use<'a> {
         let file = self.node_ref.file;
-        self.node()
+        self.as_node()
             .params()
             .iter()
             .map(|param| FunctionParam { file, param })
@@ -1985,7 +1991,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let return_annotation = self.return_annotation();
         let type_vars = self.type_vars(i_s.db);
         let calculated_type_vars =
-            if self.node().is_typed() || !i_s.db.project.should_infer_untyped_params() {
+            if self.as_node().is_typed() || !i_s.db.project.should_infer_untyped_params() {
                 if !type_vars.is_empty()
                     && let Some(inf) = self.maybe_generic_decorator_overload_call(
                         i_s,

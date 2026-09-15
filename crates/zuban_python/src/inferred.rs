@@ -917,7 +917,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
                             let attr_kind = AttributeKind::DefMethod { is_final: false };
-                            if !func.node().params().iter().next().is_some_and(|p| {
+                            if !func.as_node().params().iter().next().is_some_and(|p| {
                                 matches!(
                                     p.kind(),
                                     ParamKind::PositionalOnly

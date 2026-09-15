@@ -31,7 +31,7 @@ pub(crate) fn maybe_infer_pytest_param(
         db,
         func.file,
         param,
-        func.node().name_def(),
+        func.as_node().name_def(),
         func_node.maybe_decorated().map(|dec| dec.decorators()),
     )?;
 

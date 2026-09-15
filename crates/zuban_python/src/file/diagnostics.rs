@@ -1512,7 +1512,7 @@ impl Inference<'_, '_, '_> {
 
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         function.cache_func_from_diagnostics(self.i_s);
-        let func_node = function.node();
+        let func_node = function.as_node();
         if let Some(decorated) = func_node.maybe_decorated()
             && function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
             && self.is_no_type_check(decorated)
@@ -1525,7 +1525,7 @@ impl Inference<'_, '_, '_> {
             function.name(),
             self.file_path(),
             self.file.file_index,
-            function.node().index(),
+            function.as_node().index(),
             function.node_ref.line_one_based(self.i_s.db)
         );
         let _indent = debug_indent();
@@ -1533,7 +1533,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub(crate) fn ensure_calculated_function_body(&self, function: Function) -> Result<(), ()> {
-        let func_node = function.node();
+        let func_node = function.as_node();
         let (name_def, _, params, _, body) = func_node.unpack();
         let body_ref = NodeRef::new(self.file, body.index());
         let point = body_ref.point();
@@ -1577,7 +1577,7 @@ impl Inference<'_, '_, '_> {
 
         let i_s = self.i_s;
 
-        let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
+        let (name_def, type_params, params, return_annotation, body) = function.as_node().unpack();
 
         let mut is_overload_member = false;
         if let Some(o) = function.maybe_overload() {
@@ -2893,7 +2893,7 @@ pub(super) fn check_override(
             node_ref
                 .maybe_function()
                 .map(|_| Function::new(node_ref, None))
-                .filter(|func| func.node().name_def().name_index() == from.node_index)
+                .filter(|func| func.as_node().name_def().name_index() == from.node_index)
         }
         _ => None,
     };
@@ -3065,7 +3065,7 @@ pub(super) fn check_override(
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                 if let Some(func) = maybe_func()
-                                    && let node = func.node()
+                                    && let node = func.as_node()
                                     && let type_ignore_comment =
                                         from.file.tree.type_ignore_comment_for(
                                             node.start(),

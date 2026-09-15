@@ -265,7 +265,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn in_untyped_context(&self) -> bool {
         self.current_function()
-            .is_some_and(|f| !f.node().is_typed())
+            .is_some_and(|f| !f.as_node().is_typed())
     }
 
     pub fn should_ignore_none_in_untyped_context(&self) -> bool {
