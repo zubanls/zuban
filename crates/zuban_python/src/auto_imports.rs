@@ -107,6 +107,7 @@ impl<'db> ImportFinder<'db> {
         entries: &Entries,
         in_package: bool,
         add_submodules: bool,
+        non_py_dir_depth: usize,
     ) {
         if in_package {
             if let Some(entry) = entries
@@ -138,6 +139,10 @@ impl<'db> ImportFinder<'db> {
                 _ => None,
             })
             .collect();
+        let has_python_files_in_dir = entries.iter().any(|e| match e {
+            DirectoryEntry::File(f) => f.name.ends_with(".py") || f.name.ends_with(".pyi"),
+            _ => false,
+        });
         entries.into_par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
                 // Only find importable files like foo.py that have importable file endings and
@@ -152,11 +157,25 @@ impl<'db> ImportFinder<'db> {
             }
             DirectoryEntry::Directory(dir) => {
                 if might_be_python_identifier(&dir.name) {
-                    self.find_importable_name_in_entries(
-                        Directory::entries(&self.db.vfs, &dir),
-                        true,
-                        add_submodules,
-                    )
+                    // In cases where the project is equal to something like $HOME, which typically
+                    // contains millions of files (sometimes multiplied by symlinks), we need to
+                    // avoid following every directory. This also makes sense in a different way:
+                    // If people don't have Python files in the directories the dirs are probably
+                    // not something they want to import.
+                    const MAX_NON_PY_DIR_AUTO_IMPORTS: usize = 2;
+                    let new_non_py_dir_depth = if has_python_files_in_dir {
+                        0
+                    } else {
+                        non_py_dir_depth + 1
+                    };
+                    if new_non_py_dir_depth < MAX_NON_PY_DIR_AUTO_IMPORTS {
+                        self.find_importable_name_in_entries(
+                            Directory::entries(&self.db.vfs, &dir),
+                            true,
+                            add_submodules,
+                            new_non_py_dir_depth,
+                        )
+                    }
                 }
             }
             _ => {
