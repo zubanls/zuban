@@ -152,7 +152,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         match self.parent_scope() {
             ParentScope::Module => FuncParent::Module,
             ParentScope::Class(class_index) => {
-                let n = ClassNodeRef::new(self.file, class_index).to_db_lifetime(db);
+                let n = ClassNodeRef::from_node_index(self.file, class_index).to_db_lifetime(db);
                 FuncParent::Class(Class::with_self_generics(db, n))
             }
             ParentScope::Function(func_index) => {

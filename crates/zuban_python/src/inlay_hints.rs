@@ -143,7 +143,7 @@ fn avoid_inline_hint(
                                     && let Some(class_def) = name_def.maybe_name_of_class()
                                 {
                                     // Shows inlay hints when generics are present
-                                    return ClassNodeRef::new(node_ref.file, class_def.index())
+                                    return ClassNodeRef::new(node_ref.file, class_def)
                                         .use_cached_type_vars(i_s.db)
                                         .is_empty();
                                 }

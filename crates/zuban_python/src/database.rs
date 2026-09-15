@@ -1763,7 +1763,7 @@ impl ParentScope {
             ParentScope::Module => format!("{}.{name}", file.qualified_name(db)),
             ParentScope::Class(node_index) => {
                 let parent_class =
-                    Class::with_self_generics(db, ClassNodeRef::new(file, node_index));
+                    Class::with_self_generics(db, ClassNodeRef::from_node_index(file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), name)
             }
             ParentScope::Function(_) => {

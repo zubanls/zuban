@@ -110,7 +110,8 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                 Context::Function(&func)
             }
             ParentScope::Class(class_index) => {
-                class = Class::with_self_generics(db, ClassNodeRef::new(file, class_index));
+                class =
+                    Class::with_self_generics(db, ClassNodeRef::from_node_index(file, class_index));
                 Context::Class(&class)
             }
         };

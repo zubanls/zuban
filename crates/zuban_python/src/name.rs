@@ -128,7 +128,7 @@ impl<'db, 'x> Name<'db, 'x> {
                 fn qualified(file: &PythonFile, scope: Scope) -> Option<String> {
                     match scope {
                         Scope::Class(class_def) => {
-                            let parent_scope = ClassNodeRef::new(file, class_def.index())
+                            let parent_scope = ClassNodeRef::new(file, class_def)
                                 .class_storage()
                                 .parent_scope;
                             let name = class_def.name().as_code();
@@ -139,7 +139,7 @@ impl<'db, 'x> Name<'db, 'x> {
                                     let parent = qualified(
                                         file,
                                         Scope::Class(
-                                            ClassNodeRef::new(file, cls_index)
+                                            ClassNodeRef::from_node_index(file, cls_index)
                                                 .maybe_class()
                                                 .unwrap(),
                                         ),
@@ -296,7 +296,7 @@ impl<'db, 'x> Name<'db, 'x> {
         match self {
             Self::TreeName(tree_name) => {
                 let cls = tree_name.cst_name.name_def()?.maybe_name_of_class()?;
-                let cls_storage = ClassNodeRef::new(tree_name.file, cls.index()).class_storage();
+                let cls_storage = ClassNodeRef::new(tree_name.file, cls).class_storage();
                 Some(NameSymbol::symbol_iterator_from_symbol_table(
                     tree_name.db,
                     tree_name.file,
@@ -358,7 +358,7 @@ fn lookup_parent_scope_in_other_file<'db>(
                 .maybe_name_of_class()?;
             Some(FileOrClass::Class(Class::with_self_generics(
                 db,
-                ClassNodeRef::new(file, cls.index()),
+                ClassNodeRef::new(file, cls),
             )))
         }
         Scope::Function(_) | Scope::Lambda(_) => None,
@@ -400,7 +400,7 @@ impl<'db> TreeName<'db> {
                 if class_def.name_def().name_index() == cst_name.index() {
                     parent_scope = parent_scope_to_scope(
                         file,
-                        ClassNodeRef::new(file, class_def.index())
+                        ClassNodeRef::new(file, class_def)
                             .class_storage()
                             .parent_scope,
                     )

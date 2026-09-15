@@ -281,7 +281,7 @@ impl<'file> NodeRef<'file> {
             .get(self.node_index + CLASS_TO_CLASS_INFO_DIFFERENCE as u32)
             .calculated()
         {
-            let class_ref = ClassNodeRef::new(self.file, self.node_index);
+            let class_ref = ClassNodeRef::from_node_index(self.file, self.node_index);
             let ComplexPoint::Class(cls_storage) = class_ref.maybe_complex().unwrap() else {
                 unreachable!("{self:?}")
             };
@@ -493,7 +493,7 @@ impl fmt::Debug for NodeRef<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct KnownNodeRef<'file, N>(NodeRef<'file>, PhantomData<N>);
 
 impl<'file, N: CstNode<'file>> KnownNodeRef<'file, N> {
@@ -509,6 +509,12 @@ impl<'file, N: CstNode<'file>> KnownNodeRef<'file, N> {
 
 impl<N> std::cmp::PartialEq<NodeRef<'_>> for KnownNodeRef<'_, N> {
     fn eq(&self, other: &NodeRef) -> bool {
+        std::ptr::eq(self.file, other.file) && self.node_index == other.node_index
+    }
+}
+
+impl<N> std::cmp::PartialEq<KnownNodeRef<'_, N>> for KnownNodeRef<'_, N> {
+    fn eq(&self, other: &KnownNodeRef<N>) -> bool {
         std::ptr::eq(self.file, other.file) && self.node_index == other.node_index
     }
 }
@@ -539,10 +545,18 @@ impl<'file, N: CstNode<'file>> KnownPointLink<N> {
     }
 }
 
-impl<'db: 'file, 'file> KnownNodeRef<'file, FunctionDef<'file>> {
+impl<'file> KnownNodeRef<'file, FunctionDef<'file>> {
     #[inline]
     pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
         debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
+        Self(node_ref, PhantomData)
+    }
+}
+
+impl<'file> KnownNodeRef<'file, ClassDef<'file>> {
+    #[inline]
+    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
+        debug_assert!(node_ref.maybe_class().is_some(), "{node_ref:?}");
         Self(node_ref, PhantomData)
     }
 }

@@ -97,7 +97,9 @@ fn is_pytest_fixture_or_test(
                 ParentScope::Function(_) => false,
                 ParentScope::Class(c) => {
                     matches!(
-                        ClassNodeRef::new(file, c).class_storage().parent_scope,
+                        ClassNodeRef::from_node_index(file, c)
+                            .class_storage()
+                            .parent_scope,
                         ParentScope::Module
                     )
                 }

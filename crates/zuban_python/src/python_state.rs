@@ -42,7 +42,7 @@ macro_rules! class_node_ref {
         #[inline]
         $vis fn $name(&self) -> ClassNodeRef<'_> {
             debug_assert!(self.$attr != 0);
-            ClassNodeRef::new(self.$module_name(), self.$attr)
+            ClassNodeRef::from_node_index(self.$module_name(), self.$attr)
         }
     };
 }
@@ -53,7 +53,7 @@ macro_rules! optional_class_node_ref {
         $vis fn $name(&self) -> Option<ClassNodeRef<'_>> {
             self.$attr.map(|attr| {
                 debug_assert!(attr != 0);
-                ClassNodeRef::new(self.$module_name(), attr)
+                ClassNodeRef::from_node_index(self.$module_name(), attr)
             })
         }
     };
@@ -504,8 +504,10 @@ impl PythonState {
                     )
                 }
                 update(db, Some(class_index));
-                let class =
-                    ClassInitializer::from_node_ref(ClassNodeRef::new(module(db), class_index));
+                let class = ClassInitializer::from_node_ref(ClassNodeRef::from_node_index(
+                    module(db),
+                    class_index,
+                ));
                 let name_def_ref =
                     NodeRef::new(class.node_ref.file, class.node().name_def().index());
                 cache_class_name(

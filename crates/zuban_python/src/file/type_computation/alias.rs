@@ -385,7 +385,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 };
                 if td.calculating() {
                     debug_assert_eq!(node_ref.file_index(), td.defined_at.file);
-                    TypeContent::RecursiveClass(ClassNodeRef::new(
+                    TypeContent::RecursiveClass(ClassNodeRef::from_node_index(
                         node_ref.file,
                         td.defined_at.node_index,
                     ))
@@ -1006,7 +1006,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 let name_def = node_ref.expect_name_def();
                 match name_def.expect_type() {
                     TypeLike::ClassDef(class_def) => {
-                        let class_node_ref = ClassNodeRef::new(node_ref.file, class_def.index());
+                        let class_node_ref = ClassNodeRef::new(node_ref.file, class_def);
                         cache_class_name(node_ref, class_def);
                         class_node_ref
                             .ensure_cached_class_infos(&InferenceState::new(db, node_ref.file));

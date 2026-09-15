@@ -425,7 +425,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     FuncNodeRef::new(origin_node_ref.file, func).parent_scope()
                 } else if let Some(class) = origin_node_ref.maybe_class() {
                     redirect_type_params(class.type_params());
-                    ClassNodeRef::new(origin_node_ref.file, class.index())
+                    ClassNodeRef::new(origin_node_ref.file, class)
                         .class_storage()
                         .parent_scope
                 } else {
@@ -3656,7 +3656,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match name_def.expect_type() {
             TypeLike::ClassDef(c) => {
                 cache_class_name(node_ref, c);
-                Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
+                Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c))
             }
             TypeLike::Assignment(assignment) => node_ref
                 .file

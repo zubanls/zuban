@@ -195,7 +195,10 @@ impl Inference<'_, '_, '_> {
                 .filter_map(|delayed| match delayed {
                     DelayedDiagnostic::ClassTypeParams { class_link } => {
                         debug_assert_eq!(class_link.file, self.file.file_index);
-                        Some(ClassNodeRef::new(self.file, class_link.node_index))
+                        Some(ClassNodeRef::from_node_index(
+                            self.file,
+                            class_link.node_index,
+                        ))
                     }
                     _ => None,
                 })
@@ -866,7 +869,7 @@ impl Inference<'_, '_, '_> {
                 func.type_vars(self.i_s.db)
             }
             ParentScope::Class(index) => {
-                let class = ClassNodeRef::new(self.file, index);
+                let class = ClassNodeRef::from_node_index(self.file, index);
                 let storage = class.class_storage();
                 self.check_parent_type_params_redefinitions(storage.parent_scope, type_params);
                 class.type_vars(self.i_s)
@@ -920,7 +923,7 @@ impl Inference<'_, '_, '_> {
 
         let (type_params, arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
-        let class_node_ref = ClassNodeRef::new(self.file, class.index());
+        let class_node_ref = ClassNodeRef::from_node_index(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
 

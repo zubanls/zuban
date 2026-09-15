@@ -30,7 +30,7 @@ use crate::{
         },
     },
     inference_state::InferenceState,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass,
@@ -86,37 +86,30 @@ const NAMEDTUPLE_PROHIBITED_NAMES: [&str; 12] = [
     "__annotations__",
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct ClassNodeRef<'file>(NodeRef<'file>);
+pub type ClassNodeRef<'x> = KnownNodeRef<'x, ClassDef<'x>>;
 
 impl<'db: 'file, 'file> ClassNodeRef<'file> {
-    #[inline]
-    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
-        Self::from_node_ref(NodeRef::new(file, node_index))
-    }
-
     #[inline]
     pub fn from_link(db: &'file Database, link: PointLink) -> Self {
         Self::from_node_ref(NodeRef::from_link(db, link))
     }
 
     #[inline]
-    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
-        debug_assert!(node_ref.maybe_class().is_some(), "{node_ref:?}");
-        Self(node_ref)
+    pub fn from_node_index(file: &'file PythonFile, node_index: NodeIndex) -> Self {
+        Self::from_node_ref(NodeRef::new(file, node_index))
     }
 
     pub fn into_node_ref(self) -> NodeRef<'file> {
-        self.into()
+        *self
     }
 
     #[inline]
-    pub fn to_db_lifetime(self, db: &Database) -> ClassNodeRef<'_> {
-        ClassNodeRef(self.0.to_db_lifetime(db))
+    pub fn to_db_lifetime(self, db: &'db Database) -> ClassNodeRef<'db> {
+        ClassNodeRef::from_node_ref((&*self).to_db_lifetime(db))
     }
 
     pub fn node(&self) -> ClassDef<'file> {
-        ClassDef::by_index(&self.0.file.tree, self.0.node_index)
+        ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn name(&self) -> &'file str {
@@ -125,12 +118,12 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
 
     pub fn name_string_slice(&self) -> StringSlice {
         let name = self.node().name();
-        StringSlice::new(self.0.file_index(), name.start(), name.end())
+        StringSlice::new(self.file_index(), name.start(), name.end())
     }
 
     #[inline]
     fn class_info_node_ref(&self) -> NodeRef<'file> {
-        self.0.add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
+        self.add_to_node_index(CLASS_TO_CLASS_INFO_DIFFERENCE)
     }
 
     pub fn incomplete_mro(&self, db: &Database) -> bool {
@@ -163,7 +156,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
 
     #[inline]
     fn type_vars_node_ref(&self) -> NodeRef<'file> {
-        self.0.add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
+        self.add_to_node_index(CLASS_TO_TYPE_VARS_DIFFERENCE)
     }
 
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'file TypeVarLikes {
@@ -220,7 +213,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 
     pub fn class_link_in_mro(&self, db: &Database, link: PointLink) -> bool {
-        if self.0.as_link() == link || link == db.python_state.object_link() {
+        if self.as_link() == link || link == db.python_state.object_link() {
             return true;
         }
         let class_infos = self.use_cached_class_infos(db);
@@ -329,23 +322,9 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
     }
 }
 
-impl<'a> std::ops::Deref for ClassNodeRef<'a> {
-    type Target = NodeRef<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::cmp::PartialEq<NodeRef<'_>> for ClassNodeRef<'_> {
-    fn eq(&self, other: &NodeRef) -> bool {
-        self.0 == *other
-    }
-}
-
 impl<'a> From<ClassNodeRef<'a>> for NodeRef<'a> {
     fn from(value: ClassNodeRef<'a>) -> Self {
-        value.0
+        *value
     }
 }
 
@@ -382,7 +361,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
     pub fn qualified_name(&self, db: &Database) -> String {
         self.class_storage
             .parent_scope
-            .qualified_name(db, self.node_ref.0, self.name())
+            .qualified_name(db, *self.node_ref, self.name())
     }
 
     pub(crate) fn maybe_type_var_like_in_parent(
@@ -393,8 +372,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
-                let parent_class =
-                    Self::from_node_ref(ClassNodeRef::new(self.node_ref.file, node_index));
+                let parent_class = Self::from_node_ref(ClassNodeRef::from_node_index(
+                    self.node_ref.file,
+                    node_index,
+                ));
                 parent_class.find_type_var_like_including_ancestors(db, type_var, true)
             }
             ParentScope::Function(node_index) => {
