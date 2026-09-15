@@ -422,7 +422,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 };
                 let parent = if let Some(func) = origin_node_ref.maybe_function() {
                     redirect_type_params(func.type_params());
-                    FuncNodeRef::new(origin_node_ref.file, func.index()).parent_scope()
+                    FuncNodeRef::new(origin_node_ref.file, func).parent_scope()
                 } else if let Some(class) = origin_node_ref.maybe_class() {
                     redirect_type_params(class.type_params());
                     ClassNodeRef::new(origin_node_ref.file, class.index())
@@ -3635,7 +3635,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 // If a module contains a __getattr__, the type can be part of that
                 // (which is typically just an Any that propagates).
                 if let Some(func) = name_node_ref.maybe_name_of_function() {
-                    let func_node_ref = FuncNodeRef::new(name_node_ref.file, func.index());
+                    let func_node_ref = FuncNodeRef::new(name_node_ref.file, func);
                     // The inference state context is new, because we are in a new module.
                     let i_s = &InferenceState::new(self.i_s.db, name_node_ref.file);
                     func_node_ref.ensure_cached_type_vars(i_s, None);
@@ -4579,12 +4579,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if name_ref.point().calculating() {
                     return Some(DecoratorState::Calculating);
                 }
-                Function::new(node_ref.into(), None).cache_func_with_name_def(
+                Function::new(*node_ref, None).cache_func_with_name_def(
                     &InferenceState::new(self.i_s.db, node_ref.file),
                     name_ref,
                     false,
                 );
-                Some(DecoratorState::NodeRef(node_ref.into()))
+                Some(DecoratorState::NodeRef(*node_ref))
             }
             Lookup::T(TypeContent::Class { node_ref, .. }) => {
                 node_ref

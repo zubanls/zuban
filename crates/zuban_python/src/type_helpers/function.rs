@@ -480,7 +480,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if let Some(decorated) = maybe_decorated {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
-                Self::new(self.node_ref.into(), Some(class)).decorated_to_be_saved(
+                Self::new(*self.node_ref, Some(class)).decorated_to_be_saved(
                     &i_s.with_class_context(&class),
                     decorated,
                     maybe_computed,
@@ -820,7 +820,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
             debug_assert_ne!(pre_unreachable, current_index - NAME_TO_FUNCTION_DIFF);
-            Some(FuncNodeRef::new(self.node_ref.file, pre_unreachable))
+            Some(FuncNodeRef::from_node_ref(NodeRef::new(
+                self.node_ref.file,
+                pre_unreachable,
+            )))
         } else {
             None
         }
@@ -1519,7 +1522,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && let Some(first_index) =
                 first_defined_name_of_multi_def(file, self.node().name().index())
             && let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function()
-            && let Some(o) = FuncNodeRef::new(self.node_ref.file, func.index()).maybe_overload()
+            && let Some(o) = FuncNodeRef::new(self.node_ref.file, func).maybe_overload()
         {
             return Some(o);
         }

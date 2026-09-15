@@ -1874,7 +1874,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             && let Some(func) = name_def.maybe_parent_function_of_param()
                         {
                             let parent_scope =
-                                FuncNodeRef::new(redirected_to.file, func.index()).parent_scope();
+                                FuncNodeRef::new(redirected_to.file, func).parent_scope();
                             if !matches!(parent_scope, ParentScope::Class(c) if c == self.node_index)
                             {
                                 return None;

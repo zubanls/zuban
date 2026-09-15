@@ -1289,7 +1289,7 @@ impl PythonState {
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
         func.ensure_cached_func(&InferenceState::new(db, func.file));
-        Inferred::from_saved_node_ref(func.node_ref.into())
+        Inferred::from_saved_node_ref(*func.node_ref)
     }
 
     pub fn module_instance(&self) -> Instance<'_> {

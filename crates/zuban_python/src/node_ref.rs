@@ -493,6 +493,7 @@ impl fmt::Debug for NodeRef<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct KnownNodeRef<'file, N>(NodeRef<'file>, PhantomData<N>);
 
 impl<'file, N: CstNode<'file>> KnownNodeRef<'file, N> {
@@ -503,6 +504,12 @@ impl<'file, N: CstNode<'file>> KnownNodeRef<'file, N> {
 
     pub fn as_node(&self) -> N {
         N::by_index(&self.file.tree, self.node_index)
+    }
+}
+
+impl<N> std::cmp::PartialEq<NodeRef<'_>> for KnownNodeRef<'_, N> {
+    fn eq(&self, other: &NodeRef) -> bool {
+        std::ptr::eq(self.file, other.file) && self.node_index == other.node_index
     }
 }
 
@@ -529,5 +536,13 @@ impl<'file, N: CstNode<'file>> KnownPointLink<N> {
 
     pub fn file(&self, db: &'file Database) -> &'file PythonFile {
         db.loaded_python_file(self.0.file)
+    }
+}
+
+impl<'db: 'file, 'file> KnownNodeRef<'file, FunctionDef<'file>> {
+    #[inline]
+    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
+        debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
+        Self(node_ref, PhantomData)
     }
 }

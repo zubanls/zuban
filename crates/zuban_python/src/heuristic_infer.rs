@@ -162,7 +162,7 @@ impl<'db> HeuristicState<'db> {
         let (_, args_frame) = self
             .call_stack
             .iter()
-            .find(|frame| frame.0 == func_node_ref)?;
+            .find(|frame| frame.0 == *func_node_ref)?;
         Some(args_frame)
     }
 }
@@ -265,8 +265,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 match name_def.expect_type() {
                     TypeLike::ParamName(_) => {
                         let func_node = name.expect_as_param_of_function();
-                        let func_node_ref =
-                            FuncNodeRef::new(self.inference.file, func_node.index());
+                        let func_node_ref = FuncNodeRef::new(self.inference.file, func_node);
                         let func = Function::new_with_unknown_parent(
                             self.inference.i_s.db,
                             NodeRef::new(self.inference.file, func_node.index()),
@@ -1210,7 +1209,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 && let Some(func) = name_def.maybe_name_of_func()
             {
                 out = self.heuristic_return_type(
-                    FuncNodeRef::new(directed_to.file, func.index()),
+                    FuncNodeRef::new(directed_to.file, func),
                     ArgsFrame {
                         call_site: NodeRef::new(self.inference.file, from_node_index),
                         kind: SavedArgsKind::Simple(SavedArgumentsDetails::None),

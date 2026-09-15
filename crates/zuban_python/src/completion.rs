@@ -873,7 +873,7 @@ impl<'db> Iterator for ScopesIterator<'db> {
             Scope::Class(c) => Err(ClassNodeRef::new(self.file, c.index())
                 .class_storage()
                 .parent_scope),
-            Scope::Function(f) => Err(FuncNodeRef::new(self.file, f.index()).parent_scope()),
+            Scope::Function(f) => Err(FuncNodeRef::new(self.file, f).parent_scope()),
             Scope::Lambda(l) => {
                 self.current = Some(l.parent_scope());
                 Ok(())

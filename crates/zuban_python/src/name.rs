@@ -410,7 +410,7 @@ impl<'db> TreeName<'db> {
                 if function_def.name_def().name_index() == cst_name.index() {
                     parent_scope = parent_scope_to_scope(
                         file,
-                        FuncNodeRef::new(file, function_def.index()).parent_scope(),
+                        FuncNodeRef::new(file, function_def).parent_scope(),
                     )
                 }
             }

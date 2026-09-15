@@ -15,7 +15,7 @@ use crate::{
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
     new_class,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     recoverable_error,
     type_::{
         AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
@@ -29,41 +29,9 @@ use super::{
     use_cached_param_annotation_type,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct FuncNodeRef<'file>(NodeRef<'file>);
-
-impl<'a> std::ops::Deref for FuncNodeRef<'a> {
-    type Target = NodeRef<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::cmp::PartialEq<NodeRef<'_>> for FuncNodeRef<'_> {
-    fn eq(&self, other: &NodeRef) -> bool {
-        self.0 == *other
-    }
-}
-
-impl<'a> From<FuncNodeRef<'a>> for NodeRef<'a> {
-    fn from(value: FuncNodeRef<'a>) -> Self {
-        value.0
-    }
-}
+pub type FuncNodeRef<'x> = KnownNodeRef<'x, FunctionDef<'x>>;
 
 impl<'db: 'file, 'file> FuncNodeRef<'file> {
-    #[inline]
-    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
-        Self::from_node_ref(NodeRef::new(file, node_index))
-    }
-
-    #[inline]
-    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
-        debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
-        Self(node_ref)
-    }
-
     pub fn node(&self) -> FunctionDef<'file> {
         FunctionDef::by_index(&self.file.tree, self.node_index)
     }

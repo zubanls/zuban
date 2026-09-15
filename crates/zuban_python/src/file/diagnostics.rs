@@ -861,7 +861,7 @@ impl Inference<'_, '_, '_> {
         let type_vars = match parent_scope {
             ParentScope::Module => return,
             ParentScope::Function(index) => {
-                let func = FuncNodeRef::new(self.file, index);
+                let func = FuncNodeRef::from_node_ref(NodeRef::new(self.file, index));
                 self.check_parent_type_params_redefinitions(func.parent_scope(), type_params);
                 func.type_vars(self.i_s.db)
             }
@@ -1379,7 +1379,7 @@ impl Inference<'_, '_, '_> {
             }
         };
 
-        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
+        let func_node_ref = FuncNodeRef::new(self.file, func_def);
         // Calculate if there is an @override decorator
         let has_override_decorator = LazyCell::new(|| {
             if let Some(overload) = func_node_ref.maybe_overload() {
