@@ -144,17 +144,21 @@ impl<'db> ImportFinder<'db> {
                 // don't have symbols in there like dashes and spaces.
                 // TODO there are a lot of other symbols that are invalid
                 if is_file_with_python_ending(&entry.name)
-                    && !entry.name.contains(" ")
-                    && !entry.name.contains("-")
+                    && let Some(prefix) = Path::new(&*entry.name).file_prefix()
+                    && might_be_python_identifier(prefix.to_str().unwrap())
                 {
                     self.find_importable_name_in_file_entry(&entry, false);
                 }
             }
-            DirectoryEntry::Directory(dir) => self.find_importable_name_in_entries(
-                Directory::entries(&self.db.vfs, &dir),
-                true,
-                add_submodules,
-            ),
+            DirectoryEntry::Directory(dir) => {
+                if might_be_python_identifier(&dir.name) {
+                    self.find_importable_name_in_entries(
+                        Directory::entries(&self.db.vfs, &dir),
+                        true,
+                        add_submodules,
+                    )
+                }
+            }
             _ => {
                 unreachable!("Removed above")
             }
@@ -647,5 +651,34 @@ fn has_import_of_file(db: &Database, file: &PythonFile, dotted: DottedImportName
         }
     } else {
         false
+    }
+}
+
+fn might_be_python_identifier(s: &str) -> bool {
+    let mut chars = s.chars();
+
+    // The first char needs to be part of [A-Za-z_]
+    match chars.next() {
+        Some('_') => {}
+        Some(c) if c.is_alphabetic() => {}
+        _ => return false,
+    }
+
+    // After that numbers are allowed as well
+    chars.all(|c| c == '_' || c.is_alphanumeric())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::might_be_python_identifier;
+
+    #[test]
+    fn identifiers() {
+        for s in ["a", "_", "_foo", "foo123", "foo_bar", "café", "变量", "é2"] {
+            assert!(might_be_python_identifier(s), "{s:?}");
+        }
+        for s in ["", "123foo", "123", "foo-bar", "foo bar", "foo.bar", "-foo"] {
+            assert!(!might_be_python_identifier(s), "{s:?}");
+        }
     }
 }
