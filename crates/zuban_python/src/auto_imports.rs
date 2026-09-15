@@ -154,10 +154,24 @@ impl<'db> ImportFinder<'db> {
                 _ => None,
             })
             .collect();
+        let mut is_different_project = false;
         let has_python_files_in_dir = entries.iter().any(|e| match e {
-            DirectoryEntry::File(f) => f.name.ends_with(".py") || f.name.ends_with(".pyi"),
+            DirectoryEntry::File(f) => {
+                if &*f.name == "pyproject.toml" {
+                    is_different_project = true;
+                }
+                f.name.ends_with(".py") || f.name.ends_with(".pyi")
+            }
+            DirectoryEntry::Directory(dir) if &*dir.name == ".git" => {
+                is_different_project = true;
+                false
+            }
             _ => false,
         });
+        if is_different_project && in_package {
+            // We probably do not want to check a different project
+            return;
+        }
         entries.into_par_iter().for_each(|entry| match entry {
             DirectoryEntry::File(entry) => {
                 // Only find importable files like foo.py that have importable file endings and
