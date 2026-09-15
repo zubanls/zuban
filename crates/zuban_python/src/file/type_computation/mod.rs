@@ -388,14 +388,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn compute_forward_reference(
+    fn compute_string_annotation(
         &mut self,
         start: CodeIndex,
         code: Cow<str>,
     ) -> TypeContent<'db, 'db> {
         let f = self
             .file
-            .ensure_forward_reference_file(self.i_s.db, start, code);
+            .ensure_string_annotation_file(self.i_s.db, start, code);
 
         // Does some light name binding to avoid cases where we cannot find names otherwise.
         {
@@ -3163,8 +3163,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match atom.unpack() {
             AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.into()),
-                PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
+                PythonString::Ref(start, s) => self.compute_string_annotation(start, s.into()),
+                PythonString::String(start, s) => self.compute_string_annotation(start, s.into()),
                 PythonString::FString => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
             AtomContent::NoneLiteral => TypeContent::Type(Type::None),

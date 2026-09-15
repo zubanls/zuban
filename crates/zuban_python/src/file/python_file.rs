@@ -528,7 +528,7 @@ impl<'db> PythonFile {
             .save_sub_file_at_position(start, f.file_index);
         f
     }
-    pub(super) fn ensure_forward_reference_file(
+    pub(super) fn ensure_string_annotation_file(
         &self,
         db: &'db Database,
         mut start: CodeIndex,

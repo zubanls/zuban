@@ -356,7 +356,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
         let file = self
             .file
-            .ensure_forward_reference_file(self.i_s.db, start, string);
+            .ensure_string_annotation_file(self.i_s.db, start, string);
         let mut inner_finder = TypeVarFinder {
             name_resolution: file.name_resolution_for_types(self.i_s),
             infos: self.infos,

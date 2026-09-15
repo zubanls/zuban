@@ -1073,7 +1073,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let compute_forward_reference = |start, string: Cow<str>| {
             let file = self
                 .file
-                .ensure_forward_reference_file(self.i_s.db, start, string);
+                .ensure_string_annotation_file(self.i_s.db, start, string);
 
             let Some(star_exprs) = file.tree.maybe_star_expressions() else {
                 return;
