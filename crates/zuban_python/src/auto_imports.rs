@@ -31,7 +31,7 @@ use crate::{
     utils::is_file_with_python_ending,
 };
 
-const FILE_LOAD_LIMIT: usize = 5000;
+const FILE_LOAD_LIMIT: usize = 2000;
 
 pub(crate) struct ImportFinder<'db> {
     db: &'db Database,
@@ -162,10 +162,14 @@ impl<'db> ImportFinder<'db> {
                 }
                 f.name.ends_with(".py") || f.name.ends_with(".pyi")
             }
+            /*
+             * Theoretically we would like to filter something like this, but it's currently
+             * impossible, because .git is not part of the workspace, it gets filtered out.
             DirectoryEntry::Directory(dir) if &*dir.name == ".git" => {
                 is_different_project = true;
                 false
             }
+            */
             _ => false,
         });
         if is_different_project && in_package {
