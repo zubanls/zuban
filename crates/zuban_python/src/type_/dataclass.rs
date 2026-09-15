@@ -256,7 +256,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                 dataclass.options.frozen.zip(super_dataclass.options.frozen)
                 && frozen1 != frozen2
             {
-                let arguments = cls.node().arguments().unwrap();
+                let arguments = cls.as_node().arguments().unwrap();
                 NodeRef::new(file, arguments.index()).add_issue(
                     i_s,
                     match frozen1 {
@@ -495,7 +495,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                 } else {
                     // The class arguments are always set, because we are working with params from
                     // a different file, which means inheritance.
-                    let arguments = cls.node().arguments().unwrap();
+                    let arguments = cls.as_node().arguments().unwrap();
                     NodeRef::new(file, arguments.index()).add_issue(i_s, issue_type);
                 }
             }

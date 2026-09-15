@@ -3403,7 +3403,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
             expected_variance = Variance::Contravariant
         }
         if tv_variance != expected_variance {
-            NodeRef::new(class.node_ref.file, class.node().name().index()).add_issue(
+            NodeRef::new(class.node_ref.file, class.as_node().name().index()).add_issue(
                 i_s,
                 IssueKind::ProtocolWrongVariance {
                     type_var_name: tv.name(i_s.db).into(),

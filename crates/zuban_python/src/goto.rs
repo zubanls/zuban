@@ -436,7 +436,7 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                             self.infos.db,
                             self.infos.file,
                             c.class_storage.parent_scope,
-                            cls.node().name(),
+                            cls.as_node().name(),
                         ))
                     });
                 if let Some(cls_name) = cls_name {
@@ -1119,7 +1119,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
             db,
             node_ref.file,
             parent_scope,
-            node_ref.node().name(),
+            node_ref.as_node().name(),
         ))
     };
     let lookup = |module: &'db PythonFile, name| Some(from_node_ref(module.lookup_symbol(name)?));
@@ -1136,7 +1136,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
                 db,
                 node_ref.file,
                 Scope::Module,
-                node_ref.node().name(),
+                node_ref.as_node().name(),
             )))
         }
         Type::Any(_) => (),
@@ -1178,7 +1178,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
                 db,
                 node_ref.file,
                 node_ref.class_storage().parent_scope,
-                node_ref.node().name(),
+                node_ref.as_node().name(),
             )))
         }
         Type::Dataclass(dataclass) => add(from_class_node_ref(dataclass.class.node_ref(db))),
@@ -1257,7 +1257,7 @@ fn type_to_name<'db>(i_s: &InferenceState<'db, '_>, t: &Type, add: &mut impl FnM
                 db,
                 node_ref.file,
                 node_ref.class_storage().parent_scope,
-                node_ref.node().name(),
+                node_ref.as_node().name(),
             )))
         }
         Type::Never(_) => (),

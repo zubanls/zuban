@@ -571,7 +571,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         let wanted_link = if search_name == "__init__"
             && let Some(class) = func.class
         {
-            let cls_name = class.node().name();
+            let cls_name = class.as_node().name();
             search_name = cls_name.as_code();
             skip_first_param = true;
             PointLink::new(self.inference.file.file_index, cls_name.index())

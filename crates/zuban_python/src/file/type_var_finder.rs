@@ -68,7 +68,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             infos: &mut infos,
         };
 
-        if let Some(arguments) = class.node().arguments() {
+        if let Some(arguments) = class.as_node().arguments() {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {

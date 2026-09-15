@@ -50,7 +50,7 @@ impl<'project> Document<'project> {
                             i_s.db,
                             cls.file,
                             cls.class_storage.parent_scope,
-                            cls.node().name(),
+                            cls.as_node().name(),
                         )
                         .documentation();
                         if !doc.is_empty() {

@@ -867,7 +867,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     return Ok(ok);
                 }
                 if let Some(class) = func.class
-                    && let Some(ok) = lookup_type_params(class.file, class.node().type_params())
+                    && let Some(ok) = lookup_type_params(class.file, class.as_node().type_params())
                 {
                     return Ok(ok);
                 }
@@ -878,7 +878,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                         index,
                     )));
                 }
-                if let Some(ok) = lookup_type_params(class.file, class.node().type_params()) {
+                if let Some(ok) = lookup_type_params(class.file, class.as_node().type_params()) {
                     return Ok(ok);
                 }
             }

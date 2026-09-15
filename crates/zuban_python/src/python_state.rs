@@ -509,7 +509,7 @@ impl PythonState {
                     class_index,
                 ));
                 let name_def_ref =
-                    NodeRef::new(class.node_ref.file, class.node().name_def().index());
+                    NodeRef::new(class.node_ref.file, class.as_node().name_def().index());
                 cache_class_name(
                     name_def_ref,
                     NodeRef::new(module(db), class_index).maybe_class().unwrap(),

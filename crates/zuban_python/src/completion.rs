@@ -665,7 +665,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
     ) {
         let file = c.node_ref.to_db_lifetime(self.infos.db).file;
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
-        let class_node = c.node();
+        let class_node = c.as_node();
         let is_django_base = c.has_django_stubs_base_class(self.infos.db);
         for (symbol, node_index) in storage.class_symbol_table.iter() {
             if is_private(symbol) || should_ignore(symbol) {
