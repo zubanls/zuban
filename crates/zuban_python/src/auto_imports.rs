@@ -1,7 +1,10 @@
 use std::{
     collections::hash_map::Entry,
     path::Path,
-    sync::{Arc, Mutex, OnceLock},
+    sync::{
+        Arc, Mutex, OnceLock,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
 
 use config::ProjectOptions;
@@ -28,10 +31,13 @@ use crate::{
     utils::is_file_with_python_ending,
 };
 
+const FILE_LOAD_LIMIT: usize = 1000;
+
 pub(crate) struct ImportFinder<'db> {
     db: &'db Database,
     name: &'db str,
     found: Mutex<Vec<PotentialImport<'db>>>,
+    files_loaded: AtomicUsize,
 }
 
 #[derive(Clone, Copy)]
@@ -60,14 +66,15 @@ impl<'db> ImportFinder<'db> {
             db,
             name,
             found: Default::default(),
+            files_loaded: Default::default(),
         };
         for workspace in db.vfs.workspaces.load().iter() {
             match &workspace.kind {
                 WorkspaceKind::TypeChecking => {
-                    slf.find_importable_name_in_entries(&workspace.entries, false, true)
+                    slf.find_importable_name_in_entries(&workspace.entries, false, true, 0)
                 }
                 WorkspaceKind::SitePackages => {
-                    slf.find_importable_name_in_entries(&workspace.entries, false, false)
+                    slf.find_importable_name_in_entries(&workspace.entries, false, false, 0)
                 }
                 WorkspaceKind::PythonStdLib => (), // Already added as part of typeshed
                 WorkspaceKind::Typeshed => {
@@ -99,6 +106,11 @@ impl<'db> ImportFinder<'db> {
                 WorkspaceKind::Fallback => (),
             };
         }
+        if slf.has_reached_limits() {
+            tracing::warn!(
+                "The auto-import limit of {FILE_LOAD_LIMIT} loaded files has been reached"
+            );
+        }
         slf.found.into_inner().unwrap()
     }
 
@@ -109,6 +121,9 @@ impl<'db> ImportFinder<'db> {
         add_submodules: bool,
         non_py_dir_depth: usize,
     ) {
+        if self.has_reached_limits() {
+            return;
+        }
         if in_package {
             if let Some(entry) = entries
                 .search("__init__.pyi")
@@ -184,11 +199,19 @@ impl<'db> ImportFinder<'db> {
         })
     }
 
+    fn has_reached_limits(&self) -> bool {
+        self.files_loaded.load(Ordering::Relaxed) > FILE_LOAD_LIMIT
+    }
+
     fn find_importable_name_in_file_entry(
         &self,
         entry: &Arc<FileEntry>,
         add_star_imports: bool,
     ) -> bool {
+        if self.has_reached_limits() {
+            return false;
+        }
+        self.files_loaded.fetch_add(1, Ordering::SeqCst);
         let Some(file) = self.db.load_file_from_workspace(entry) else {
             return false;
         };
