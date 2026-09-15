@@ -399,34 +399,50 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
         // Does some light name binding to avoid cases where we cannot find names otherwise.
         {
-            let node_ref = NodeRef::from_link(self.name_resolution.i_s.db, self.for_definition);
-
-            let redirect_type_params = |type_params: Option<TypeParams>| {
-                if let Some(type_params) = type_params {
-                    for name in f.tree.filter_all_names(None) {
-                        let name_str = name.as_code();
-                        if let Some(matched) = type_params
-                            .iter()
-                            .find(|type_param| type_param.name_def().as_code() == name_str)
-                        {
-                            f.points.set(
-                                name.index(),
-                                Point::new_redirect(
-                                    self.file.file_index,
-                                    matched.name_def().name_index(),
-                                    Locality::NameBinder,
-                                ),
-                            );
+            fn check(origin_node_ref: NodeRef, annotation_file: &PythonFile) {
+                let redirect_type_params = |type_params: Option<TypeParams>| {
+                    if let Some(type_params) = type_params {
+                        for name in annotation_file.tree.filter_all_names(None) {
+                            let name_str = name.as_code();
+                            if let Some(matched) = type_params
+                                .iter()
+                                .find(|type_param| type_param.name_def().as_code() == name_str)
+                            {
+                                annotation_file.points.set(
+                                    name.index(),
+                                    Point::new_redirect(
+                                        origin_node_ref.file_index(),
+                                        matched.name_def().name_index(),
+                                        Locality::NameBinder,
+                                    ),
+                                );
+                            }
                         }
                     }
+                };
+                let parent = if let Some(func) = origin_node_ref.maybe_function() {
+                    redirect_type_params(func.type_params());
+                    FuncNodeRef::new(origin_node_ref.file, func.index()).parent_scope()
+                } else if let Some(class) = origin_node_ref.maybe_class() {
+                    redirect_type_params(class.type_params());
+                    ClassNodeRef::new(origin_node_ref.file, class.index())
+                        .class_storage()
+                        .parent_scope
+                } else {
+                    return;
+                };
+                match parent {
+                    ParentScope::Function(f) => {
+                        check(NodeRef::new(origin_node_ref.file, f), annotation_file)
+                    }
+                    ParentScope::Class(c) => {
+                        check(NodeRef::new(origin_node_ref.file, c), annotation_file)
+                    }
+                    ParentScope::Module => (),
                 }
-            };
-            if let Some(func) = node_ref.maybe_function() {
-                redirect_type_params(func.type_params())
             }
-            if let Some(class) = node_ref.maybe_class() {
-                redirect_type_params(class.type_params())
-            }
+            let node_ref = NodeRef::from_link(self.name_resolution.i_s.db, self.for_definition);
+            check(node_ref, f)
         }
 
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {

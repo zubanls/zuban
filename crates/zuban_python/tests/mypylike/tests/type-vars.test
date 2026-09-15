@@ -497,3 +497,20 @@ type T[U = T] = int
 def f(c: C, t: T):
     assert_type(c, C[C[Any]])
     assert_type(t, int)
+
+[case type_var_syntax_with_string_references]
+# From conformance tests annotations_forward_refs.py
+from typing import assert_type
+
+class T:
+    ...
+
+class ClassE[T]:
+    def identity1(self, value: T) -> T:
+        return value
+
+    def identity2(self, value: "T") -> "T":
+        return value
+
+assert_type(ClassE[int]().identity1(1), int)
+assert_type(ClassE[int]().identity2(1), int)
