@@ -31,7 +31,7 @@ use crate::{
     utils::is_file_with_python_ending,
 };
 
-const FILE_LOAD_LIMIT: usize = 1000;
+const FILE_LOAD_LIMIT: usize = 5000;
 
 pub(crate) struct ImportFinder<'db> {
     db: &'db Database,
