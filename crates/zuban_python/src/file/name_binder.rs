@@ -199,8 +199,6 @@ impl<'db> NameBinder<'db> {
                 .extend(annotation_names)
         } else {
             for mut annotation_name in annotation_names {
-                // Functions should never be considered in annotations. It is really weird that Mypy
-                // applies this logic so partially.
                 let handled = match kind {
                     NameBinderKind::TypeParams(type_params) => try_to_process_type_params(
                         &self.db_infos,
@@ -215,7 +213,11 @@ impl<'db> NameBinder<'db> {
                                     // We don't want there to be a foo: foo where we have a cycle.
                                     return false;
                                 }
-                                if matches!(kind, NameBinderKind::Class) {
+                                // Functions in Mypy are not considered to be part of annotations. It is
+                                // really weird that Mypy applies this logic so partially.
+                                if self.db_infos.settings.mypy_compatible()
+                                    && matches!(kind, NameBinderKind::Class)
+                                {
                                     let name_def = Name::by_index(self.db_infos.tree, name_index)
                                         .name_def()
                                         .unwrap();
