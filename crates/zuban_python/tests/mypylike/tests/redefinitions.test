@@ -125,3 +125,37 @@ if bool():
     X = Y  # E: Name "X" already defined on line 3
 if bool():
     Y = X  # E: Name "Y" already defined on line 4
+
+[case redefine_imported_name_in_type_checking_block]
+# A name that is imported and then rebound inside `if TYPE_CHECKING:`
+# should be seen with its rebound type by other modules as well (common
+# pattern to type quart/flask's `g`).
+import pkg.consumer
+
+from pkg import g
+
+reveal_type(g)      # N: Revealed type is "pkg.Ctx"
+reveal_type(g.lib)  # N: Revealed type is "str"
+
+[file pkg/__init__.py]
+from typing import TYPE_CHECKING
+
+from .other import Base, g
+
+if TYPE_CHECKING:
+    class Ctx(Base):
+        lib: str
+
+    g = Ctx()
+
+[file pkg/other.py]
+class Base:
+    pass
+
+g: Base = Base()
+
+[file pkg/consumer.py]
+from . import g
+
+reveal_type(g)      # N: Revealed type is "pkg.Ctx"
+reveal_type(g.lib)  # N: Revealed type is "str"
