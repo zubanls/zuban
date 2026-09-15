@@ -226,7 +226,11 @@ impl<'db> NameBinder<'db> {
                     symbol_table
                         .lookup_symbol(annotation_name.name.as_code())
                         .is_some_and(|name_index| {
-                            if annotation_name.definition_name_index == Some(name_index) {
+                            if !db_infos.is_stub
+                                && let Some(assignment) = Name::by_index(db_infos.tree, name_index)
+                                    .maybe_assignment_definition_name()
+                                && assignment.is_annotated_without_assignment()
+                            {
                                 // We don't want there to be a foo: foo where we have a cycle.
                                 return false;
                             }
@@ -238,10 +242,7 @@ impl<'db> NameBinder<'db> {
                                 let name_def = Name::by_index(db_infos.tree, name_index)
                                     .name_def()
                                     .unwrap();
-                                if matches!(
-                                    name_def.expect_defining_stmt(),
-                                    DefiningStmt::FunctionDef(_)
-                                ) {
+                                if name_def.maybe_name_of_func().is_some() {
                                     return false;
                                 }
                             }

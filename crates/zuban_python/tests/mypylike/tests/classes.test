@@ -2890,17 +2890,18 @@ class ChildC3(ParentC):
 # Inspired by annotations_forward_refs.py
 bytes: "bytes"
 int: int
+str: str = ""  # E: Name "str" is not defined
 
 class C:
     bytes: "bytes"
-    int: int  # TODO # E: Invalid type comment or annotation
+    int: int
 
 [file m.py]
 class C:
     bytes: "bytes"
     int: int
 
-    str: str = ""  # TODO # E
+    str: str = "" # E: Name "str" is not defined
     z: float = 0.0  # E: Function "m.C.float" is not valid as a type \
                     # N: Perhaps you need "Callable[...]" or a callback protocol?
 
