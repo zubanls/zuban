@@ -3016,6 +3016,10 @@ impl<'db> Assignment<'db> {
         Some((first, annot, expr))
     }
 
+    pub fn is_annotated_without_assignment(&self) -> bool {
+        matches!(self.unpack(), AssignmentContent::WithAnnotation(_, _, None))
+    }
+
     fn maybe_simple_targets_expression_assignment(
         &self,
     ) -> Option<(

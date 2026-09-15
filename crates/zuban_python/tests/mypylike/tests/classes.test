@@ -1656,19 +1656,19 @@ reveal_type(C.x)  # N: Revealed type is "Any"
 
 [case class_forward_reference_annotated_attribute_with_same_name3]
 class C:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
     def foo(self) -> None:
-        x: "x.D"
+        x: "x.D"  # E: Name "x" is not defined
 
 def foo(self) -> None:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 x: x.D  # E: Name "x" is not defined
 
 [case class_forward_reference_annotated_attribute_with_same_name4]
-x: x.D  # E: Name "x" is not defined
+x: x.D = 1  # E: Name "x" is not defined
 class C:
     x: "x.D"
 
@@ -1691,18 +1691,18 @@ def foo(self) -> None:
     x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
-x: "x.D"  # E: Name "x" is not defined
+x: "x.D" = 1  # E: Name "x" is not defined
 
 [case class_forward_reference_annotated_attribute_with_same_name6]
 x: "x.D"  # E: Name "x" is not defined
 class C:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
     def foo(self) -> None:
-        x: "x.D"
+        x: "x.D"  # E: Name "x" is not defined
 
 def foo(self) -> None:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 
@@ -2884,3 +2884,24 @@ class ChildC3(ParentC):
 
     def __new__(cls, x: str) -> "ChildC3":  # OK
         raise NotImplementedError
+
+[case builtins_symbols_as_annotations_and_definitions]
+# flags: --mode default
+# Inspired by annotations_forward_refs.py
+bytes: "bytes"
+int: int
+
+class C:
+    bytes: "bytes"
+    int: int  # TODO # E: Invalid type comment or annotation
+
+[file m.py]
+class C:
+    bytes: "bytes"
+    int: int
+
+    str: str = ""  # TODO # E
+    z: float = 0.0  # E: Function "m.C.float" is not valid as a type \
+                    # N: Perhaps you need "Callable[...]" or a callback protocol?
+
+    def float(self) -> None: ...
