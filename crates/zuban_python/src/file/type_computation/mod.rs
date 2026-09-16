@@ -115,7 +115,7 @@ pub(super) enum InvalidVariableType<'a> {
     Other,
     Slice,
     InlineTypedDict,
-    NameError { name: &'a str },
+    CyclicDefinition { name: &'a str },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,9 +158,8 @@ impl InvalidVariableType<'_> {
                     ),
                 }
             }
-            Self::NameError { name } => IssueKind::NameError {
+            Self::CyclicDefinition { name } => IssueKind::CyclicDefinition {
                 name: (*name).into(),
-                note: None,
             },
             Self::Function { node_ref } => IssueKind::InvalidType {
                 message: format!(

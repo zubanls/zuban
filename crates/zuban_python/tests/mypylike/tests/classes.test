@@ -1668,7 +1668,7 @@ reveal_type(C.x)  # N: Revealed type is "Any"
 x: x.D  # E: Name "x" is not defined
 
 [case class_forward_reference_annotated_attribute_with_same_name4]
-x: x.D = 1  # E: Name "x" is not defined
+x: x.D = 1  # E: Cannot resolve name "x" (possible cyclic definition)
 class C:
     x: "x.D"
 
@@ -1691,7 +1691,7 @@ def foo(self) -> None:
     x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
-x: "x.D" = 1  # E: Name "x" is not defined
+x: "x.D" = 1  # E: Cannot resolve name "x" (possible cyclic definition)
 
 [case class_forward_reference_annotated_attribute_with_same_name6]
 x: "x.D"  # E: Name "x" is not defined
@@ -2890,7 +2890,7 @@ class ChildC3(ParentC):
 # Inspired by annotations_forward_refs.py
 bytes: "bytes"
 int: int
-str: str = ""  # E: Name "str" is not defined
+str: str = ""  # E: Cannot resolve name "str" (possible cyclic definition)
 
 class C:
     bytes: "bytes"
@@ -2901,7 +2901,7 @@ class C:
     bytes: "bytes"
     int: int
 
-    str: str = "" # E: Name "str" is not defined
+    str: str = "" # E: Cannot resolve name "str" (possible cyclic definition)
     z: float = 0.0  # E: Function "m.C.float" is not valid as a type \
                     # N: Perhaps you need "Callable[...]" or a callback protocol?
 

@@ -107,7 +107,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if !p.calculated() {
                     if p.calculating() {
                         return Lookup::T(TypeContent::InvalidVariable(
-                            InvalidVariableType::NameError {
+                            InvalidVariableType::CyclicDefinition {
                                 name: name_def.as_code(),
                             },
                         ));

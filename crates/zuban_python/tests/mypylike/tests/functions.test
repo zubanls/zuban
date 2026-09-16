@@ -349,7 +349,7 @@ from collections import defaultdict
 w: Final = defaultdict(lambda: len(w))
 x: dict[str, int] = defaultdict(lambda: len(x))
 y = defaultdict(lambda: len(y))
-z: list[z] = [] # E: Name "z" is not defined \
+z: list[z] = [] # E: Cannot resolve name "z" (possible cyclic definition) \
                 # E: Variable "__main__.z" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
