@@ -1889,12 +1889,6 @@ impl Type {
                 }
                 _ => Type::ERROR,
             },
-            Type::Union(u1) => match other {
-                Type::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
-                    Type::Union(u1.clone())
-                }
-                _ => Type::ERROR,
-            },
             Type::Tuple(c1) => match other {
                 Type::Tuple(c2) => {
                     Type::Tuple(Tuple::new(c1.args.merge_matching_parts(db, &c2.args)))

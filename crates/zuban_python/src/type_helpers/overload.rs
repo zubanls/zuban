@@ -591,32 +591,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                     Cow::Borrowed(&c.return_type)
                 };
-                if i_s.db.mypy_compatible() {
-                    let mut t: Option<Type> = None;
-                    for callable in self.overload.iter_functions() {
-                        let f_t = to_type(callable);
-                        if let Some(old_t) = t.take() {
-                            t = Some(old_t.merge_matching_parts(i_s.db, &f_t))
-                        } else {
-                            t = Some(f_t.into_owned());
-                        }
-                    }
-
-                    let t = t.unwrap();
-                    Inferred::from_type(t.maybe_replace_self(i_s.db, replace_self).unwrap_or(t))
-                } else {
-                    // Conformance tests define the fallback as Any if the return types are not all
-                    // equivalent.
-                    let mut iterator = self.overload.iter_functions();
-                    let first = to_type(iterator.next().unwrap());
-                    if iterator
-                        .all(|other_callable| first.is_equal_type(i_s.db, &to_type(other_callable)))
-                    {
-                        Inferred::from_type(first.replace_self(i_s.db, replace_self).into_owned())
+                let mut t: Option<Type> = None;
+                for callable in self.overload.iter_functions() {
+                    let f_t = to_type(callable);
+                    if let Some(old_t) = t.take() {
+                        t = Some(old_t.merge_matching_parts(i_s.db, &f_t))
                     } else {
-                        Inferred::new_any_from_error()
+                        t = Some(f_t.into_owned());
                     }
                 }
+
+                let t = t.unwrap();
+                Inferred::from_type(t.maybe_replace_self(i_s.db, replace_self).unwrap_or(t))
             }
         }
     }

@@ -1089,7 +1089,6 @@ def check_expand_tuple(v: int | str) -> None:
     assert_type(ret1, int | str)
 
 [case any_exclusion_of_some_funcs]
-# flags: --mode default
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
 @overload
@@ -1106,7 +1105,9 @@ def check_example4(v1: list[Any], v2: Any) -> None:
     assert_type(ret1, list[int])
 
     ret2 = example4(v2, 1)
-    assert_type(ret2, Any)
+    int_list: list[int] = ret2
+    str_list: list[str] = ret2
+
 
 [case copied_testOverloadWithStarAnyFallback]
 # We want to ensure this does not fail for no-mypy-compatible mode, because
@@ -1158,8 +1159,8 @@ a: Any
 b: List[Any]
 c: List[str]
 d: List[int]
-reveal_type(f(a)) # N: Revealed type is "Any"
-reveal_type(f(b))  # N: Revealed type is "Any"
+reveal_type(f(a)) # N: Revealed type is "list[Any]"
+reveal_type(f(b))  # N: Revealed type is "list[Any]"
 reveal_type(f(c))  # N: Revealed type is "list[Any]"
 reveal_type(f(d))  # N: Revealed type is "list[int]"
 
@@ -1485,3 +1486,24 @@ def f(): ...  # E: An overloaded function outside a stub file must have an imple
 
 @overload
 def f() -> int: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+[case overload_with_union_fallbacks]
+from typing import overload, assert_type, Any
+
+class Pattern[T: (str, bytes)]:
+    @overload
+    def match(self: Pattern[str], string: str) -> list[str] | None: ...
+    @overload
+    def match(self: Pattern[bytes], string: bytes) -> list[bytes] | None: ...
+    @overload
+    def match(self, string: T) -> list[T] | None: ...
+    def match(self, string): ...
+
+def check(pat1: Pattern[str]) -> None:
+    ret1 = pat1.match()  # type: ignore
+    assert_type(ret1, list[str] | None)
+
+    import re
+    pat2 = re.compile("x")
+    ret2 = pat2.match()  # type: ignore
+    assert_type(ret1, list[str] | None)
