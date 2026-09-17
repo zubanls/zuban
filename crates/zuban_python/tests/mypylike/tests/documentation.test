@@ -1384,3 +1384,25 @@ foo
 
 [out]
 __main__.py:4:documentation -> "```python\n(function) def foo(x: Any, y: Any = 5, z: str = \"\") -> None\n```"
+
+[case narrowed_documentation_isinstance]
+# flags: --only-language-server
+# From GH #565
+class A:
+    name: str
+
+class B(A):
+    num: int
+
+entries = [A(), B(), A()]
+
+if isinstance(entries[-1], B):
+    reveal_type(entries[-1].num)  # N: Revealed type is "int"
+    #? documentation
+    entries[-1].num
+    #? --codepoint-column 18 documentation
+    entries[-1].num = 2
+
+[out]
+__main__.py:14:documentation -> "```python\n(variable) num: int\n```"
+__main__.py:16:documentation -> "```python\n(variable) num: int\n```"

@@ -3970,7 +3970,11 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         if use_narrows && let Some(inf) = self.maybe_lookup_narrowed_primary_target(primary_target)
         {
-            return Some(inf);
+            return Some(if self.i_s.db.run_cause == RunCause::LanguageServer {
+                inf.save_redirect(self.i_s, self.file, primary_target.index())
+            } else {
+                inf
+            });
         }
         let second = primary_target.second();
         if self.is_self(primary_target.first())
