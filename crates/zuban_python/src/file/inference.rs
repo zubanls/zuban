@@ -3651,8 +3651,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
-                // TODO enable this debug
-                //debug!("Get Item on {}", base.format_short(self.i_s));
+                debug!("Get Item on {}", base.format_short(self.i_s));
+                let _indent = debug_indent();
                 base.get_item(
                     self.i_s,
                     &SliceType::new(f, node_index, slice_type),
