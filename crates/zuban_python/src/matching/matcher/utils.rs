@@ -31,6 +31,7 @@ use crate::{
         Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
+    utils::debug_indent,
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
@@ -490,6 +491,8 @@ fn apply_result_context_and_return_valid(
         return result;
     }
     result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+        debug!("Apply context");
+        let indent = debug_indent();
         if let Some(return_class) = return_class {
             // This is kind of a special case. Since __init__ has no return annotation, we simply
             // check if the classes match and then push the generics there.
@@ -528,6 +531,7 @@ fn apply_result_context_and_return_valid(
             return_type.is_sub_type_of(i_s, matcher, expected);
             matcher.reset_invalid_bounds_of_context(i_s.db)
         }
+        drop(indent);
         debug!(
             "Finished trying to infer context type arguments: [{}]",
             matcher.type_var_matchers[0].debug_format(i_s.db)
