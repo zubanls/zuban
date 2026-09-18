@@ -292,3 +292,26 @@ def test_user(mock_user):
 @pytest.fixture  # E: Name "pytest" is not defined
 def mock_user():
     pass
+
+[case pytest_async_fixture]
+# pkgs: pytest-stubs
+# flags: --check-untyped-defs
+# From GH #567
+from collections.abc import AsyncGenerator
+from typing import assert_type
+import pytest
+
+class Session:
+    def scalars(self, stmt): ...
+
+@pytest.fixture
+async def session() -> AsyncGenerator[Session, None]:
+    yield Session()
+
+async def test_unannotated(session):
+    assert_type(session, Session)
+    session.scalars("select 1")
+
+async def test_unannotated2(session):
+    assert_type(session, Session)
+    session.scalars("select 1")
