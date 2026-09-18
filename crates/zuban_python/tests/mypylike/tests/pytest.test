@@ -297,7 +297,7 @@ def mock_user():
 # pkgs: pytest-stubs
 # flags: --check-untyped-defs
 # From GH #567
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from typing import assert_type
 import pytest
 
@@ -305,13 +305,49 @@ class Session:
     def scalars(self, stmt): ...
 
 @pytest.fixture
-async def session() -> AsyncGenerator[Session, None]:
+async def async_yield_session() -> AsyncGenerator[Session, None]:
     yield Session()
 
-async def test_unannotated(session):
-    assert_type(session, Session)
-    session.scalars("select 1")
+@pytest.fixture
+async def async_return_session() -> Session:
+    return Session()
 
-async def test_unannotated2(session):
-    assert_type(session, Session)
-    session.scalars("select 1")
+@pytest.fixture
+def yield_session() -> Generator[Session, None]:
+    yield Session()
+
+@pytest.fixture
+def return_session() -> Session:
+    return Session()
+
+async def test_unannotated1(async_yield_session):
+    assert_type(async_yield_session, Session)
+    async_yield_session.scalars("select 1")
+
+def test_unannotated2(async_yield_session):
+    assert_type(async_yield_session, Session)
+    async_yield_session.scalars("select 1")
+
+async def test_unannotated3(async_return_session):
+    assert_type(async_return_session, Session)
+    async_return_session.scalars("select 1")
+
+def test_unannotated4(async_return_session):
+    assert_type(async_return_session, Session)
+    async_return_session.scalars("select 1")
+
+async def test_unannotated5(yield_session):
+    assert_type(yield_session, Session)
+    yield_session.scalars("select 1")
+
+def test_unannotated6(yield_session):
+    assert_type(yield_session, Session)
+    yield_session.scalars("select 1")
+
+async def test_unannotated7(return_session):
+    assert_type(return_session, Session)
+    return_session.scalars("select 1")
+
+def test_unannotated8(return_session):
+    assert_type(return_session, Session)
+    return_session.scalars("select 1")
