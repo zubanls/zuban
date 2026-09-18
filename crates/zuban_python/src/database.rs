@@ -1722,7 +1722,6 @@ pub(crate) struct PythonProject {
     pub(crate) overrides: Vec<OverrideConfig>,
     // This is calculated from overrides
     ignored_global_imports: OnceLock<FastHashSet<Box<str>>>,
-    // is_django: bool,  // TODO maybe add?
 }
 
 impl PythonProject {
