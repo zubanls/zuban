@@ -490,7 +490,7 @@ fn apply_result_context_and_return_valid(
     if result_context.can_be_redefined(i_s) {
         return result;
     }
-    result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+    result_context.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |expected| {
         debug!("Apply context");
         let indent = debug_indent();
         if let Some(return_class) = return_class {

@@ -3035,7 +3035,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             might_have_type_vars: true,
         };
         result_context
-            .with_type_if_exists_and_replace_type_var_likes(self.i_s, |type_| {
+            .with_type_if_exists_and_replace_type_var_likes_for_context(self.i_s, |type_| {
                 if let Type::Callable(c) = type_ {
                     let i_s = self.i_s.with_lambda_callable(c);
                     let (params, expr) = lambda.unpack();

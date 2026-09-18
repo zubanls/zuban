@@ -35,6 +35,7 @@ pub(crate) enum ResultContext<'a, 'b> {
 pub(crate) enum ResultContextOrigin {
     AssignmentAnnotation,
     NormalAssignment,
+    OtherSideOfTernary,
     Other,
 }
 
@@ -46,12 +47,20 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn with_type_if_exists_and_replace_type_var_likes<T>(
+    pub fn with_type_if_exists_and_replace_type_var_likes_for_context<T>(
         &self,
         i_s: &InferenceState<'_, '_>,
         callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
+            Self::Known {
+                origin: ResultContextOrigin::OtherSideOfTernary,
+                ..
+            } => {
+                // The ternary context is not something we want to pass on when something wants the
+                // actual context, because it is more of a "this list could look like this".
+                None
+            }
             Self::Known { type_, .. } | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
@@ -134,8 +143,11 @@ impl<'a> ResultContext<'a, '_> {
         {
             return CouldBeALiteral::No;
         }
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, Type::could_be_a_literal)
-            .unwrap_or(CouldBeALiteral::Yes { implicit: true })
+        self.with_type_if_exists_and_replace_type_var_likes_for_context(
+            i_s,
+            Type::could_be_a_literal,
+        )
+        .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
     pub fn expect_not_none(&mut self) -> bool {
@@ -155,7 +167,7 @@ impl<'a> ResultContext<'a, '_> {
         i_s: &InferenceState,
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, |t| {
+        self.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |t| {
             t.on_unique_type_in_unpacked_union(
                 i_s.db,
                 &mut Matcher::default(),

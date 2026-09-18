@@ -903,14 +903,15 @@ pub fn execute_tuple_class<'db>(
         .db
         .python_state
         .tuple_class_with_generics_to_be_defined();
-    let context_t = result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |t| {
-        t.iter_with_unpacked_unions(i_s.db)
-            .map(|t| match t {
-                Type::Tuple(tup) => tup.class(i_s.db).as_type(i_s.db),
-                _ => t.clone(),
-            })
-            .collect()
-    });
+    let context_t =
+        result_context.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |t| {
+            t.iter_with_unpacked_unions(i_s.db)
+                .map(|t| match t {
+                    Type::Tuple(tup) => tup.class(i_s.db).as_type(i_s.db),
+                    _ => t.clone(),
+                })
+                .collect()
+        });
     let mut new_result_context = match &context_t {
         Some(t) => ResultContext::new_known(t),
         None => ResultContext::ValueExpected,

@@ -1542,6 +1542,27 @@ class X(Y):
         x = [1] if bool() else []
         reveal_type(x)  # N: Revealed type is "list[int]"
 
+[case context_for_ternary_else_should_be_open_to_new_values]
+# From GH #558
+from typing import overload
+
+flag = True
+
+class Box[T]:
+    @overload
+    def __init__(self: Box[None]) -> None: ...
+    @overload
+    def __init__(self, value: T) -> None: ...
+    def __init__(self, value: object = None) -> None:
+        self.value = value
+
+fine_reversed = Box() if flag else None
+fine_explicit = None if flag else Box[None]()
+fine_with_value = None if flag else Box(1)
+fine_no_ternary: Box[None] | None = Box()
+
+bad = None if flag else Box()
+
 [case tuple_assign_none]
 x, y = None, None
 if bool():

@@ -38,7 +38,7 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     recoverable_error,
-    result_context::{CouldBeALiteral, ResultContext},
+    result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
@@ -2083,9 +2083,12 @@ impl<'file> Inference<'_, 'file, '_> {
                         // Mypy passes the context without literals here.
                         self.infer_expression_with_context(
                             else_,
-                            &mut ResultContext::new_known(
-                                &if_inf.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
-                            ),
+                            &mut ResultContext::Known {
+                                type_: &if_inf
+                                    .as_type(self.i_s)
+                                    .avoid_implicit_literal(self.i_s.db),
+                                origin: ResultContextOrigin::OtherSideOfTernary,
+                            },
                         )
                     } else {
                         self.infer_expression_with_context(else_, result_context)
@@ -2100,11 +2103,12 @@ impl<'file> Inference<'_, 'file, '_> {
                             // Mypy passes the context without literals here.
                             self.infer_expression_part_with_context(
                                 if_,
-                                &mut ResultContext::new_known(
-                                    &else_inf
+                                &mut ResultContext::Known {
+                                    type_: &else_inf
                                         .as_type(self.i_s)
                                         .avoid_implicit_literal(self.i_s.db),
-                                ),
+                                    origin: ResultContextOrigin::OtherSideOfTernary,
+                                },
                             )
                         } else {
                             self.infer_expression_part_with_context(if_, result_context)
