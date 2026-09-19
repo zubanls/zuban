@@ -373,3 +373,28 @@ foo()  # E: function __main__.foo is deprecated: Deprecated
 mypy_path = ["$CARGO_MANIFEST_DIR/tests/mypylike/packages/simple_with_error"]
 [out]
 x.py:1: error: "int" not callable
+
+[case ignore_missing_imports_in_mypy_file]
+# From GH #528
+from foo.bar import ignored1
+from foo.bar import also_ignored1  # E:
+from foo import ignored2
+from foo import not_ignored2  # E:
+
+import foo.bar.ignored1 as a1
+import foo.bar.ignored1.inner as a2
+import foo.bar.also_ignored1 as a3
+import foo.bar.also_ignored1.inner as a4
+import foo.ignored2 as a5
+import foo.not_ignored2 as a6  # E:
+
+[file foo/bar/__init__.py]
+from foo import ignored2 as a
+from foo import not_ignored2 as b  # E:
+
+[file mypy.ini]
+[mypy-foo.bar]
+ignore_missing_imports = True
+
+[mypy-foo.ignored2]
+ignore_missing_imports = True

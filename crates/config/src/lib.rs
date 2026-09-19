@@ -8,6 +8,7 @@ use clap::ValueEnum as _;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
+use utils::FastHashMap;
 use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
 pub use searcher::find_config;
@@ -856,13 +857,83 @@ impl OverridePath {
         matches_file_path(self.path.iter().rev(), name, parent_dir)
     }
 
-    pub fn maybe_affects_global_import_name(&self) -> Option<&str> {
-        match self.path.as_slice() {
-            [OverridePathPart::Part(x)]
-            | [OverridePathPart::Part(x), OverridePathPart::Wildcard] => Some(x.as_ref()),
-            _ => None,
+    fn has_path_after_wildcard(&self) -> bool {
+        let mut had_wildcard = false;
+        for part in &self.path {
+            match part {
+                OverridePathPart::Part(_) => {
+                    if had_wildcard {
+                        return true;
+                    }
+                }
+                OverridePathPart::Wildcard => had_wildcard = true,
+            }
         }
+        false
     }
+}
+
+#[derive(Debug, Default)]
+pub struct IgnoredImports(FastHashMap<Box<str>, IgnoredImport>);
+
+impl IgnoredImports {
+    pub fn lookup(&self, name: &str) -> Option<&IgnoredImport> {
+        self.0.get(name)
+    }
+
+    pub fn ignores_exact_import(&self, key: &str) -> bool {
+        self.0
+            .get(key)
+            .is_some_and(|imp| matches!(imp, IgnoredImport::FullyIgnored))
+    }
+
+    pub fn from_override_config(overrides: &[OverrideConfig]) -> Self {
+        let mut imports = IgnoredImports::default();
+        for override_ in overrides {
+            if override_.has_ignore_missing_imports() {
+                // TODO For now we simply ignore ignored imports in something like foo.*.bar
+                if override_.module.has_path_after_wildcard() {
+                    continue;
+                }
+
+                let mut current = &mut imports.0;
+                let mut iterator = override_
+                    .module
+                    .path
+                    .iter()
+                    .filter_map(|part| match part {
+                        OverridePathPart::Part(name) => Some(name),
+                        OverridePathPart::Wildcard => None,
+                    })
+                    .peekable();
+                while let Some(name) = iterator.next() {
+                    if !current.contains_key(name) {
+                        current.insert(name.clone(), IgnoredImport::Nested(Default::default()));
+                    }
+
+                    let value = current.get_mut(name).unwrap();
+                    if iterator.peek().is_some() {
+                        match value {
+                            // If the value is already ignored we don't have to override it
+                            // anymore.
+                            IgnoredImport::FullyIgnored => break,
+                            IgnoredImport::Nested(map) => current = &mut map.0,
+                        }
+                    } else {
+                        *value = IgnoredImport::FullyIgnored;
+                        break;
+                    }
+                }
+            }
+        }
+        imports
+    }
+}
+
+#[derive(Debug)]
+pub enum IgnoredImport {
+    FullyIgnored,
+    Nested(Box<IgnoredImports>),
 }
 
 #[derive(Clone, Debug)]

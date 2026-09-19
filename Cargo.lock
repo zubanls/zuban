@@ -273,6 +273,7 @@ dependencies = [
  "shellexpand",
  "toml_edit",
  "tracing",
+ "utils",
  "vfs",
 ]
 

@@ -6,10 +6,9 @@ use std::{
     sync::{Arc, Mutex, OnceLock, RwLock, Weak},
 };
 
-use config::{FinalizedTypeCheckerFlags, OverrideConfig, Settings};
+use config::{FinalizedTypeCheckerFlags, IgnoredImports, OverrideConfig, Settings};
 use parsa_python_cst::{NodeIndex, Scope, Tree};
 use rayon::prelude::*;
-use utils::FastHashSet;
 use vfs::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, Entries, FileEntry, FileIndex,
     InvalidationResult, LocalFS, NormalizedPath, PathWithScheme, Vfs, VfsFile as _, VfsHandler,
@@ -1721,7 +1720,7 @@ pub(crate) struct PythonProject {
     pub flags: FinalizedTypeCheckerFlags,
     pub(crate) overrides: Vec<OverrideConfig>,
     // This is calculated from overrides
-    ignored_global_imports: OnceLock<FastHashSet<Box<str>>>,
+    ignored_global_imports: OnceLock<IgnoredImports>,
 }
 
 impl PythonProject {
@@ -1738,13 +1737,9 @@ impl PythonProject {
         self.settings.should_infer_return_types() && self.flags.check_untyped_defs
     }
 
-    pub fn ignored_global_imports(&self) -> &FastHashSet<Box<str>> {
-        self.ignored_global_imports.get_or_init(|| {
-            FastHashSet::from_iter(self.overrides.iter().filter_map(|override_| {
-                let name = override_.module.maybe_affects_global_import_name()?;
-                override_.has_ignore_missing_imports().then(|| name.into())
-            }))
-        })
+    pub fn ignored_imports(&self) -> &IgnoredImports {
+        self.ignored_global_imports
+            .get_or_init(|| IgnoredImports::from_override_config(&self.overrides))
     }
 }
 
