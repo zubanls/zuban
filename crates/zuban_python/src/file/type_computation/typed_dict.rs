@@ -318,7 +318,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
             );
         }
     } else {
-        recoverable_error!("Shouldn only ever get a normal TypedDict initialization for aliases");
+        recoverable_error!("Should only ever get a normal TypedDict initialization for aliases");
         return None;
     }
 

@@ -47,7 +47,7 @@ fn main() -> ExitCode {
         projects.sort();
         if let Some(name) = cli.start_at {
             let Some(pos) = projects.iter().position(|p| *p == name) else {
-                panic!("Did not found {name} in the project list");
+                panic!("Did not find {name} in the project list");
             };
             projects.drain(..pos);
         }

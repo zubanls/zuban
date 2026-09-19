@@ -60,7 +60,7 @@ impl<'project> Document<'project> {
                         result
                     } else {
                         recoverable_error!(
-                            "There should to be a current class for Self documentation"
+                            "There should be a current class for Self documentation"
                         );
                         "".into()
                     }
