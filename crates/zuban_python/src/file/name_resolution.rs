@@ -201,13 +201,25 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                             } else {
                                 import_name.index()
                             };
-                            self.add_issue(
-                                index,
-                                IssueKind::ImportAttributeError {
-                                    module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                    name: Box::from(import_name.as_str()),
-                                },
-                            );
+                            let qualified = imp.qualified_name(self.i_s.db);
+                            let full = format!("{qualified}.{}", import_name.as_str());
+                            if self
+                                .i_s
+                                .db
+                                .project
+                                .ignored_imports()
+                                .ignores_qualified_name(&full)
+                            {
+                                debug!("Ignored module import from {full:?} because of config");
+                            } else {
+                                self.add_issue(
+                                    index,
+                                    IssueKind::ImportAttributeError {
+                                        module_name: qualified.into(),
+                                        name: Box::from(import_name.as_str()),
+                                    },
+                                );
+                            }
                         }
                     }
                 };

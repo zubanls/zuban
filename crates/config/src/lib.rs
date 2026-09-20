@@ -887,6 +887,18 @@ impl IgnoredImports {
             .is_some_and(|imp| matches!(imp, IgnoredImport::FullyIgnored))
     }
 
+    pub fn ignores_qualified_name(&self, qualified: &str) -> bool {
+        let mut ignored = self;
+        for name in qualified.split('.') {
+            match ignored.lookup(name) {
+                Some(IgnoredImport::FullyIgnored) => return true,
+                Some(IgnoredImport::Nested(ignored_imports)) => ignored = ignored_imports,
+                None => return false,
+            }
+        }
+        false
+    }
+
     pub fn from_override_config(overrides: &[OverrideConfig]) -> Self {
         let mut imports = IgnoredImports::default();
         for override_ in overrides {

@@ -1,4 +1,3 @@
-use config::{IgnoredImport, IgnoredImports};
 use parsa_python_cst::{
     DottedAsName, DottedAsNameContent, DottedImportName, DottedImportNameContent, ImportFrom,
     ImportFromTargets, ImportName, LevelWithDottedName, Name, NameImportParent, NodeIndex,
@@ -118,7 +117,13 @@ impl PythonFile {
                         dotted.as_code().into()
                     };
 
-                if !base.is_sub_name_ignored(db, &module_name) {
+                if db
+                    .project
+                    .ignored_imports()
+                    .ignores_qualified_name(&module_name)
+                {
+                    debug!("Ignored a missing import {module_name:?} due to config file");
+                } else {
                     NodeRef::new(self, name.index())
                         .add_type_issue(db, IssueKind::ModuleNotFound { module_name });
                 }
@@ -418,67 +423,6 @@ impl PythonFile {
                     }
                 }
             }
-        }
-    }
-}
-
-impl ImportResult {
-    fn is_sub_name_ignored(&self, db: &Database, module_name: &str) -> bool {
-        fn to_result(ignored: Option<&IgnoredImport>) -> Result<&IgnoredImports, bool> {
-            match ignored {
-                Some(IgnoredImport::FullyIgnored) => Err(true),
-                Some(IgnoredImport::Nested(ignored_imports)) => Ok(ignored_imports),
-                None => Err(false),
-            }
-        }
-
-        fn find_dir_ignores<'db>(
-            db: &'db Database,
-            dir: &Directory,
-        ) -> Result<&'db IgnoredImports, bool> {
-            let lookup = match dir.parent.maybe_dir() {
-                Ok(dir) => {
-                    let ignored_imports = find_dir_ignores(db, &dir)?;
-                    ignored_imports.lookup(&dir.name)
-                }
-                Err(_) => db.project.ignored_imports().lookup(&dir.name),
-            };
-            dbg!(to_result(lookup))
-        }
-
-        match self {
-            ImportResult::PyTypedMissing(file_index) | ImportResult::File(file_index) => {
-                let find_ignores_for_base = || {
-                    let file_entry = db.vfs.file_entry(*file_index);
-                    if is_package_name(file_entry)
-                        && let Ok(dir) = &file_entry.parent.maybe_dir()
-                    {
-                        find_dir_ignores(db, dir)
-                    } else {
-                        to_result(
-                            match file_entry.parent.maybe_dir() {
-                                Ok(dir) => find_dir_ignores(db, &dir)?,
-                                Err(_) => db.project.ignored_imports(),
-                            }
-                            .lookup(&file_entry.name),
-                        )
-                    }
-                };
-                match find_ignores_for_base() {
-                    Ok(ignores) => ignores.ignores_exact_import(module_name),
-                    Err(result) => result,
-                }
-            }
-            ImportResult::Namespace(namespace) => {
-                namespace
-                    .directories
-                    .iter()
-                    .any(|dir| match find_dir_ignores(db, dir) {
-                        Ok(ignores) => dbg!(ignores.ignores_exact_import(dbg!(module_name))),
-                        Err(result) => result,
-                    })
-            }
-            ImportResult::BinaryExtension => false,
         }
     }
 }

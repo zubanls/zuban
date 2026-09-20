@@ -972,9 +972,6 @@ testInferredTypeSubTypeOfReturnType
 # `import a.b # type: ignore` means that the attribute is later Any without error
 testAddedMissingStubsIgnorePackagePartial
 testFineAddedMissingStubsIgnorePackagePartial
-# ignore_missing_imports in Mypy overrides ignores import_name errors if those modules are not present
-testModuleGetattrInit10
-testModuleGetattrInit10PyProjectTOML
 
 # __init__ None needed
 testInitReturnTypeError
