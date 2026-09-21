@@ -21,10 +21,23 @@ use crate::{
 pub(crate) enum Bound {
     Uncalculated { fallback: Option<Type> },
 
-    Invariant(BoundKind),
-    Upper(BoundKind),
-    UpperAndLower(BoundKind, BoundKind),
-    Lower(BoundKind),
+    Invariant(BoundInfo),
+    Upper(BoundInfo),
+    UpperAndLower(BoundInfo, BoundInfo),
+    Lower(BoundInfo),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct BoundInfo {
+    pub origin: BoundOrigin,
+    pub kind: BoundKind,
+}
+
+#[derive(Copy, Debug, Clone, PartialEq)]
+pub(crate) enum BoundOrigin {
+    InitGenerics,
+    Inference,
+    Context,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,6 +45,23 @@ pub(crate) enum BoundKind {
     TypeVar(Type),
     TypeVarTuple(TupleArgs),
     ParamSpec(CallableParams),
+}
+
+impl std::ops::Deref for BoundInfo {
+    type Target = BoundKind;
+
+    fn deref(&self) -> &Self::Target {
+        &self.kind
+    }
+}
+
+impl From<BoundKind> for BoundInfo {
+    fn from(kind: BoundKind) -> Self {
+        Self {
+            origin: BoundOrigin::Inference,
+            kind,
+        }
+    }
 }
 
 impl Default for Bound {
@@ -42,14 +72,14 @@ impl Default for Bound {
 
 impl Bound {
     pub fn new_type_args(ts: TupleArgs, variance: Variance) -> Self {
-        Self::new(BoundKind::TypeVarTuple(ts), variance)
+        Self::new(BoundKind::TypeVarTuple(ts).into(), variance)
     }
 
     pub fn new_param_spec(params: CallableParams, variance: Variance) -> Self {
-        Self::new(BoundKind::ParamSpec(params), variance)
+        Self::new(BoundKind::ParamSpec(params).into(), variance)
     }
 
-    pub(super) fn new(k: BoundKind, variance: Variance) -> Self {
+    pub(super) fn new(k: BoundInfo, variance: Variance) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(k),
             Variance::Covariant => Self::Lower(k),
@@ -180,12 +210,12 @@ impl Bound {
     }
 
     pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
-        *self = Self::Invariant(BoundKind::new_any(tv, cause))
+        *self = Self::Invariant(BoundKind::new_any(tv, cause).into())
     }
 
     pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
         let is_self_type_var = match self {
-            Self::Invariant(k) | Self::Lower(k) | Self::Upper(k) => match k {
+            Self::Invariant(k) | Self::Lower(k) | Self::Upper(k) => match &k.kind {
                 BoundKind::TypeVar(Type::TypeVar(tv))
                     if class.node_ref.as_link() == tv.in_definition =>
                 {
@@ -253,6 +283,97 @@ impl Bound {
     }
 }
 
+impl BoundInfo {
+    pub(super) fn common_base_type(
+        &self,
+        i_s: &InferenceState,
+        other: &Self,
+        use_joins: bool,
+    ) -> Option<Self> {
+        let kind = match (&self.kind, &other.kind) {
+            (BoundKind::TypeVar(t1), BoundKind::TypeVar(t2)) => BoundKind::TypeVar(if use_joins {
+                t1.common_base_type(i_s, t2)
+            } else {
+                t1.avoid_implicit_literal_cow(i_s.db)
+                    .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
+            }),
+            (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
+                BoundKind::TypeVarTuple(tup1.simplified_union_for_type_var_tuple(i_s, tup2)?)
+            }
+            (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
+                BoundKind::ParamSpec(params1.common_base_type(i_s, params2, None)?)
+            }
+            _ => unreachable!(),
+        };
+        Some(Self {
+            // TODO this should be merged
+            origin: BoundOrigin::Inference,
+            kind,
+        })
+    }
+
+    pub(super) fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
+        let kind = match (&self.kind, &other.kind) {
+            (BoundKind::TypeVar(t1), BoundKind::TypeVar(t2)) => {
+                BoundKind::TypeVar(t1.common_sub_type(i_s, t2)?)
+            }
+            (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
+                BoundKind::TypeVarTuple(tup1.common_sub_type(i_s, tup2)?)
+            }
+            (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
+                debug!(
+                    "Common subtype for ParamSpec '{}' and '{}'",
+                    params1.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
+                    params2.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
+                );
+                BoundKind::ParamSpec(params1.common_sub_type(i_s, params2)?)
+            }
+            _ => unreachable!(),
+        };
+        Some(Self {
+            // TODO this should be merged
+            origin: BoundOrigin::Inference,
+            kind,
+        })
+    }
+
+    fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
+        Some(BoundInfo {
+            kind: match &self.kind {
+                BoundKind::TypeVar(t) => {
+                    BoundKind::TypeVar(t.maybe_replace_type_var_likes(db, on_type_var_like)?)
+                }
+                BoundKind::TypeVarTuple(tup) => {
+                    BoundKind::TypeVarTuple(tup.maybe_replace_type_var_likes(db, on_type_var_like)?)
+                }
+                BoundKind::ParamSpec(params) => BoundKind::ParamSpec(
+                    params.maybe_replace_type_var_likes_and_self(db, on_type_var_like, &|| None)?,
+                ),
+            },
+            origin: self.origin,
+        })
+    }
+
+    fn into_generic_item(self, db: &Database, avoid_implicit_literals: bool) -> GenericItem {
+        match self.kind {
+            BoundKind::TypeVar(t) => GenericItem::TypeArg(if avoid_implicit_literals {
+                t.avoid_implicit_literal(db)
+            } else {
+                t
+            }),
+            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
+            BoundKind::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
+                params: param_spec,
+                type_vars: None,
+            }),
+        }
+    }
+}
+
 impl BoundKind {
     pub fn new_any(tv: &TypeVarLike, cause: AnyCause) -> Self {
         match tv {
@@ -292,88 +413,12 @@ impl BoundKind {
         self.simple_matches(i_s, other, Variance::Contravariant)
     }
 
-    pub(super) fn common_base_type(
-        &self,
-        i_s: &InferenceState,
-        other: &Self,
-        use_joins: bool,
-    ) -> Option<Self> {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(if use_joins {
-                t1.common_base_type(i_s, t2)
-            } else {
-                t1.avoid_implicit_literal_cow(i_s.db)
-                    .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
-            })),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => Some(Self::TypeVarTuple(
-                tup1.simplified_union_for_type_var_tuple(i_s, tup2)?,
-            )),
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => params1
-                .common_base_type(i_s, params2, None)
-                .map(Self::ParamSpec),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(super) fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => {
-                Some(Self::TypeVar(t1.common_sub_type(i_s, t2)?))
-            }
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                Some(Self::TypeVarTuple(tup1.common_sub_type(i_s, tup2)?))
-            }
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
-                debug!(
-                    "Common subtype for ParamSpec '{}' and '{}'",
-                    params1.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
-                    params2.format(&FormatData::new_short(i_s.db), ParamsStyle::Unreachable),
-                );
-                params1.common_sub_type(i_s, params2).map(Self::ParamSpec)
-            }
-            _ => unreachable!(),
-        }
-    }
-
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::TypeVar(t) => t.search_type_vars(found_type_var),
             Self::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
             Self::ParamSpec(params) => params.search_type_vars(found_type_var),
         }
-    }
-
-    fn into_generic_item(self, db: &Database, avoid_implicit_literals: bool) -> GenericItem {
-        match self {
-            Self::TypeVar(t) => GenericItem::TypeArg(if avoid_implicit_literals {
-                t.avoid_implicit_literal(db)
-            } else {
-                t
-            }),
-            Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
-            Self::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
-                params: param_spec,
-                type_vars: None,
-            }),
-        }
-    }
-
-    fn replace_type_var_likes(
-        &self,
-        db: &Database,
-        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
-    ) -> Option<Self> {
-        Some(match self {
-            Self::TypeVar(t) => {
-                Self::TypeVar(t.maybe_replace_type_var_likes(db, on_type_var_like)?)
-            }
-            Self::TypeVarTuple(tup) => {
-                Self::TypeVarTuple(tup.maybe_replace_type_var_likes(db, on_type_var_like)?)
-            }
-            Self::ParamSpec(params) => Self::ParamSpec(
-                params.maybe_replace_type_var_likes_and_self(db, on_type_var_like, &|| None)?,
-            ),
-        })
     }
 
     fn has_any(&self, db: &Database) -> bool {

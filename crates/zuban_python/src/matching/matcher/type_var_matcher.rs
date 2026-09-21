@@ -7,6 +7,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     match_::Match,
+    matching::matcher::bound::BoundInfo,
     recoverable_error,
     type_::{
         AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
@@ -74,7 +75,7 @@ impl CalculatingTypeArg {
     fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
-        other: BoundKind,
+        other: BoundInfo,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
@@ -161,7 +162,7 @@ impl CalculatingTypeArg {
         }
     }
 
-    fn update_upper_bound(&mut self, upper: BoundKind) {
+    fn update_upper_bound(&mut self, upper: BoundInfo) {
         self.type_ = match &self.type_ {
             Bound::Upper(_) => Bound::Upper(upper),
             Bound::Lower(lower) => {
@@ -182,8 +183,8 @@ impl CalculatingTypeArg {
         };
     }
 
-    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
-        let common = |b: &BoundKind, lower: BoundKind| {
+    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundInfo) {
+        let common = |b: &BoundInfo, lower: BoundInfo| {
             b.common_base_type(i_s, &lower, i_s.flags().use_joins)
                 .unwrap_or_else(|| {
                     recoverable_error!(
@@ -232,7 +233,7 @@ impl CalculatingTypeArg {
             })
     }
 
-    pub fn maybe_calculated(&self) -> Option<&BoundKind> {
+    pub fn maybe_calculated(&self) -> Option<&BoundInfo> {
         match &self.type_ {
             Bound::Uncalculated { .. } => None,
             Bound::Invariant(t)
@@ -287,7 +288,7 @@ impl TypeVarMatcher {
                             // upper bound instead of the correct Any lower bound.
                             current.type_ = Bound::UpperAndLower(
                                 upper.clone(),
-                                BoundKind::new_any(&usage.as_type_var_like(), cause),
+                                BoundKind::new_any(&usage.as_type_var_like(), cause).into(),
                             )
                         }
                     } else {
@@ -382,7 +383,7 @@ impl TypeVarMatcher {
         }
         let m = current.merge(
             i_s,
-            Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
+            Bound::new(BoundKind::TypeVar(value_type.clone()).into(), variance),
         );
         drop(indent);
         debug!(
@@ -436,7 +437,9 @@ fn check_constraints<'x>(
                 .clone()
                 .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
         }) {
-            return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
+            return Ok(Bound::Invariant(
+                BoundKind::TypeVar(value_type.clone()).into(),
+            ));
         } else {
             return Err(());
         }
@@ -448,19 +451,23 @@ fn check_constraints<'x>(
             if matched_constraint.is_some() {
                 // This means that any is involved and multiple constraints
                 // are matching. Therefore just return Any.
-                return Ok(Bound::Invariant(BoundKind::TypeVar(Type::Any(
-                    AnyCause::Todo,
-                ))));
+                return Ok(Bound::Invariant(
+                    BoundKind::TypeVar(Type::Any(AnyCause::Todo)).into(),
+                ));
             }
             if value_type.has_any(i_s.db) {
                 matched_constraint = Some(constraint);
             } else {
-                return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+                return Ok(Bound::Invariant(
+                    BoundKind::TypeVar(constraint.clone()).into(),
+                ));
             }
         }
     }
     if let Some(constraint) = matched_constraint {
-        return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+        return Ok(Bound::Invariant(
+            BoundKind::TypeVar(constraint.clone()).into(),
+        ));
     }
     Err(())
 }

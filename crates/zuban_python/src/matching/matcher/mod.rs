@@ -439,7 +439,7 @@ impl<'a> Matcher<'a> {
                     type_var_index: t1.index.as_usize(),
                 },
                 |found_type_var| value_type.search_type_vars(found_type_var),
-                || Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
+                || Bound::new(BoundKind::TypeVar(value_type.clone()).into(), variance),
             ) {
                 debug!(
                     "Saved unresolved transitive constraint for {:?} for value_type {:?}",
@@ -835,11 +835,9 @@ impl<'a> Matcher<'a> {
         ) {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let t = &mut tv_matcher.calculating_type_args[usage.index.as_usize()].type_;
-            match t {
+            let bound = match t {
                 // TODO fix variance for matching
-                Bound::Invariant(BoundKind::ParamSpec(p))
-                | Bound::Upper(BoundKind::ParamSpec(p))
-                | Bound::Lower(BoundKind::ParamSpec(p)) => p,
+                Bound::Invariant(bound) | Bound::Upper(bound) | Bound::Lower(bound) => bound,
                 Bound::Uncalculated { .. } => {
                     // TODO fix variance
                     *t = Bound::new_param_spec(
@@ -848,10 +846,13 @@ impl<'a> Matcher<'a> {
                     );
                     return SignatureMatch::new_true();
                 }
-                Bound::UpperAndLower(BoundKind::ParamSpec(upper), BoundKind::ParamSpec(_lower)) => {
+                Bound::UpperAndLower(upper, _lower) => {
                     // TODO also match with lower
                     upper
                 }
+            };
+            match &bound.kind {
+                BoundKind::ParamSpec(p) => p,
                 _ => unreachable!(),
             }
         } else if let Some(fc) =
@@ -1514,7 +1515,8 @@ impl<'a> Matcher<'a> {
                         };
                         BoundKind::ParamSpec(CallableParams::new_param_spec(usage))
                     }
-                },
+                }
+                .into(),
             )
         } else {
             Bound::default()
