@@ -434,3 +434,13 @@ def named_param(timestamp: int) -> int:
 @task
 def positional_only(timestamp: int, /) -> int:
     return timestamp
+
+[case avoid_crash_in_param_spec_definition]
+# flags: --allow-redefinition
+# From GH #430
+from typing import *
+
+Sequence = ParamSpec('Sequence')
+
+def f() -> Sequence:  # E: Invalid type comment or annotation
+    pass

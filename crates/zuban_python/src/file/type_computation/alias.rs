@@ -143,7 +143,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let cached_type_node_ref = assignment_type_node_ref(file, assignment);
         let point = cached_type_node_ref.point();
         if point.calculated() {
-            return load_cached_type(cached_type_node_ref);
+            return load_cached_type(self.i_s.db, cached_type_node_ref);
         }
         let was_calculating = point.calculating();
         cached_type_node_ref.set_point(Point::new_calculating());
@@ -223,7 +223,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 // sure that classes are initialized first.
                 self.pre_calc_classes_in_expr(expr);
                 if cached_type_node_ref.point().calculated() {
-                    return load_cached_type(cached_type_node_ref);
+                    return load_cached_type(self.i_s.db, cached_type_node_ref);
                 }
                 self.check_for_alias(origin, cached_type_node_ref, name_def, expr, cause)
             };
@@ -929,7 +929,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             NodeRef::new(self.file, expr.index()).line_one_based(self.i_s.db),
             alias.is_valid()
         );
-        load_cached_type(cached_type_node_ref)
+        load_cached_type(self.i_s.db, cached_type_node_ref)
     }
 
     pub(crate) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
@@ -954,7 +954,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let (name_def, type_params, expr) = type_alias.unpack();
         let alias_type_ref = type_alias_type_node_ref(self.file, type_alias);
         if alias_type_ref.point().calculated() {
-            return load_cached_type(alias_type_ref);
+            return load_cached_type(self.i_s.db, alias_type_ref);
         }
         let scope = self.i_s.as_parent_scope();
         let type_var_likes = if let Some(type_params) = type_params {
@@ -1151,10 +1151,9 @@ enum PreClassCalculationLookup<'file> {
     Other,
 }
 
-fn load_cached_type(node_ref: NodeRef) -> Lookup {
+fn load_cached_type<'db>(db: &'db Database, node_ref: NodeRef<'db>) -> Lookup<'db, 'db> {
     let p = node_ref.point();
     if p.kind() == PointKind::Redirect {
-        debug_assert_eq!(p.file_index(), node_ref.file_index());
         // Some special assignments like TypeVars are defined on names, because they can also be
         // inferred.
         /*
@@ -1163,7 +1162,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
                 .unwrap(),
         );
         */
-        let redirected_to = NodeRef::new(node_ref.file, p.node_index());
+        let redirected_to = p.as_redirected_node_ref(db);
         if let Some(specific) = redirected_to.point().maybe_specific() {
             debug_assert!(
                 matches!(
@@ -1175,7 +1174,7 @@ fn load_cached_type(node_ref: NodeRef) -> Lookup {
             return Lookup::UNKNOWN_REPORTED;
         } else {
             if redirected_to.point().kind() == PointKind::Redirect {
-                return load_cached_type(redirected_to);
+                return load_cached_type(db, redirected_to);
             }
             return NameResolution::check_special_type_definition(redirected_to).unwrap_or_else(
                 || Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Other)),
