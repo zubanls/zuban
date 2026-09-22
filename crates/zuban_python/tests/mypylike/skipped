@@ -283,8 +283,6 @@ testSelfTypeClassMethodNotSilentlyErased
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
-# list element context inference should probably ignore type vars
-testInferenceAgainstGenericCallableGenericNonLinear
 # Context for returns with or
 testBinaryOpInferenceContext
 # Recursive alias union type var inference where Nested[T] is checked before T
