@@ -16,7 +16,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch},
-    matching::{ErrorTypes, GotType, maybe_class_usage},
+    matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin, maybe_class_usage},
     node_ref::NodeRef,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
@@ -651,6 +651,14 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
                     had_wrong_init_type_var = true;
                     if on_type_error.is_some() {
                         add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
+                    }
+                }
+                for tv_matcher in &mut matcher.type_var_matchers {
+                    for calc in tv_matcher.calculating_type_args.iter_mut() {
+                        if calc.calculated() {
+                            calc.type_
+                                .set_origin_if_inference(BoundOrigin::InitGenerics);
+                        }
                     }
                 }
                 if cfg!(debug_assertions) {

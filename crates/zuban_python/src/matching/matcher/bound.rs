@@ -185,8 +185,20 @@ impl Bound {
         on_uncalculated: impl FnOnce(Option<Type>) -> Option<GenericItem>,
     ) -> Option<GenericItem> {
         Some(match self {
-            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => {
                 k.into_generic_item(db, avoid_implicit_literals)
+            }
+            Self::UpperAndLower(upper, lower) => {
+                // The choice here is somewhat complicated. If the context is Any we prefer the
+                // other side. This is mostly because the con
+                if lower.origin == BoundOrigin::Context
+                    && upper.origin != BoundOrigin::Context
+                    && lower.has_any(db)
+                {
+                    upper.into_generic_item(db, avoid_implicit_literals)
+                } else {
+                    lower.into_generic_item(db, avoid_implicit_literals)
+                }
             }
             Self::Uncalculated { fallback } => return on_uncalculated(fallback),
         })
@@ -265,14 +277,22 @@ impl Bound {
         }
     }
 
-    pub(crate) fn set_origin(&mut self, origin: BoundOrigin) {
+    pub(crate) fn set_origin_if_inference(&mut self, origin: BoundOrigin) {
         match self {
-            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.origin = origin,
-            Self::UpperAndLower(upper, lower) => {
-                upper.origin = origin;
-                lower.origin = origin;
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k)
+                if k.origin == BoundOrigin::Inference =>
+            {
+                k.origin = origin
             }
-            Self::Uncalculated { .. } => {}
+            Self::UpperAndLower(upper, lower) => {
+                if upper.origin == BoundOrigin::Inference {
+                    upper.origin = origin;
+                }
+                if lower.origin == BoundOrigin::Inference {
+                    lower.origin = origin;
+                }
+            }
+            _ => {}
         }
     }
 }

@@ -156,6 +156,8 @@ impl CalculatingTypeArg {
             if !m.bool() {
                 let origin = match &self.type_ {
                     Bound::Invariant(b) | Bound::Upper(b) | Bound::Lower(b) => b.origin,
+                    // TODO when should we use which one?
+                    // Bound::UpperAndLower(_, lower) => lower.origin,
                     Bound::UpperAndLower(upper, _) => upper.origin,
                     Bound::Uncalculated { .. } => unreachable!(),
                 };

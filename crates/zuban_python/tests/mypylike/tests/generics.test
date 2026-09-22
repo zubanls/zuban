@@ -2195,3 +2195,24 @@ e["a"]["b"] = 1
 
 f = list([1])
 assert_type(f, list[int])
+
+[case generics_nested_context_with_self_types_and_overload]
+# From GH #560
+from typing import Any, Generic, TypeVar, overload, assert_type
+
+T = TypeVar("T", covariant=True)
+
+class Source(Generic[T]):
+    @overload
+    def __init__(self: "Source[int]", value: int) -> None: ...
+    @overload
+    def __init__(self: "Source[str]", value: str) -> None: ...
+    def __init__(self, value: Any) -> None:
+        pass
+
+class Wrapper(Generic[T]):
+    def __init__(self, source: Source[T]) -> None:
+        pass
+
+assert_type(Wrapper(Source[int](1)), Wrapper[int])
+assert_type(Wrapper(Source(1)), Wrapper[int])

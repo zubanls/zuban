@@ -1798,7 +1798,7 @@ impl<'a> Matcher<'a> {
                 if calc.type_.is_none() || !calc.calculated() || calc.uninferrable {
                     *calc = Default::default();
                 } else {
-                    calc.type_.set_origin(BoundOrigin::Context);
+                    calc.type_.set_origin_if_inference(BoundOrigin::Context);
                     calc.has_any_in_context = calc.type_.has_any(db);
                 }
             }
