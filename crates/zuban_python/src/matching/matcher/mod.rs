@@ -31,7 +31,7 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::{Match, SignatureMatch},
-    matching::Generic,
+    matching::{Generic, matcher::bound::BoundOrigin},
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -1798,7 +1798,7 @@ impl<'a> Matcher<'a> {
                 if calc.type_.is_none() || !calc.calculated() || calc.uninferrable {
                     *calc = Default::default();
                 } else {
-                    calc.defined_by_result_context = true;
+                    calc.type_.set_origin(BoundOrigin::Context);
                     calc.has_any_in_context = calc.type_.has_any(db);
                 }
             }

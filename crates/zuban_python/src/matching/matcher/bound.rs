@@ -47,23 +47,6 @@ pub(crate) enum BoundKind {
     ParamSpec(CallableParams),
 }
 
-impl std::ops::Deref for BoundInfo {
-    type Target = BoundKind;
-
-    fn deref(&self) -> &Self::Target {
-        &self.kind
-    }
-}
-
-impl From<BoundKind> for BoundInfo {
-    fn from(kind: BoundKind) -> Self {
-        Self {
-            origin: BoundOrigin::Inference,
-            kind,
-        }
-    }
-}
-
 impl Default for Bound {
     fn default() -> Self {
         Self::Uncalculated { fallback: None }
@@ -281,6 +264,17 @@ impl Bound {
             Self::Uncalculated { fallback: None } => false,
         }
     }
+
+    pub(crate) fn set_origin(&mut self, origin: BoundOrigin) {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.origin = origin,
+            Self::UpperAndLower(upper, lower) => {
+                upper.origin = origin;
+                lower.origin = origin;
+            }
+            Self::Uncalculated { .. } => {}
+        }
+    }
 }
 
 impl BoundInfo {
@@ -306,8 +300,7 @@ impl BoundInfo {
             _ => unreachable!(),
         };
         Some(Self {
-            // TODO this should be merged
-            origin: BoundOrigin::Inference,
+            origin: self.origin.merge(other.origin),
             kind,
         })
     }
@@ -331,8 +324,7 @@ impl BoundInfo {
             _ => unreachable!(),
         };
         Some(Self {
-            // TODO this should be merged
-            origin: BoundOrigin::Inference,
+            origin: self.origin.merge(other.origin),
             kind,
         })
     }
@@ -464,6 +456,32 @@ impl BoundKind {
                 matches_params_with_variance(i_s, matcher, params1, params2, variance)
             }
             _ => unreachable!(),
+        }
+    }
+}
+
+impl std::ops::Deref for BoundInfo {
+    type Target = BoundKind;
+
+    fn deref(&self) -> &Self::Target {
+        &self.kind
+    }
+}
+
+impl From<BoundKind> for BoundInfo {
+    fn from(kind: BoundKind) -> Self {
+        Self {
+            origin: BoundOrigin::Inference,
+            kind,
+        }
+    }
+}
+
+impl BoundOrigin {
+    fn merge(self, other: BoundOrigin) -> BoundOrigin {
+        match (self, other) {
+            (Self::InitGenerics, _) | (_, Self::InitGenerics) => Self::InitGenerics,
+            _ => BoundOrigin::Inference,
         }
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     debug,
     inference_state::InferenceState,
     match_::Match,
-    matching::matcher::bound::BoundInfo,
+    matching::matcher::bound::{BoundInfo, BoundOrigin},
     recoverable_error,
     type_::{
         AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
@@ -20,7 +20,6 @@ use crate::{
 pub(super) struct CalculatingTypeArg {
     pub(super) type_: Bound,
     pub(super) unresolved_transitive_constraints: Vec<Bound>,
-    pub(super) defined_by_result_context: bool,
     pub(super) uninferrable: bool,
     pub(super) has_any_in_context: bool,
 }
@@ -31,7 +30,6 @@ impl CalculatingTypeArg {
     }
 
     pub fn merge_full(&mut self, i_s: &InferenceState, other: Self) -> Match {
-        self.defined_by_result_context |= other.defined_by_result_context;
         self.merge(i_s, other.type_)
     }
 
@@ -39,7 +37,6 @@ impl CalculatingTypeArg {
         if self.type_ == other {
             return Match::new_true();
         }
-        let mut m = Match::new_true();
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
                 let any = other.maybe_any();
@@ -53,23 +50,20 @@ impl CalculatingTypeArg {
             }
             return Match::new_true();
         }
+
         let (t, variance) = match other {
             Bound::Upper(t) => (t, Variance::Contravariant),
             Bound::Lower(t) => (t, Variance::Covariant),
             Bound::Invariant(t) => (t, Variance::Invariant),
-            Bound::UpperAndLower(upper, t) => {
+            Bound::UpperAndLower(upper, lower) => {
                 debug!("Trying to merge the upper bound first, because there's upper and lower");
                 let _indent = debug_indent();
-                m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
-                (t, Variance::Covariant)
+                let m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
+                return m & self.merge_or_mismatch(i_s, lower, Variance::Covariant);
             }
             Bound::Uncalculated { .. } => return Match::new_true(),
         };
-        let m = m & self.merge_or_mismatch(i_s, t, variance);
-        if !m.bool() && !self.defined_by_result_context {
-            self.uninferrable = true;
-        }
-        m
+        self.merge_or_mismatch(i_s, t, variance)
     }
 
     fn merge_or_mismatch(
@@ -110,7 +104,7 @@ impl CalculatingTypeArg {
         } else {
             // If we are not between the lower and upper bound, but the value is co or
             // contravariant, it can still be valid.
-            match variance {
+            let m = match variance {
                 Variance::Invariant => matches,
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
@@ -158,7 +152,18 @@ impl CalculatingTypeArg {
                     Bound::Lower(_) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
+            };
+            if !m.bool() {
+                let origin = match &self.type_ {
+                    Bound::Invariant(b) | Bound::Upper(b) | Bound::Lower(b) => b.origin,
+                    Bound::UpperAndLower(upper, _) => upper.origin,
+                    Bound::Uncalculated { .. } => unreachable!(),
+                };
+                if !matches!(origin, BoundOrigin::Context) {
+                    self.uninferrable = true;
+                }
             }
+            m
         }
     }
 
