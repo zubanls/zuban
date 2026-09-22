@@ -109,6 +109,12 @@ impl Type {
             },
             Type::Union(union_type1) => {
                 if variance == Variance::Invariant {
+                    debug!(
+                        "Match invariant unions: {:?} against {:?}",
+                        self.format_short(i_s.db),
+                        value_type.format_short(i_s.db)
+                    );
+                    let _indent = debug_indent();
                     return self.is_super_type_of(i_s, matcher, value_type)
                         & self.is_sub_type_of(i_s, matcher, value_type);
                 } else {
@@ -641,7 +647,11 @@ impl Type {
                 if !u1.might_have_type_vars && !u2.might_have_type_vars && u1 == u2 {
                     return Match::new_true();
                 }
-                debug!("Match union against union");
+                debug!(
+                    "Match union {:?} against union {:?}",
+                    self.format_short(i_s.db),
+                    value_type.format_short(i_s.db)
+                );
                 let _indent = debug_indent();
                 const MAX_UNION_WITHOUT_HASHING: usize = 5;
                 let check = |matcher: &mut Matcher, g2: &_| {
