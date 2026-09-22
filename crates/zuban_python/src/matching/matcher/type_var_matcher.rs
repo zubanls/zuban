@@ -108,22 +108,21 @@ impl CalculatingTypeArg {
                 Variance::Invariant => matches,
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
-                        let m = t.is_simple_super_type_of(i_s, &other);
                         if let Some(new) = t.common_base_type(i_s, &other, i_s.flags().use_joins) {
                             *t = new;
                             Match::new_true()
                         } else {
-                            m
+                            t.is_simple_super_type_of(i_s, &other)
                         }
                     }
                     Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
                     Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
-                        if let Some(new) = lower.common_base_type(i_s, &other, false) {
-                            if upper.is_simple_super_type_of(i_s, &new).bool() {
-                                *lower = new;
-                                return Match::new_true();
-                            }
+                        if let Some(new) = lower.common_base_type(i_s, &other, false)
+                            && upper.is_simple_super_type_of(i_s, &new).bool()
+                        {
+                            *lower = new;
+                            return Match::new_true();
                         }
                         matches
                     }
@@ -131,12 +130,11 @@ impl CalculatingTypeArg {
                 },
                 Variance::Contravariant => match &mut self.type_ {
                     Bound::Upper(t) => {
-                        let m = t.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = t.common_sub_type(i_s, &other) {
                             *t = new;
                             Match::new_true()
                         } else {
-                            m
+                            t.is_simple_sub_type_of(i_s, &other)
                         }
                     }
                     Bound::Invariant(t) => t.is_simple_sub_type_of(i_s, &other),
