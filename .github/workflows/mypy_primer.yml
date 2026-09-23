@@ -58,14 +58,6 @@ jobs:
           echo ''
           cd ..
 
-          BASE_DIR=$(pwd)/primer_base
-          mkdir -p $BASE_DIR
-
-      - name: Setup upterm session
-        uses: owenthereal/action-upterm@v1
-      - name: Run mypy_primer#2
-        shell: bash
-        run: |
           # fail action if exit code isn't zero or one
           (
             mypy_primer \
