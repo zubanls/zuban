@@ -61,10 +61,8 @@ jobs:
           BASE_DIR=$(pwd)/primer_base
           mkdir -p $BASE_DIR
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        env:
-          TMATE_DEBUG: 1
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v1
       - name: Run mypy_primer#2
         shell: bash
         run: |
