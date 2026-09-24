@@ -18,8 +18,8 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
-        PropertySetterType, Type, TypeVarKind,
+        AnyCause, CallableLike, CallableParams, DbString, FunctionKind, IterInfos, Literal,
+        LiteralKind, LookupResult, PropertySetterType, Type, TypeVarKind,
     },
 };
 
@@ -465,13 +465,18 @@ impl<'a> Instance<'a> {
         }
         if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
+                let had_error = Cell::new(false);
                 let l = self.lookup(
                     i_s,
                     method_name,
-                    InstanceLookupOptions::new(&options.add_issue)
-                        .with_kind(LookupKind::OnlyType)
-                        .with_maybe_as_self_instance(options.as_self_instance)
-                        .without_object(),
+                    InstanceLookupOptions::new(&|issue| {
+                        debug!("Unable to execute {method_name}, because of issue: {issue:?}");
+                        had_error.set(true);
+                        false
+                    })
+                    .with_kind(LookupKind::OnlyType)
+                    .with_maybe_as_self_instance(options.as_self_instance)
+                    .without_object(),
                 );
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
@@ -481,38 +486,53 @@ impl<'a> Instance<'a> {
                     let lookup = LookupResult::UnknownName(inf.execute(
                         i_s,
                         &KnownArgsWithCustomAddIssue::new(
-                            &Inferred::new_any(AnyCause::Internal),
+                            &Inferred::from_type(Type::Literal(Literal::new_implicit(
+                                LiteralKind::String(DbString::ArcStr(name.into())),
+                            ))),
                             &|issue| {
-                                (options.add_issue)(issue);
+                                debug!(
+                                    "Was not able to execute {method_name}, because of issue: {issue:?}"
+                                );
+                                had_error.set(true);
                                 true
                             },
                         ),
                     ));
-                    let is_writable = {
-                        let details = self.lookup(
-                            i_s,
-                            "__setattr__",
-                            InstanceLookupOptions::new(&options.add_issue)
-                                .with_kind(LookupKind::OnlyType)
-                                .with_maybe_as_self_instance(options.as_self_instance)
-                                .without_object(),
-                        );
-                        details.lookup.is_some()
-                    };
-                    return LookupDetails {
-                        class: TypeOrClass::Class(self.class),
-                        lookup,
-                        attr_kind: match is_writable {
-                            false => AttributeKind::Property {
-                                setter_type: None,
-                                // This is abstract, because this is not an actual property.
-                                is_abstract: true,
-                                is_final: false,
+                    // If there were errors this is likely something like:
+                    //
+                    //     def __getattr__(self, x: Literal["x"]):
+                    //         if x != "x":
+                    //             raise AttributeError
+                    //          return 1
+                    //
+                    // This is why we simply ignore the errors.
+                    if !had_error.get() {
+                        let is_writable = {
+                            let details = self.lookup(
+                                i_s,
+                                "__setattr__",
+                                InstanceLookupOptions::new(&options.add_issue)
+                                    .with_kind(LookupKind::OnlyType)
+                                    .with_maybe_as_self_instance(options.as_self_instance)
+                                    .without_object(),
+                            );
+                            details.lookup.is_some()
+                        };
+                        return LookupDetails {
+                            class: TypeOrClass::Class(self.class),
+                            lookup,
+                            attr_kind: match is_writable {
+                                false => AttributeKind::Property {
+                                    setter_type: None,
+                                    // This is abstract, because this is not an actual property.
+                                    is_abstract: true,
+                                    is_final: false,
+                                },
+                                true => AttributeKind::Attribute,
                             },
-                            true => AttributeKind::Attribute,
-                        },
-                        mro_index: None,
-                    };
+                            mro_index: None,
+                        };
+                    }
                 }
             }
         }

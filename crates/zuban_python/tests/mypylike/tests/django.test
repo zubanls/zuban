@@ -26,6 +26,8 @@ x = Foo.objects.get()
 assert_type(x, Foo)
 assert_type(x.not_nullable, str)
 
+reveal_type(Foo.not_nullable)  # N: Revealed type is "django.db.models.fields._FieldDescriptor[django.db.models.fields.CharField[str | int | django.db.models.expressions.Combinable, str]]"
+
 [case django_id_attributes]
 # From GH #332
 from django.db import models
