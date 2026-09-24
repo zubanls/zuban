@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         NeverCause, ParamType, PropertySetter, PropertySetterType, ReplaceSelf,
-        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, Type,
         TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
     },
     type_helpers::Class,
@@ -2325,13 +2325,13 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             unreachable!()
                         };
                         match &tup.args {
-                            // This case is handled earlier and functions should also be changed to
-                            // callables in that case.
-                            TupleArgs::FixedLen(..) => unreachable!(),
                             TupleArgs::ArbitraryLen(t) => {
                                 WrappedStar::ArbitraryLen(Some(Cow::Borrowed(t.as_ref())))
                             }
                             TupleArgs::WithUnpack(_) => WrappedStar::UnpackedTuple(tup.clone()),
+                            TupleArgs::FixedLen(ts) => {
+                                WrappedStar::UnpackedTuple(Tuple::new_fixed_length(ts.clone()))
+                            }
                         }
                     }
                     None => WrappedStar::ArbitraryLen(None),

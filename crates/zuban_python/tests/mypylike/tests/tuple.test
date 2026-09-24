@@ -594,3 +594,9 @@ frozen = frozenset((
     990, 991, 992, 993, 994, 995, 996, 997, 998, 999, 1000,
 ))
 reveal_type(frozen)  # N: Revealed type is "frozenset[int]"
+
+[case avoid_crash_in_tuple_unpack]
+# From GH #577
+class C:
+    def __rpow__(self, *args: *tuple[int]):  # E: Invalid signature "Callable[[C, int], Any]"
+        pass
