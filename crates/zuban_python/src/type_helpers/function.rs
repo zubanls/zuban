@@ -204,18 +204,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         reference.set_point(Point::new_calculating());
         let body_node_ref = NodeRef::new(self.file, self.as_node().body().index());
-        if body_node_ref.point().calculating() {
+        let body_node_ref_point = body_node_ref.point();
+        if body_node_ref_point.calculating() {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
         }
         let _indent = debug_indent();
         debug!("Ensure cached untyped return for func {}", self.name());
-        let result = self
-            .node_ref
-            .file
-            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
-            .ensure_calculated_function_body(*self);
-        debug_assert!(result.is_ok());
+        if !body_node_ref_point.calculated() {
+            FLOW_ANALYSIS.with_new_empty_and_delay_further(i_s.db, || {
+                let result = self
+                    .node_ref
+                    .file
+                    .inference(&InferenceState::new(i_s.db, self.node_ref.file))
+                    .ensure_calculated_function_body(*self);
+                debug_assert!(result.is_ok());
+            })
+        }
 
         debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
