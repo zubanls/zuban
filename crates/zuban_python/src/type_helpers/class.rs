@@ -2575,17 +2575,19 @@ fn add_protocol_mismatch(
             Type::Callable(_) | Type::FunctionOverload(_) | Type::Type(_),
         ) => {
             notes.push("    Expected:".into());
-            let c1 = full1.maybe_callable(i_s).unwrap();
-            let c2 = full2.maybe_callable(i_s).unwrap();
-            format_callable_like(i_s.db, notes, &c1, &c2);
-            notes.push("    Got:".into());
-            format_callable_like(i_s.db, notes, &c2, &c1);
+            if let Some(c1) = full1.maybe_callable(i_s)
+                && let Some(c2) = full2.maybe_callable(i_s)
+            {
+                format_callable_like(i_s.db, notes, &c1, &c2);
+                notes.push("    Got:".into());
+                format_callable_like(i_s.db, notes, &c2, &c1);
+                return;
+            }
         }
-        _ => {
-            let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
-            notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())
-        }
+        _ => (),
     }
+    let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
+    notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())
 }
 
 fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
