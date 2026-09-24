@@ -5553,7 +5553,7 @@ fn check_for_comparison_guard(
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum LenNarrowing {
     Equals, // NotEquals will be done by inverting in a separate place
     GreaterThan,
@@ -5743,21 +5743,24 @@ fn narrow_len_for_tuples(
                 )));
             };
             if let Some(lower_than) = lower_than {
-                if invert == negative {
-                    for i in 0..(lower_than - min_len) {
-                        add_fixed_len_tuple(i);
+                // The other case is unreachable and should not add any types
+                if let Some(difference) = lower_than.checked_sub(min_len) {
+                    if invert == negative {
+                        for i in 0..difference {
+                            add_fixed_len_tuple(i);
+                        }
+                    } else {
+                        add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                            before: with_unpack
+                                .before
+                                .iter()
+                                .chain(middle_iter(difference))
+                                .cloned()
+                                .collect(),
+                            unpack: with_unpack.unpack.clone(),
+                            after: with_unpack.after.clone(),
+                        }))));
                     }
-                } else {
-                    add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                        before: with_unpack
-                            .before
-                            .iter()
-                            .chain(middle_iter(lower_than - min_len))
-                            .cloned()
-                            .collect(),
-                        unpack: with_unpack.unpack.clone(),
-                        after: with_unpack.after.clone(),
-                    }))));
                 }
                 return true;
             } else if !negative {

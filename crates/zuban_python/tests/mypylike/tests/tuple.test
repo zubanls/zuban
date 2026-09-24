@@ -600,3 +600,11 @@ reveal_type(frozen)  # N: Revealed type is "frozenset[int]"
 class C:
     def __rpow__(self, *args: *tuple[int]):  # E: Invalid signature "Callable[[C, int], Any]"
         pass
+
+[case unpacked_any_in_tuple_type_narrowing_should_not_crash]
+# flags: --warn-unreachable
+# From GH #575
+x: tuple[int, *y]  # E: Name "y" is not defined
+
+if len(x) < 0:
+    pass  # E: Statement is unreachable
