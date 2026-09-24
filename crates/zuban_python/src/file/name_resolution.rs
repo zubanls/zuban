@@ -49,6 +49,12 @@ pub(crate) enum PointResolution<'file> {
     ModuleGetattrName(NodeRef<'file>),
 }
 
+#[derive(PartialEq)]
+pub enum StarImportResolutionKind {
+    Local,
+    Global,
+}
+
 impl PointResolution<'_> {
     pub(super) fn debug_info(&self, db: &Database) -> String {
         match self {
@@ -752,7 +758,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         save_to_index: Option<NodeIndex>,
         narrow_name: &dyn Fn(&InferenceState, NodeRef, PointLink) -> Option<Inferred>,
     ) -> Option<(PointResolution<'file>, Option<PointLink>)> {
-        let star_imp = match self.lookup_from_star_import(name, true) {
+        let star_imp = match self.lookup_from_star_import(name, StarImportResolutionKind::Local) {
             Ok(star_imp) => star_imp,
             Err(StarImportError::NotFound) => return None,
             Err(StarImportError::ImportNotResolvable) => {
@@ -800,15 +806,15 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
     pub fn lookup_from_star_import(
         &self,
         name: &str,
-        check_local: bool,
+        kind: StarImportResolutionKind,
     ) -> Result<StarImportResult, StarImportError> {
-        self.lookup_from_star_import_with_node_index(name, check_local, None, None)
+        self.lookup_from_star_import_with_node_index(name, kind, None, None)
     }
 
     pub fn lookup_from_star_import_with_node_index(
         &self,
         name: &str,
-        check_local: bool,
+        kind: StarImportResolutionKind,
         node_index: Option<NodeIndex>,
         star_imports_seen: Option<AlreadySeen<PointLink>>,
     ) -> Result<StarImportResult, StarImportError> {
@@ -818,7 +824,7 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // closure)
             let mut is_class_star_import = false;
             if !(star_import.scope == 0
-                || check_local
+                || kind == StarImportResolutionKind::Local
                     && self
                         .i_s
                         .current_function()
@@ -909,7 +915,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 return Ok(result);
             }
             self.with_new_file(super_file)
-                .lookup_from_star_import_with_node_index(name, false, None, star_imports_seen)
+                .lookup_from_star_import_with_node_index(
+                    name,
+                    StarImportResolutionKind::Global,
+                    None,
+                    star_imports_seen,
+                )
         } else {
             Err(
                 match import_not_resolvable && !self.i_s.db.project.settings.mypy_compatible() {
@@ -959,7 +970,12 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         }
         let result = self
             .with_new_file(other_file)
-            .lookup_from_star_import_with_node_index(name, false, None, Some(new_seen));
+            .lookup_from_star_import_with_node_index(
+                name,
+                StarImportResolutionKind::Global,
+                None,
+                Some(new_seen),
+            );
         match &result {
             Ok(_) => {
                 if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {

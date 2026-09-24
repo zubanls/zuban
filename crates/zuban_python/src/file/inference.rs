@@ -16,7 +16,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        OtherDefinitionIterator,
+        OtherDefinitionIterator, StarImportResolutionKind,
         flow_analysis::RedefinitionResult,
         name_resolution::{PointResolution, StarImportResult},
         type_computation::TypeCommentState,
@@ -948,9 +948,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 })
                 .or_else(|| {
                     Some(
-                        self.lookup_from_star_import(name_def.as_code(), true)
-                            .ok()?
-                            .as_inferred(self.i_s),
+                        self.lookup_from_star_import(
+                            name_def.as_code(),
+                            StarImportResolutionKind::Local,
+                        )
+                        .ok()?
+                        .as_inferred(self.i_s),
                     )
                 })
         };
@@ -1573,7 +1576,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             } else if let Ok(star_imp) = self.lookup_from_star_import_with_node_index(
                 name_def.as_code(),
-                true,
+                StarImportResolutionKind::Local,
                 Some(name_def.index()),
                 None,
             ) {
