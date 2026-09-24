@@ -970,7 +970,7 @@ __main__:3: error: Name "bar" is not defined
 from m import *
 
 class C:
-    TX: str  # E: Incompatible types in assignment (expression has type "str", variable has type "TypeVar")
+    TX: str
 
 [file m.py]
 from typing import TypeVar

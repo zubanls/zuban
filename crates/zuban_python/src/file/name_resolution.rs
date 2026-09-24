@@ -53,6 +53,7 @@ pub(crate) enum PointResolution<'file> {
 pub enum StarImportResolutionKind {
     Local,
     Global,
+    FromAssignment,
 }
 
 impl PointResolution<'_> {
@@ -823,19 +824,26 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             // TODO these feel a bit weird and do not include parent functions (when in a
             // closure)
             let mut is_class_star_import = false;
-            if !(star_import.scope == 0
-                || kind == StarImportResolutionKind::Local
-                    && self
-                        .i_s
-                        .current_function()
-                        .map(|f| f.node_ref.node_index == star_import.scope)
-                        .unwrap_or_else(|| {
-                            self.i_s.current_class().is_some_and(|c| {
-                                is_class_star_import = true;
-                                c.node_ref.node_index == star_import.scope
-                            })
-                        }))
-            {
+            let mut matches_current_scope = || {
+                self.i_s
+                    .current_function()
+                    .map(|f| f.node_ref.node_index == star_import.scope)
+                    .unwrap_or_else(|| {
+                        self.i_s.current_class().is_some_and(|c| {
+                            is_class_star_import = true;
+                            c.node_ref.node_index == star_import.scope
+                        })
+                    })
+            };
+            let in_global_scope = star_import.scope == 0;
+            let matches_scope = match kind {
+                StarImportResolutionKind::Local => in_global_scope || matches_current_scope(),
+                StarImportResolutionKind::FromAssignment => {
+                    in_global_scope && self.i_s.in_module_context() || matches_current_scope()
+                }
+                StarImportResolutionKind::Global => in_global_scope,
+            };
+            if !matches_scope {
                 continue;
             }
             let in_mod = self.i_s.in_module_context();

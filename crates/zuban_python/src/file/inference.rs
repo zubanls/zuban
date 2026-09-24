@@ -950,7 +950,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     Some(
                         self.lookup_from_star_import(
                             name_def.as_code(),
-                            StarImportResolutionKind::Local,
+                            StarImportResolutionKind::FromAssignment,
                         )
                         .ok()?
                         .as_inferred(self.i_s),
@@ -1576,7 +1576,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 }
             } else if let Ok(star_imp) = self.lookup_from_star_import_with_node_index(
                 name_def.as_code(),
-                StarImportResolutionKind::Local,
+                StarImportResolutionKind::FromAssignment,
                 Some(name_def.index()),
                 None,
             ) {
