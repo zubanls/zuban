@@ -587,7 +587,8 @@ impl FlowAnalysis {
     #[inline]
     fn maybe_tos_frame(&self) -> Option<RefMut<'_, Frame>> {
         // tos = top of the stack
-        let frames = self.frames.borrow_mut();
+        // TODO We should be able to borrow frames all the time.
+        let frames = self.frames.try_borrow_mut().ok()?;
         (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
     }
 
@@ -1673,14 +1674,10 @@ impl<'file> Inference<'_, 'file, '_> {
 
     pub fn in_conditional(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| {
-            let frames = fa.frames.borrow();
-            let Some(last) = frames.last() else {
-                //recoverable_error!("in_conditional should not have empty frames");
-                // TODO This should probably not happen, because we are not sure if we are in a
-                // conditional
-                return false;
-            };
-            matches!(last.kind, FrameKind::Conditional)
+            // TODO The tos should probably always be available, because we are not sure if we are
+            // in a conditional
+            fa.maybe_tos_frame()
+                .is_some_and(|tos| matches!(tos.kind, FrameKind::Conditional))
         })
     }
 
