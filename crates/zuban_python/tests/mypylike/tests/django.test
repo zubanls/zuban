@@ -1,4 +1,5 @@
 [case django_models_nullable]
+from typing import assert_type
 from django.db import models
 class Foo(models.Model):
     not_nullable = models.CharField()
@@ -20,6 +21,10 @@ def f(x: Foo):
 
     x.not_nullable = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str | int | Combinable")
     x.nullable = None
+
+x = Foo.objects.get()
+assert_type(x, Foo)
+assert_type(x.not_nullable, str)
 
 [case django_id_attributes]
 # From GH #332

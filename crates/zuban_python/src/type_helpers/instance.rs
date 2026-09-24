@@ -470,6 +470,7 @@ impl<'a> Instance<'a> {
                     method_name,
                     InstanceLookupOptions::new(&options.add_issue)
                         .with_kind(LookupKind::OnlyType)
+                        .with_maybe_as_self_instance(options.as_self_instance)
                         .without_object(),
                 );
                 if l.class.is_object(i_s.db) {
@@ -493,6 +494,7 @@ impl<'a> Instance<'a> {
                             "__setattr__",
                             InstanceLookupOptions::new(&options.add_issue)
                                 .with_kind(LookupKind::OnlyType)
+                                .with_maybe_as_self_instance(options.as_self_instance)
                                 .without_object(),
                         );
                         details.lookup.is_some()
@@ -1151,6 +1153,14 @@ impl<'x> InstanceLookupOptions<'x> {
 
     pub fn with_no_check_dunder_getattr(mut self) -> Self {
         self.check_dunder_getattr = false;
+        self
+    }
+
+    pub fn with_maybe_as_self_instance(
+        mut self,
+        as_self_instance: Option<&'x dyn Fn() -> Type>,
+    ) -> Self {
+        self.as_self_instance = as_self_instance;
         self
     }
 
