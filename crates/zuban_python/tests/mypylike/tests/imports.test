@@ -964,3 +964,23 @@ __main__:3: error: Name "bar" is not defined
 ==
 __main__:2: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 __main__:3: error: Name "bar" is not defined
+
+[case typing_with_star_import_should_not_crash1]
+# From GH #572
+from m import *
+
+class C:
+    TX: str  # E: Incompatible types in assignment (expression has type "str", variable has type "TypeVar")
+
+[file m.py]
+from typing import TypeVar
+TX = TypeVar('TX', int, str)
+
+[case typing_with_star_import_should_not_crash2]
+def x() -> None:
+    from m import *
+    TX: str = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "TypeVar")
+
+[file m.py]
+from typing import TypeVar
+TX = TypeVar('TX', int, str)
