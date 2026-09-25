@@ -915,7 +915,7 @@ fn execute_super_internal<'db>(
                 TypeOrClass::Class(c) => c.node_ref.as_link(),
                 TypeOrClass::Type(t) => match t.as_ref() {
                     Type::Dataclass(d) => d.class.link,
-                    _ => unreachable!(),
+                    _ => continue,
                 },
             };
             if first_class == found_link {

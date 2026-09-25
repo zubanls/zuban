@@ -608,3 +608,12 @@ x: tuple[int, *y]  # E: Name "y" is not defined
 
 if len(x) < 0:
     pass  # E: Statement is unreachable
+
+[case tuple_inherited_with_super_should_not_crash]
+# From GH #581
+class C(tuple):
+    pass
+
+class D:
+    def __init__(self) -> None:
+        super(D, C).a  # E: Argument 2 for "super" not an instance of argument 1
