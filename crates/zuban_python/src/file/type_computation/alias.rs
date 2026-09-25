@@ -228,16 +228,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 self.check_for_alias(origin, cached_type_node_ref, name_def, expr, cause)
             };
 
-            if !matches!(cause, AliasCause::Implicit) || was_calculating {
+            if matches!(cause, AliasCause::Implicit) && !was_calculating {
+                let result = self
+                    .compute_special_assignments(assignment, name_def, expr)
+                    .unwrap_or_else(check_for_alias);
+                drop(indent);
+                debug!("Finished type alias calculation: {}", name_def.as_code());
+                result
+            } else {
                 return check_for_alias(CalculatingAliasType::Normal);
             }
-
-            let result = self
-                .compute_special_assignments(assignment, name_def, expr)
-                .unwrap_or_else(check_for_alias);
-            drop(indent);
-            debug!("Finished type alias calculation: {}", name_def.as_code());
-            result
         } else {
             if let AssignmentContent::WithAnnotation(target, annotation, right) =
                 assignment.unpack()
