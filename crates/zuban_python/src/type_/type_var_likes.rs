@@ -913,6 +913,14 @@ impl TypeVarLike {
             TypeVarLike::ParamSpec(param_spec) => param_spec.inferred_variance(db, class),
         }
     }
+
+    pub fn kind(&self) -> TypeVarLikeKind {
+        match self {
+            TypeVarLike::TypeVar(_) => TypeVarLikeKind::TypeVar,
+            TypeVarLike::TypeVarTuple(_) => TypeVarLikeKind::TypeVarTuple,
+            TypeVarLike::ParamSpec(_) => TypeVarLikeKind::ParamSpec,
+        }
+    }
 }
 
 impl Hash for TypeVarLike {
@@ -923,6 +931,13 @@ impl Hash for TypeVarLike {
             TypeVarLike::ParamSpec(p) => Arc::as_ptr(p).hash(state),
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum TypeVarLikeKind {
+    TypeVar,
+    TypeVarTuple,
+    ParamSpec,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]

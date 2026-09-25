@@ -285,3 +285,20 @@ infer_out_obj_old: InferredCovariantTypeVarTupleOld[object] = InferredCovariantT
 [case typevartuple_assignable_to_object_tuple]
 def f[*Ts](*x: *Ts) -> None:
     y: tuple[object, ...] = x
+
+[case type_var_tuple_callable_should_not_crash]
+# From GH #580
+from collections.abc import Callable
+from typing import runtime_checkable
+
+def f[*Ts](cb: Callable[[*Ts], tuple[*Ts]]):
+    pass
+def g[*Ts](cb: Callable[[*Ts], tuple[*Ts]]) -> Callable[[*Ts], tuple[*Ts]]:
+    pass
+
+def identity[T](x: T) -> T: ...
+
+f(identity)  # E: Incompatible callable argument with type vars
+reveal_type((  # N: Revealed type is "def (*Any) -> tuple[Any, ...]"
+    g(identity)  # E: Incompatible callable argument with type vars
+))

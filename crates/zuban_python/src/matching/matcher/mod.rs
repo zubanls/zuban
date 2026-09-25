@@ -1676,8 +1676,17 @@ impl<'a> Matcher<'a> {
         let mut lst = Vec::from_iter(cycle.set.iter().cloned());
         lst.sort();
         let mut preferred_bound: Option<&_> = None;
+        let mut kind = None;
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
+            if let Some(should_be_kind) = kind {
+                if should_be_kind != type_var_like.kind() {
+                    debug!("Unable to create higher order free type variable");
+                    return Err(Match::new_false());
+                }
+            } else {
+                kind = Some(type_var_like.kind());
+            }
             if let TypeVarLike::TypeVar(new) = type_var_like
                 && !new.is_unrestricted()
             {
