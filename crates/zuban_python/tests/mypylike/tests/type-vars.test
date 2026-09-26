@@ -514,3 +514,39 @@ class ClassE[T]:
 
 assert_type(ClassE[int]().identity1(1), int)
 assert_type(ClassE[int]().identity2(1), int)
+
+[case type_var_definition_overwrites_star_import_type_var_no_crash]
+# flags: --allow-redefinition
+# From GH #579
+from typing import *
+
+AnyStr = TypeVar('AnyStr')
+
+class C(list[AnyStr]):  # E: Type expected within [...]
+    pass
+
+class D(C):
+    pass
+
+[file b.py]
+from typing import *
+
+AnyStr = int
+
+def f(x: AnyStr) -> None:
+    # TODO this might be wrong and should be Any?! But at least it doesn't crash
+    assert_type(x, int)
+
+class C(list[AnyStr]):
+    pass
+
+class D(C):
+    pass
+
+[file c.py]
+from typing import *
+
+AnyStr = list[AnyStr]  # E: Invalid type comment or annotation
+
+def f(x: AnyStr) -> None:
+    assert_type(x, list[Any])

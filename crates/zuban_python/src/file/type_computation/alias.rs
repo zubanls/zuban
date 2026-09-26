@@ -294,8 +294,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             if p.maybe_specific() == Some(Specific::Cycle) {
                 return Ok(Lookup::UNKNOWN_REPORTED);
             }
-            // TODO why is this necessary? Simply explain why!
+            // Only in our Ok cases do we want to continue and assign the redirect below (like in
+            // the other branch). In all other cases we just do normal type calculation.
             self.maybe_special_assignment_execution(expr)?;
+            if p.kind() == PointKind::Redirect && p.file_index() != self.file.file_index {
+                // This happens for example with star imports, but if a star import overrides a
+                // definition, we shouldn't be able to use it as a type.
+                return Ok(Lookup::T(TypeContent::InvalidVariable(
+                    InvalidVariableType::Variable(NodeRef::new(self.file, name_def.index())),
+                )));
+            }
         } else {
             let special = self.maybe_special_assignment_execution(expr)?;
             let inf = match special {
@@ -367,6 +375,8 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             name_def.index(),
             Locality::Todo,
         ));
+        // Since the alias is not computed, we can simply recurse back into the original caller to
+        // fetch the calculated results.
         Ok(self.compute_type_assignment_internal(assignment, AliasCause::Implicit))
     }
 
