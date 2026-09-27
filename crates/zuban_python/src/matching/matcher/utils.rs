@@ -491,9 +491,9 @@ fn apply_result_context_and_return_valid(
         return result;
     }
     result_context.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |expected| {
-        debug!("Apply context");
-        let indent = debug_indent();
         if let Some(return_class) = return_class {
+            debug!("Apply return class {:?} context", return_class.name());
+            let indent = debug_indent();
             // This is kind of a special case. Since __init__ has no return annotation, we simply
             // check if the classes match and then push the generics there.
             let type_var_likes = return_class.type_vars(i_s);
@@ -525,17 +525,24 @@ fn apply_result_context_and_return_valid(
                     on_reset_class_type_vars(matcher, return_class)
                 }
             }
+            drop(indent);
+            debug!(
+                "Finished trying to infer class context type arguments: [{}]",
+                matcher.type_var_matchers[0].debug_format(i_s.db)
+            );
         } else if !expected.has_untyped_type_params(i_s.db) {
+            debug!("Apply function return type context");
+            let indent = debug_indent();
             let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
-            matcher.reset_invalid_bounds_of_context(i_s.db)
+            matcher.reset_invalid_bounds_of_context(i_s.db);
+            drop(indent);
+            debug!(
+                "Finished trying to infer func context type arguments: [{}]",
+                matcher.type_var_matchers[0].debug_format(i_s.db)
+            );
         }
-        drop(indent);
-        debug!(
-            "Finished trying to infer context type arguments: [{}]",
-            matcher.type_var_matchers[0].debug_format(i_s.db)
-        );
     });
     result
 }

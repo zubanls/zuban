@@ -21,7 +21,7 @@ use crate::{
     CodeAction, Project, RunCause,
     database::Database,
     file::{
-        File as _, FileImport, PythonFile, dotted_path_from_dir,
+        File as _, FileImport, PythonFile, StarImportResolutionKind, dotted_path_from_dir,
         is_private_import_and_not_in_dunder_all,
     },
     imports::ImportResult,
@@ -268,7 +268,7 @@ impl<'db> ImportFinder<'db> {
         } else if add_star_imports {
             if file
                 .name_resolution_for_types(&InferenceState::new(self.db, file))
-                .lookup_from_star_import(self.name, false)
+                .lookup_from_star_import(self.name, StarImportResolutionKind::Global)
                 .is_ok()
             {
                 self.found.lock().unwrap().push(PotentialImport {

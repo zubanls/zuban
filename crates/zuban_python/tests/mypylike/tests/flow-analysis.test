@@ -700,3 +700,19 @@ def f(x: m.X, p: P):
 class X:
     def m(self):
         return 1
+
+[case untyped_code_no_crash]
+# flags: --mode default
+# From GH #571
+def init_klipper_clipboard():
+    class ClipboardUnavailable:
+        def __call__(self):
+            pass
+
+    if bool():
+        return outer, lambda: None  # E: Cannot resolve name "outer" (possible cyclic definition)
+    else:
+        return ClipboardUnavailable(), ClipboardUnavailable()
+
+paste = 1
+outer, paste = init_klipper_clipboard()

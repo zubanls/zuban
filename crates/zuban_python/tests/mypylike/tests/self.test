@@ -768,3 +768,12 @@ class Foo:
 
     def foo2(self) -> None:
         Bar().add_cb2(lambda x: x)
+
+[case self_should_not_expand]
+from itertools import islice
+from typing import Iterable, Self
+
+class C:
+    def list(cls) -> None:
+        iter_dirs: Iterable[Self] = []
+        iter_dirs = islice(iter_dirs, 1)

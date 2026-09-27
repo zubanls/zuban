@@ -1423,17 +1423,6 @@ impl<'a> Matcher<'a> {
             return (self, Err(m));
         }
 
-        let format_cycle_part = |slf: &Self, cycle: &TypeVarCycle| {
-            join_with_commas(cycle.set.iter().map(|tv| {
-                format!(
-                    "({}, {}, {})",
-                    tv.matcher_index,
-                    tv.type_var_index,
-                    slf.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index]
-                        .name(i_s.db)
-                )
-            }))
-        };
         if cfg!(feature = "zuban_debug") {
             debug!("Got the following transitive constraint cycles:");
             for cycle in &cycles.cycles {
@@ -1444,16 +1433,17 @@ impl<'a> Matcher<'a> {
                     ),
                     None => "has bounds".into(),
                 };
-                debug!(" - {} {}", format_cycle_part(&self, cycle), bound);
+                debug!(" - {} {}", cycle.format(&self, i_s.db), bound);
             }
         }
         for cycle in &cycles.cycles {
             debug!(
                 "Try to resolve the following transitive constraint cycle: {}",
-                format_cycle_part(&self, cycle)
+                cycle.format(&self, i_s.db)
             );
             let _indent = debug_indent();
             if let Err(e) = self.resolve_cycle(i_s, &cycles, cycle) {
+                // Set the type vars to Any if the cycle is impossible
                 for type_var_matcher in &mut self.type_var_matchers {
                     for (i, c) in type_var_matcher
                         .calculating_type_args
@@ -1560,6 +1550,11 @@ impl<'a> Matcher<'a> {
                         let c = self.calculating_arg(tv);
                         let depending_on = cycles.find_cycle(tv).unwrap();
                         if !c.unresolved_transitive_constraints.is_empty() {
+                            debug!(
+                                "Resolve nested transitive cycle: {}",
+                                depending_on.format(&self, i_s.db)
+                            );
+                            let _indent = debug_indent();
                             let m = self.resolve_cycle(i_s, cycles, depending_on);
                             if let Err(err) = m {
                                 debug!("Wasn't able to resolve nested cycle");
@@ -1681,8 +1676,17 @@ impl<'a> Matcher<'a> {
         let mut lst = Vec::from_iter(cycle.set.iter().cloned());
         lst.sort();
         let mut preferred_bound: Option<&_> = None;
+        let mut kind = None;
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
+            if let Some(should_be_kind) = kind {
+                if should_be_kind != type_var_like.kind() {
+                    debug!("Unable to create higher order free type variable");
+                    return Err(Match::new_false());
+                }
+            } else {
+                kind = Some(type_var_like.kind());
+            }
             if let TypeVarLike::TypeVar(new) = type_var_like
                 && !new.is_unrestricted()
             {
@@ -2097,6 +2101,18 @@ impl TypeVarCycle {
             has_bound: false,
             free_type_var_index: None,
         }
+    }
+
+    fn format(&self, matcher: &Matcher, db: &Database) -> String {
+        join_with_commas(self.set.iter().map(|tv| {
+            format!(
+                "({}, {}, {})",
+                tv.matcher_index,
+                tv.type_var_index,
+                matcher.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index]
+                    .name(db)
+            )
+        }))
     }
 }
 

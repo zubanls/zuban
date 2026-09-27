@@ -587,7 +587,8 @@ impl FlowAnalysis {
     #[inline]
     fn maybe_tos_frame(&self) -> Option<RefMut<'_, Frame>> {
         // tos = top of the stack
-        let frames = self.frames.borrow_mut();
+        // TODO We should be able to borrow frames all the time.
+        let frames = self.frames.try_borrow_mut().ok()?;
         (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
     }
 
@@ -1673,14 +1674,10 @@ impl<'file> Inference<'_, 'file, '_> {
 
     pub fn in_conditional(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| {
-            let frames = fa.frames.borrow();
-            let Some(last) = frames.last() else {
-                //recoverable_error!("in_conditional should not have empty frames");
-                // TODO This should probably not happen, because we are not sure if we are in a
-                // conditional
-                return false;
-            };
-            matches!(last.kind, FrameKind::Conditional)
+            // TODO The tos should probably always be available, because we are not sure if we are
+            // in a conditional
+            fa.maybe_tos_frame()
+                .is_some_and(|tos| matches!(tos.kind, FrameKind::Conditional))
         })
     }
 
@@ -5553,7 +5550,7 @@ fn check_for_comparison_guard(
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum LenNarrowing {
     Equals, // NotEquals will be done by inverting in a separate place
     GreaterThan,
@@ -5743,21 +5740,24 @@ fn narrow_len_for_tuples(
                 )));
             };
             if let Some(lower_than) = lower_than {
-                if invert == negative {
-                    for i in 0..(lower_than - min_len) {
-                        add_fixed_len_tuple(i);
+                // The other case is unreachable and should not add any types
+                if let Some(difference) = lower_than.checked_sub(min_len) {
+                    if invert == negative {
+                        for i in 0..difference {
+                            add_fixed_len_tuple(i);
+                        }
+                    } else {
+                        add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                            before: with_unpack
+                                .before
+                                .iter()
+                                .chain(middle_iter(difference))
+                                .cloned()
+                                .collect(),
+                            unpack: with_unpack.unpack.clone(),
+                            after: with_unpack.after.clone(),
+                        }))));
                     }
-                } else {
-                    add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                        before: with_unpack
-                            .before
-                            .iter()
-                            .chain(middle_iter(lower_than - min_len))
-                            .cloned()
-                            .collect(),
-                        unpack: with_unpack.unpack.clone(),
-                        after: with_unpack.after.clone(),
-                    }))));
                 }
                 return true;
             } else if !negative {

@@ -382,18 +382,36 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                let had_binding_error = Cell::new(false);
-                let mut had_lookup_error = false;
-                let protocol_lookup_details = self.instance().lookup(
+                let initial_binding_error = Cell::new(false);
+                let instance = self.instance();
+                // In general Self must be changed to the "other" provided, but there are sometimes
+                // issues with self: <X> types that don't map cleanly onto the "other". So we
+                // simply choose to not map Self in these cases for now. Ideally this would be
+                // handled deeper, but I'm not sure that's easy.
+                let mut protocol_lookup_details = instance.lookup(
                     i_s,
                     name,
-                    InstanceLookupOptions::new(&|_| {
-                        had_binding_error.set(true);
+                    InstanceLookupOptions::new(&|issue| {
+                        initial_binding_error.set(true);
+                        debug!("Binding error when matching protocol: {issue:?}");
                         false
                     })
-                    .with_as_self_instance(&|| Type::Self_)
+                    .with_as_self_instance(&|| other.clone())
                     .with_avoid_inferring_return_types(),
                 );
+                let had_binding_error = Cell::new(false);
+                if initial_binding_error.get() {
+                    protocol_lookup_details = instance.lookup(
+                        i_s,
+                        name,
+                        InstanceLookupOptions::new(&|issue| {
+                            had_binding_error.set(true);
+                            debug!("Repeated binding error when matching protocol: {issue:?}");
+                            false
+                        })
+                        .with_avoid_inferring_return_types(),
+                    );
+                }
                 let protocol_inf = protocol_lookup_details.lookup.into_inferred();
 
                 // It's a bit weird that we have to filter out TypeVarLikes here, but at the moment
@@ -405,6 +423,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     continue;
                 }
 
+                let mut had_lookup_error = false;
                 // Magic methods are probably never relevant on the object, since Python
                 // ignores all self attributes. This is especially the case if Enums classes
                 // are passed. However it feels a bit weird here and might need to be changed
@@ -442,7 +461,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         } else if had_error.borrow().is_none() {
                             had_at_least_one_member_with_same_name = true;
                             let protocol_t = protocol_inf.as_cow_type(i_s);
-                            let protocol_t = protocol_t.replace_self(i_s.db, &|| Some(other.clone()));
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let other_setter_type = lookup_details.attr_kind.property_setter_type();
@@ -2575,17 +2593,19 @@ fn add_protocol_mismatch(
             Type::Callable(_) | Type::FunctionOverload(_) | Type::Type(_),
         ) => {
             notes.push("    Expected:".into());
-            let c1 = full1.maybe_callable(i_s).unwrap();
-            let c2 = full2.maybe_callable(i_s).unwrap();
-            format_callable_like(i_s.db, notes, &c1, &c2);
-            notes.push("    Got:".into());
-            format_callable_like(i_s.db, notes, &c2, &c1);
+            if let Some(c1) = full1.maybe_callable(i_s)
+                && let Some(c2) = full2.maybe_callable(i_s)
+            {
+                format_callable_like(i_s.db, notes, &c1, &c2);
+                notes.push("    Got:".into());
+                format_callable_like(i_s.db, notes, &c2, &c1);
+                return;
+            }
         }
-        _ => {
-            let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
-            notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())
-        }
+        _ => (),
     }
+    let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
+    notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())
 }
 
 fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {

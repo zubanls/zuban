@@ -885,3 +885,13 @@ class CanStr2(ProtocolBase, Protocol):
     def bar(self) -> str: ...
     @override
     def missing(self, /) -> str: ...  # E: Method "missing" is marked as an override, but no base method was found with this name
+
+[case protocol_special_class_should_not_crash]
+# From GH #573
+from typing import Protocol
+
+class C(Protocol):
+    def __class__(self) -> C:
+        pass
+
+x: C = int  # type: ignore

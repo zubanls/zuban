@@ -1182,6 +1182,13 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             self.add_issue_on_args(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
+        if cfg!(debug_assertions) && type_vars.is_empty() {
+            // This assertion makes sense now, but might not make in the future
+            for base in &bases {
+                debug_assert!(!base.has_type_vars(), "{base:?}");
+            }
+        }
+
         let linearized_mro = linearize_mro(
             db,
             &bases,

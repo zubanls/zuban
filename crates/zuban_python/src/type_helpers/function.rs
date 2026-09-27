@@ -39,7 +39,7 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
         NeverCause, ParamType, PropertySetter, PropertySetterType, ReplaceSelf,
-        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, Type,
         TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
     },
     type_helpers::Class,
@@ -204,18 +204,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         reference.set_point(Point::new_calculating());
         let body_node_ref = NodeRef::new(self.file, self.as_node().body().index());
-        if body_node_ref.point().calculating() {
+        let body_node_ref_point = body_node_ref.point();
+        if body_node_ref_point.calculating() {
             // This would also recurse, because we are already calculating the function's results
             return Inferred::new_any_from_error();
         }
         let _indent = debug_indent();
         debug!("Ensure cached untyped return for func {}", self.name());
-        let result = self
-            .node_ref
-            .file
-            .inference(&InferenceState::new(i_s.db, self.node_ref.file))
-            .ensure_calculated_function_body(*self);
-        debug_assert!(result.is_ok());
+        if !body_node_ref_point.calculated() {
+            FLOW_ANALYSIS.with_new_empty_and_delay_further(i_s.db, || {
+                let result = self
+                    .node_ref
+                    .file
+                    .inference(&InferenceState::new(i_s.db, self.node_ref.file))
+                    .ensure_calculated_function_body(*self);
+                debug_assert!(result.is_ok());
+            })
+        }
 
         debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
@@ -2325,13 +2330,13 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             unreachable!()
                         };
                         match &tup.args {
-                            // This case is handled earlier and functions should also be changed to
-                            // callables in that case.
-                            TupleArgs::FixedLen(..) => unreachable!(),
                             TupleArgs::ArbitraryLen(t) => {
                                 WrappedStar::ArbitraryLen(Some(Cow::Borrowed(t.as_ref())))
                             }
                             TupleArgs::WithUnpack(_) => WrappedStar::UnpackedTuple(tup.clone()),
+                            TupleArgs::FixedLen(ts) => {
+                                WrappedStar::UnpackedTuple(Tuple::new_fixed_length(ts.clone()))
+                            }
                         }
                     }
                     None => WrappedStar::ArbitraryLen(None),

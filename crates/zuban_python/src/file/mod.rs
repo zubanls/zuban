@@ -23,7 +23,8 @@ pub(crate) use name_binder::{
     func_parent_scope,
 };
 pub(crate) use name_resolution::{
-    StarImportError, is_private_import_and_not_in_dunder_all, is_reexport_issue,
+    StarImportError, StarImportResolutionKind, is_private_import_and_not_in_dunder_all,
+    is_reexport_issue,
 };
 pub(crate) use python_file::{
     ComplexValues, FileImport, OtherDefinitionIterator, PythonFile, SuperFile, dotted_path_from_dir,
