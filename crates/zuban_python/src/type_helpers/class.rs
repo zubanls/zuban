@@ -741,7 +741,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let TypeOrClass::Class(c) = c else { continue };
             let protocol_members = &c.use_cached_class_infos(db).protocol_members;
             for protocol_member in protocol_members.iter() {
-                let name_node_ref = NodeRef::new(self.node_ref.file, protocol_member.name_index);
+                let name_node_ref = NodeRef::new(c.node_ref.file, protocol_member.name_index);
                 if !matches!(
                     name_node_ref.expect_name().expect_type(),
                     TypeLike::Function(_)
