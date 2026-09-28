@@ -293,7 +293,9 @@ impl TypeVarMatcher {
                     let Some(current) =
                         self.calculating_type_args.get_mut(usage.index().as_usize())
                     else {
-                        recoverable_error!("Wanted to set a TypeVar to Any that does not exist");
+                        recoverable_error!(
+                            "Wanted to set a TypeVar to Any that does not exist, matcher={matcher_index}"
+                        );
                         return;
                     };
                     if current.calculated() {
