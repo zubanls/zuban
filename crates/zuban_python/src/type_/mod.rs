@@ -544,11 +544,7 @@ impl Type {
         match entries.len() {
             0 => Type::NEVER,
             1 => entries.into_iter().next().unwrap().type_,
-            _ => {
-                let mut union = UnionType::new(entries, might_have_defined_type_vars);
-                union.sort_for_priority();
-                Type::Union(union)
-            }
+            _ => Type::Union(UnionType::new(entries, might_have_defined_type_vars)),
         }
     }
 
@@ -1091,11 +1087,12 @@ impl Type {
     pub fn union(self, other: Self) -> Self {
         let entries = match self {
             Self::Union(u1) => {
-                let mut vec = u1.entries.into_vec();
+                let mut vec = u1.entries.to_vec();
                 match other {
                     Self::Union(u2) => {
-                        for mut o in u2.entries.into_vec().into_iter() {
+                        for o in u2.entries.iter() {
                             if !vec.iter().any(|e| e.type_ == o.type_) {
+                                let mut o = o.clone();
                                 o.format_index = vec.len();
                                 vec.push(o);
                             }
@@ -1119,7 +1116,7 @@ impl Type {
                     if u.iter().any(|t| t == &self) {
                         return Self::Union(u);
                     } else {
-                        let mut vec = u.entries.into_vec();
+                        let mut vec = u.entries.to_vec();
                         vec.push(UnionEntry {
                             type_: self,
                             format_index: vec.len(),
@@ -1145,13 +1142,9 @@ impl Type {
                 }
             },
         };
-        let mut t = UnionType {
-            entries: entries.into_boxed_slice(),
-            // TODO should we calculate this?
-            might_have_type_vars: true,
-        };
-        t.sort_for_priority();
-        Self::Union(t)
+        Self::Union(UnionType::new(
+            entries, true, // TODO should we calculate this?
+        ))
     }
 
     pub fn union_in_place(&mut self, other: Type) {

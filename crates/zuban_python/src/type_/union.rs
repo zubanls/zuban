@@ -342,15 +342,16 @@ impl Hash for UnionType {
 
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct UnionType {
-    pub entries: Box<[UnionEntry]>,
+    pub entries: Arc<[UnionEntry]>,
     pub might_have_type_vars: bool,
 }
 
 impl UnionType {
-    pub fn new(entries: Vec<UnionEntry>, might_have_type_vars: bool) -> Self {
+    pub fn new(mut entries: Vec<UnionEntry>, might_have_type_vars: bool) -> Self {
         debug_assert!(entries.len() > 1);
+        Self::sort_for_priority(&mut entries);
         Self {
-            entries: entries.into_boxed_slice(),
+            entries: entries.into(),
             might_have_type_vars,
         }
     }
@@ -373,8 +374,8 @@ impl UnionType {
         self.entries.iter().map(|u| &u.type_)
     }
 
-    pub fn sort_for_priority(&mut self) {
-        self.entries.sort_by_key(|t| match t.type_ {
+    pub fn sort_for_priority(entries: &mut Vec<UnionEntry>) {
+        entries.sort_by_key(|t| match t.type_ {
             Type::Literal(_) | Type::EnumMember(_) => -1,
             Type::None => 2,
             Type::TypeVar(_) => 3,

@@ -2662,7 +2662,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Type::Never(_) => continue,
                 Type::Union(u) => {
                     let length = u.entries.len();
-                    for mut new_entry in u.entries.into_vec() {
+                    for e in u.entries.iter() {
+                        let mut new_entry = e.clone();
                         new_entry.format_index += format_index;
                         entries.push(new_entry);
                     }
@@ -2696,11 +2697,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
         }
         let t = self.compute_slice_type(first);
-        let mut t = t.union(Type::None);
-        if let Type::Union(union_type) = &mut t {
-            union_type.sort_for_priority();
-        };
-        TypeContent::Type(t)
+        TypeContent::Type(t.union(Type::None))
     }
 
     fn compute_type_get_item_on_type(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -2876,7 +2873,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Type::Union(u) => {
                                 let mut highest = 0;
                                 let start_format_index = format_index.get();
-                                EitherIterator::Left(u.entries.into_vec().into_iter().map(
+                                EitherIterator::Left(u.entries.to_vec().into_iter().map(
                                     move |mut e| {
                                         highest = highest.max(e.format_index);
                                         format_index.set(start_format_index + highest + 1);

@@ -345,11 +345,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let mut unioned = Type::Never(NeverCause::Other);
                 let mut first_similar = None;
                 let mut mismatch = false;
-                for entry in u.into_owned().entries.into_vec().into_iter() {
+                for entry in u.entries.iter() {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
-                        inferred: Inferred::from_type(entry.type_),
+                        inferred: Inferred::from_type(entry.type_.clone()),
                     };
                     let r = self.check_union_math(
                         i_s,
