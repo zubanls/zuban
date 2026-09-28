@@ -11,6 +11,7 @@ mod lookup_result;
 mod matching;
 mod named_tuple;
 mod namespace;
+mod new_type;
 mod operations;
 mod overlaps;
 mod recursive_type;
@@ -35,9 +36,9 @@ use vfs::FileIndex;
 
 pub(crate) use self::{
     callable::*, custom_behavior::*, dataclass::*, enum_::*, generics::*, intersection::*,
-    literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*, operations::*,
-    recursive_type::*, replace::*, sentinel::*, tuple::*, type_var_likes::*, typed_dict::*,
-    union::*,
+    literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*, new_type::*,
+    operations::*, recursive_type::*, replace::*, sentinel::*, tuple::*, type_var_likes::*,
+    typed_dict::*, union::*,
 };
 use crate::{
     database::{Database, PointLink},
@@ -49,9 +50,7 @@ use crate::{
     inferred::Inferred,
     match_::{Match, MismatchReason},
     matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType, Matcher},
-    new_class,
-    node_ref::NodeRef,
-    recoverable_error,
+    new_class, recoverable_error,
     type_::union::IntoUnionEntry,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,
@@ -1709,61 +1708,6 @@ impl FromIterator<Type> for Type {
             result.union_in_place(t)
         }
         result
-    }
-}
-
-#[derive(Debug, Clone, Eq)]
-pub(crate) struct NewType {
-    pub name_node: PointLink,
-    pub name_string: PointLink,
-    pub type_: Type,
-}
-
-impl NewType {
-    pub fn new(name_node: PointLink, name_string: PointLink, type_: Type) -> Self {
-        Self {
-            name_node,
-            name_string,
-            type_,
-        }
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match format_data.style {
-            FormatStyle::Short if !format_data.should_format_qualified(self.name_string) => {
-                self.name(format_data.db).into()
-            }
-            _ => self.qualified_name(format_data.db),
-        }
-    }
-
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        NodeRef::from_link(db, self.name_string)
-            .maybe_str()
-            .unwrap()
-            .content()
-    }
-
-    pub fn qualified_name(&self, db: &Database) -> Box<str> {
-        let node_ref = NodeRef::from_link(db, self.name_string);
-        format!(
-            "{}.{}",
-            node_ref.file.qualified_name(db),
-            node_ref.maybe_str().unwrap().content()
-        )
-        .into()
-    }
-}
-
-impl PartialEq for NewType {
-    fn eq(&self, other: &Self) -> bool {
-        self.name_string == other.name_string
-    }
-}
-
-impl Hash for NewType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name_string.hash(state);
     }
 }
 
