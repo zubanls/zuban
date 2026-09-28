@@ -16,7 +16,7 @@ use crate::{
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
-    type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
+    type_::{FormatStyle, FunctionOverload, TupleArgs, TypeVarLikeUsage},
     type_helpers::{Class, TypeOrClass},
     utils::join_with_commas,
 };

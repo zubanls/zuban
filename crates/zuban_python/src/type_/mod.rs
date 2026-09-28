@@ -23,13 +23,7 @@ mod typed_dict;
 mod union;
 mod utils;
 
-use std::{
-    borrow::Cow,
-    cell::Cell,
-    hash::{Hash, Hasher},
-    mem,
-    sync::Arc,
-};
+use std::{borrow::Cow, cell::Cell, hash::Hash, mem, sync::Arc};
 
 use typed_dict::rc_typed_dict_as_callable;
 use vfs::FileIndex;
