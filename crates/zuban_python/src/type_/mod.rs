@@ -9,6 +9,7 @@ mod literal;
 mod lookup_result;
 mod matching;
 mod named_tuple;
+mod namespace;
 mod operations;
 mod overlaps;
 mod recursive_type;
@@ -29,18 +30,18 @@ use std::{
 };
 
 use typed_dict::rc_typed_dict_as_callable;
-use vfs::{Directory, FileIndex};
+use vfs::FileIndex;
 
 pub(crate) use self::{
     callable::*, custom_behavior::*, dataclass::*, enum_::*, intersection::*, literal::*,
-    lookup_result::*, matching::*, named_tuple::*, operations::*, recursive_type::*, replace::*,
-    sentinel::*, tuple::*, type_var_likes::*, typed_dict::*, union::*,
+    lookup_result::*, matching::*, named_tuple::*, namespace::*, operations::*, recursive_type::*,
+    replace::*, sentinel::*, tuple::*, type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{
     database::{Database, PointLink},
     debug,
     diagnostics::IssueKind,
-    file::{ClassNodeRef, dotted_path_from_dir},
+    file::ClassNodeRef,
     format_data::{AvoidRecursionFor, FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -214,39 +215,6 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
         &self.0[index.0 as usize]
     }
 }
-
-#[derive(Debug, Clone)]
-pub(crate) struct Namespace {
-    pub directories: Arc<[Arc<Directory>]>,
-}
-
-impl Namespace {
-    pub fn qualified_name(&self) -> String {
-        dotted_path_from_dir(self.directories.first().unwrap())
-    }
-
-    pub fn debug_path(&self, db: &Database) -> String {
-        join_with_commas(
-            self.directories
-                .iter()
-                .map(|d| d.absolute_path(&*db.vfs.handler).path().to_string()),
-        )
-    }
-}
-
-impl std::cmp::PartialEq for Namespace {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.directories, &other.directories)
-    }
-}
-
-impl Hash for Namespace {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        Arc::as_ptr(&self.directories).hash(state);
-    }
-}
-
-impl std::cmp::Eq for Namespace {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
