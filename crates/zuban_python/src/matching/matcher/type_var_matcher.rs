@@ -290,7 +290,12 @@ impl TypeVarMatcher {
             if usage.in_definition() == self.match_in_definition {
                 let temporary_matcher_id = usage.temporary_matcher_id();
                 if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {
-                    let current = &mut self.calculating_type_args[usage.index().as_usize()];
+                    let Some(current) =
+                        self.calculating_type_args.get_mut(usage.index().as_usize())
+                    else {
+                        recoverable_error!("Wanted to set a TypeVar to Any that does not exist");
+                        return;
+                    };
                     if current.calculated() {
                         if let Bound::Upper(upper) = &current.type_ {
                             // This is a bit of a special case, but happens typically when the
