@@ -1196,3 +1196,63 @@ impl FunctionKind {
         }
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub(crate) enum CallableLike {
+    Callable(Arc<CallableContent>),
+    Overload(FunctionOverload),
+}
+
+impl CallableLike {
+    pub fn from_overload_funcs(funcs: Arc<[Arc<CallableContent>]>) -> Option<Self> {
+        Some(match funcs.len() {
+            0 => return None,
+            1 => Self::Callable(funcs.iter().next().unwrap().clone()),
+            _ => Self::Overload(FunctionOverload::new(funcs)),
+        })
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        match self {
+            Self::Callable(c) => c.format(format_data),
+            Self::Overload(overload) => format!(
+                "Overload({})",
+                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
+            ),
+        }
+    }
+
+    pub fn is_typed(&self, skip_first_param: bool) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed(skip_first_param),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed(skip_first_param)),
+        }
+    }
+
+    pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed_and_annotated_result(db),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed_and_annotated_result(db)),
+        }
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Callable(c) => c.kind.had_first_self_or_class_annotation(),
+            Self::Overload(o) => o.kind().had_first_self_or_class_annotation(),
+        }
+    }
+}
+
+impl From<CallableLike> for Type {
+    fn from(callable: CallableLike) -> Self {
+        match callable {
+            CallableLike::Callable(c) => Type::Callable(c),
+            CallableLike::Overload(o) => Type::FunctionOverload(o),
+        }
+    }
+}
