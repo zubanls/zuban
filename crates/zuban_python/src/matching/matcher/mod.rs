@@ -238,6 +238,11 @@ impl<'a> Matcher<'a> {
                 .any(|tvm| tvm.match_in_definition == c2.defined_at)
                 && let Some(new) = c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len)
             {
+                debug!(
+                    "Changed type {} to use temporary matcher id {}",
+                    new.format(&FormatData::new_short(i_s.db)),
+                    type_var_matchers_len
+                );
                 c2 = Cow::Owned(new);
             }
             self.type_var_matchers

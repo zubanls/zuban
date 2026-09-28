@@ -734,10 +734,11 @@ impl CallableContent {
         self.replace_type_var_likes_and_self(
             db,
             &mut |mut usage| {
-                (usage.in_definition() == self.defined_at).then(|| {
-                    usage.update_temporary_matcher_index(temporary_matcher_index);
-                    usage.into_generic_item()
-                })
+                (usage.in_definition() == self.defined_at && usage.temporary_matcher_id() == 0)
+                    .then(|| {
+                        usage.update_temporary_matcher_index(temporary_matcher_index);
+                        usage.into_generic_item()
+                    })
             },
             &|| None,
         )
