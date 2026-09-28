@@ -4,8 +4,8 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple,
-    Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    AnyCause, DbString, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
+    TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
     TypedDict,
 };
 use crate::{
@@ -1123,5 +1123,76 @@ fn format_tuple_unpack(tup: &Arc<Tuple>, format_data: &FormatData) -> FormatTupl
             }
             TupleArgs::ArbitraryLen(t) => t.format(format_data).into_string(),
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum PropertySetterType {
+    SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
+    OtherType(Type),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct PropertySetter {
+    pub type_: PropertySetterType,
+    pub deprecated_reason: Option<Arc<Box<str>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum FunctionKind {
+    Function {
+        had_first_self_or_class_annotation: bool,
+    },
+    Property {
+        had_first_self_or_class_annotation: bool,
+        setter_type: Option<Arc<PropertySetter>>,
+    },
+    Classmethod {
+        had_first_self_or_class_annotation: bool,
+    },
+    Staticmethod,
+}
+
+impl FunctionKind {
+    pub fn is_same_base_kind(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Function { .. }, Self::Function { .. })
+                | (Self::Property { .. }, Self::Property { .. })
+                | (Self::Classmethod { .. }, Self::Classmethod { .. })
+                | (Self::Staticmethod, Self::Staticmethod)
+        )
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation,
+            Self::Staticmethod => true,
+        }
+    }
+
+    pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation = new_value,
+            Self::Staticmethod => (),
+        }
     }
 }

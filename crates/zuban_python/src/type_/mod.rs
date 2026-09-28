@@ -33,10 +33,10 @@ use vfs::{Directory, FileIndex};
 
 pub(crate) use self::{
     callable::{
-        CallableContent, CallableParam, CallableParams, ParamType, ParamTypeDetails,
-        PrettyCallableOptions, StarParamType, StarStarParamType, TypeGuardInfo,
-        WrongPositionalCount, add_any_params_to_params, add_param_spec_to_params,
-        format_callable_params, format_params_as_param_spec,
+        CallableContent, CallableParam, CallableParams, FunctionKind, ParamType, ParamTypeDetails,
+        PrettyCallableOptions, PropertySetter, PropertySetterType, StarParamType,
+        StarStarParamType, TypeGuardInfo, WrongPositionalCount, add_any_params_to_params,
+        add_param_spec_to_params, format_callable_params, format_params_as_param_spec,
     },
     custom_behavior::CustomBehavior,
     dataclass::{
@@ -2004,77 +2004,6 @@ impl FromIterator<Type> for Type {
             result.union_in_place(t)
         }
         result
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum PropertySetterType {
-    SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
-    OtherType(Type),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct PropertySetter {
-    pub type_: PropertySetterType,
-    pub deprecated_reason: Option<Arc<Box<str>>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum FunctionKind {
-    Function {
-        had_first_self_or_class_annotation: bool,
-    },
-    Property {
-        had_first_self_or_class_annotation: bool,
-        setter_type: Option<Arc<PropertySetter>>,
-    },
-    Classmethod {
-        had_first_self_or_class_annotation: bool,
-    },
-    Staticmethod,
-}
-
-impl FunctionKind {
-    pub fn is_same_base_kind(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (Self::Function { .. }, Self::Function { .. })
-                | (Self::Property { .. }, Self::Property { .. })
-                | (Self::Classmethod { .. }, Self::Classmethod { .. })
-                | (Self::Staticmethod, Self::Staticmethod)
-        )
-    }
-
-    pub fn had_first_self_or_class_annotation(&self) -> bool {
-        match self {
-            Self::Function {
-                had_first_self_or_class_annotation,
-            }
-            | Self::Property {
-                had_first_self_or_class_annotation,
-                ..
-            }
-            | Self::Classmethod {
-                had_first_self_or_class_annotation,
-            } => *had_first_self_or_class_annotation,
-            Self::Staticmethod => true,
-        }
-    }
-
-    pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
-        match self {
-            Self::Function {
-                had_first_self_or_class_annotation,
-            }
-            | Self::Property {
-                had_first_self_or_class_annotation,
-                ..
-            }
-            | Self::Classmethod {
-                had_first_self_or_class_annotation,
-            } => *had_first_self_or_class_annotation = new_value,
-            Self::Staticmethod => (),
-        }
     }
 }
 
