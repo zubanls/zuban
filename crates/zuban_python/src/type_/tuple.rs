@@ -460,6 +460,24 @@ impl Tuple {
             None,
         )
     }
+
+    pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Arc<Self>> {
+        if let TupleArgs::FixedLen(ts) = &self.args
+            && ts
+                .iter()
+                .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
+        {
+            let mut gathered = vec![];
+            for t in ts.iter() {
+                gathered.push(
+                    t.maybe_avoid_implicit_literal(db)
+                        .unwrap_or_else(|| t.clone()),
+                )
+            }
+            return Some(Tuple::new_fixed_length(gathered.into()));
+        }
+        None
+    }
 }
 
 impl PartialEq for Tuple {
