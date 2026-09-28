@@ -895,3 +895,15 @@ class C(Protocol):
         pass
 
 x: C = int  # type: ignore
+
+[case protocol_get_override_should_not_crash]
+from typing import Protocol, TypeVar, Self, overload, Any
+
+T = TypeVar('T')
+
+class PropertyLike(Protocol):
+    @overload
+    def __get__(self, instance: None, owner: type[T]) -> Self: ...
+    @overload
+    def __get__(self, instance: T, owner: type[T] | None = None) -> Any: ...
+    def __get__(self, instance: T | None, owner: type[T] | None = None) -> Any | Self: ...
