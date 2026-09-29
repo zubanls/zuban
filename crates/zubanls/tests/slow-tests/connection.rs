@@ -3,8 +3,8 @@ use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
 use lsp_types::{
-    DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, InitializeResult,
-    ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
+    DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, GotoCapability,
+    InitializeResult, ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -109,6 +109,10 @@ impl Connection {
                     hierarchical_document_symbol_support: Some(
                         hierarchical_document_symbol_support,
                     ),
+                    ..Default::default()
+                }),
+                definition: Some(GotoCapability {
+                    link_support: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()

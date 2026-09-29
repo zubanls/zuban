@@ -347,18 +347,18 @@ impl GlobalState<'_> {
         let has_location_link_support = self.client_capabilities.location_link();
         let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
         let response = if has_location_link_support {
-            let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
-            if result.is_empty() {
-                return Ok(None);
-            }
-            result.into()
-        } else {
             let result = run_for_location_link(document, pos, &|name| LocationLink {
                 target_uri: to_uri(name.file_uri()),
                 target_range: Self::to_range(encoding, name.target_range()),
                 origin_selection_range: None,
                 target_selection_range: Self::to_range(encoding, name.name_range()),
             })?;
+            if result.is_empty() {
+                return Ok(None);
+            }
+            result.into()
+        } else {
+            let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
             if result.is_empty() {
                 return Ok(None);
             }
