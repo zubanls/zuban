@@ -59,28 +59,6 @@ pub(crate) fn empty_types() -> Arc<[Type]> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
-
-impl FunctionOverload {
-    pub fn new(functions: Arc<[Arc<CallableContent>]>) -> Self {
-        debug_assert!(!functions.is_empty());
-        Self(functions)
-    }
-
-    pub fn kind(&self) -> &FunctionKind {
-        &self.0[0].kind
-    }
-
-    pub fn is_abstract(&self) -> bool {
-        self.0[0].is_abstract
-    }
-
-    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
-        self.0.iter()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct GenericClass {
     pub link: PointLink,
     pub generics: ClassGenerics,

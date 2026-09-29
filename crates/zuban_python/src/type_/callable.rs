@@ -16,7 +16,7 @@ use crate::{
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
-    type_::{FormatStyle, FunctionOverload, TupleArgs, TypeVarLikeUsage},
+    type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::{Class, TypeOrClass},
     utils::join_with_commas,
 };
@@ -1254,5 +1254,27 @@ impl From<CallableLike> for Type {
             CallableLike::Callable(c) => Type::Callable(c),
             CallableLike::Overload(o) => Type::FunctionOverload(o),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
+
+impl FunctionOverload {
+    pub fn new(functions: Arc<[Arc<CallableContent>]>) -> Self {
+        debug_assert!(!functions.is_empty());
+        Self(functions)
+    }
+
+    pub fn kind(&self) -> &FunctionKind {
+        &self.0[0].kind
+    }
+
+    pub fn is_abstract(&self) -> bool {
+        self.0[0].is_abstract
+    }
+
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
+        self.0.iter()
     }
 }
