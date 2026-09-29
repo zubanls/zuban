@@ -347,9 +347,8 @@ pub(crate) struct UnionType {
 }
 
 impl UnionType {
-    pub fn new(mut entries: Vec<UnionEntry>, might_have_type_vars: bool) -> Self {
+    pub fn new(entries: Vec<UnionEntry>, might_have_type_vars: bool) -> Self {
         debug_assert!(entries.len() > 1);
-        Self::sort_for_priority(&mut entries);
         Self {
             entries: entries.into(),
             might_have_type_vars,
@@ -372,17 +371,6 @@ impl UnionType {
 
     pub fn iter(&self) -> impl Iterator<Item = &Type> + Clone {
         self.entries.iter().map(|u| &u.type_)
-    }
-
-    pub fn sort_for_priority(entries: &mut Vec<UnionEntry>) {
-        entries.sort_by_key(|t| match t.type_ {
-            Type::Literal(_) | Type::EnumMember(_) => -1,
-            Type::None => 2,
-            Type::TypeVar(_) => 3,
-            Type::Any(_) => 4,
-            Type::Intersection(_) => 0,
-            _ => t.type_.has_type_vars().into(),
-        });
     }
 
     pub fn bool_literal_count(&self) -> usize {
