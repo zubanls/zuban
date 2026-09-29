@@ -58,110 +58,6 @@ pub(crate) fn empty_types() -> Arc<[Type]> {
     EMPTY_TYPES.with(|t| t.clone())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct GenericClass {
-    pub link: PointLink,
-    pub generics: ClassGenerics,
-}
-
-impl GenericClass {
-    pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
-        Class::from_generic_class_components(db, self.link, &self.generics)
-    }
-
-    pub fn node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
-        ClassNodeRef::from_link(db, self.link)
-    }
-}
-
-enum TypeIterator<'x, Iter> {
-    Single(&'x Type),
-    Union(Iter),
-    Finished,
-}
-
-impl<'x, Iter: Iterator<Item = IntoUnionEntry<'x>>> Iterator for TypeIterator<'x, Iter> {
-    type Item = IntoUnionEntry<'x>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Single(_) => {
-                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
-                    unreachable!();
-                };
-                Some(IntoUnionEntry {
-                    format_index: 0,
-                    type_,
-                })
-            }
-            Self::Union(items) => items.next(),
-            Self::Finished => None,
-        }
-    }
-}
-
-enum TypeRefIterator<'a, Iter> {
-    Single(&'a Type),
-    Union(Iter),
-    Finished,
-}
-
-impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter> {
-    type Item = &'a Type;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Single(_) => {
-                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
-                    unreachable!();
-                };
-                Some(type_)
-            }
-            Self::Union(items) => items.next(),
-            Self::Finished => None,
-        }
-    }
-}
-
-struct RecursiveTypeIterator<'a, Iter> {
-    db: &'a Database,
-    include_never: bool,
-    current_recursive_type: Option<Box<dyn Iterator<Item = &'a Type> + 'a>>,
-    types: TypeRefIterator<'a, Iter>,
-}
-
-impl<'a, Iter> RecursiveTypeIterator<'a, Iter> {
-    fn new(db: &'a Database, include_never: bool, types: TypeRefIterator<'a, Iter>) -> Self {
-        Self {
-            db,
-            include_never,
-            current_recursive_type: None,
-            types,
-        }
-    }
-}
-
-impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for RecursiveTypeIterator<'a, Iter> {
-    type Item = &'a Type;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(rec) = self.current_recursive_type.as_mut()
-            && let next @ Some(_) = rec.next()
-        {
-            return next;
-        }
-        let next = self.types.next()?;
-        if matches!(next, Type::RecursiveType(_)) {
-            self.current_recursive_type = Some(Box::new(
-                next.iter_with_unpacked_unions_and_maybe_include_never(self.db, self.include_never),
-            ));
-            self.next()
-        } else {
-            Some(next)
-        }
-    }
-}
-
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -449,11 +345,6 @@ impl Type {
         }
     }
 
-    pub fn valid_in_type_form_assignment(&self, db: &Database) -> bool {
-        self.iter_with_unpacked_unions(db)
-            .all(|t| matches!(t, Type::TypeForm(_) | Type::Type(_) | Type::None))
-    }
-
     pub fn iter_with_unpacked_unions_without_unpacking_recursive_types(
         &self,
     ) -> impl Iterator<Item = &Type> {
@@ -527,6 +418,11 @@ impl Type {
             Type::Never(_) => 0,
             _ => 1,
         }
+    }
+
+    pub fn valid_in_type_form_assignment(&self, db: &Database) -> bool {
+        self.iter_with_unpacked_unions(db)
+            .all(|t| matches!(t, Type::TypeForm(_) | Type::Type(_) | Type::None))
     }
 
     #[inline]
@@ -1680,6 +1576,110 @@ impl FromIterator<Type> for Type {
             result.union_in_place(t)
         }
         result
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct GenericClass {
+    pub link: PointLink,
+    pub generics: ClassGenerics,
+}
+
+impl GenericClass {
+    pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
+        Class::from_generic_class_components(db, self.link, &self.generics)
+    }
+
+    pub fn node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
+        ClassNodeRef::from_link(db, self.link)
+    }
+}
+
+enum TypeIterator<'x, Iter> {
+    Single(&'x Type),
+    Union(Iter),
+    Finished,
+}
+
+impl<'x, Iter: Iterator<Item = IntoUnionEntry<'x>>> Iterator for TypeIterator<'x, Iter> {
+    type Item = IntoUnionEntry<'x>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Single(_) => {
+                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
+                    unreachable!();
+                };
+                Some(IntoUnionEntry {
+                    format_index: 0,
+                    type_,
+                })
+            }
+            Self::Union(items) => items.next(),
+            Self::Finished => None,
+        }
+    }
+}
+
+enum TypeRefIterator<'a, Iter> {
+    Single(&'a Type),
+    Union(Iter),
+    Finished,
+}
+
+impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter> {
+    type Item = &'a Type;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Single(_) => {
+                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
+                    unreachable!();
+                };
+                Some(type_)
+            }
+            Self::Union(items) => items.next(),
+            Self::Finished => None,
+        }
+    }
+}
+
+struct RecursiveTypeIterator<'a, Iter> {
+    db: &'a Database,
+    include_never: bool,
+    current_recursive_type: Option<Box<dyn Iterator<Item = &'a Type> + 'a>>,
+    types: TypeRefIterator<'a, Iter>,
+}
+
+impl<'a, Iter> RecursiveTypeIterator<'a, Iter> {
+    fn new(db: &'a Database, include_never: bool, types: TypeRefIterator<'a, Iter>) -> Self {
+        Self {
+            db,
+            include_never,
+            current_recursive_type: None,
+            types,
+        }
+    }
+}
+
+impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for RecursiveTypeIterator<'a, Iter> {
+    type Item = &'a Type;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(rec) = self.current_recursive_type.as_mut()
+            && let next @ Some(_) = rec.next()
+        {
+            return next;
+        }
+        let next = self.types.next()?;
+        if matches!(next, Type::RecursiveType(_)) {
+            self.current_recursive_type = Some(Box::new(
+                next.iter_with_unpacked_unions_and_maybe_include_never(self.db, self.include_never),
+            ));
+            self.next()
+        } else {
+            Some(next)
+        }
     }
 }
 
