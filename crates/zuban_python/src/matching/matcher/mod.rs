@@ -325,6 +325,12 @@ impl<'a> Matcher<'a> {
     }
 
     #[inline]
+    pub fn has_responsible_type_var_matcher(&self, tv2: &TypeVarUsage) -> bool {
+        self.find_responsible_type_var_matcher_index(tv2.in_definition, tv2.temporary_matcher_id)
+            .is_some()
+    }
+
+    #[inline]
     pub fn has_responsible_type_var_tuple_matcher(&self, tvt2: &TypeVarTupleUsage) -> bool {
         self.find_responsible_type_var_matcher_index(tvt2.in_definition, tvt2.temporary_matcher_id)
             .is_some()

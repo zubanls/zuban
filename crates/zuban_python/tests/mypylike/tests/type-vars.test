@@ -550,3 +550,11 @@ AnyStr = list[AnyStr]  # E: Invalid type comment or annotation
 
 def f(x: AnyStr) -> None:
     assert_type(x, list[Any])
+
+[case list_addition_with_context]
+# From GH #437
+def func(total: int, start: int) -> list[str | None]:
+    if bool():
+        return [None] * start + ["a"] * (total - start)
+    else:
+        return [None] * start + ["a"] * (total + start)
