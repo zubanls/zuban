@@ -6,7 +6,7 @@ use super::{
     ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, PropertySetter, RecursiveType,
     StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
-    TypedDictGenerics, UnionEntry, UnionType, callable::add_param_spec_to_params,
+    TypedDictGenerics, UnionType, callable::add_param_spec_to_params,
     simplified_union_from_iterators_with_format_index, type_var_likes::CallableId,
 };
 use crate::{
@@ -225,11 +225,8 @@ impl Type {
                 })?),
             )),
             Type::Union(u) => Some(Type::Union(UnionType::new(
-                maybe_replace_iterable(u.entries.iter(), |union_entry| {
-                    Some(UnionEntry {
-                        type_: union_entry.type_.replace_internal(replacer)?,
-                        format_index: union_entry.format_index,
-                    })
+                maybe_replace_iterable(u.iter(), |union_entry| {
+                    union_entry.replace_internal(replacer)
                 })?,
                 u.might_have_type_vars,
             ))),
@@ -953,33 +950,23 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                     return Some(None);
                 }
                 let mut new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
-                    Some(UnionEntry {
+                    Some(
                         // Performance: It is a bit questionable that this always clones.
                         // The problem is that if it doesn't, we won't use simplified union
                         // logic in all cases.
                         // Perhaps we should find a way to check whether this we are in a
                         // simplified union case. But this is generally tricky. And might
                         // also intensify workloads.
-                        type_: u.type_.replace_internal(self)?,
-                        format_index: u.format_index,
-                    })
+                        u.replace_internal(self)?,
+                    )
                 })?;
                 Some(Some(if self.simplify_unions {
                     let i_s = InferenceState::new_in_unknown_file(self.db);
-                    let highest_union_format_index = new_entries
-                        .iter()
-                        .map(|e| e.type_.highest_union_format_index())
-                        .max()
-                        .unwrap();
-                    simplified_union_from_iterators_with_format_index(
-                        &i_s,
-                        new_entries.iter().map(|e| (e.format_index, &e.type_)),
-                        highest_union_format_index,
-                    )
+                    simplified_union_from_iterators_with_format_index(&i_s, new_entries.iter())
                 } else {
                     let mut seen = HashSet::new();
                     // Try to remove duplicates
-                    new_entries.retain(|entry| seen.insert(entry.type_.clone()));
+                    new_entries.retain(|entry| seen.insert(entry.clone()));
                     Type::from_union_entries(new_entries, true)
                 }))
             }

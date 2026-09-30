@@ -43,7 +43,7 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
-        TypeVarKind, TypedDict, UnionEntry, UnionType, WithUnpack, lookup_on_enum_instance,
+        TypeVarKind, TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
         simplified_union_from_iterators_with_format_index,
     },
     type_helpers::{
@@ -3027,13 +3027,13 @@ impl<'file> Inference<'_, 'file, '_> {
             EntryKind::OriginalDeclaration => return None,
         };
         let mut matching_entries = vec![];
-        for union_entry in base_union.entries.iter() {
-            let (inf, had_error) = replay(&union_entry.type_);
+        for entry in base_union.iter() {
+            let (inf, had_error) = replay(entry);
             if had_error {
                 return None;
             }
             if inf.as_cow_type(self.i_s).simple_overlaps(self.i_s, child_t) {
-                matching_entries.push(union_entry.clone());
+                matching_entries.push(entry.clone());
             }
         }
         (base_union.entries.len() != matching_entries.len())
@@ -3182,8 +3182,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         Type::from_union_entries(
                             of_type
                                 .iter_with_unpacked_unions(i_s.db)
-                                .enumerate()
-                                .filter_map(|(format_index, t)| {
+                                .filter_map(|t| {
                                     match t {
                                         Type::Class(c) if *t == expected => (),
                                         Type::TypeVar(_) | Type::Any(_) => (),
@@ -3193,10 +3192,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                             }
                                         }
                                     };
-                                    Some(UnionEntry {
-                                        format_index,
-                                        type_: t.clone(),
-                                    })
+                                    Some(t.clone())
                                 })
                                 .collect(),
                             true,
@@ -5780,7 +5776,7 @@ fn split_and_intersect(
     let mut other_side = Type::Never(NeverCause::Other);
     let matcher = &mut Matcher::with_ignored_promotions();
     let mut type_var_split = false;
-    for e in original_t.iter_with_unpacked_union_entries(i_s.db, true) {
+    for e in original_t.iter_with_unpacked_unions(i_s.db) {
         let mut split = |t: &Type| {
             let mut matched = false;
             let mut matched_with_any = true;
@@ -5811,74 +5807,55 @@ fn split_and_intersect(
                     }
                     Match::False { .. } => {
                         if isinstance_t.is_sub_type_of(i_s, matcher, t).bool() {
-                            true_types.push((e.format_index, isinstance_t.clone()));
+                            true_types.push(isinstance_t.clone());
                         }
                     }
                 }
             }
             if matched {
                 if matched_with_any {
-                    true_types.push((e.format_index, isinstance_type.clone()));
+                    true_types.push(isinstance_type.clone());
                     other_side.union_in_place(t.clone());
                 } else {
                     // This used to just use union_in_place. However this caused problems with bool
                     // | int, which could not be added to complex. I'm still not sure what's
                     // correct here. This feels like a very weird consequence of type promotions.
                     // This caused issues when type checking Mypy.
-                    true_types.push((e.format_index, t.clone()));
+                    true_types.push(t.clone());
                 }
             } else {
                 other_side.union_in_place(t.clone())
             }
             if let Some(any) = had_any {
-                // This piece of code is completely weird and only needed because of the weird
-                // Any ordering.
-                if matches!(isinstance_type, Type::Union(u) if u.entries.first().unwrap().format_index > 0)
-                {
-                    true_types.push((0, any));
-                } else {
-                    true_types.push((e.format_index, any));
-                }
+                true_types.push(any);
             }
         };
-        let t = e.type_;
-        match t {
+        match e {
             Type::Type(inner) => match inner.as_ref() {
                 Type::Union(union) => {
                     for inner in union.iter() {
                         split(&Type::Type(Arc::new(inner.clone())))
                     }
                 }
-                _ => split(t),
+                _ => split(e),
             },
             Type::Any(_) => {
-                true_types.push((e.format_index, isinstance_type.clone()));
-                other_side.union_in_place(t.clone())
+                true_types.push(isinstance_type.clone());
+                other_side.union_in_place(e.clone())
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
-                if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
+                if let Some(new) = intersect(i_s, e, isinstance_type, &mut add_issue) {
                     type_var_split = true;
-                    true_types.push((e.format_index, new.into_owned()));
-                    other_side.union_in_place(t.clone())
+                    true_types.push(new.into_owned());
+                    other_side.union_in_place(e.clone())
                 } else {
-                    split(t)
+                    split(e)
                 }
             }
-            _ => split(t),
+            _ => split(e),
         }
     }
-    let highest_union_format_index = true_types
-        .iter()
-        .map(|(format_index, _)| *format_index)
-        .max()
-        .unwrap_or(0);
-    let mut true_type = simplified_union_from_iterators_with_format_index(
-        i_s,
-        true_types
-            .iter()
-            .map(|(format_index, t)| (*format_index, t)),
-        highest_union_format_index,
-    );
+    let mut true_type = simplified_union_from_iterators_with_format_index(i_s, true_types.iter());
     if true_type.is_never() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
             true_type = isinstance_type.clone();

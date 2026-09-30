@@ -45,7 +45,6 @@ use crate::{
     match_::{Match, MismatchReason},
     matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType, Matcher},
     new_class, recoverable_error,
-    type_::union::IntoUnionEntry,
     type_helpers::{Class, Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,
 };
@@ -109,13 +108,10 @@ impl Type {
     pub const ERROR: Self = Self::Any(AnyCause::FromError);
     pub const NEVER: Self = Self::Never(NeverCause::Other);
 
-    pub fn from_union_entries(
-        entries: Vec<UnionEntry>,
-        might_have_defined_type_vars: bool,
-    ) -> Self {
+    pub fn from_union_entries(entries: Vec<Type>, might_have_defined_type_vars: bool) -> Self {
         match entries.len() {
             0 => Type::NEVER,
-            1 => entries.into_iter().next().unwrap().type_,
+            1 => entries.into_iter().next().unwrap(),
             _ => Type::Union(UnionType::new(entries, might_have_defined_type_vars)),
         }
     }
@@ -133,14 +129,8 @@ impl Type {
         match self {
             Type::Union(u) => Some(Cow::Borrowed(u)),
             Type::Type(t) => t.maybe_union_like(db).map(|u| {
-                Cow::Owned(UnionType::new(
-                    u.entries
-                        .iter()
-                        .map(|e| UnionEntry {
-                            type_: Type::Type(Arc::new(e.type_.clone())),
-                            format_index: e.format_index,
-                        })
-                        .collect(),
+                Cow::Owned(UnionType::from_types(
+                    u.entries.iter().map(|e| Type::Type(Arc::new(e.clone()))),
                     u.might_have_type_vars,
                 ))
             }),
@@ -257,9 +247,9 @@ impl Type {
             _ => true,
         };
         Some(Type::from_union_entries(
-            self.iter_with_unpacked_union_entries(db, true)
-                .filter(|e| !matches!(e.type_, Type::Any(_)))
-                .map(|e| e.into())
+            self.iter_with_unpacked_unions(db)
+                .filter(|e| !e.is_any())
+                .map(|e| e.clone())
                 .collect(),
             might_have_defined_type_vars,
         ))
@@ -308,9 +298,9 @@ impl Type {
                 _ => true,
             };
             Some(Type::from_union_entries(
-                self.iter_with_unpacked_union_entries(db, true)
-                    .filter(|e| !matches!(e.type_, Type::None))
-                    .map(|e| e.into())
+                self.iter_with_unpacked_unions(db)
+                    .filter(|e| !matches!(e, Type::None))
+                    .map(|e| e.clone())
                     .collect(),
                 might_have_defined_type_vars,
             ))
@@ -323,26 +313,6 @@ impl Type {
         self.maybe_remove_none(db)
             .map(Cow::Owned)
             .unwrap_or(Cow::Borrowed(self))
-    }
-
-    pub fn iter_with_unpacked_union_entries<'x>(
-        &'x self,
-        db: &'x Database,
-        unpack_recursive_type: bool,
-    ) -> impl Iterator<Item = IntoUnionEntry<'x>> {
-        match self {
-            Type::Union(items) => {
-                TypeIterator::Union(items.entries.iter().map(|e| IntoUnionEntry {
-                    type_: &e.type_,
-                    format_index: e.format_index,
-                }))
-            }
-            Type::Never(_) => TypeIterator::Finished,
-            Type::RecursiveType(rec) if unpack_recursive_type => rec
-                .calculated_type(db)
-                .iter_with_unpacked_union_entries(db, unpack_recursive_type),
-            t => TypeIterator::Single(t),
-        }
     }
 
     pub fn iter_with_unpacked_unions_without_unpacking_recursive_types(
@@ -387,8 +357,8 @@ impl Type {
         match self {
             Type::Union(union) => {
                 let mut new_entries = vec![];
-                for entry in union.entries.iter() {
-                    if maybe_retain(&entry.type_) {
+                for entry in union.iter() {
+                    if maybe_retain(entry) {
                         new_entries.push(entry.clone())
                     }
                 }
@@ -410,14 +380,6 @@ impl Type {
             Type::Intersection(intersection) => intersection.iter_entries().any(callback),
             _ => callback(t),
         })
-    }
-
-    pub fn highest_union_format_index(&self) -> usize {
-        match self {
-            Type::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
-            Type::Never(_) => 0,
-            _ => 1,
-        }
     }
 
     pub fn valid_in_type_form_assignment(&self, db: &Database) -> bool {
@@ -663,20 +625,15 @@ impl Type {
                 match other {
                     Self::Union(u2) => {
                         for o in u2.entries.iter() {
-                            if !vec.iter().any(|e| e.type_ == o.type_) {
-                                let mut o = o.clone();
-                                o.format_index = vec.len();
-                                vec.push(o);
+                            if !vec.contains(o) {
+                                vec.push(o.clone());
                             }
                         }
                     }
                     Type::Never(_) => (), // `X | Never is always X`
                     _ => {
-                        if !vec.iter().any(|t| t.type_ == other) {
-                            vec.push(UnionEntry {
-                                type_: other,
-                                format_index: vec.len(),
-                            })
+                        if !vec.iter().any(|t| *t == other) {
+                            vec.push(other)
                         }
                     }
                 };
@@ -689,10 +646,7 @@ impl Type {
                         return Self::Union(u);
                     } else {
                         let mut vec = u.entries.to_vec();
-                        vec.push(UnionEntry {
-                            type_: self,
-                            format_index: vec.len(),
-                        });
+                        vec.push(self);
                         vec
                     }
                 }
@@ -700,16 +654,7 @@ impl Type {
                     if self == other || matches!(other, Type::Never(_)) {
                         return self;
                     } else {
-                        vec![
-                            UnionEntry {
-                                type_: self,
-                                format_index: 0,
-                            },
-                            UnionEntry {
-                                type_: other,
-                                format_index: 1,
-                            },
-                        ]
+                        vec![self, other]
                     }
                 }
             },
@@ -1093,21 +1038,18 @@ impl Type {
                     .iter()
                     .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
                 {
-                    let mut gathered: Vec<UnionEntry> = vec![];
+                    let mut gathered: Vec<Type> = vec![];
                     for entry in union.entries.iter() {
-                        if let Some(type_) = entry.type_.maybe_avoid_implicit_literal(db) {
-                            if !gathered.iter().any(|e| e.type_ == type_) {
-                                gathered.push(UnionEntry {
-                                    type_,
-                                    format_index: entry.format_index,
-                                });
+                        if let Some(type_) = entry.maybe_avoid_implicit_literal(db) {
+                            if !gathered.iter().any(|e| *e == type_) {
+                                gathered.push(type_);
                             }
-                        } else if !gathered.iter().any(|e| e.type_ == entry.type_) {
+                        } else if !gathered.contains(entry) {
                             gathered.push(entry.clone())
                         }
                     }
                     if gathered.len() == 1 {
-                        return Some(gathered.into_iter().next().unwrap().type_);
+                        return Some(gathered.into_iter().next().unwrap());
                     } else {
                         return Some(Type::Union(UnionType::new(
                             gathered,
@@ -1592,32 +1534,6 @@ impl GenericClass {
 
     pub fn node_ref<'db>(&self, db: &'db Database) -> ClassNodeRef<'db> {
         ClassNodeRef::from_link(db, self.link)
-    }
-}
-
-enum TypeIterator<'x, Iter> {
-    Single(&'x Type),
-    Union(Iter),
-    Finished,
-}
-
-impl<'x, Iter: Iterator<Item = IntoUnionEntry<'x>>> Iterator for TypeIterator<'x, Iter> {
-    type Item = IntoUnionEntry<'x>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Single(_) => {
-                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
-                    unreachable!();
-                };
-                Some(IntoUnionEntry {
-                    format_index: 0,
-                    type_,
-                })
-            }
-            Self::Union(items) => items.next(),
-            Self::Finished => None,
-        }
     }
 }
 

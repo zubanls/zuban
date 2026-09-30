@@ -463,8 +463,8 @@ impl Type {
             (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(
                 db,
                 checking_type_recursion,
-                u1.entries.iter().map(|e| &e.type_),
-                u2.entries.iter().map(|e| &e.type_),
+                u1.entries.iter(),
+                u2.entries.iter(),
                 unpack_recursive_type,
                 any_is_all,
             ),

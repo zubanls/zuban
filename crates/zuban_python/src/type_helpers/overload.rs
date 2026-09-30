@@ -349,7 +349,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
-                        inferred: Inferred::from_type(entry.type_.clone()),
+                        inferred: Inferred::from_type(entry.clone()),
                     };
                     let r = self.check_union_math(
                         i_s,

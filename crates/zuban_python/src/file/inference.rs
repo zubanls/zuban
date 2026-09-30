@@ -42,8 +42,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LiteralValue, LookupResult, ParamType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
-        Variance, dataclass_converter_fields_lookup,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionType, Variance,
+        dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -4925,10 +4925,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             union
                 .entries
                 .iter()
-                .map(|e| UnionEntry {
-                    type_: instantiate_except(i_s, &e.type_),
-                    format_index: e.format_index,
-                })
+                .map(|e| instantiate_except(i_s, e))
                 .collect(),
             union.might_have_type_vars,
         )),
@@ -4978,15 +4975,8 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         })
         .as_cow_type(i_s)
         .into_owned(),
-        Type::Union(union) => Type::Union(UnionType::new(
-            union
-                .entries
-                .iter()
-                .map(|e| UnionEntry {
-                    type_: gather_except_star(i_s, &e.type_),
-                    format_index: e.format_index,
-                })
-                .collect(),
+        Type::Union(union) => Type::Union(UnionType::from_types(
+            union.entries.iter().map(|e| gather_except_star(i_s, e)),
             union.might_have_type_vars,
         )),
         _ => Type::ERROR,

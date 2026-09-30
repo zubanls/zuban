@@ -16,7 +16,7 @@ use crate::{
     type_helpers::LookupDetails,
 };
 
-use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
+use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionType};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind) -> bool, &mut dyn FnMut(&Type, LookupDetails));
@@ -53,19 +53,13 @@ impl Intersection {
             let mut found_issues = vec![];
             let mut new_entries = vec![];
             for entry in union.entries.iter() {
-                if let Ok(type_) = Intersection::new_instance_intersection(
-                    i_s,
-                    other,
-                    &entry.type_,
-                    &mut |issue| {
+                if let Ok(type_) =
+                    Intersection::new_instance_intersection(i_s, other, entry, &mut |issue| {
                         found_issues.push(issue);
                         true
-                    },
-                ) {
-                    new_entries.push(UnionEntry {
-                        type_,
-                        format_index: entry.format_index,
-                    });
+                    })
+                {
+                    new_entries.push(type_);
                 }
             }
             if new_entries.is_empty() {

@@ -97,9 +97,7 @@ impl<'project> Document<'project> {
                     let keep_entries = union
                         .entries
                         .iter()
-                        .filter(|entry| {
-                            previous_formatting.insert(entry.type_.format_short(i_s.db))
-                        })
+                        .filter(|entry| previous_formatting.insert(entry.format_short(i_s.db)))
                         .cloned()
                         .collect();
                     *t = Type::from_union_entries(keep_entries, true);
