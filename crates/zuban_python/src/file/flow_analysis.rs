@@ -44,7 +44,6 @@ use crate::{
         Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
         NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
         TypeVarKind, TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
-        simplified_union_from_iterators_with_format_index,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -5855,7 +5854,7 @@ fn split_and_intersect(
             _ => split(e),
         }
     }
-    let mut true_type = simplified_union_from_iterators_with_format_index(i_s, true_types.iter());
+    let mut true_type = Type::simplified_union_from_iterators(i_s, true_types.iter());
     if true_type.is_never() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
             true_type = isinstance_type.clone();

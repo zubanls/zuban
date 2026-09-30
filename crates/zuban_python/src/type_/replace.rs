@@ -6,8 +6,7 @@ use super::{
     ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, PropertySetter, RecursiveType,
     StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
-    TypedDictGenerics, UnionType, callable::add_param_spec_to_params,
-    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId,
+    TypedDictGenerics, UnionType, callable::add_param_spec_to_params, type_var_likes::CallableId,
 };
 use crate::{
     database::{Database, PointLink},
@@ -962,7 +961,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 })?;
                 Some(Some(if self.simplify_unions {
                     let i_s = InferenceState::new_in_unknown_file(self.db);
-                    simplified_union_from_iterators_with_format_index(&i_s, new_entries.iter())
+                    Type::simplified_union_from_iterators(&i_s, new_entries.iter())
                 } else {
                     let mut seen = HashSet::new();
                     // Try to remove duplicates

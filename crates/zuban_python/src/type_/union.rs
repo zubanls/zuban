@@ -43,18 +43,11 @@ impl Type {
         i_s: &InferenceState,
         types: impl Iterator<Item = &'x Type> + Clone,
     ) -> Self {
-        simplified_union_from_iterators_with_format_index(i_s, types)
+        merge_simplified_union_type(
+            i_s,
+            types.flat_map(|t| t.iter_with_unpacked_unions_without_unpacking_recursive_types()),
+        )
     }
-}
-
-pub fn simplified_union_from_iterators_with_format_index<'x>(
-    i_s: &InferenceState,
-    types: impl Iterator<Item = &'x Type>,
-) -> Type {
-    merge_simplified_union_type(
-        i_s,
-        types.flat_map(|t| t.iter_with_unpacked_unions_without_unpacking_recursive_types()),
-    )
 }
 
 fn merge_simplified_union_type<'x>(
