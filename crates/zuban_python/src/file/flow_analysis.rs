@@ -4716,37 +4716,40 @@ impl<'file> Inference<'_, 'file, '_> {
                 })
                 .collect();
             if !str_literals.is_empty() {
-                let mut true_types = Type::Never(NeverCause::Other);
-                let false_types = right_t.retain_in_union(|t| match t {
-                    Type::TypedDict(td) => {
-                        let mut true_only_count = 0;
-                        let mut false_only_count = 0;
-                        for str_literal in &str_literals {
-                            // TODO extra_items: handle?
-                            if let Some(m) = td.find_member(db, str_literal) {
-                                if m.required {
-                                    true_only_count += 1;
+                let mut true_types = TypeGatherer::default();
+                let mut false_types = TypeGatherer::default();
+                for t in right_t.iter_with_unpacked_unions(db) {
+                    match t {
+                        Type::TypedDict(td) => {
+                            let mut true_only_count = 0;
+                            let mut false_only_count = 0;
+                            for str_literal in &str_literals {
+                                // TODO extra_items: handle?
+                                if let Some(m) = td.find_member(db, str_literal) {
+                                    if m.required {
+                                        true_only_count += 1;
+                                    }
+                                } else {
+                                    false_only_count += 1;
                                 }
-                            } else {
-                                false_only_count += 1;
                             }
+                            if true_only_count == str_literals.len() {
+                                true_types.add(t.clone());
+                                continue;
+                            } else if !td.is_final || false_only_count != str_literals.len() {
+                                true_types.add(t.clone());
+                            }
+                            false_types.add(t.clone())
                         }
-                        if true_only_count == str_literals.len() {
-                            true_types.union_in_place(t.clone());
-                            return false;
-                        } else if !td.is_final || false_only_count != str_literals.len() {
-                            true_types.union_in_place(t.clone());
+                        _ => {
+                            true_types.add(t.clone());
+                            false_types.add(t.clone())
                         }
-                        true
                     }
-                    _ => {
-                        true_types.union_in_place(t.clone());
-                        true
-                    }
-                });
+                }
                 return maybe_invert(
-                    Frame::from_type(right_key.clone(), true_types),
-                    Frame::from_type(right_key.clone(), false_types),
+                    Frame::from_type(right_key.clone(), true_types.into_type()),
+                    Frame::from_type(right_key.clone(), false_types.into_type()),
                     // Taking it here is fine, because we don't want these to be duplicated
                     // entries from different comparisons
                     std::mem::take(&mut right.parent_unions.borrow_mut()),
