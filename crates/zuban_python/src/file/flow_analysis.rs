@@ -4415,21 +4415,21 @@ impl<'file> Inference<'_, 'file, '_> {
         let result = self.key_from_namedexpression(arg);
         let key = result.key?;
 
-        let mut callable_t = Type::Never(NeverCause::Other);
-        let mut other_side = Type::Never(NeverCause::Other);
+        let mut callable_t = TypeGatherer::default();
+        let mut other_side = TypeGatherer::default();
         let input_t = result.inf.as_cow_type(self.i_s);
         for t in input_t.iter_with_unpacked_unions(self.i_s.db) {
             let mut add_t = |t: &Type| {
                 if t.is_any() {
-                    callable_t.union_in_place(t.clone());
-                    other_side.union_in_place(t.clone());
+                    callable_t.add(t.clone());
+                    other_side.add(t.clone());
                 } else if let Some(callable_like) = t.maybe_callable(self.i_s) {
                     if !callable_like.is_typed(false) {
-                        other_side.union_in_place(t.clone());
+                        other_side.add(t.clone());
                     }
-                    callable_t.union_in_place(t.clone());
+                    callable_t.add(t.clone());
                 } else {
-                    other_side.union_in_place(t.clone());
+                    other_side.add(t.clone());
                 }
             };
             match t {
@@ -4444,14 +4444,19 @@ impl<'file> Inference<'_, 'file, '_> {
                 _ => add_t(t),
             }
         }
-        let falsey = if matches!(callable_t, Type::Never(_)) {
-            callable_t = Type::Intersection(Intersection::new(Arc::new([
-                Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
-                input_t.into_owned(),
-            ])));
-            Frame::new_conditional()
+        let (callable_t, falsey) = if callable_t.is_empty() {
+            (
+                Type::Intersection(Intersection::new(Arc::new([
+                    Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
+                    input_t.into_owned(),
+                ]))),
+                Frame::new_conditional(),
+            )
         } else {
-            Frame::from_type(key.clone(), other_side)
+            (
+                callable_t.into_type(),
+                Frame::from_type(key.clone(), other_side.into_type()),
+            )
         };
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key, callable_t),
