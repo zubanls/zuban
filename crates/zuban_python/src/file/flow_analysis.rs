@@ -5631,13 +5631,11 @@ fn narrow_len(
     {
         let inf_t = inferred_type_param.as_cow_type(i_s);
         let retain = |full: &Type, negative| {
-            let mut out = Type::Never(NeverCause::Other);
+            let mut out = TypeGatherer::default();
             for part_t in full.iter_with_unpacked_unions(i_s.db) {
                 match part_t {
                     Type::Tuple(tup) => {
-                        if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| {
-                            out.union_in_place(t)
-                        }) {
+                        if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| out.add(t)) {
                             continue;
                         }
                     }
@@ -5655,9 +5653,9 @@ fn narrow_len(
                     }
                     _ => (),
                 }
-                out.union_in_place(part_t.clone())
+                out.add(part_t.clone())
             }
-            out
+            out.into_type()
         };
         let truthy = retain(&inf_t, false);
         let falsey = retain(&inf_t, true);
