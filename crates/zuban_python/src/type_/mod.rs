@@ -353,28 +353,6 @@ impl Type {
         )
     }
 
-    pub fn retain_in_union(&self, mut maybe_retain: impl FnMut(&Self) -> bool) -> Type {
-        match self {
-            Type::Union(union) => {
-                let mut new_entries = vec![];
-                for entry in union.iter() {
-                    if maybe_retain(entry) {
-                        new_entries.push(entry.clone())
-                    }
-                }
-                Self::from_union_entries(new_entries, union.might_have_type_vars)
-            }
-            Type::Never(cause) => Type::Never(*cause),
-            t => {
-                if maybe_retain(t) {
-                    t.clone()
-                } else {
-                    Type::Never(NeverCause::Other)
-                }
-            }
-        }
-    }
-
     pub fn for_all_in_union(&self, db: &Database, callback: &impl Fn(&Type) -> bool) -> bool {
         self.iter_with_unpacked_unions(db).all(|t| match t {
             Type::Intersection(intersection) => intersection.iter_entries().any(callback),

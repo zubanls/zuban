@@ -5552,9 +5552,12 @@ fn check_for_comparison_guard(
                     falsey: match is_final {
                         true => Frame::from_type(
                             key.clone(),
-                            inf_t.retain_in_union(|t| {
-                                !t.is_simple_same_type(i_s, base_truthy).bool()
-                            }),
+                            Type::from_iter(
+                                inf_t
+                                    .iter_with_unpacked_unions(i_s.db)
+                                    .filter(|t| !t.is_simple_same_type(i_s, base_truthy).bool())
+                                    .cloned(),
+                            ),
                         ),
                         false => Frame::new_conditional(),
                     },
