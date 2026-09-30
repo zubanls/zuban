@@ -4687,7 +4687,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     .iter_with_unpacked_unions(db)
                     .any(|t| t == &Type::None)
                     && left_t.simple_overlaps(self.i_s, &container_item)
-                    && let Some(t) = removed_optional(db, &left_t)
+                    && let Some(t) = left_t.maybe_remove_none(db)
                 {
                     return maybe_invert(
                         Frame::from_type(left_key.clone(), t),
@@ -5457,15 +5457,6 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
         return None;
     }
     Some(item)
-}
-
-fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
-    for t in full.iter_with_unpacked_unions(db) {
-        if matches!(t, Type::None) {
-            return Some(full.retain_in_union(|t| !matches!(t, Type::None)));
-        }
-    }
-    None
 }
 
 fn find_comparison_guards(
