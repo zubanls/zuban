@@ -4367,8 +4367,8 @@ impl<'file> Inference<'_, 'file, '_> {
         let attr = attr_inf.maybe_string_literal(self.i_s)?;
 
         let mut all_have_attr = true;
-        let mut attr_t = Type::Never(NeverCause::Other);
-        let mut falsey_parent = Type::Never(NeverCause::Other);
+        let mut attr_t = TypeGatherer::default();
+        let mut falsey_parent = TypeGatherer::default();
         for t in result
             .inf
             .as_cow_type(self.i_s)
@@ -4378,10 +4378,10 @@ impl<'file> Inference<'_, 'file, '_> {
                 .check_attr(t, attr.as_str(self.i_s.db))
                 .into_maybe_inferred()
             {
-                attr_t.union_in_place(inf.as_type(self.i_s));
+                attr_t.add(inf.as_type(self.i_s));
             } else {
-                attr_t.union_in_place(Type::Any(AnyCause::Todo));
-                falsey_parent.union_in_place(t.clone());
+                attr_t.add(Type::Any(AnyCause::Todo));
+                falsey_parent.add(t.clone());
                 all_have_attr = false;
             }
         }
@@ -4390,14 +4390,17 @@ impl<'file> Inference<'_, 'file, '_> {
             // perform any narrowing.
             return None;
         }
-        let falsey = match falsey_parent {
+        let falsey = match falsey_parent.is_empty() {
             // Frames should not be unreachable, because people might be checking for deleted
             // attributes.
-            Type::Never(_) => Frame::new_conditional(),
-            _ => Frame::from_type(key.clone(), falsey_parent),
+            true => Frame::new_conditional(),
+            false => Frame::from_type(key.clone(), falsey_parent.into_type()),
         };
         Some(FramesWithParentUnions {
-            truthy: Frame::from_type(FlowKey::Member(Arc::new(key), attr), attr_t),
+            truthy: Frame::from_type(
+                FlowKey::Member(Arc::new(key), attr),
+                attr_t.into_simplified_type(self.i_s),
+            ),
             falsey,
             parent_unions: ParentUnions::default(),
         })
