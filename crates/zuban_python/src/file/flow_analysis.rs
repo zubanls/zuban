@@ -3047,6 +3047,8 @@ impl<'file> Inference<'_, 'file, '_> {
             EntryKind::Type(t) => t,
             EntryKind::OriginalDeclaration => return None,
         };
+        debug!("Propagate parent unions");
+        let indent = debug_indent();
         let mut matching_entries = vec![];
         for entry in base_union.iter() {
             let (inf, had_error) = replay(entry);
@@ -4019,6 +4021,8 @@ impl<'file> Inference<'_, 'file, '_> {
         self.find_guards_in_expression_parts_inner(part, result_context)
             .unwrap_or_else(|inf| {
                 let inf = inf.into();
+                debug!("Try to split reachability for expr");
+                let indent = debug_indent();
                 if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     let frames = FramesWithParentUnions {
                         truthy: Frame::from_type_gatherer_without_entry(&truthy),
@@ -4029,6 +4033,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         true => "unreachable",
                         false => "reachable",
                     };
+                    drop(indent);
                     debug!(
                         "Split reachability for {} into true: {} and false: {}",
                         part.as_code(),
@@ -4073,6 +4078,8 @@ impl<'file> Inference<'_, 'file, '_> {
         };
         match part {
             ExpressionPart::Atom(atom) => {
+                debug!("Find guards for atom");
+                let _indent = debug_indent();
                 if let AtomContent::NamedExpression(named_expr) = atom.unpack() {
                     let (inf, truthy, falsey) = self.find_guards_in_named_expr(named_expr);
                     return Ok((
@@ -4088,18 +4095,24 @@ impl<'file> Inference<'_, 'file, '_> {
                 return narrow_from_key(self.key_from_atom(atom), inf, Default::default());
             }
             ExpressionPart::Comparisons(comps) => {
+                debug!("Guard comparisons");
+                let _indent = debug_indent();
                 if let Some(frames) = self.find_guards_in_comparisons(comps) {
                     return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                 }
                 return Ok((Inferred::new_bool(self.i_s.db).into(), Default::default()));
             }
             ExpressionPart::Conjunction(and) => {
+                debug!("Guard any");
+                let _indent = debug_indent();
                 let (inf, left, right) = self.check_conjunction(and);
 
                 return FLOW_ANALYSIS
                     .with(|fa| Ok((inf, fa.merge_conjunction(self.i_s, Some(left), right))));
             }
             ExpressionPart::Disjunction(or) => {
+                debug!("Guard or");
+                let _indent = debug_indent();
                 let (inf, left_frames, right_frames) = self.check_disjunction(or, result_context);
                 let mut parent_unions = left_frames.parent_unions;
                 parent_unions.extend(right_frames.parent_unions);
@@ -4118,6 +4131,8 @@ impl<'file> Inference<'_, 'file, '_> {
                 ));
             }
             ExpressionPart::Inversion(inv) => {
+                debug!("Guard not");
+                let _indent = debug_indent();
                 let (_, mut frames) = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
                 return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
@@ -4147,6 +4162,8 @@ impl<'file> Inference<'_, 'file, '_> {
                         _ => {
                             if let Some(saved) = first.maybe_saved_link() {
                                 if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
+                                    debug!("Guard callable");
+                                    let _indent = debug_indent();
                                     if let Some(frames) = self.guard_callable(args) {
                                         return Ok((
                                             Inferred::new_bool(self.i_s.db).into(),
@@ -4155,9 +4172,15 @@ impl<'file> Inference<'_, 'file, '_> {
                                     }
                                 } else if saved
                                     == self.i_s.db.python_state.hasattr_node_ref().as_link()
-                                    && let Some(frames) = self.guard_hasattr(args)
                                 {
-                                    return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
+                                    debug!("Guard callable");
+                                    let _indent = debug_indent();
+                                    if let Some(frames) = self.guard_hasattr(args) {
+                                        return Ok((
+                                            Inferred::new_bool(self.i_s.db).into(),
+                                            frames,
+                                        ));
+                                    }
                                 }
                             }
                             if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
@@ -4354,6 +4377,8 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 
     fn guard_hasattr(&self, args: Arguments) -> Option<FramesWithParentUnions> {
+        debug!("Find hasattr guards");
+        let _indent = debug_indent();
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None;

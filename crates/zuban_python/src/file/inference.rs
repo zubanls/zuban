@@ -3619,6 +3619,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
+                let _indent = debug_indent();
                 let result = base
                     .lookup_with_result_context(
                         self.i_s,
