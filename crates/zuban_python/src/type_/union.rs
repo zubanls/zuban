@@ -364,7 +364,7 @@ impl UnionType {
 
 // 4 elements is usually enough to use on the stack
 #[derive(Default, Debug)]
-pub struct TypeGatherer(smallvec::SmallVec<[Type; 4]>);
+pub(crate) struct TypeGatherer(smallvec::SmallVec<[Type; 4]>);
 
 impl TypeGatherer {
     pub fn add(&mut self, t: Type) {

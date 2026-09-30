@@ -1225,10 +1225,9 @@ fn split_off_enum_member(
     of_type: &Type,
     enum_member: &EnumMember,
     abort_on_custom_eq: bool,
-) -> Option<(Type, Type)> {
+) -> Option<(Type, TypeGatherer)> {
     let mut truthy = Type::NEVER;
     let mut falsey = TypeGatherer::default();
-    let mut add = |t| falsey.add(t);
     let mut set_truthy = || truthy = Type::EnumMember(enum_member.clone());
 
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
@@ -1239,7 +1238,7 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                add(sub_t.clone());
+                falsey.add(sub_t.clone());
             }
             Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
                 if abort_on_custom_eq {
@@ -1247,7 +1246,7 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                add(sub_t.clone());
+                falsey.add(sub_t.clone());
             }
             Type::EnumMember(m) => {
                 if enum_member.is_same_member(m) {
@@ -1269,13 +1268,13 @@ fn split_off_enum_member(
                                 })
                             });
                     if is_flag {
-                        add(sub_t.clone())
+                        falsey.add(sub_t.clone())
                     }
                     for new_member in Enum::implicit_members(e2) {
                         if new_member.member_index == enum_member.member_index {
                             set_truthy();
                         } else if !is_flag {
-                            add(Type::EnumMember(new_member))
+                            falsey.add(Type::EnumMember(new_member))
                         }
                     }
                     continue;
@@ -1294,7 +1293,7 @@ fn split_off_enum_member(
                         abort_on_custom_eq,
                     )?;
                     set_truthy();
-                    add(f);
+                    falsey.extend(f);
                     continue;
                 }
                 let is_class = |link| match sub_t {
@@ -1328,9 +1327,9 @@ fn split_off_enum_member(
                 return None;
             }
         }
-        add(sub_t.clone())
+        falsey.add(sub_t.clone())
     }
-    Some((truthy, falsey.into_type()))
+    Some((truthy, falsey))
 }
 
 fn split_off_singleton(
@@ -1446,7 +1445,7 @@ fn narrow_is_or_eq(
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (
                 Frame::from_type(key.clone(), truthy),
-                Frame::from_type(key, falsey),
+                Frame::from_type(key, falsey.into_type()),
             );
             Some(result)
         }
@@ -3303,6 +3302,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 let mut member = member.clone();
                 member.implicit = false;
                 split_off_enum_member(self.i_s, &inf_t, &member, true)
+                    .map(|(t, f)| (t, f.into_type()))
                     .unwrap_or_else(|| fallback(inf_t))
             }
             _ => fallback(inf_t),
@@ -5802,8 +5802,8 @@ fn split_and_intersect(
     mut add_issue: impl Fn(IssueKind) -> bool,
 ) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
-    let mut true_types = vec![];
-    let mut other_side = Type::Never(NeverCause::Other);
+    let mut true_types = TypeGatherer::default();
+    let mut other_side = TypeGatherer::default();
     let matcher = &mut Matcher::with_ignored_promotions();
     let mut type_var_split = false;
     for e in original_t.iter_with_unpacked_unions(i_s.db) {
@@ -5837,27 +5837,27 @@ fn split_and_intersect(
                     }
                     Match::False { .. } => {
                         if isinstance_t.is_sub_type_of(i_s, matcher, t).bool() {
-                            true_types.push(isinstance_t.clone());
+                            true_types.add(isinstance_t.clone());
                         }
                     }
                 }
             }
             if matched {
                 if matched_with_any {
-                    true_types.push(isinstance_type.clone());
-                    other_side.union_in_place(t.clone());
+                    true_types.add(isinstance_type.clone());
+                    other_side.add(t.clone());
                 } else {
                     // This used to just use union_in_place. However this caused problems with bool
                     // | int, which could not be added to complex. I'm still not sure what's
                     // correct here. This feels like a very weird consequence of type promotions.
                     // This caused issues when type checking Mypy.
-                    true_types.push(t.clone());
+                    true_types.add(t.clone());
                 }
             } else {
-                other_side.union_in_place(t.clone())
+                other_side.add(t.clone())
             }
             if let Some(any) = had_any {
-                true_types.push(any);
+                true_types.add(any);
             }
         };
         match e {
@@ -5870,14 +5870,14 @@ fn split_and_intersect(
                 _ => split(e),
             },
             Type::Any(_) => {
-                true_types.push(isinstance_type.clone());
-                other_side.union_in_place(e.clone())
+                true_types.add(isinstance_type.clone());
+                other_side.add(e.clone())
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
                 if let Some(new) = intersect(i_s, e, isinstance_type, &mut add_issue) {
                     type_var_split = true;
-                    true_types.push(new.into_owned());
-                    other_side.union_in_place(e.clone())
+                    true_types.add(new.into_owned());
+                    other_side.add(e.clone())
                 } else {
                     split(e)
                 }
@@ -5885,14 +5885,13 @@ fn split_and_intersect(
             _ => split(e),
         }
     }
-    let mut true_type = Type::simplified_union_from_iterators(i_s, true_types.iter());
-    if true_type.is_never() {
+    if true_types.is_empty() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
-            true_type = isinstance_type.clone();
+            true_types.add(isinstance_type.clone());
         } else {
             for t in original_t.iter_with_unpacked_unions(i_s.db) {
                 if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
-                    true_type.simplified_union_in_place(i_s, &new);
+                    true_types.add(new.into_owned());
                 } else {
                     // Avoid follow up errors for protocols that are runtime_checkable. Protocols
                     // cannot be matched properly at runtime and therefore we should not assume
@@ -5902,7 +5901,7 @@ fn split_and_intersect(
                             if let Some(class) = isinstance_t.maybe_class(i_s.db) {
                                 let class_infos = class.use_cached_class_infos(i_s.db);
                                 if matches!(class_infos.kind, ClassKind::Protocol) {
-                                    true_type.simplified_union_in_place(i_s, t);
+                                    true_types.add(t.clone());
                                 }
                             }
                         }
@@ -5916,6 +5915,8 @@ fn split_and_intersect(
             }
         }
     }
+    let mut other_side = other_side.into_type();
+    let true_type = true_types.into_simplified_type(i_s);
     // Handle int/float/complex promotions
     {
         if let Type::Class(c) = isinstance_type {

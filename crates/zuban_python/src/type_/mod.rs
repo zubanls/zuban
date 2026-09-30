@@ -1491,7 +1491,7 @@ impl Type {
 
 impl FromIterator<Type> for Type {
     fn from_iter<I: IntoIterator<Item = Type>>(iter: I) -> Self {
-        let mut result = Type::Never(NeverCause::Other);
+        let mut result = Type::NEVER;
         for t in iter {
             result.union_in_place(t)
         }
