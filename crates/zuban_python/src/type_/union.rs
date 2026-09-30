@@ -361,3 +361,35 @@ impl UnionType {
         sorted.into()
     }
 }
+
+// 4 elements is usually enough to use on the stack
+#[derive(Default, Debug)]
+pub struct TypeGatherer(smallvec::SmallVec<[Type; 4]>);
+
+impl TypeGatherer {
+    pub fn add(&mut self, t: Type) {
+        self.0.push(t)
+    }
+
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn into_simplified_type(self, i_s: &InferenceState) -> Type {
+        Type::simplified_union_from_iterators(i_s, self.0.iter())
+    }
+
+    pub fn into_type(self) -> Type {
+        Type::from_iter(self.0.into_iter())
+    }
+}
+
+impl From<Type> for TypeGatherer {
+    fn from(t: Type) -> Self {
+        Self(smallvec::smallvec![t])
+    }
+}
