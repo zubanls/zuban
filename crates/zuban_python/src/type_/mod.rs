@@ -1491,11 +1491,18 @@ impl Type {
 
 impl FromIterator<Type> for Type {
     fn from_iter<I: IntoIterator<Item = Type>>(iter: I) -> Self {
-        let mut result = Type::NEVER;
-        for t in iter {
-            result.union_in_place(t)
+        let mut iter = iter.into_iter().peekable();
+        let Some(first) = iter.next() else {
+            return Type::NEVER;
+        };
+        if iter.peek().is_some() {
+            Type::Union(UnionType::from_types(
+                std::iter::once(first).chain(iter),
+                true,
+            ))
+        } else {
+            first
         }
-        result
     }
 }
 

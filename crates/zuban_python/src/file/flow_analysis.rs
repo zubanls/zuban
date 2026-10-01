@@ -3046,7 +3046,7 @@ impl<'file> Inference<'_, 'file, '_> {
             EntryKind::OriginalDeclaration => return None,
         };
         debug!("Propagate parent unions");
-        let indent = debug_indent();
+        let _indent = debug_indent();
         let mut matching_entries = vec![];
         for entry in base_union.iter() {
             let (inf, had_error) = replay(entry);
