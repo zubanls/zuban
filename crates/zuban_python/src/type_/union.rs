@@ -515,4 +515,8 @@ impl<'x> InferredTypeGatherer<'x> {
             }
         }
     }
+
+    pub fn into_inferred_if_not_never(self, i_s: &InferenceState) -> Option<Inferred> {
+        (!self.is_empty()).then(|| self.into_inferred(i_s))
+    }
 }

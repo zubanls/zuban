@@ -43,9 +43,9 @@ use crate::{
     result_context::ResultContext,
     type_::{
         ClassGenerics, ComplexTypeGatherer, DbString, ExtraItemsType, FunctionKind, GenericClass,
-        GenericItem, GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue,
-        LookupResult, ReplaceTypeVarLikes as _, Tuple, Type, TypedDict, TypedDictGenerics,
-        TypedDictMember, TypedDictMembers,
+        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, Literal,
+        LiteralKind, LiteralValue, LookupResult, ReplaceTypeVarLikes as _, Tuple, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -617,46 +617,45 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         }
 
         self.state.callable_search_stack.push(wanted_link);
-        let result = executions
-            .iter()
-            .filter_map(|execution| {
-                let scope = ParentScope::from_scope(execution.primary.parent_scope());
-                InferenceState::run_with_parent_scope(self.db(), execution.file, scope, |i_s| {
-                    let args = SimpleArgs::new(
-                        i_s,
-                        execution.file,
-                        execution.primary.index(),
-                        execution.details,
-                    );
-                    let inf = self.infer_param_with_args(
-                        &func,
-                        NodeRef::new(execution.file, execution.primary.index()),
-                        &args,
-                        skip_first_param,
-                        param_name,
-                        true,
-                    )?;
+        let mut result = InferredTypeGatherer::default();
+        for execution in executions.iter() {
+            let scope = ParentScope::from_scope(execution.primary.parent_scope());
+            InferenceState::run_with_parent_scope(self.db(), execution.file, scope, |i_s| {
+                let args = SimpleArgs::new(
+                    i_s,
+                    execution.file,
+                    execution.primary.index(),
+                    execution.details,
+                );
+                if let Some(inf) = self.infer_param_with_args(
+                    &func,
+                    NodeRef::new(execution.file, execution.primary.index()),
+                    &args,
+                    skip_first_param,
+                    param_name,
+                    true,
+                ) {
                     if let Some(cls) = i_s.current_class()
                         && let Some(replaced) = inf
                             .as_cow_type(&i_s)
                             .maybe_replace_self(db, &|| Some(cls.as_type(db)))
                     {
-                        return Some(Inferred::from_type(replaced));
+                        result.add(Inferred::from_type(replaced))
+                    } else {
+                        result.add(inf)
                     }
-                    Some(inf)
-                })
-                /*
-                // The deeper we're in the recursion, the less code should be inferred.
-                if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
-                    found_arguments = True;
-                    yield arguments
                 }
-                */
             })
-            .reduce(|inf1, inf2| {
-                let i_s = &InferenceState::new_in_unknown_file(db);
-                Inferred::from_type(inf1.as_type(i_s).union(inf2.as_type(i_s)))
-            });
+            /*
+            // The deeper we're in the recursion, the less code should be inferred.
+            if i * inference_state.dynamic_params_depth > MAX_PARAM_SEARCHES {
+                found_arguments = True;
+                yield arguments
+            }
+            */
+        }
+        let i_s = &InferenceState::new_in_unknown_file(db);
+        let result = result.into_inferred_if_not_never(i_s);
         self.state.callable_search_stack.pop();
         result
     }
