@@ -10,7 +10,7 @@ use utils::FastHashMap;
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
     database::Database, debug, format_data::FormatData, inference_state::InferenceState,
-    matching::Matcher, type_::AnyCause, utils::debug_indent,
+    inferred::Inferred, matching::Matcher, type_::AnyCause, utils::debug_indent,
 };
 
 impl Type {
@@ -429,6 +429,34 @@ impl<'x> ComplexTypeGatherer<'x> {
             0 => Type::NEVER,
             1 => self.0.into_iter().next().unwrap().into_owned(),
             _ => Type::simplified_union_from_iterators(i_s, self.0.iter().map(|t| t.as_ref())),
+        }
+    }
+}
+
+pub type InferredTypeGatherer<'x> = GenericTypeGatherer<Inferred>;
+
+impl<'x> InferredTypeGatherer<'x> {
+    pub fn add(&mut self, t: Inferred) {
+        self.0.push(t)
+    }
+
+    pub fn into_inferred(self, i_s: &InferenceState) -> Inferred {
+        match self.0.len() {
+            0 => Inferred::new_never(NeverCause::Other),
+            1 => self.0.into_iter().next().unwrap(),
+            _ => {
+                let types: Vec<_> = self.0.iter().map(|inf| inf.as_cow_type(i_s)).collect();
+                let simplified =
+                    Type::simplified_union_from_iterators(i_s, types.iter().map(|t| t.as_ref()));
+                // In the case where the type matches the first original simply return the first
+                // original, because it might already be saved somewhere and we can simply reuse
+                // it.
+                if simplified == *types[0] {
+                    self.0.into_iter().next().unwrap()
+                } else {
+                    Inferred::from_type(simplified)
+                }
+            }
         }
     }
 }

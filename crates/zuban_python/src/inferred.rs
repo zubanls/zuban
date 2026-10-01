@@ -29,10 +29,11 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
-        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupArgs, LookupResult,
-        NeverCause, PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes, execute_tuple_class, execute_type_of_type,
+        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LiteralKind,
+        LiteralValue, LookupArgs, LookupResult, NeverCause, PropertySetter, PropertySetterType,
+        ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes, execute_tuple_class,
+        execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
@@ -829,15 +830,9 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         callable: impl FnOnce(&mut dyn FnMut(Self)),
     ) -> Self {
-        let mut result: Option<Self> = None;
-        let r = &mut result;
-        callable(&mut |inferred| {
-            *r = Some(match r.take() {
-                Some(i) => i.simplified_union(i_s, inferred),
-                None => inferred,
-            });
-        });
-        result.unwrap_or_else(|| Inferred::new_never(NeverCause::Other))
+        let mut gatherer = InferredTypeGatherer::default();
+        callable(&mut |inferred| gatherer.add(inferred));
+        gatherer.into_inferred(i_s)
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
