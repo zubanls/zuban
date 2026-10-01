@@ -40,10 +40,11 @@ use crate::{
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
-        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeGatherer,
-        TypeVar, TypeVarKind, TypedDict, UnionType, WithUnpack, lookup_on_enum_instance,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
+        ComplexTypeGatherer, DbBytes, DbString, Enum, EnumKind, EnumMember, GenericClass,
+        Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeGatherer, TypeVar, TypeVarKind, TypedDict,
+        UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
@@ -4390,7 +4391,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let attr = attr_inf.maybe_string_literal(self.i_s)?;
 
         let mut all_have_attr = true;
-        let mut attr_t = TypeGatherer::default();
+        let mut attr_t = ComplexTypeGatherer::default();
         let mut falsey_parent = TypeGatherer::default();
         for t in result
             .inf
@@ -4403,7 +4404,7 @@ impl<'file> Inference<'_, 'file, '_> {
             {
                 attr_t.add(inf.as_type(self.i_s));
             } else {
-                attr_t.add(Type::Any(AnyCause::Todo));
+                attr_t.add(&Type::Any(AnyCause::Todo));
                 falsey_parent.add(t.clone());
                 all_have_attr = false;
             }
@@ -5825,7 +5826,7 @@ fn split_and_intersect(
     mut add_issue: impl Fn(IssueKind) -> bool,
 ) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
-    let mut true_types = TypeGatherer::default();
+    let mut true_types = ComplexTypeGatherer::default();
     let mut other_side = TypeGatherer::default();
     let matcher = &mut Matcher::with_ignored_promotions();
     let mut type_var_split = false;

@@ -362,31 +362,34 @@ impl UnionType {
     }
 }
 
+pub type TypeGatherer = GenericTypeGatherer<Type>;
+pub type ComplexTypeGatherer<'x> = GenericTypeGatherer<Cow<'x, Type>>;
+
 // 4 elements is usually enough to use on the stack
-#[derive(Default, Debug)]
-pub(crate) struct TypeGatherer(smallvec::SmallVec<[Type; 4]>);
+#[derive(Debug)]
+pub(crate) struct GenericTypeGatherer<T>(smallvec::SmallVec<[T; 4]>);
+
+impl<T> Default for GenericTypeGatherer<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T> GenericTypeGatherer<T> {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 impl TypeGatherer {
     pub fn add(&mut self, t: Type) {
-        // debug_assert!(!t.is_never());
-        // debug_assert!(!matches!(t, Type::Union(_)));
+        debug_assert!(!t.is_never());
+        debug_assert!(!matches!(t, Type::Union(_)));
         self.0.push(t)
     }
 
     pub fn extend(&mut self, other: Self) {
         self.0.extend(other.0)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn into_simplified_type(self, i_s: &InferenceState) -> Type {
-        match self.0.len() {
-            0 => Type::NEVER,
-            1 => self.0.into_iter().next().unwrap(),
-            _ => Type::simplified_union_from_iterators(i_s, self.0.iter()),
-        }
     }
 
     pub fn into_type(self) -> Type {
@@ -401,5 +404,31 @@ impl TypeGatherer {
 impl From<Type> for TypeGatherer {
     fn from(t: Type) -> Self {
         Self(smallvec::smallvec![t])
+    }
+}
+
+impl<'a> From<&'a Type> for Cow<'a, Type> {
+    fn from(t: &'a Type) -> Self {
+        Cow::Borrowed(t)
+    }
+}
+
+impl<'a> From<Type> for Cow<'a, Type> {
+    fn from(t: Type) -> Self {
+        Cow::Owned(t)
+    }
+}
+
+impl<'x> ComplexTypeGatherer<'x> {
+    pub fn add(&mut self, t: impl Into<Cow<'x, Type>>) {
+        self.0.push(t.into())
+    }
+
+    pub fn into_simplified_type(self, i_s: &InferenceState) -> Type {
+        match self.0.len() {
+            0 => Type::NEVER,
+            1 => self.0.into_iter().next().unwrap().into_owned(),
+            _ => Type::simplified_union_from_iterators(i_s, self.0.iter().map(|t| t.as_ref())),
+        }
     }
 }
