@@ -1351,29 +1351,30 @@ impl Type {
         None
     }
 
-    pub fn container_types(&self, db: &Database) -> Option<Type> {
-        let mut result = Type::Never(NeverCause::Other);
+    pub fn container_types(&self, i_s: &InferenceState) -> Option<Type> {
+        let mut result = ComplexTypeGatherer::default();
+        let db = i_s.db;
         for t in self.iter_with_unpacked_unions(db) {
             match t {
-                Type::Tuple(tup) => result.union_in_place(tup.fallback_type(db).clone()),
+                Type::Tuple(tup) => result.add(tup.fallback_type(db).clone()),
                 Type::NamedTuple(named_tup) => {
-                    result.union_in_place(named_tup.as_tuple_ref().fallback_type(db).clone())
+                    result.add(named_tup.as_tuple_ref().fallback_type(db).clone())
                 }
                 _ => {
                     for (_, base) in t.mro(db) {
                         if let Some(cls) = base.maybe_class()
                             && cls.node_ref == db.python_state.container_node_ref()
                         {
-                            result.union_in_place(cls.nth_type_argument(db, 0));
+                            result.add(cls.nth_type_argument(db, 0));
                         }
                     }
                 }
             }
         }
-        if matches!(result, Type::Never(NeverCause::Other)) {
+        if result.is_empty() {
             None
         } else {
-            Some(result)
+            Some(result.into_simplified_type(i_s))
         }
     }
 

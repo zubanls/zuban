@@ -3294,7 +3294,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let fallback = |inf_t| {
             let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, dotted_t, |_| false);
             if !truthy.is_singleton(self.i_s.db) {
-                falsey.union_in_place(inf_t)
+                falsey = falsey.union(inf_t)
             }
             (truthy, falsey)
         };

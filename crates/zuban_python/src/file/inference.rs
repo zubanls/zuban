@@ -2844,7 +2844,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // b'a' == bytesarray(b'a') is fine.
                     if !(overlaps_bytes_or_bytearray(&element_t)
                         && overlaps_bytes_or_bytearray(&right_t))
-                        && let Some(container_t) = right_t.container_types(self.i_s.db)
+                        && let Some(container_t) = right_t.container_types(self.i_s)
                         && !self.is_strict_equality_comparison(&element_t, &container_t)
                     {
                         let formatted = format_got_expected(self.i_s.db, &element_t, &container_t);

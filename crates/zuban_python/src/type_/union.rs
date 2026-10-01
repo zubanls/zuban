@@ -98,10 +98,6 @@ impl Type {
             entries, true, // TODO should we calculate this?
         ))
     }
-
-    pub fn union_in_place(&mut self, other: Type) {
-        *self = std::mem::replace(self, Self::Never(NeverCause::Other)).union(other);
-    }
 }
 
 fn merge_simplified_union_type<'x>(
