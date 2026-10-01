@@ -1238,7 +1238,6 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                falsey.add(sub_t.clone());
             }
             Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
                 if abort_on_custom_eq {
@@ -1246,7 +1245,6 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                falsey.add(sub_t.clone());
             }
             Type::EnumMember(m) => {
                 if enum_member.is_same_member(m) {

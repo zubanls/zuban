@@ -368,6 +368,8 @@ pub(crate) struct TypeGatherer(smallvec::SmallVec<[Type; 4]>);
 
 impl TypeGatherer {
     pub fn add(&mut self, t: Type) {
+        // debug_assert!(!t.is_never());
+        // debug_assert!(!matches!(t, Type::Union(_)));
         self.0.push(t)
     }
 
@@ -380,11 +382,19 @@ impl TypeGatherer {
     }
 
     pub fn into_simplified_type(self, i_s: &InferenceState) -> Type {
-        Type::simplified_union_from_iterators(i_s, self.0.iter())
+        match self.0.len() {
+            0 => Type::NEVER,
+            1 => self.0.into_iter().next().unwrap(),
+            _ => Type::simplified_union_from_iterators(i_s, self.0.iter()),
+        }
     }
 
     pub fn into_type(self) -> Type {
-        Type::from_iter(self.0.into_iter())
+        match self.0.len() {
+            0 => Type::NEVER,
+            1 => self.0.into_iter().next().unwrap(),
+            _ => Type::Union(UnionType::from_types(self.0.into_iter(), true)),
+        }
     }
 }
 
