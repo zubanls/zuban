@@ -23,7 +23,7 @@ mod typed_dict;
 mod union;
 mod utils;
 
-use std::{borrow::Cow, cell::Cell, hash::Hash, mem, sync::Arc};
+use std::{borrow::Cow, cell::Cell, hash::Hash, sync::Arc};
 
 use typed_dict::rc_typed_dict_as_callable;
 use vfs::FileIndex;
@@ -590,60 +590,6 @@ impl Type {
             Type::Union(u) => u.iter().any(|t| t.is_func_or_overload_not_any_callable()),
             _ => false,
         }
-    }
-
-    pub fn make_optional(&mut self) {
-        *self = mem::replace(self, Self::Never(NeverCause::Other)).union(Type::None);
-    }
-
-    pub fn union(self, other: Self) -> Self {
-        let entries = match self {
-            Self::Union(u1) => {
-                let mut vec = u1.entries.to_vec();
-                match other {
-                    Self::Union(u2) => {
-                        for o in u2.entries.iter() {
-                            if !vec.contains(o) {
-                                vec.push(o.clone());
-                            }
-                        }
-                    }
-                    Type::Never(_) => (), // `X | Never is always X`
-                    _ => {
-                        if !vec.iter().any(|t| *t == other) {
-                            vec.push(other)
-                        }
-                    }
-                };
-                vec
-            }
-            Self::Never(_) => return other,
-            _ => match other {
-                Self::Union(u) => {
-                    if u.iter().any(|t| t == &self) {
-                        return Self::Union(u);
-                    } else {
-                        let mut vec = u.entries.to_vec();
-                        vec.push(self);
-                        vec
-                    }
-                }
-                _ => {
-                    if self == other || matches!(other, Type::Never(_)) {
-                        return self;
-                    } else {
-                        vec![self, other]
-                    }
-                }
-            },
-        };
-        Self::Union(UnionType::new(
-            entries, true, // TODO should we calculate this?
-        ))
-    }
-
-    pub fn union_in_place(&mut self, other: Type) {
-        *self = mem::replace(self, Self::Never(NeverCause::Other)).union(other);
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {
