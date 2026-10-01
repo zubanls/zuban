@@ -42,10 +42,10 @@ use crate::{
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     result_context::ResultContext,
     type_::{
-        ClassGenerics, DbString, ExtraItemsType, FunctionKind, GenericClass, GenericItem,
-        GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue, LookupResult,
-        ReplaceTypeVarLikes as _, Tuple, Type, TypedDict, TypedDictGenerics, TypedDictMember,
-        TypedDictMembers,
+        ClassGenerics, ComplexTypeGatherer, DbString, ExtraItemsType, FunctionKind, GenericClass,
+        GenericItem, GenericsList, IterCause, IterInfos, Literal, LiteralKind, LiteralValue,
+        LookupResult, ReplaceTypeVarLikes as _, Tuple, Type, TypedDict, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
     type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{debug_indent, is_magic_method, limit_length_for_debug},
@@ -905,7 +905,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 Some(Inferred::from_type(Type::Tuple(tuple)))
             }
             ParamKind::StarStar => {
-                let mut extra_items = Type::NEVER;
+                let mut extra_items = ComplexTypeGatherer::default();
                 let named = std::iter::once(argument)
                     .chain(rest_args.map(|p| p.argument))
                     .filter_map(|arg| {
@@ -930,7 +930,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             let arbitrary = inner.in_args_or_kwargs_and_arbitrary_len();
                             let type_ = infer(arg)?.into_type(&i_s);
                             if arbitrary {
-                                extra_items.union_in_place(type_);
+                                extra_items.add(type_);
                             }
                             None
                         }
@@ -938,8 +938,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     .collect();
                 let members = TypedDictMembers {
                     named,
-                    extra_items: (!extra_items.is_never()).then(|| ExtraItemsType {
-                        t: extra_items,
+                    extra_items: (!extra_items.is_empty()).then(|| ExtraItemsType {
+                        t: extra_items.into_simplified_type(i_s),
                         read_only: false,
                     }),
                 };
@@ -1512,10 +1512,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         debug_assert!(result.is_ok());
         func.ensure_checked_untyped_function_for_heuristics(self.db());
 
+        let i_s = self.inference.i_s;
         let is_generator = func_node_ref.is_generator();
         let _indent = debug_indent();
-        let mut return_t = Type::NEVER;
-        let mut yield_t = Type::NEVER;
+        let mut return_t = ComplexTypeGatherer::default();
+        let mut yield_t = ComplexTypeGatherer::default();
         for ret_or_yield in func_node_ref.iter_return_or_yield() {
             match ret_or_yield {
                 ReturnOrYield::Return(return_stmt) => {
@@ -1533,14 +1534,14 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         }
                         None => Inferred::new_none(),
                     };
-                    return_t.union_in_place(inferred.into_type(self.inference.i_s))
+                    return_t.add(inferred.into_type(i_s))
                 }
                 ReturnOrYield::Yield(yield_expr) => {
                     let t = match yield_expr.unpack() {
                         YieldExprContent::StarExpressions(star_exprs) => {
                             if let Some(h) = self.infer_star_exprs(star_exprs) {
                                 let inf: Inferred = h.into();
-                                inf.into_type(self.inference.i_s)
+                                inf.into_type(i_s)
                             } else {
                                 continue;
                             }
@@ -1549,21 +1550,22 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         YieldExprContent::YieldFrom(_) => return None,
                         YieldExprContent::None => Type::None,
                     };
-                    yield_t.union_in_place(t)
+                    yield_t.add(t)
                 }
             }
         }
+        let return_t = return_t.into_simplified_type(i_s);
         let result_t = if is_generator {
             new_class!(
-                self.inference.i_s.db.python_state.generator_type_link(),
-                yield_t,
+                i_s.db.python_state.generator_type_link(),
+                yield_t.into_simplified_type(i_s),
                 Type::ERROR,
                 return_t
             )
         } else if return_t.is_never() {
             debug!(
                 "Heuristics: Execution of {} with Never result, aborting",
-                func_node_ref.qualified_name(self.inference.i_s.db)
+                func_node_ref.qualified_name(i_s.db)
             );
             return None;
         } else {
@@ -1571,8 +1573,8 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
         };
         debug!(
             "Heuristics: Executed {} with result: {}",
-            func_node_ref.qualified_name(self.inference.i_s.db),
-            result_t.format_short(self.inference.i_s.db),
+            func_node_ref.qualified_name(i_s.db),
+            result_t.format_short(i_s.db),
         );
         Some(Heuristic::Guess(Inferred::from_type(result_t)))
     }
