@@ -666,7 +666,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         if point.partial_flags().nullable && !self.i_s.db.project.strict_optional_partials() {
             self.save_narrowed_partial_target(target, right_t.clone());
-            right_t.union_in_place(Type::None)
+            right_t.make_optional()
         }
 
         maybe_partial_node_ref.insert_type(right_t);
@@ -1342,7 +1342,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         } else {
                             if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
                             {
-                                t.union_in_place(Type::None);
+                                t.make_optional();
                                 narrow(PointLink::new(self.file.file_index, first_index), &t);
                             }
                             saved_node_ref.insert_type(t)
@@ -2094,7 +2094,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     primary_target.first(),
                                     new_dict.clone(),
                                 );
-                                new_dict.union_in_place(Type::None)
+                                new_dict.make_optional()
                             }
                             from.insert_type(new_dict);
                             return;
@@ -3481,7 +3481,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             );
             if flags.nullable && !i_s.db.project.strict_optional_partials() {
                 self.save_narrowed_partial(primary_or_atom, resolved_partial.clone());
-                resolved_partial.union_in_place(Type::None)
+                resolved_partial.make_optional()
             }
             base.insert_type(resolved_partial);
             Some(Type::None)
