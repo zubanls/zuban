@@ -442,6 +442,12 @@ impl TypeGatherer {
         self.0.push(t)
     }
 
+    pub fn add_with_uniqueness_check(&mut self, t: Type) {
+        if !self.0.contains(&t) {
+            self.add(t)
+        }
+    }
+
     pub fn extend(&mut self, other: Self) {
         self.0.extend(other.0)
     }

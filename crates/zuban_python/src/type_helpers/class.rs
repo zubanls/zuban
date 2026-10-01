@@ -38,11 +38,11 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
-        GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, NeverCause, ParamSpecArg,
+        GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, ParamSpecArg,
         ParamSpecUsage, ParamType, PrettyCallableOptions, ReplaceTypeVarLikes, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeVarIndex,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics, Variance,
-        add_any_params_to_params,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeGatherer,
+        TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
+        Variance, add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::{debug_indent, is_magic_method},
@@ -1535,7 +1535,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     )?
                 };
                 if nullable {
-                    result.union_in_place(Type::None)
+                    result.make_optional()
                 }
                 result
             }))
@@ -2907,9 +2907,9 @@ impl<'x> ClassLookupOptions<'x> {
 }
 
 fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Inferred {
-    let mut type_part = Type::Never(NeverCause::Other);
+    let mut type_part = TypeGatherer::default();
     for t in first_arg.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-        type_part.union_in_place(match t {
+        type_part.add_with_uniqueness_check(match t {
             Type::Class(_)
             | Type::None
             | Type::Any(_)
@@ -2945,9 +2945,9 @@ fn execute_bare_type(i_s: &InferenceState<'_, '_>, first_arg: Inferred) -> Infer
             _ => Type::ERROR,
         })
     }
-    if type_part.is_never() {
+    if type_part.is_empty() {
         first_arg // Must be never
     } else {
-        Inferred::from_type(Type::Type(Arc::new(type_part)))
+        Inferred::from_type(Type::Type(Arc::new(type_part.into_type())))
     }
 }
