@@ -2851,19 +2851,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            TypeContent::Type(Type::Union(UnionType::new(
-                slice_type
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(i, s)| {
-                        let t = self.compute_get_item_on_literal_item(s, i + 1);
-                        let type_ = self.as_type(t, s.as_node_ref());
-                        match type_ {
-                            Type::Union(u) => EitherIterator::Left(u.entries.to_vec().into_iter()),
-                            _ => EitherIterator::Right(std::iter::once(type_)),
-                        }
-                    })
-                    .collect(),
+            TypeContent::Type(Type::Union(UnionType::from_types(
+                slice_type.iter().enumerate().flat_map(|(i, s)| {
+                    let t = self.compute_get_item_on_literal_item(s, i + 1);
+                    let type_ = self.as_type(t, s.as_node_ref());
+                    match type_ {
+                        Type::Union(u) => EitherIterator::Left(u.entries.to_vec().into_iter()),
+                        _ => EitherIterator::Right(std::iter::once(type_)),
+                    }
+                }),
                 false,
             )))
         } else {
