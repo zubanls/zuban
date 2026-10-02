@@ -38,9 +38,10 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         ComplexTypeGatherer, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, NeverCause, ParamType, PropertySetter, PropertySetterType,
-        ReplaceSelf, ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
+        GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
+        PropertySetterType, ReplaceSelf, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount,
+        replace_param_spec,
     },
     type_helpers::Class,
     utils::{debug_indent, is_magic_method},
@@ -224,8 +225,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
-        let mut generator: Option<Inferred> = None;
-        let mut result: Option<Inferred> = None;
+        let mut generator = InferredTypeGatherer::default();
+        let mut result = InferredTypeGatherer::default();
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) => {
@@ -237,11 +238,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     } else {
                         Inferred::new_none()
                     };
-                    result = Some(if let Some(r) = result {
-                        inf.simplified_union(inner_i_s, r)
-                    } else {
-                        inf
-                    });
+                    result.add(inf)
                 }
                 ReturnOrYield::Yield(yield_expr) => {
                     let inf = match yield_expr.unpack() {
@@ -253,14 +250,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                         YieldExprContent::None => Inferred::new_none(),
                     };
-                    generator = Some(if let Some(g) = generator {
-                        inf.simplified_union(inner_i_s, g)
-                    } else {
-                        inf
-                    });
+                    generator.add(inf);
                 }
             }
         }
+        let mut result = result.into_inferred_if_not_never(inner_i_s);
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);
             if matches!(t.as_ref(), Type::None) && self.class.is_some() {
@@ -272,23 +266,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
             }
         }
-        let needs_async_remap = if let Some(generator) = generator {
-            let t = generator
-                .as_type(i_s)
-                .make_generator_type(i_s.db, self.is_async(), || {
-                    if let Some(result) = result {
-                        result
-                            .as_type(i_s)
-                            .simplified_union(i_s, &Type::Any(AnyCause::Todo))
-                    } else {
-                        Type::Any(AnyCause::Todo)
-                    }
-                });
-            result = Some(Inferred::from_type(t));
-            false
-        } else {
-            self.is_async()
-        };
+        let needs_async_remap =
+            if let Some(generator) = generator.into_inferred_if_not_never(inner_i_s) {
+                let t = generator
+                    .as_type(i_s)
+                    .make_generator_type(i_s.db, self.is_async(), || {
+                        if let Some(result) = result {
+                            result
+                                .as_type(i_s)
+                                .simplified_union(i_s, &Type::Any(AnyCause::Todo))
+                        } else {
+                            Type::Any(AnyCause::Todo)
+                        }
+                    });
+                result = Some(Inferred::from_type(t));
+                false
+            } else {
+                self.is_async()
+            };
 
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);

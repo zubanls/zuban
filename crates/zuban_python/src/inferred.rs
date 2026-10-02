@@ -2097,7 +2097,7 @@ impl<'db: 'slf, 'slf> Inferred {
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError,
     ) -> Self {
-        let mut result: Option<Inferred> = None;
+        let mut gatherer = InferredTypeGatherer::default();
         self.run_after_lookup_on_each_union_member(
             i_s,
             in_file,
@@ -2114,14 +2114,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     result_context,
                     on_type_error,
                 );
-                result = if let Some(r) = result.take() {
-                    Some(r.simplified_union(i_s, inf))
-                } else {
-                    Some(inf)
-                }
+                gatherer.add(inf)
             },
         );
-        result.unwrap_or_else(|| Self::new_never(NeverCause::Other))
+        gatherer.into_inferred(i_s)
     }
 
     pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {
