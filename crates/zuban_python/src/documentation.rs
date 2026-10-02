@@ -13,8 +13,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, Type, TypeVarLike,
-        TypeVarVariance,
+        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, Type, TypeGatherer,
+        TypeVarLike, TypeVarVariance,
     },
     type_helpers::Class,
     utils::debug_indent,
@@ -94,13 +94,14 @@ impl<'project> Document<'project> {
                     // Here we avoid union entries that have the untyped type vars and therefore show up
                     // as A | A.
                     let mut previous_formatting = HashSet::new();
-                    let keep_entries = union
-                        .entries
-                        .iter()
-                        .filter(|entry| previous_formatting.insert(entry.format_short(i_s.db)))
-                        .cloned()
-                        .collect();
-                    *t = Type::from_union_entries(keep_entries, true);
+                    let keep_entries = TypeGatherer::from_iter(
+                        union
+                            .entries
+                            .iter()
+                            .filter(|entry| previous_formatting.insert(entry.format_short(i_s.db)))
+                            .cloned(),
+                    );
+                    *t = keep_entries.into_type();
                 }
                 let heuristic = pretty_type_formatting(i_s, &t, true).into_string();
                 if s != heuristic {
