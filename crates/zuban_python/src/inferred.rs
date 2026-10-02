@@ -577,19 +577,13 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         match self.maybe_literal(i_s.db) {
             UnionValue::Single(literal) => infer(i_s, literal),
-            UnionValue::Multiple(mut literals) => literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                }),
+            UnionValue::Multiple(literals) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                for literal in literals {
+                    gatherer.add(infer(i_s, literal)?)
+                }
+                gatherer.into_inferred_if_not_never(i_s)
+            }
             UnionValue::Any => None,
         }
     }
@@ -610,19 +604,13 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         match self.maybe_literal(i_s.db) {
             UnionValue::Single(literal) => infer(i_s, literal),
-            UnionValue::Multiple(mut literals) => literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                }),
+            UnionValue::Multiple(literals) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                for literal in literals {
+                    gatherer.add(infer(i_s, literal)?)
+                }
+                gatherer.into_inferred_if_not_never(i_s)
+            }
             UnionValue::Any => None,
         }
     }
