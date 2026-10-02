@@ -472,6 +472,12 @@ impl TypeGatherer {
     }
 }
 
+impl FromIterator<Type> for TypeGatherer {
+    fn from_iter<T: IntoIterator<Item = Type>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
 impl From<Type> for TypeGatherer {
     fn from(t: Type) -> Self {
         Self(smallvec::smallvec![t])

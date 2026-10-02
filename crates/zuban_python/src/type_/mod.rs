@@ -116,6 +116,19 @@ impl Type {
         }
     }
 
+    pub fn filter(&self, db: &Database, filter: impl Fn(&Type) -> bool) -> Self {
+        let might_have_defined_type_vars = match self {
+            Type::Union(u) => u.might_have_type_vars,
+            _ => true,
+        };
+        TypeGatherer::from_iter(
+            self.iter_with_unpacked_unions(db)
+                .filter(|t| filter(t))
+                .cloned(),
+        )
+        .into_type_with_might_have_type_vars(might_have_defined_type_vars)
+    }
+
     pub fn is_union_like(&self, db: &Database) -> bool {
         match self {
             Type::Union(_) => true,
@@ -241,17 +254,7 @@ impl Type {
         if !self.is_any_or_any_in_union(db) {
             return None;
         }
-        let might_have_defined_type_vars = match self {
-            Type::Union(u) => u.might_have_type_vars,
-            _ => true,
-        };
-        Some(Type::from_union_entries(
-            self.iter_with_unpacked_unions(db)
-                .filter(|e| !e.is_any())
-                .map(|e| e.clone())
-                .collect(),
-            might_have_defined_type_vars,
-        ))
+        Some(self.filter(db, |t| !t.is_any()))
     }
 
     pub fn is_type_of_any(&self) -> bool {
@@ -291,17 +294,7 @@ impl Type {
 
     pub fn maybe_remove_none(&self, db: &Database) -> Option<Type> {
         if self.is_none_or_none_in_union(db) {
-            let might_have_defined_type_vars = match self {
-                Type::Union(u) => u.might_have_type_vars,
-                _ => true,
-            };
-            Some(Type::from_union_entries(
-                self.iter_with_unpacked_unions(db)
-                    .filter(|e| !matches!(e, Type::None))
-                    .cloned()
-                    .collect(),
-                might_have_defined_type_vars,
-            ))
+            Some(self.filter(db, |t| !matches!(t, Type::None)))
         } else {
             None
         }
