@@ -532,6 +532,10 @@ impl<'x> InferredTypeGatherer<'x> {
         self.0.push(t)
     }
 
+    pub fn revert_order(&mut self) {
+        self.0.reverse()
+    }
+
     pub fn into_inferred(self, i_s: &InferenceState) -> Inferred {
         match self.0.len() {
             0 => Inferred::new_never(NeverCause::Other),

@@ -254,6 +254,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
+        // The order is backwards, so we have to revert
+        result.revert_order();
+        generator.revert_order();
+
         let mut result = result.into_inferred_if_not_never(inner_i_s);
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);
