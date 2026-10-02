@@ -28,7 +28,7 @@ use crate::{
     inferred::Inferred,
     match_::MismatchReason,
     recoverable_error,
-    type_::{AnyCause, NeverCause, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, InferredTypeGatherer, NeverCause, Tuple, TupleUnpack, Type, WithUnpack},
     type_helpers::FuncLike,
 };
 
@@ -292,28 +292,32 @@ impl IteratorContent {
                 inferred: inf,
                 arbitrary_len: false,
             }),
-            Self::Union(iterators) => iterators
-                .iter_mut()
-                .map(|i| i.next_as_argument(i_s))
-                .reduce(|x, y| match (x?, y?) {
-                    (
+            Self::Union(iterators) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                let mut arbitrary_len = true;
+                for iterator in iterators {
+                    let i = iterator.next_as_argument(i_s)?;
+                    match i {
                         UnpackedArgument::Normal {
-                            inferred: inf1,
-                            arbitrary_len: a1,
-                        },
-                        UnpackedArgument::Normal {
-                            inferred: inf2,
-                            arbitrary_len: a2,
-                        },
-                    ) => Some(UnpackedArgument::Normal {
-                        inferred: inf1.simplified_union(i_s, inf2),
-                        arbitrary_len: a1 & a2,
-                    }),
-                    _ => {
-                        debug!("Unpacking a union with incompatible results");
-                        None
+                            inferred,
+                            arbitrary_len: a,
+                        } => {
+                            arbitrary_len &= a;
+                            gatherer.add(inferred);
+                        }
+                        UnpackedArgument::WithUnpack(_) => {
+                            debug!("Unpacking a union with incompatible results");
+                            return None;
+                        }
                     }
-                })?,
+                }
+                gatherer
+                    .into_inferred_if_not_never(i_s)
+                    .map(|inferred| UnpackedArgument::Normal {
+                        inferred,
+                        arbitrary_len,
+                    })
+            }
             Self::WithUnpack {
                 unpack,
                 before_index,
