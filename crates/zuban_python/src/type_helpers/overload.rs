@@ -17,7 +17,7 @@ use crate::{
     },
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableContent, FunctionOverload, NeverCause, PrettyCallableOptions,
+        AnyCause, CallableContent, ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions,
         ReplaceSelf, ReplaceTypeVarLikes as _, Type,
     },
     utils::debug_indent,
@@ -342,7 +342,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_any(AnyCause::Todo),
                     },
                 });
-                let mut unioned = Type::Never(NeverCause::Other);
+                let mut unioned = ComplexTypeGatherer::default();
                 let mut first_similar = None;
                 let mut mismatch = false;
                 for entry in u.entries.iter() {
@@ -376,7 +376,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                     match r {
                         UnionMathResult::Match { result, .. } if !mismatch => {
-                            unioned = unioned.simplified_union(i_s, &result);
+                            unioned.add(result);
                         }
                         UnionMathResult::TooManyUnions => return UnionMathResult::TooManyUnions,
                         _ => mismatch = true,
@@ -391,7 +391,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                 } else {
                     UnionMathResult::Match {
-                        result: unioned,
+                        result: unioned.into_simplified_type(i_s),
                         first_similar_index: first_similar.unwrap(),
                     }
                 }
