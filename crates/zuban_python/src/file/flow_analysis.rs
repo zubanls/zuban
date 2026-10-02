@@ -3201,24 +3201,11 @@ impl<'file> Inference<'_, 'file, '_> {
                     // Floats for example are not literals and can therefore never change the
                     // falsey side and can therefore not be matched as a singleton.
                     (
-                        Type::from_union_entries(
-                            of_type
-                                .iter_with_unpacked_unions(i_s.db)
-                                .filter_map(|t| {
-                                    match t {
-                                        Type::Class(c) if *t == expected => (),
-                                        Type::TypeVar(_) | Type::Any(_) => (),
-                                        _ => {
-                                            if !has_custom_eq(i_s, t) {
-                                                return None;
-                                            }
-                                        }
-                                    };
-                                    Some(t.clone())
-                                })
-                                .collect(),
-                            true,
-                        ),
+                        of_type.filter(i_s.db, |t| match t {
+                            Type::Class(c) if *t == expected => true,
+                            Type::TypeVar(_) | Type::Any(_) => true,
+                            _ => has_custom_eq(i_s, t),
+                        }),
                         of_type.into_owned(),
                     )
                 } else {
