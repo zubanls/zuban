@@ -3048,18 +3048,19 @@ impl<'file> Inference<'_, 'file, '_> {
         };
         debug!("Propagate parent unions");
         let _indent = debug_indent();
-        let mut matching_entries = vec![];
+        let mut matching_entries = TypeGatherer::default();
         for entry in base_union.iter() {
             let (inf, had_error) = replay(entry);
             if had_error {
                 return None;
             }
             if inf.as_cow_type(self.i_s).simple_overlaps(self.i_s, child_t) {
-                matching_entries.push(entry.clone());
+                matching_entries.add(entry.clone());
             }
         }
-        (base_union.entries.len() != matching_entries.len())
-            .then(|| Type::from_union_entries(matching_entries, base_union.might_have_type_vars))
+        (base_union.entries.len() != matching_entries.len()).then(|| {
+            matching_entries.into_type_with_might_have_type_vars(base_union.might_have_type_vars)
+        })
     }
 
     fn propagate_parent_unions(&self, frame: &mut Frame, parent_unions: &[(FlowKey, UnionType)]) {

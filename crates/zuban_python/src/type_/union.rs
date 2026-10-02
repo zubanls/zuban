@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use utils::FastHashMap;
+use utils::{FastHashMap, FastHashSet};
 
 use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
 use crate::{
@@ -432,6 +432,10 @@ impl<T> GenericTypeGatherer<T> {
 }
 
 impl TypeGatherer {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn add(&mut self, t: Type) {
         debug_assert!(!t.is_never());
         debug_assert!(!matches!(t, Type::Union(_)));
@@ -456,6 +460,10 @@ impl TypeGatherer {
         self.0.extend(other.0)
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Type> + Clone {
+        self.0.iter()
+    }
+
     pub fn into_type(self) -> Type {
         self.into_type_with_might_have_type_vars(true)
     }
@@ -469,6 +477,13 @@ impl TypeGatherer {
                 might_have_type_vars,
             )),
         }
+    }
+
+    pub(crate) fn into_type_without_simple_duplicates(mut self) -> Type {
+        let mut seen = FastHashSet::default();
+        // Try to remove duplicates
+        self.0.retain(|entry| seen.insert(entry.clone()));
+        self.into_type_with_might_have_type_vars(true)
     }
 }
 

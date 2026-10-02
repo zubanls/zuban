@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashSet, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionKind,
@@ -11,7 +11,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::{AnyCause, PropertySetterType, TupleUnpack, WithUnpack},
+    type_::{AnyCause, PropertySetterType, TupleUnpack, TypeGatherer, WithUnpack},
     utils::arc_slice_into_vec,
 };
 
@@ -948,25 +948,13 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 if !u.might_have_type_vars {
                     return Some(None);
                 }
-                let mut new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
-                    Some(
-                        // Performance: It is a bit questionable that this always clones.
-                        // The problem is that if it doesn't, we won't use simplified union
-                        // logic in all cases.
-                        // Perhaps we should find a way to check whether this we are in a
-                        // simplified union case. But this is generally tricky. And might
-                        // also intensify workloads.
-                        u.replace_internal(self)?,
-                    )
-                })?;
+                let new_entries: TypeGatherer =
+                    maybe_replace_iterable(u.entries.iter(), |u| Some(u.replace_internal(self)?))?;
                 Some(Some(if self.simplify_unions {
                     let i_s = InferenceState::new_in_unknown_file(self.db);
                     Type::simplified_union_from_iterators(&i_s, new_entries.iter())
                 } else {
-                    let mut seen = HashSet::new();
-                    // Try to remove duplicates
-                    new_entries.retain(|entry| seen.insert(entry.clone()));
-                    Type::from_union_entries(new_entries, true)
+                    new_entries.into_type_without_simple_duplicates()
                 }))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
