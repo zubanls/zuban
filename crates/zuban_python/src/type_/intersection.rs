@@ -13,10 +13,11 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, OnTypeError},
     result_context::ResultContext,
+    type_::TypeGatherer,
     type_helpers::LookupDetails,
 };
 
-use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionEntry, UnionType};
+use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionType};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind) -> bool, &mut dyn FnMut(&Type, LookupDetails));
@@ -51,21 +52,15 @@ impl Intersection {
     ) -> Result<Type, ()> {
         let mut handle_union = |union: &UnionType, other: &Type| {
             let mut found_issues = vec![];
-            let mut new_entries = vec![];
+            let mut new_entries = TypeGatherer::default();
             for entry in union.entries.iter() {
-                if let Ok(type_) = Intersection::new_instance_intersection(
-                    i_s,
-                    other,
-                    &entry.type_,
-                    &mut |issue| {
+                if let Ok(type_) =
+                    Intersection::new_instance_intersection(i_s, other, entry, &mut |issue| {
                         found_issues.push(issue);
                         true
-                    },
-                ) {
-                    new_entries.push(UnionEntry {
-                        type_,
-                        format_index: entry.format_index,
-                    });
+                    })
+                {
+                    new_entries.add(type_);
                 }
             }
             if new_entries.is_empty() {
@@ -74,10 +69,7 @@ impl Intersection {
                 }
                 Err(())
             } else {
-                Ok(Type::from_union_entries(
-                    new_entries,
-                    union.might_have_type_vars,
-                ))
+                Ok(new_entries.into_type_with_might_have_type_vars(union.might_have_type_vars))
             }
         };
         match (t1, t2) {

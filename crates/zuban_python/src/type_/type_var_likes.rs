@@ -21,6 +21,7 @@ use crate::{
     matching::Matcher,
     node_ref::NodeRef,
     recoverable_error,
+    type_::ParamSpecArg,
     type_helpers::Class,
     utils::join_with_commas,
 };
@@ -1616,31 +1617,6 @@ impl Hash for ParamSpecUsage {
         self.in_definition.hash(state);
         self.index.hash(state);
         self.temporary_matcher_id.hash(state);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ParamSpecTypeVars {
-    pub type_vars: TypeVarLikes,
-    pub in_definition: PointLink,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ParamSpecArg {
-    pub params: CallableParams,
-    pub type_vars: Option<ParamSpecTypeVars>,
-}
-
-impl ParamSpecArg {
-    pub fn new(params: CallableParams, type_vars: Option<ParamSpecTypeVars>) -> Self {
-        Self { params, type_vars }
-    }
-
-    pub fn new_any(cause: AnyCause) -> Self {
-        Self {
-            params: CallableParams::Any(cause),
-            type_vars: None,
-        }
     }
 }
 

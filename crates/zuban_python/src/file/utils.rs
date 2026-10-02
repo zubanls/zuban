@@ -24,8 +24,8 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes,
-        Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
+        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue,
+        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
         UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
         maybe_add_extra_keys_issue,
     },
@@ -99,7 +99,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result.unwrap_or(Type::Never(NeverCause::Other))
+        result.unwrap_or(Type::NEVER)
     }
 
     pub fn infer_list_or_set_literal_from_context(
@@ -493,8 +493,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
         }
-        let mut key_t = Type::Never(NeverCause::Other);
-        let mut value_t = Type::Never(NeverCause::Other);
+        let mut key_t = Type::NEVER;
+        let mut value_t = Type::NEVER;
         for (i, child) in dict_elements.enumerate() {
             match child {
                 DictElement::KeyValue(key_value) => {
@@ -709,32 +709,24 @@ pub fn infer_string_index(
         callable(s)
     };
 
-    match simple
+    let maybe = || match simple
         .infer(i_s, &mut ResultContext::ValueExpected)
         .maybe_literal(i_s.db)
     {
         UnionValue::Single(literal) => infer(i_s, literal),
-        UnionValue::Multiple(mut literals) => {
-            literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                })
+        UnionValue::Multiple(literals) => {
+            let mut gatherer = InferredTypeGatherer::default();
+            for literal in literals {
+                gatherer.add(infer(i_s, literal)?);
+            }
+            gatherer.into_inferred_if_not_never(i_s)
         }
         UnionValue::Any => {
             on_non_literal();
             None
         }
-    }
-    .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
+    };
+    maybe().unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
 }
 
 pub fn infer_dict_like(

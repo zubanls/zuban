@@ -742,37 +742,96 @@ impl Type {
                         return m;
                     }
                 }
-                if matcher.is_matching_context && matcher.has_type_var_matcher() {
+                let mut had_any = None;
+                let result = if matcher.is_matching_context && matcher.has_type_var_matcher() {
                     // If we're matching the context we want to make sure that types are marked as
                     // uninferrable if the union TypeVars differ. For normal matching we would need
                     // o do something like this as well, but without some sort of backtracking or
                     // advanced solving of type vars, it's just making results worse so we only use
                     // it for the context.
-                    let mut result = Match::new_true();
-                    let mut matched = false;
+                    let mut result = Match::new_false();
                     let value_type_has_type_vars = value_type.has_type_vars();
+                    let mut type_vars_for_matcher = vec![];
+                    let reset_context_if_ambiguous = |matcher: &mut Matcher, g: &Type| {
+                        // The result here is irrelevant, because one of the union entries
+                        // already matched. We only want to make sure the type vars
+                        // are matched.
+                        let mut new_matcher = matcher.clone();
+                        new_matcher.set_all_type_vars_uncalculated();
+                        g.is_super_type_of(i_s, &mut new_matcher, value_type);
+                        matcher.mark_mismatching_type_vars_uninferrable(i_s, new_matcher);
+                    };
                     for g in u1.iter() {
-                        if matched {
-                            if g.has_type_vars() || value_type_has_type_vars {
-                                // The result here is irrelevant, because one of the union entries
-                                // already matched. We only want to make sure the type vars
-                                // are matched.
-                                let mut new_matcher = matcher.clone();
-                                new_matcher.set_all_type_vars_uncalculated();
-                                g.is_super_type_of(i_s, &mut new_matcher, value_type);
-                                matcher.mark_mismatching_type_vars_uninferrable(i_s, new_matcher);
+                        match g {
+                            Type::TypeVar(tv) if matcher.has_responsible_type_var_matcher(tv) => {
+                                // We have to handle type vars for the matcher later, because otherwise
+                                // matching things like:
+                                //
+                                //     list[T].__add__[S](self, x: list[S]) -> list[S | T]
+                                //
+                                // is going to be impossible if the context is list[None | str],
+                                // S is assumed to be None | str if we do not try to match against T
+                                // (which is going to be defined by the class) first.
+                                type_vars_for_matcher.push(g);
                             }
-                        } else {
-                            let r = g.is_super_type_of(i_s, matcher, value_type);
-                            matched |= r.bool();
-                            if !matches!(result, Match::False { similar: true, .. }) {
-                                result = r;
+                            Type::Any(_) => had_any = Some(g),
+                            _ => {
+                                if result.bool() {
+                                    if g.has_type_vars() || value_type_has_type_vars {
+                                        reset_context_if_ambiguous(matcher, g)
+                                    }
+                                } else {
+                                    let r = g.is_super_type_of(i_s, matcher, value_type);
+                                    if r.bool() {
+                                        result = r
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if !result.bool() {
+                        for g in type_vars_for_matcher {
+                            if result.bool() {
+                                reset_context_if_ambiguous(matcher, g)
+                            } else {
+                                let r = g.is_super_type_of(i_s, matcher, value_type);
+                                if r.bool() {
+                                    result = r
+                                }
                             }
                         }
                     }
                     result
                 } else {
-                    Match::any(u1.iter(), |g| g.is_super_type_of(i_s, matcher, value_type))
+                    let mut type_vars_for_matcher = vec![];
+                    let result = Match::any(u1.iter(), |g| {
+                        match g {
+                            Type::TypeVar(tv) if matcher.has_responsible_type_var_matcher(tv) => {
+                                // See comment above
+                                type_vars_for_matcher.push(g);
+                                Match::new_false()
+                            }
+                            Type::Any(_) => {
+                                had_any = Some(g);
+                                Match::new_false()
+                            }
+                            _ => g.is_super_type_of(i_s, matcher, value_type),
+                        }
+                    });
+                    if result.bool() || type_vars_for_matcher.is_empty() {
+                        result
+                    } else {
+                        Match::any(type_vars_for_matcher.iter(), |g| {
+                            g.is_super_type_of(i_s, matcher, value_type)
+                        })
+                    }
+                };
+                if !result.bool()
+                    && let Some(t) = had_any
+                {
+                    t.is_super_type_of(i_s, matcher, value_type)
+                } else {
+                    result
                 }
             }
         }

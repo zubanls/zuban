@@ -4,8 +4,8 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple,
-    Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    AnyCause, DbString, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
+    TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
     TypedDict,
 };
 use crate::{
@@ -1123,5 +1123,158 @@ fn format_tuple_unpack(tup: &Arc<Tuple>, format_data: &FormatData) -> FormatTupl
             }
             TupleArgs::ArbitraryLen(t) => t.format(format_data).into_string(),
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum PropertySetterType {
+    SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
+    OtherType(Type),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct PropertySetter {
+    pub type_: PropertySetterType,
+    pub deprecated_reason: Option<Arc<Box<str>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum FunctionKind {
+    Function {
+        had_first_self_or_class_annotation: bool,
+    },
+    Property {
+        had_first_self_or_class_annotation: bool,
+        setter_type: Option<Arc<PropertySetter>>,
+    },
+    Classmethod {
+        had_first_self_or_class_annotation: bool,
+    },
+    Staticmethod,
+}
+
+impl FunctionKind {
+    pub fn is_same_base_kind(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Function { .. }, Self::Function { .. })
+                | (Self::Property { .. }, Self::Property { .. })
+                | (Self::Classmethod { .. }, Self::Classmethod { .. })
+                | (Self::Staticmethod, Self::Staticmethod)
+        )
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation,
+            Self::Staticmethod => true,
+        }
+    }
+
+    pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation = new_value,
+            Self::Staticmethod => (),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub(crate) enum CallableLike {
+    Callable(Arc<CallableContent>),
+    Overload(FunctionOverload),
+}
+
+impl CallableLike {
+    pub fn from_overload_funcs(funcs: Arc<[Arc<CallableContent>]>) -> Option<Self> {
+        Some(match funcs.len() {
+            0 => return None,
+            1 => Self::Callable(funcs.iter().next().unwrap().clone()),
+            _ => Self::Overload(FunctionOverload::new(funcs)),
+        })
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        match self {
+            Self::Callable(c) => c.format(format_data),
+            Self::Overload(overload) => format!(
+                "Overload({})",
+                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
+            ),
+        }
+    }
+
+    pub fn is_typed(&self, skip_first_param: bool) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed(skip_first_param),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed(skip_first_param)),
+        }
+    }
+
+    pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed_and_annotated_result(db),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed_and_annotated_result(db)),
+        }
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Callable(c) => c.kind.had_first_self_or_class_annotation(),
+            Self::Overload(o) => o.kind().had_first_self_or_class_annotation(),
+        }
+    }
+}
+
+impl From<CallableLike> for Type {
+    fn from(callable: CallableLike) -> Self {
+        match callable {
+            CallableLike::Callable(c) => Type::Callable(c),
+            CallableLike::Overload(o) => Type::FunctionOverload(o),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
+
+impl FunctionOverload {
+    pub fn new(functions: Arc<[Arc<CallableContent>]>) -> Self {
+        debug_assert!(!functions.is_empty());
+        Self(functions)
+    }
+
+    pub fn kind(&self) -> &FunctionKind {
+        &self.0[0].kind
+    }
+
+    pub fn is_abstract(&self) -> bool {
+        self.0[0].is_abstract
+    }
+
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
+        self.0.iter()
     }
 }

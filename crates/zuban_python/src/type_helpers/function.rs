@@ -37,10 +37,11 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-        DataclassTransformObj, DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-        NeverCause, ParamType, PropertySetter, PropertySetterType, ReplaceSelf,
-        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, Type,
-        TypeVarLike, TypeVarLikes, WrongPositionalCount, replace_param_spec,
+        ComplexTypeGatherer, DataclassTransformObj, DbString, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
+        PropertySetterType, ReplaceSelf, ReplaceTypeVarLikes, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, Type, TypeVarLike, TypeVarLikes, WrongPositionalCount,
+        replace_param_spec,
     },
     type_helpers::Class,
     utils::{debug_indent, is_magic_method},
@@ -99,7 +100,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .file
                 .name_resolution_for_types(i_s)
                 .use_cached_return_annotation_type(return_annotation);
-            GeneratorType::from_type(i_s.db, return_type)
+            GeneratorType::from_type(i_s, &return_type)
         })
     }
 
@@ -224,8 +225,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
         debug!("Checking cached untyped return for func {}", self.name());
         let inference = self.node_ref.file.inference(inner_i_s);
-        let mut generator: Option<Inferred> = None;
-        let mut result: Option<Inferred> = None;
+        let mut generator = InferredTypeGatherer::default();
+        let mut result = InferredTypeGatherer::default();
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) => {
@@ -237,11 +238,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     } else {
                         Inferred::new_none()
                     };
-                    result = Some(if let Some(r) = result {
-                        inf.simplified_union(inner_i_s, r)
-                    } else {
-                        inf
-                    });
+                    result.add(inf)
                 }
                 ReturnOrYield::Yield(yield_expr) => {
                     let inf = match yield_expr.unpack() {
@@ -253,14 +250,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                         YieldExprContent::None => Inferred::new_none(),
                     };
-                    generator = Some(if let Some(g) = generator {
-                        inf.simplified_union(inner_i_s, g)
-                    } else {
-                        inf
-                    });
+                    generator.add(inf);
                 }
             }
         }
+        // The order is backwards, so we have to revert
+        result.revert_order();
+        generator.revert_order();
+
+        let mut result = result.into_inferred_if_not_never(inner_i_s);
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);
             if matches!(t.as_ref(), Type::None) && self.class.is_some() {
@@ -272,23 +270,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 *result = Inferred::from_type(result.as_type(i_s).union(Type::None))
             }
         }
-        let needs_async_remap = if let Some(generator) = generator {
-            let t = generator
-                .as_type(i_s)
-                .make_generator_type(i_s.db, self.is_async(), || {
-                    if let Some(result) = result {
-                        result
-                            .as_type(i_s)
-                            .simplified_union(i_s, &Type::Any(AnyCause::Todo))
-                    } else {
-                        Type::Any(AnyCause::Todo)
-                    }
-                });
-            result = Some(Inferred::from_type(t));
-            false
-        } else {
-            self.is_async()
-        };
+        let needs_async_remap =
+            if let Some(generator) = generator.into_inferred_if_not_never(inner_i_s) {
+                let t = generator
+                    .as_type(i_s)
+                    .make_generator_type(i_s.db, self.is_async(), || {
+                        if let Some(result) = result {
+                            result
+                                .as_type(i_s)
+                                .simplified_union(i_s, &Type::Any(AnyCause::Todo))
+                        } else {
+                            Type::Any(AnyCause::Todo)
+                        }
+                    });
+                result = Some(Inferred::from_type(t));
+                false
+            } else {
+                self.is_async()
+            };
 
         if let Some(result) = &mut result {
             let t = result.as_cow_type(i_s);
@@ -1971,7 +1970,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 if let Some(first) = w.before.first() {
                                     return Some(Cow::Owned(first.clone()));
                                 }
-                                return Some(Cow::Borrowed(&Type::Never(NeverCause::Other)));
+                                return Some(Cow::Borrowed(&Type::NEVER));
                             }
                             TupleArgs::FixedLen(_) => unreachable!(),
                         },
@@ -2219,7 +2218,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut t = self.node_ref.return_annotation_type(i_s);
         if self.is_generator() {
             t = Cow::Owned(
-                GeneratorType::from_type(i_s.db, t)
+                GeneratorType::from_type(i_s, &t)
                     .map(|g| g.return_type.unwrap_or(Type::None))
                     .unwrap_or(Type::Any(AnyCause::Todo)),
             );
@@ -2613,8 +2612,9 @@ pub(crate) struct GeneratorType {
 }
 
 impl GeneratorType {
-    pub fn from_type(db: &Database, t: Cow<Type>) -> Option<Self> {
-        match t.as_ref() {
+    pub fn from_type(i_s: &InferenceState, t: &Type) -> Option<Self> {
+        let db = i_s.db;
+        match t {
             Type::Class(c)
                 if c.link == db.python_state.iterator_link()
                     || c.link == db.python_state.iterable_link()
@@ -2643,41 +2643,31 @@ impl GeneratorType {
                     return_type: None,
                 })
             }
-            Type::Union(union) => union.iter().fold(None, |a, b| {
-                if let Some(b) = Self::from_type(db, Cow::Borrowed(b)) {
-                    if let Some(a) = a {
-                        let optional_union = |t1: Option<Type>, t2: Option<Type>| {
-                            if let Some(t1) = t1 {
-                                if let Some(t2) = t2 {
-                                    Some(t1.union(t2))
-                                } else {
-                                    Some(t1)
-                                }
-                            } else {
-                                t2
-                            }
-                        };
-                        Some(Self {
-                            yield_type: a.yield_type.union(b.yield_type),
-                            // TODO is taking the Union here correct, since its contravariant?
-                            send_type: optional_union(a.send_type, b.send_type),
-                            return_type: if a.return_type.is_none() && b.return_type.is_none() {
-                                None
-                            } else {
-                                Some(
-                                    a.return_type
-                                        .unwrap_or(Type::None)
-                                        .union(b.return_type.unwrap_or(Type::None)),
-                                )
-                            },
-                        })
-                    } else {
-                        Some(b)
+            Type::Union(union) => {
+                let mut yield_types = ComplexTypeGatherer::default();
+                let mut send_types = ComplexTypeGatherer::default();
+                let mut return_types = ComplexTypeGatherer::default();
+                let mut had_return_type_with_some = false;
+                for t in union.iter() {
+                    if let Some(generator) = Self::from_type(i_s, t) {
+                        yield_types.add(generator.yield_type);
+                        // TODO is taking the Union here correct, since its contravariant?
+                        if let Some(send_type) = generator.send_type {
+                            send_types.add(send_type);
+                        }
+                        had_return_type_with_some |= generator.return_type.is_some();
+                        return_types.add(generator.return_type.unwrap_or(Type::None));
                     }
-                } else {
-                    a
                 }
-            }),
+                (!yield_types.is_empty()).then(|| Self {
+                    yield_type: yield_types.into_simplified_type(i_s),
+                    // TODO is taking the Union here correct, since its contravariant?
+                    send_type: (!send_types.is_empty())
+                        .then(|| send_types.into_simplified_type(i_s)),
+                    return_type: had_return_type_with_some
+                        .then(|| return_types.into_simplified_type(i_s)),
+                })
+            }
             _ => None,
         }
     }

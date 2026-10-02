@@ -10,7 +10,7 @@ use super::{
 use crate::{
     debug,
     inference_state::InferenceState,
-    type_::{self, Tuple, TupleArgs, TupleUnpack},
+    type_::{self, ComplexTypeGatherer, Tuple, TupleArgs, TupleUnpack},
     utils::debug_indent,
 };
 
@@ -31,8 +31,9 @@ impl Type {
         );
         let _indent = debug_indent();
         match (self, other) {
-            (Type::Union(union), _) => common_sub_type_for_union(i_s, union.iter(), other),
-            (_, Type::Union(union)) => common_sub_type_for_union(i_s, union.iter(), self),
+            (Type::Union(union), alt) | (alt, Type::Union(union)) => {
+                common_sub_type_for_union(i_s, union.iter(), alt)
+            }
             (Type::Tuple(tup1), Type::Tuple(tup2)) => Some(Type::Tuple(Tuple::new(
                 tup1.args.common_sub_type(i_s, &tup2.args)?,
             ))),
@@ -260,7 +261,7 @@ fn common_sub_type_for_union<'x>(
     union: impl IntoIterator<Item = &'x Type>,
     other: &Type,
 ) -> Option<Type> {
-    let mut result: Type = Type::NEVER;
+    let mut result = ComplexTypeGatherer::default();
     if let Type::Union(u2) = other {
         // While common subtype would work without this special case, sub types with unions on both
         // sides can explode exponentially (e.g. unions with n=1000 literals each would have to do
@@ -279,24 +280,24 @@ fn common_sub_type_for_union<'x>(
         for t1 in union {
             if let Type::Literal(l1) = t1 {
                 if literals2.contains(&l1.value(i_s.db)) {
-                    result.union_in_place(t1.clone())
+                    result.add(t1.clone())
                 } else {
                     if let Some(found) =
                         common_sub_type_for_union(i_s, non_literals2.iter().copied(), t1)
                     {
-                        result.union_in_place(found)
+                        result.add(found)
                     }
                 }
             } else if let Some(found) = t1.common_sub_type(i_s, other) {
-                result.union_in_place(found)
+                result.add(found)
             }
         }
     } else {
         for t1 in union {
             if let Some(found) = t1.common_sub_type(i_s, other) {
-                result.union_in_place(found)
+                result.add(found)
             }
         }
     }
-    (!result.is_never()).then_some(result)
+    (!result.is_empty()).then_some(result.into_simplified_type(i_s))
 }

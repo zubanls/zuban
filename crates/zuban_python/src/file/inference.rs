@@ -42,8 +42,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
         Literal, LiteralKind, LiteralValue, LookupResult, ParamType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType,
-        Variance, dataclass_converter_fields_lookup,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionType, Variance,
+        dataclass_converter_fields_lookup,
     },
     type_helpers::{
         Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
@@ -666,7 +666,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
         if point.partial_flags().nullable && !self.i_s.db.project.strict_optional_partials() {
             self.save_narrowed_partial_target(target, right_t.clone());
-            right_t.union_in_place(Type::None)
+            right_t.make_optional()
         }
 
         maybe_partial_node_ref.insert_type(right_t);
@@ -795,7 +795,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     },
                 );
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
+                    GeneratorType::from_type(i_s, &iter_result.as_cow_type(i_s))
                 {
                     if let Some(expected_send_type) = &generator.send_type
                         && let Some(got_send_type) = &other.send_type
@@ -1342,7 +1342,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         } else {
                             if partial_flags.nullable && !i_s.db.project.strict_optional_partials()
                             {
-                                t.union_in_place(Type::None);
+                                t.make_optional();
                                 narrow(PointLink::new(self.file.file_index, first_index), &t);
                             }
                             saved_node_ref.insert_type(t)
@@ -2094,7 +2094,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                                     primary_target.first(),
                                     new_dict.clone(),
                                 );
-                                new_dict.union_in_place(Type::None)
+                                new_dict.make_optional()
                             }
                             from.insert_type(new_dict);
                             return;
@@ -2844,7 +2844,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     // b'a' == bytesarray(b'a') is fine.
                     if !(overlaps_bytes_or_bytearray(&element_t)
                         && overlaps_bytes_or_bytearray(&right_t))
-                        && let Some(container_t) = right_t.container_types(self.i_s.db)
+                        && let Some(container_t) = right_t.container_types(self.i_s)
                         && !self.is_strict_equality_comparison(&element_t, &container_t)
                     {
                         let formatted = format_got_expected(self.i_s.db, &element_t, &container_t);
@@ -3481,7 +3481,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             );
             if flags.nullable && !i_s.db.project.strict_optional_partials() {
                 self.save_narrowed_partial(primary_or_atom, resolved_partial.clone());
-                resolved_partial.union_in_place(Type::None)
+                resolved_partial.make_optional()
             }
             base.insert_type(resolved_partial);
             Some(Type::None)
@@ -3619,6 +3619,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
+                let _indent = debug_indent();
                 let result = base
                     .lookup_with_result_context(
                         self.i_s,
@@ -4925,10 +4926,7 @@ pub fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             union
                 .entries
                 .iter()
-                .map(|e| UnionEntry {
-                    type_: instantiate_except(i_s, &e.type_),
-                    format_index: e.format_index,
-                })
+                .map(|e| instantiate_except(i_s, e))
                 .collect(),
             union.might_have_type_vars,
         )),
@@ -4978,15 +4976,8 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         })
         .as_cow_type(i_s)
         .into_owned(),
-        Type::Union(union) => Type::Union(UnionType::new(
-            union
-                .entries
-                .iter()
-                .map(|e| UnionEntry {
-                    type_: gather_except_star(i_s, &e.type_),
-                    format_index: e.format_index,
-                })
-                .collect(),
+        Type::Union(union) => Type::Union(UnionType::from_types(
+            union.entries.iter().map(|e| gather_except_star(i_s, e)),
             union.might_have_type_vars,
         )),
         _ => Type::ERROR,

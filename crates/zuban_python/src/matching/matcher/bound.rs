@@ -9,10 +9,9 @@ use crate::{
     match_::Match,
     params::matches_params_with_variance,
     type_::{
-        AnyCause, CallableParams, GenericItem, NeverCause, ParamSpecArg, ParamType,
-        ReplaceTypeVarLikes, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance, WithUnpack,
-        match_tuple_type_arguments,
+        AnyCause, CallableParams, GenericItem, ParamSpecArg, ParamType, ReplaceTypeVarLikes,
+        StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, Variance, WithUnpack, match_tuple_type_arguments,
     },
     type_helpers::Class,
 };
@@ -86,7 +85,7 @@ impl Bound {
                 TypeVarLike::TypeVarTuple(_) => return MatcherFormatResult::TypeVarTupleUnknown,
                 _ => (),
             }
-            MatcherFormatResult::Str(Type::Never(NeverCause::Other).format(format_data))
+            MatcherFormatResult::Str(Type::NEVER.format(format_data))
         })
     }
 

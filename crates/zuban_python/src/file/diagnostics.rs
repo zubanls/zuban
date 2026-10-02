@@ -3377,7 +3377,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                                 GenericItem::TypeArg(if is_upper {
                                     i_s.db.python_state.object_type()
                                 } else {
-                                    Type::Never(NeverCause::Other)
+                                    Type::NEVER
                                 })
                             } else {
                                 tv_like.as_any_generic_item()

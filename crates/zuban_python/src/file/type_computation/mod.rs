@@ -52,10 +52,10 @@ use crate::{
         GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
         ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin,
         ReplaceTypeVarLikes, Sentinel, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar,
-        TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
+        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGatherer, TypeGuardInfo, TypeLikeInTypeVar,
+        TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
-        TypeVarVariance, TypedDict, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
+        TypeVarVariance, TypedDict, TypedDictGenerics, UnionType, WithUnpack,
         add_any_params_to_params, add_param_spec_to_params,
     },
     type_helpers::{Class, Function, cache_class_name},
@@ -2653,32 +2653,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
     ) -> TypeContent<'static, 'static> {
-        let mut entries = vec![];
-        let mut format_index = 0;
+        let mut gatherer = TypeGatherer::default();
         for slice_or_simple in slice_type.iter() {
             let t = self.compute_slice_type_content(slice_or_simple);
             let type_ = self.as_type(t, slice_or_simple.as_node_ref());
-            match type_ {
-                Type::Never(_) => continue,
-                Type::Union(u) => {
-                    let length = u.entries.len();
-                    for mut new_entry in u.entries.into_vec() {
-                        new_entry.format_index += format_index;
-                        entries.push(new_entry);
-                    }
-                    format_index += length;
-                }
-                _ => {
-                    entries.push(UnionEntry {
-                        type_,
-                        format_index,
-                    });
-                    format_index += 1;
-                }
-            }
+            gatherer.add_all_union_entries(type_);
         }
         let might_have_type_vars = self.has_type_vars_or_self;
-        TypeContent::Type(Type::from_union_entries(entries, might_have_type_vars))
+        TypeContent::Type(gatherer.into_type_with_might_have_type_vars(might_have_type_vars))
     }
 
     fn compute_type_get_item_on_optional(
@@ -2696,11 +2678,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
         }
         let t = self.compute_slice_type(first);
-        let mut t = t.union(Type::None);
-        if let Type::Union(union_type) = &mut t {
-            union_type.sort_for_priority();
-        };
-        TypeContent::Type(t)
+        TypeContent::Type(t.union(Type::None))
     }
 
     fn compute_type_get_item_on_type(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -2865,37 +2843,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            let format_index = &Cell::new(0);
-            TypeContent::Type(Type::Union(UnionType::new(
-                slice_type
-                    .iter()
-                    .flat_map(|s| {
-                        let t = self.compute_get_item_on_literal_item(s, format_index.get() + 1);
-                        let type_ = self.as_type(t, s.as_node_ref());
-                        match type_ {
-                            Type::Union(u) => {
-                                let mut highest = 0;
-                                let start_format_index = format_index.get();
-                                EitherIterator::Left(u.entries.into_vec().into_iter().map(
-                                    move |mut e| {
-                                        highest = highest.max(e.format_index);
-                                        format_index.set(start_format_index + highest + 1);
-                                        e.format_index += start_format_index;
-                                        e
-                                    },
-                                ))
-                            }
-                            _ => {
-                                let e = UnionEntry {
-                                    type_,
-                                    format_index: format_index.get(),
-                                };
-                                format_index.set(format_index.get() + 1);
-                                EitherIterator::Right(std::iter::once(e))
-                            }
-                        }
-                    })
-                    .collect(),
+            TypeContent::Type(Type::Union(UnionType::from_types(
+                slice_type.iter().enumerate().flat_map(|(i, s)| {
+                    let t = self.compute_get_item_on_literal_item(s, i + 1);
+                    let type_ = self.as_type(t, s.as_node_ref());
+                    match type_ {
+                        Type::Union(u) => EitherIterator::Left(u.entries.to_vec().into_iter()),
+                        _ => EitherIterator::Right(std::iter::once(type_)),
+                    }
+                }),
                 false,
             )))
         } else {

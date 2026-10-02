@@ -29,10 +29,11 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, IterCause,
-        IterInfos, Literal as DbLiteral, LiteralKind, LiteralValue, LookupArgs, LookupResult,
-        NeverCause, PropertySetter, PropertySetterType, ReplaceTypeVarLikes, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes, execute_tuple_class, execute_type_of_type,
+        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LiteralKind,
+        LiteralValue, LookupArgs, LookupResult, NeverCause, PropertySetter, PropertySetterType,
+        ReplaceTypeVarLikes, Type, TypeVarKind, TypeVarLike, TypeVarLikes, execute_tuple_class,
+        execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
@@ -576,19 +577,13 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         match self.maybe_literal(i_s.db) {
             UnionValue::Single(literal) => infer(i_s, literal),
-            UnionValue::Multiple(mut literals) => literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                }),
+            UnionValue::Multiple(literals) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                for literal in literals {
+                    gatherer.add(infer(i_s, literal)?)
+                }
+                gatherer.into_inferred_if_not_never(i_s)
+            }
             UnionValue::Any => None,
         }
     }
@@ -609,19 +604,13 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         match self.maybe_literal(i_s.db) {
             UnionValue::Single(literal) => infer(i_s, literal),
-            UnionValue::Multiple(mut literals) => literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                }),
+            UnionValue::Multiple(literals) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                for literal in literals {
+                    gatherer.add(infer(i_s, literal)?)
+                }
+                gatherer.into_inferred_if_not_never(i_s)
+            }
             UnionValue::Any => None,
         }
     }
@@ -829,15 +818,9 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         callable: impl FnOnce(&mut dyn FnMut(Self)),
     ) -> Self {
-        let mut result: Option<Self> = None;
-        let r = &mut result;
-        callable(&mut |inferred| {
-            *r = Some(match r.take() {
-                Some(i) => i.simplified_union(i_s, inferred),
-                None => inferred,
-            });
-        });
-        result.unwrap_or_else(|| Inferred::new_never(NeverCause::Other))
+        let mut gatherer = InferredTypeGatherer::default();
+        callable(&mut |inferred| gatherer.add(inferred));
+        gatherer.into_inferred(i_s)
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
@@ -2102,7 +2085,7 @@ impl<'db: 'slf, 'slf> Inferred {
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError,
     ) -> Self {
-        let mut result: Option<Inferred> = None;
+        let mut gatherer = InferredTypeGatherer::default();
         self.run_after_lookup_on_each_union_member(
             i_s,
             in_file,
@@ -2119,14 +2102,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     result_context,
                     on_type_error,
                 );
-                result = if let Some(r) = result.take() {
-                    Some(r.simplified_union(i_s, inf))
-                } else {
-                    Some(inf)
-                }
+                gatherer.add(inf)
             },
         );
-        result.unwrap_or_else(|| Self::new_never(NeverCause::Other))
+        gatherer.into_inferred(i_s)
     }
 
     pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {

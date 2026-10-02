@@ -1,7 +1,8 @@
 mod ide;
 
 use std::{
-    collections::HashMap,
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap},
     env,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
@@ -118,6 +119,9 @@ struct CliArgs {
 
     #[arg(short = 'x')]
     stop_after_first_error: bool,
+
+    #[arg(long)]
+    slowest: Option<usize>,
 }
 
 #[derive(Parser, Default)]
@@ -1046,6 +1050,7 @@ fn run(
     let file_count = files.len();
     let mut error_summary = String::new();
     let mut allowed_to_run_when_start_at = false;
+    let mut timings = Timings::new(cli_args.slowest.unwrap_or_default());
     for (from_mypy_test_suite, file) in files {
         let code = read_to_string(file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
@@ -1091,10 +1096,14 @@ fn run(
                 }
             };
             if !from_mypy_test_suite {
-                // Run our own tests both with mypy-compatible and without it.
-                check(case.run(&mut projects, Mode::Default), Mode::Default)
+                timings.run(case.file_name, &case.name, || {
+                    // Run our own tests both with mypy-compatible and without it.
+                    check(case.run(&mut projects, Mode::Default), Mode::Default)
+                })
             }
-            check(case.run(&mut projects, Mode::Mypy), Mode::Mypy);
+            timings.run(case.file_name, &case.name, || {
+                check(case.run(&mut projects, Mode::Mypy), Mode::Mypy)
+            })
         }
     }
     if error_count > 0 {
@@ -1114,6 +1123,7 @@ fn run(
             RunCause::LanguageServer => "language-server",
         }
     );
+    timings.print_slowest_if_wanted();
     error_count
 }
 
@@ -1264,4 +1274,80 @@ fn skipped() -> Box<[Skipped]> {
             }
         })
         .collect()
+}
+
+struct Timings {
+    limit_count: usize,
+    slowest: BinaryHeap<Timing>,
+}
+
+struct Timing {
+    duration: f64,
+    file_name: String,
+    test_name: String,
+}
+
+impl Eq for Timing {}
+
+impl PartialEq for Timing {
+    fn eq(&self, other: &Self) -> bool {
+        self.duration == other.duration
+    }
+}
+
+impl Ord for Timing {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Reverse comparison -> min-heap.
+        other.duration.total_cmp(&self.duration)
+    }
+}
+
+impl PartialOrd for Timing {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Timings {
+    fn new(limit_count: usize) -> Self {
+        Self {
+            limit_count,
+            slowest: Default::default(),
+        }
+    }
+
+    fn run(&mut self, file_name: &str, test_name: &str, callback: impl FnOnce()) {
+        let start = Instant::now();
+        callback();
+
+        let duration = start.elapsed().as_secs_f64();
+        let create_timing = || Timing {
+            duration,
+            file_name: file_name.into(),
+            test_name: test_name.into(),
+        };
+
+        if self.limit_count == 0 {
+            return;
+        }
+
+        if self.slowest.len() < self.limit_count {
+            self.slowest.push(create_timing());
+        } else if duration > self.slowest.peek().unwrap().duration {
+            self.slowest.pop();
+            self.slowest.push(create_timing());
+        }
+    }
+
+    fn print_slowest_if_wanted(self) {
+        if self.limit_count > 0 {
+            println!("\nSlowest tests:");
+            for timing in self.slowest.into_sorted_vec() {
+                println!(
+                    "{:.3}s\t{} ({})",
+                    timing.duration, timing.test_name, timing.file_name
+                )
+            }
+        }
+    }
 }

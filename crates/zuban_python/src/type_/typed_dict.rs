@@ -6,7 +6,7 @@ use std::{
 
 use super::{
     CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, StringSlice, Type,
+    GenericsList, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Type,
     TypeVarLikeUsage, TypeVarLikes, utils::method_with_fallback,
 };
 use crate::{
@@ -321,7 +321,7 @@ impl TypedDict {
                         || m1.read_only != m2.read_only
                         || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
-                        return Type::Never(NeverCause::Other);
+                        return Type::NEVER;
                     }
                     continue 'outer;
                 }
