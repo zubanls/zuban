@@ -505,19 +505,21 @@ impl<'db, 'a> Arg<'db, 'a> {
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
             ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => true,
+            ArgKind::Overridden { original, .. } => original.in_args_or_kwargs_and_arbitrary_len(),
             _ => false,
         }
     }
 
     pub fn is_arbitrary_kwargs(&self) -> bool {
-        matches!(
-            &self.kind,
+        match &self.kind {
             ArgKind::Inferred {
                 in_args_or_kwargs_and_arbitrary_len: true,
                 is_keyword: Some(None),
                 ..
-            }
-        )
+            } => true,
+            ArgKind::Overridden { original, .. } => original.is_arbitrary_kwargs(),
+            _ => false,
+        }
     }
 
     pub fn infer_inferrable(
@@ -621,13 +623,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             .and_then(|star_star| {
                 // If we have a defined kwargs name, that's from a TypedDict and
                 // shouldn't be formatted.
-                if matches!(
-                    &self.kind,
-                    ArgKind::Inferred {
-                        is_keyword: Some(Some(_)),
-                        ..
-                    }
-                ) {
+                if self.keyword_name(i_s.db).is_some() {
                     None
                 } else {
                     Some(
@@ -668,14 +664,15 @@ impl<'db, 'a> Arg<'db, 'a> {
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(
-            self.kind,
+        match self.kind {
             ArgKind::Keyword { .. }
-                | ArgKind::Inferred {
-                    is_keyword: Some(_),
-                    ..
-                }
-        )
+            | ArgKind::Inferred {
+                is_keyword: Some(_),
+                ..
+            } => true,
+            ArgKind::Overridden { original, .. } => original.is_keyword_argument(),
+            _ => false,
+        }
     }
 
     pub fn keyword_name(&self, db: &'db Database) -> Option<&str> {
@@ -685,6 +682,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 is_keyword: Some(Some(key)),
                 ..
             } => Some(key.as_str(db)),
+            ArgKind::Overridden { original, .. } => original.keyword_name(db),
             _ => None,
         }
     }
@@ -692,6 +690,7 @@ impl<'db, 'a> Arg<'db, 'a> {
     pub fn maybe_positional_expr(&self) -> Option<NamedExpression<'a>> {
         match &self.kind {
             ArgKind::Positional(positional) => Some(positional.named_expr),
+            ArgKind::Overridden { original, .. } => original.maybe_positional_expr(),
             _ => None,
         }
     }
@@ -741,13 +740,14 @@ impl<'db, 'a> Arg<'db, 'a> {
     }
 
     pub fn has_unknown_typed_dict_extra_items(&self) -> bool {
-        matches!(
-            self.kind,
+        match &self.kind {
             ArgKind::Inferred {
                 typed_dict_extra_items_origin: Some(TypedDictExtraItemsOrigin::UnknownDueToLength),
                 ..
-            }
-        )
+            } => true,
+            ArgKind::Overridden { original, .. } => original.has_unknown_typed_dict_extra_items(),
+            _ => false,
+        }
     }
 }
 

@@ -1088,6 +1088,29 @@ def check_expand_tuple(v: int | str) -> None:
     ret1 = expand_tuple((1, v))
     assert_type(ret1, int | str)
 
+[case overload_union_math_twice]
+# From GH #591
+from typing import Any, Generic, TypeVar, overload
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T_co = TypeVar("_T_co", covariant=True)
+
+class H(Generic[_T_co]):
+    pass
+
+@overload
+def plot_burst(h: H[_T1], compare: None = ..., *, mid: bool = ...) -> None: ...
+@overload
+def plot_burst(h: H[_T1], compare: H[_T2], *, mid: bool = ...) -> None: ...
+def plot_burst(
+    h: H[Any], compare: H[Any] | None = None, *, mid: bool = True
+) -> None:
+    return None
+
+def call(inner: H[int], outer: H[int] | None, mid: bool) -> None:
+    plot_burst(inner, outer, mid=mid)
+
 [case any_exclusion_of_some_funcs]
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
