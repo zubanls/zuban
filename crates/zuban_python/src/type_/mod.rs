@@ -243,7 +243,6 @@ impl Type {
         }
         let might_have_defined_type_vars = match self {
             Type::Union(u) => u.might_have_type_vars,
-            Type::Any(_) => false,
             _ => true,
         };
         Some(Type::from_union_entries(
@@ -294,13 +293,12 @@ impl Type {
         if self.is_none_or_none_in_union(db) {
             let might_have_defined_type_vars = match self {
                 Type::Union(u) => u.might_have_type_vars,
-                Type::None => false,
                 _ => true,
             };
             Some(Type::from_union_entries(
                 self.iter_with_unpacked_unions(db)
                     .filter(|e| !matches!(e, Type::None))
-                    .map(|e| e.clone())
+                    .cloned()
                     .collect(),
                 might_have_defined_type_vars,
             ))
