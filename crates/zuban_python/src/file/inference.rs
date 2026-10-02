@@ -795,7 +795,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     },
                 );
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
+                    GeneratorType::from_type(i_s, &iter_result.as_cow_type(i_s))
                 {
                     if let Some(expected_send_type) = &generator.send_type
                         && let Some(got_send_type) = &other.send_type
