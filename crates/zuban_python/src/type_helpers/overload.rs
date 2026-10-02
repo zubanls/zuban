@@ -268,7 +268,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch()
         } else {
-            debug!("Fallback: Infer arguments ot add errors since no overload was found");
+            debug!("Overload fallback: Infer arguments and add errors since no match was found");
             let _indent = debug_indent();
             let c = Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
             let t = IssueKind::OverloadMismatch {
@@ -327,10 +327,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     recursion_depth,
                 );
             };
-            if let Some(u) = inf
-                .as_cow_type(i_s)
-                .maybe_union_like_with_materializations(i_s.db)
-            {
+            let t = inf.as_cow_type(i_s);
+            if let Some(u) = t.maybe_union_like_with_materializations(i_s.db) {
                 // This unsafe feels very bad, but it seems to be fine, because we don't reuse the
                 // argument we add here outside of this function. It is only ever used in recursive
                 // function calls of this function.
@@ -346,6 +344,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let mut first_similar = None;
                 let mut mismatch = false;
                 for entry in u.entries.iter() {
+                    debug!(
+                        "Split union math, use {:?} of {:?}",
+                        entry.format_short(i_s.db),
+                        t.format_short(i_s.db)
+                    );
+                    let _indent = debug_indent();
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
