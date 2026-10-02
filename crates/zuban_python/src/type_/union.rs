@@ -444,15 +444,30 @@ impl TypeGatherer {
         }
     }
 
+    pub(crate) fn add_all_union_entries(&mut self, type_: Type) {
+        match type_ {
+            Type::Never(_) => (),
+            Type::Union(u) => self.0.extend(u.iter().cloned()),
+            _ => self.add(type_),
+        }
+    }
+
     pub fn extend(&mut self, other: Self) {
         self.0.extend(other.0)
     }
 
     pub fn into_type(self) -> Type {
+        self.into_type_with_might_have_type_vars(true)
+    }
+
+    pub fn into_type_with_might_have_type_vars(self, might_have_type_vars: bool) -> Type {
         match self.0.len() {
             0 => Type::NEVER,
             1 => self.0.into_iter().next().unwrap(),
-            _ => Type::Union(UnionType::from_types(self.0.into_iter(), true)),
+            _ => Type::Union(UnionType::from_types(
+                self.0.into_iter(),
+                might_have_type_vars,
+            )),
         }
     }
 }

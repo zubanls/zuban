@@ -52,8 +52,8 @@ use crate::{
         GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
         ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin,
         ReplaceTypeVarLikes, Sentinel, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar,
-        TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
+        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGatherer, TypeGuardInfo, TypeLikeInTypeVar,
+        TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
         TypeVarVariance, TypedDict, TypedDictGenerics, UnionType, WithUnpack,
         add_any_params_to_params, add_param_spec_to_params,
@@ -2653,22 +2653,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
     ) -> TypeContent<'static, 'static> {
-        let mut entries = vec![];
+        let mut gatherer = TypeGatherer::default();
         for slice_or_simple in slice_type.iter() {
             let t = self.compute_slice_type_content(slice_or_simple);
             let type_ = self.as_type(t, slice_or_simple.as_node_ref());
-            match type_ {
-                Type::Never(_) => continue,
-                Type::Union(u) => {
-                    entries.extend_from_slice(&u.entries);
-                }
-                _ => {
-                    entries.push(type_);
-                }
-            }
+            gatherer.add_all_union_entries(type_);
         }
         let might_have_type_vars = self.has_type_vars_or_self;
-        TypeContent::Type(Type::from_union_entries(entries, might_have_type_vars))
+        TypeContent::Type(gatherer.into_type_with_might_have_type_vars(might_have_type_vars))
     }
 
     fn compute_type_get_item_on_optional(
