@@ -1415,3 +1415,18 @@ run(['echo'], capture_output=True)
 
 [out]
 __main__.py:4:documentation -> "```python\n(class) bool\n```"
+
+[case documentation_for_left_hand_side]
+# flags: --only-language-server
+# From GH #588
+
+one: dict = {'b': (0, '2'), 'a': 3}  # deliberately generic dict to simulate an API call
+#? --codepoint-column 0 documentation
+two = one.get('b')
+if isinstance(two, tuple):
+    #? --codepoint-column 4 documentation
+    two = (int(two[0]), int(two[1]))
+
+[out]
+__main__.py:6:documentation -> "```python\n(variable) two: Any | None\n```"
+__main__.py:9:documentation -> "```python\n(variable) two: tuple[int, int]\n```"

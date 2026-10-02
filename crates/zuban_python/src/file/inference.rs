@@ -1557,8 +1557,9 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 && !matches!(assign_kind, AssignKind::Walrus)
             {
                 // This information is only needed if we need to access it again and otherwise
-                // irrelevant, because we only acccess the information of the first name def.
-                save(name_def.index(), &original_inf);
+                // irrelevant, because we only acccess the information of the first name def for
+                // type inference.
+                save(name_def.index(), value);
             }
             check_assign_including_partials(first_index, &original_inf, None)
         } else {

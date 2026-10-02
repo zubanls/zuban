@@ -177,12 +177,15 @@ Semantic tokens for full range
 x = None
 x = 1
 y = None
+z = x
 
 [out]
 Semantic tokens for full range
 - 3:0:x -> variable:definition
 - 4:0:x -> variable:definition
 - 5:0:y -> variable:definition
+- 6:0:z -> variable:definition
+- 6:4:x -> variable:none
 
 [case class_enum_semantic_tokens]
 #? semantic-tokens
