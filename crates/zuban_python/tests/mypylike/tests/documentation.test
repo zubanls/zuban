@@ -1406,3 +1406,12 @@ if isinstance(entries[-1], B):
 [out]
 __main__.py:14:documentation -> "```python\n(variable) num: int\n```"
 __main__.py:16:documentation -> "```python\n(variable) num: int\n```"
+
+[case documentation_for_params]
+# From GH #595
+from subprocess import run
+#? --codepoint-column 20 documentation
+run(['echo'], capture_output=True)
+
+[out]
+__main__.py:4:documentation -> "```python\n(class) bool\n```"

@@ -6,9 +6,9 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, GotoNode, Name as CSTName,
-    NameDefParent, NameImportParent, NameParent, NodeIndex, Primary, PrimaryContent, PrimaryTarget,
-    PrimaryTargetOrAtom, Scope, TypeLike,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, Expression, GotoNode,
+    Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
+    PrimaryContent, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
 };
 use utils::FastHashSet;
 use vfs::{DirectoryEntry, Entries, FileEntry, FileIndex, Parent};
@@ -254,6 +254,7 @@ impl<'db, T> PositionalDocument<'db, T> {
             NameParent::DottedImportName(dotted_name) => {
                 self.infer_dotted_import_name(0, Some(dotted_name))
             }
+            NameParent::Kwarg(kwarg) => self.infer_expr(kwarg.unpack().1),
             other => {
                 debug!("TODO infer {other:?}");
                 Inferred::new_any_from_error()
@@ -267,6 +268,10 @@ impl<'db, T> PositionalDocument<'db, T> {
             }
         }
         */
+    }
+
+    fn infer_expr(&self, expr: Expression) -> Inferred {
+        self.with_i_s(|i_s| self.file.inference(i_s).infer_expression(expr))
     }
 
     pub fn infer_atom(&self, atom: Atom) -> Inferred {
