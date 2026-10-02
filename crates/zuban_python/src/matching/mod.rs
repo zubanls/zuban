@@ -28,7 +28,7 @@ use crate::{
     inferred::Inferred,
     match_::MismatchReason,
     recoverable_error,
-    type_::{AnyCause, InferredTypeGatherer, NeverCause, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, InferredTypeGatherer, Tuple, TupleUnpack, Type, WithUnpack},
     type_helpers::FuncLike,
 };
 
@@ -406,7 +406,7 @@ impl IteratorContent {
                         match &unpack.unpack {
                             TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                             TupleUnpack::ArbitraryLen(t) => {
-                                let mut result = Type::Never(NeverCause::Other);
+                                let mut result = Type::NEVER;
                                 for entry in unpack.before.iter().skip(*before_index) {
                                     result =
                                         result.gather_types_maybe_with_joins(i_s, entry, use_joins);

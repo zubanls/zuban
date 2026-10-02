@@ -12,8 +12,8 @@ use utils::FastHashMap;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StringSlice, Tuple,
-    Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    GenericClass, Literal, LiteralKind, LookupResult, ParamType, StringSlice, Tuple, Type, TypeVar,
+    TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
     arguments::{ArgKind, Args, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
@@ -786,7 +786,7 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
                     false,
                     None,
                     OnTypeError::new(&|_, _, _, _| ()),
-                    &|_, _| Type::Never(NeverCause::Other),
+                    &|_, _| Type::NEVER,
                 )
             {
                 apply_from_callable(c.content)

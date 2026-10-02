@@ -27,8 +27,7 @@ impl Type {
     }
 
     pub fn simplified_union_in_place(&mut self, i_s: &InferenceState, other: &Type) {
-        *self =
-            std::mem::replace(self, Self::Never(NeverCause::Other)).simplified_union(i_s, other);
+        *self = std::mem::replace(self, Self::NEVER).simplified_union(i_s, other);
     }
 
     pub fn owned_simplified_union_from_iterators<T: Borrow<Self>>(
@@ -50,7 +49,7 @@ impl Type {
     }
 
     pub fn make_optional(&mut self) {
-        *self = std::mem::replace(self, Self::Never(NeverCause::Other)).union(Type::None);
+        *self = std::mem::replace(self, Self::NEVER).union(Type::None);
     }
 
     pub fn union(self, other: Self) -> Self {

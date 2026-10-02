@@ -4,8 +4,8 @@ use parsa_python_cst::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    NeverCause, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs,
-    Type, TypeGuardInfo, TypeVarLike, Variance,
+    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs, Type,
+    TypeGuardInfo, TypeVarLike, Variance,
 };
 use crate::{
     database::Database,
@@ -616,7 +616,7 @@ fn common_base_type_from_iterator<'x>(
             out = Some(t.clone());
         }
     }
-    out.unwrap_or_else(|| Type::Never(NeverCause::Other))
+    out.unwrap_or_else(|| Type::NEVER)
 }
 
 impl TupleArgs {

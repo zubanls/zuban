@@ -1185,7 +1185,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
                 } else if let Some(t) = x_entry.common_sub_type(i_s, &y_entry) {
                     x_entry.type_ = t
                 } else {
-                    x_entry.type_ = EntryKind::Type(Type::Never(NeverCause::Other));
+                    x_entry.type_ = EntryKind::Type(Type::NEVER);
                     x.unreachable = true;
                 }
                 continue 'outer;
@@ -3385,7 +3385,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.find_guards_in_class_pattern_part2(t, subject_key, params.clone(), target_t)
         });
         if inf_type.is_never() {
-            truthy = Type::Never(NeverCause::Other)
+            truthy = Type::NEVER
         }
 
         PatternResult {
@@ -3482,7 +3482,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 );
                                 // If there are too many positional patterns don't mark the
                                 // rest as potentially unreachable, since an error occured.
-                                return (Type::Never(NeverCause::Other), truthy.clone());
+                                return (Type::NEVER, truthy.clone());
                             }
                         } else {
                             // If match args are incorrect, we simply assume it's matching, because
@@ -3812,7 +3812,7 @@ impl<'file> Inference<'_, 'file, '_> {
             || has_fixed_len_items < normal_patterns
                 && !matches!(&tup.args, TupleArgs::WithUnpack(_))
         {
-            return (Type::Never(NeverCause::Other), Type::Tuple(tup));
+            return (Type::NEVER, Type::Tuple(tup));
         }
         let i_s = self.i_s;
         let mut value_iterator = tup.iter();
@@ -3837,7 +3837,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         pattern,
                     );
                     if result.truthy_t.is_never(i_s) {
-                        return (Type::Never(NeverCause::Other), Type::Tuple(tup));
+                        return (Type::NEVER, Type::Tuple(tup));
                     }
                     falsey_unreachable &= result.is_falsey_unreachable(i_s);
                     truthy_gatherer.add(result.truthy_t.into_type(i_s));
@@ -4515,7 +4515,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     &|c, calculated_type_args| {
                         let Some(guard) = &c.content.guard else {
                             had_non_guard_match.set(true);
-                            return Type::Never(NeverCause::Other);
+                            return Type::NEVER;
                         };
                         let resolved_t = calculated_type_args
                             .into_return_type(self.i_s, &guard.type_, None, &|| None)
@@ -4559,7 +4559,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         } else {
                             had_non_guard_match.set(true);
                         }
-                        Type::Never(NeverCause::Other)
+                        Type::NEVER
                     },
                 );
                 match matching {
@@ -5152,11 +5152,7 @@ fn run_pattern_for_each_type<'x>(
         callback: impl Fn(&'x Type) -> (Type, Type),
     ) -> (Frame, Type, Type) {
         let Some(t) = iterator.next() else {
-            return (
-                Frame::new_conditional(),
-                Type::Never(NeverCause::Other),
-                Type::Never(NeverCause::Other),
-            );
+            return (Frame::new_conditional(), Type::NEVER, Type::NEVER);
         };
         FLOW_ANALYSIS.with(|fa| {
             let (first_frame, (truthy1, falsey1)) =
@@ -5549,7 +5545,7 @@ fn check_for_comparison_guard(
                 let is_final = truthy.is_final(i_s.db);
                 let inf_t = inf.as_cow_type(i_s);
                 if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
-                    truthy = Type::Never(NeverCause::Other);
+                    truthy = Type::NEVER;
                 }
                 if inf_t
                     .iter_with_unpacked_unions(i_s.db)

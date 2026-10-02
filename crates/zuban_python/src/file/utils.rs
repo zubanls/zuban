@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue, NeverCause,
+        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue,
         ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
         UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
         maybe_add_extra_keys_issue,
@@ -99,7 +99,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result.unwrap_or(Type::Never(NeverCause::Other))
+        result.unwrap_or(Type::NEVER)
     }
 
     pub fn infer_list_or_set_literal_from_context(
@@ -493,8 +493,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
         }
-        let mut key_t = Type::Never(NeverCause::Other);
-        let mut value_t = Type::Never(NeverCause::Other);
+        let mut key_t = Type::NEVER;
+        let mut value_t = Type::NEVER;
         for (i, child) in dict_elements.enumerate() {
             match child {
                 DictElement::KeyValue(key_value) => {

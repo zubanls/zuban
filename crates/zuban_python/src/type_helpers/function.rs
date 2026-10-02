@@ -1970,7 +1970,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 if let Some(first) = w.before.first() {
                                     return Some(Cow::Owned(first.clone()));
                                 }
-                                return Some(Cow::Borrowed(&Type::Never(NeverCause::Other)));
+                                return Some(Cow::Borrowed(&Type::NEVER));
                             }
                             TupleArgs::FixedLen(_) => unreachable!(),
                         },
