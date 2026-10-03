@@ -424,6 +424,7 @@ pub(crate) enum IssueKind {
     TypedDictCannotUseCloseFalseIfSuperClassClosed,
     TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
     TypedDictExtraItemsCannotBe { kind: &'static str },
+    TypedDictCannotCombineClosedAndExtraItems,
     TypedDictExtraItemsNonReadOnlyChangeDisallowed,
     TypedDictExtraItemsIncompatibleTypes { in_super_class: Box<str>, in_sub_class: Box<str> },
     TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
@@ -2066,6 +2067,8 @@ impl<'db> Diagnostic<'db> {
             TypedDictExtraItemsCannotBe { kind } => format!(
                 r#""extra_items" value cannot be "{kind}[...]""#
             ),
+            TypedDictCannotCombineClosedAndExtraItems =>
+                "Cannot combine closed=True and extra_items".to_string(),
             TypedDictExtraItemsNonReadOnlyChangeDisallowed =>
                 r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
             TypedDictExtraItemsIncompatibleTypes { in_super_class, in_sub_class } => format!(
