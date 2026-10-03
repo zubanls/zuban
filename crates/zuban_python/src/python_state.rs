@@ -1174,6 +1174,7 @@ impl PythonState {
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
     attribute_link!(typing, pub no_type_check_link, typing_no_type_check_index);
+    attribute_link!(typing, pub typing_special_form_link, typing_special_form_index);
     attribute_link!(collections, pub defaultdict_link, collections_defaultdict_index);
     attribute_link!(types, pub generator_type_link, types_generator_type_index);
     attribute_link!(types, pub async_generator_type_link, types_async_generator_type_index);

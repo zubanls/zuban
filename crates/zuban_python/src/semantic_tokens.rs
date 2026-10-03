@@ -145,15 +145,23 @@ impl<'project> Document<'project> {
                 }
                 Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
                 Specific::OverloadUnreachable => Some(SemanticTokenType::FUNCTION),
+                Specific::TypingAny => Some(SemanticTokenType::CLASS),
                 specific => {
                     if specific.is_partial() {
                         Some(SemanticTokenType::VARIABLE)
                     } else {
-                        with_t(&specific_to_type(
+                        let t = specific_to_type(
                             &InferenceState::new(db, node_ref.file),
                             node_ref,
                             specific,
-                        ))
+                        );
+                        if let Type::Class(c) = t.as_ref()
+                            && c.link == db.python_state.typing_special_form_link()
+                        {
+                            Some(SemanticTokenType::CLASS)
+                        } else {
+                            with_t(&t)
+                        }
                     }
                 }
             },
