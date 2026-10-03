@@ -1394,3 +1394,12 @@ class TD(TypedDict, closed=True):
 
 def f(x: TD):
     del x["b"]  # E: TypedDict "TD" has no key "b"
+
+[case typed_dict_closed_and_extra_items]
+# From GH #592
+from typing import TypedDict
+
+class TD(TypedDict, extra_items=int, closed=True):  # E: Cannot combine closed=True and extra_items
+    example: int
+
+td: TD = {"example": 1, "blah": 10}

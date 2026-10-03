@@ -425,6 +425,9 @@ pub(super) fn check_typed_dict_arguments<'file>(
             }
         }
     }
+    if result.closed.is_some() && result.extra_items.is_some() {
+        add_issue(IssueKind::TypedDictCannotCombineClosedAndExtraItems);
+    }
     result
 }
 
