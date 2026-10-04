@@ -1,0 +1,11 @@
+[case protocol_matching_star_import_should_not_crash]
+# flags: --mode default
+# From GH #584
+from typing import *
+from abc import ABCMeta, abstractmethod
+
+
+def f() -> tuple[SupportsFloat] | tuple[int]:
+    pass
+
+Tuple, *_ = f()
