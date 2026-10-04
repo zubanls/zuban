@@ -876,10 +876,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 MetaclassState::None if ignore_no_metaclass => return LookupDetails::none(),
                 _ => {
                     let instance = Instance::new(class_infos.metaclass(i_s.db), None);
+                    let mut o = InstanceLookupOptions::new(options.add_issue);
+                    if options.as_type_type.is_some() {
+                        // If the type is modified, it's possible that the type causes invalid
+                        // bound types.
+                        o = o.with_disallow_lazy_bound_method();
+                    }
                     instance.lookup(
                         i_s,
                         name,
-                        InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
+                        o.with_as_self_instance(
                             options
                                 .as_type_type
                                 .unwrap_or(&|| self.as_type_type(i_s.db)),
