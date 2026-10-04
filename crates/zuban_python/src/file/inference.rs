@@ -4778,15 +4778,6 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
 
     check_point_cache_with!(pub infer_decorator, Self::_infer_decorator, Decorator);
     fn _infer_decorator(&self, decorator: Decorator) -> Inferred {
-        if !self.has_frames() {
-            // This is a bit special and might be considered a bug. It might happen because
-            // decorators are inferred in a lazy way.
-            return FLOW_ANALYSIS.with(|fa| {
-                fa.with_frame_that_exports_widened_entries(self.i_s, || {
-                    self._infer_decorator(decorator)
-                })
-            });
-        }
         self.file
             .points
             .set(decorator.index(), Point::new_calculating());

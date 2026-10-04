@@ -5119,10 +5119,6 @@ impl<'file> Inference<'_, 'file, '_> {
         )
     }
 
-    pub fn has_frames(&self) -> bool {
-        !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
-    }
-
     pub fn add_star_import_to_base_narrowing(&self, name_def: NameDef, original: Inferred) {
         // This is a bit weird and probably only correct in most cases, not in all
         FLOW_ANALYSIS.with(|fa| {

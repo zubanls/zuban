@@ -322,6 +322,19 @@ impl<'db: 'a, 'a> Class<'a> {
         matcher: &mut Matcher,
         other: &Type,
     ) -> Match {
+        // Since protocols can cause access of narrowing information, we should make sure that
+        // there is no narrowing information from potentially other files. Also the frames might be
+        // borrowed, so avoid that scenario.
+        FLOW_ANALYSIS.with_new_empty_and_delay_further(i_s.db, || {
+            self.check_protocol_match_part2(i_s, matcher, other)
+        })
+    }
+    fn check_protocol_match_part2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        matcher: &mut Matcher,
+        other: &Type,
+    ) -> Match {
         const SHOW_MAX_MISMATCHES: usize = 2;
         const MAX_MISSING_MEMBERS: usize = 2;
         let mut missing_members = vec![];
