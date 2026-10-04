@@ -196,3 +196,9 @@ class C:
     @classmethod
     def g(a: type[Any]):
         super().__call__()
+
+[case super_instance_must_be_valid]
+# From GH #583
+class C:
+    def __call__[T](cls: type[T]):  # E: The erased type of self "type[Any]" is not a supertype of its class "__main__.C"
+        return super().__call__()

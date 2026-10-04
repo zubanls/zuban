@@ -821,7 +821,7 @@ fn execute_super_internal<'db>(
             mro_index,
         }))
     };
-    let fallback = |assume_instance| {
+    let fallback = |assume_instance: bool| {
         if let Some(func) = i_s.current_function() {
             if let Some(cls) = func.class {
                 let first_param_kind = func.first_param_kind(i_s);
@@ -835,19 +835,23 @@ fn execute_super_internal<'db>(
                         IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
                     );
                 };
+                let is_type = match first_param_kind {
+                    FirstParamKind::Self_ => false,
+                    FirstParamKind::ClassOfSelf => !assume_instance,
+                    FirstParamKind::InStaticmethod => unreachable!(),
+                };
                 let t = if let Some(first_annotation) = first_param.annotation(i_s.db) {
+                    if first_annotation.is_any() || first_annotation.is_type_of_any() {
+                        return Ok(Inferred::new_any_from_error());
+                    }
                     first_annotation.into_owned()
                 } else {
-                    match first_param_kind {
-                        FirstParamKind::Self_ => Type::Self_,
-                        FirstParamKind::ClassOfSelf if assume_instance => Type::Self_,
-                        FirstParamKind::ClassOfSelf => Type::Type(Arc::new(Type::Self_)),
-                        FirstParamKind::InStaticmethod => unreachable!(),
+                    if is_type {
+                        Type::Type(Arc::new(Type::Self_))
+                    } else {
+                        Type::Self_
                     }
                 };
-                if t.is_any() || t.is_type_of_any() {
-                    return Ok(Inferred::new_any_from_error());
-                }
                 success(&cls, t, 1)
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
