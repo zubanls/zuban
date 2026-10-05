@@ -1061,7 +1061,7 @@ impl fmt::Debug for Database {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RunCause {
     TypeChecking,
     LanguageServer,
