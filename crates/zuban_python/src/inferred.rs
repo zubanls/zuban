@@ -864,8 +864,6 @@ impl<'db: 'slf, 'slf> Inferred {
         disallow_lazy_bound_method: bool,
         avoid_inferring_return_types: bool,
     ) -> Option<(Self, AttributeKind)> {
-        let disallow_lazy_bound_method =
-            disallow_lazy_bound_method || matches!(instance, Type::Intersection(_));
         self.bind_instance_descriptors_internal(
             i_s,
             for_name,
@@ -939,7 +937,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     ),
                                     attr_kind,
                                 ))
-                            } else if disallow_lazy_bound_method {
+                            } else if disallow_lazy_bound_method
+                                || instance.inner_generic_class(i_s).is_none()
+                            {
                                 Some((
                                     Self::from_type(
                                         BoundMethod::new(
@@ -1132,7 +1132,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                 }
                                 return Some((
-                                    if disallow_lazy_bound_method {
+                                    if disallow_lazy_bound_method
+                                        || instance.inner_generic_class(i_s).is_none()
+                                    {
                                         Self::from_type(
                                             OverloadedFunction::new(
                                                 &o.functions,

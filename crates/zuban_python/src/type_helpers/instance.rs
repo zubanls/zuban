@@ -1214,7 +1214,6 @@ impl<'x> InstanceLookupOptions<'x> {
     }
 
     pub fn with_avoid_inferring_return_types(mut self) -> Self {
-        self.disallow_lazy_bound_method = true;
         self.avoid_inferring_return_types = true;
         self
     }

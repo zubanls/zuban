@@ -410,7 +410,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         false
                     })
                     .with_as_self_instance(&|| other.clone())
-                    .with_avoid_inferring_return_types(),
+                    .with_avoid_inferring_return_types()
+                    .with_disallow_lazy_bound_method(),
                 );
                 let had_binding_error = Cell::new(false);
                 if initial_binding_error.get() {
@@ -422,7 +423,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             debug!("Repeated binding error when matching protocol: {issue:?}");
                             false
                         })
-                        .with_avoid_inferring_return_types(),
+                        .with_avoid_inferring_return_types()
+                        .with_disallow_lazy_bound_method(),
                     );
                 }
                 let protocol_inf = protocol_lookup_details.lookup.into_inferred();
@@ -876,16 +878,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 MetaclassState::None if ignore_no_metaclass => return LookupDetails::none(),
                 _ => {
                     let instance = Instance::new(class_infos.metaclass(i_s.db), None);
-                    let mut o = InstanceLookupOptions::new(options.add_issue);
-                    if options.as_type_type.is_some() {
-                        // If the type is modified, it's possible that the type causes invalid
-                        // bound types.
-                        o = o.with_disallow_lazy_bound_method();
-                    }
                     instance.lookup(
                         i_s,
                         name,
-                        o.with_as_self_instance(
+                        InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
                             options
                                 .as_type_type
                                 .unwrap_or(&|| self.as_type_type(i_s.db)),
