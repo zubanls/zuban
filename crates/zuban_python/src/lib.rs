@@ -78,6 +78,7 @@ impl Project {
     }
 
     fn new_internal(db: Database) -> Self {
+        tracing::debug!("Project run cause: {:#?}", &db.run_cause);
         tracing::debug!("Project settings: {:#?}", &db.project);
         Self { db }
     }

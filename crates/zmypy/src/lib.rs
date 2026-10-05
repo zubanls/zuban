@@ -76,7 +76,7 @@ fn project_from_cli(
     let (local_fs, options, diagnostic_config) =
         project_options_from_cli(cli, current_dir, typeshed_path, lookup_env_var);
     (
-        Project::new(local_fs, options, RunCause::LanguageServer),
+        Project::new(local_fs, options, RunCause::TypeChecking),
         diagnostic_config,
     )
 }
