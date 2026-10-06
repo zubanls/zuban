@@ -9,6 +9,7 @@ use crate::{
     file::ClassNodeRef,
     matching::Generics,
     node_ref::NodeRef,
+    recoverable_error,
     type_helpers::Class,
 };
 
@@ -84,11 +85,19 @@ impl RecursiveType {
                 } else {
                     self.calculated_type.get_or_init(|| {
                         alias
-                            .replace_type_var_likes(db, true, &mut |t| {
+                            .replace_type_var_likes(db, true, &mut |u| {
+                                if self.link != u.in_definition() {
+                                    recoverable_error!(
+                                        "Recursive type had TypeVar with wrong location {u:?}"
+                                    );
+                                    return u.into_generic_item();
+                                }
                                 self.generics
                                     .as_ref()
-                                    .map(|g| g.nth(t.index()).unwrap().clone())
                                     .unwrap()
+                                    .nth(u.index())
+                                    .unwrap()
+                                    .clone()
                             })
                             .into_owned()
                     })

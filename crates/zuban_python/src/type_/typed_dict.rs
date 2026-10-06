@@ -163,7 +163,7 @@ impl TypedDict {
         if let TypedDictGenerics::Generics(generics) = &generics
             && let Some(ms) = self.members.get()
         {
-            members = OnceLock::from(Self::remap_members_with_generics(db, ms, generics))
+            members = OnceLock::from(self.remap_members_with_generics(db, ms, generics))
         }
         Arc::new(TypedDict {
             name: self.name,
@@ -175,6 +175,7 @@ impl TypedDict {
     }
 
     fn remap_members_with_generics(
+        &self,
         db: &Database,
         original_members: &TypedDictMembers,
         generics: &GenericsList,
@@ -186,7 +187,8 @@ impl TypedDict {
                 .map(|m| {
                     m.replace_type(|_| {
                         m.type_.maybe_replace_type_var_likes(db, &mut |usage| {
-                            Some(generics[usage.index()].clone())
+                            (self.defined_at == usage.in_definition())
+                                .then(|| generics[usage.index()].clone())
                         })
                     })
                 })
@@ -198,7 +200,8 @@ impl TypedDict {
                     t: extra
                         .t
                         .replace_type_var_likes(db, &mut |usage| {
-                            Some(generics[usage.index()].clone())
+                            (self.defined_at == usage.in_definition())
+                                .then(|| generics[usage.index()].clone())
                         })
                         .into_owned(),
                     read_only: extra.read_only,
@@ -241,7 +244,7 @@ impl TypedDict {
                 // The members are not pre-calculated, because there existed recursions where the
                 // members of the original class were not calculated at that point. Therefore do that
                 // now.
-                let new_members = Self::remap_members_with_generics(
+                let new_members = self.remap_members_with_generics(
                     db,
                     original_typed_dict.members.get().unwrap(),
                     list,
@@ -521,7 +524,9 @@ impl TypedDict {
         let generics =
             TypedDictGenerics::Generics(type_var_likes.as_default_or_any_generic_list(db));
         self.replace(generics, &mut |t| {
-            t.maybe_replace_type_var_likes(db, &mut |u| Some(u.as_default_or_any_generic_item(db)))
+            t.maybe_replace_type_var_likes(db, &mut |u| {
+                (self.defined_at == u.in_definition()).then(|| u.as_default_or_any_generic_item(db))
+            })
         })
     }
 

@@ -2843,12 +2843,8 @@ fn proper_classmethod_callable(
                     return result.maybe_replace_type_var_likes_and_self(
                         i_s.db,
                         &mut |usage| {
-                            if usage.in_definition() == class.node_ref.as_link() {
-                                let tvl = usage.as_type_var_like();
-                                Some(ensure_classmethod_type_var_like(tvl))
-                            } else {
-                                None
-                            }
+                            (usage.in_definition() == class.node_ref.as_link())
+                                .then(|| ensure_classmethod_type_var_like(usage.as_type_var_like()))
                         },
                         &|| None,
                     );
