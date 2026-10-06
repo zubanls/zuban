@@ -1033,6 +1033,12 @@ impl Type {
         match self {
             Type::Literal(literal) => MroIterator::new(
                 db,
+                match literal.kind {
+                    LiteralKind::Int(_) => db.python_state.int_link(),
+                    LiteralKind::Bool(_) => db.python_state.bool_link(),
+                    LiteralKind::String(_) => db.python_state.str_link(),
+                    LiteralKind::Bytes(_) => db.python_state.bytes_link(),
+                },
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 match literal.kind {
@@ -1048,6 +1054,7 @@ impl Type {
                 let tuple_class = tup.class(db);
                 MroIterator::new(
                     db,
+                    tuple_class.as_link(),
                     TypeOrClass::Type(Cow::Borrowed(self)),
                     tuple_class.generics,
                     tuple_class.use_cached_class_infos(db).mro.iter(),
@@ -1061,6 +1068,7 @@ impl Type {
             }
             Type::TypedDict(_) => MroIterator::new(
                 db,
+                db.python_state.typed_dict_link(),
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 db.python_state.typing_typed_dict_bases.iter(),
@@ -1070,6 +1078,7 @@ impl Type {
                 let class = e.class(db);
                 MroIterator::new(
                     db,
+                    class.as_link(),
                     TypeOrClass::Type(Cow::Borrowed(self)),
                     class.generics,
                     class.use_cached_class_infos(db).mro.iter(),
@@ -1086,6 +1095,9 @@ impl Type {
                 } else {
                     MroIterator::new(
                         db,
+                        // This is a fake entry that shouldn't really matter, because classes are
+                        // not involved at this point.
+                        PointLink::new(db.python_state.builtins().file_index, 0),
                         TypeOrClass::Type(Cow::Borrowed(self)),
                         Generics::None,
                         [].iter(),
