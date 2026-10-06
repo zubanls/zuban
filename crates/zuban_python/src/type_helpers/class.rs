@@ -1074,6 +1074,7 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         MroIterator::new(
             db,
+            self.as_link(),
             TypeOrClass::Class(*self),
             generics,
             class_infos.mro.iter(),
@@ -1107,6 +1108,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
+            self.as_link(),
             TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
@@ -1122,7 +1124,7 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         self.use_cached_class_infos(db)
             .base_types()
-            .map(move |b| apply_generics_to_base_class(db, b, generics))
+            .map(move |b| apply_generics_to_base_class(db, self.as_link(), b, generics))
     }
     pub fn class_in_mro(&self, db: &'db Database, node_ref: ClassNodeRef) -> Option<Class<'_>> {
         for (_, type_or_cls) in self.mro(db) {
@@ -2359,6 +2361,7 @@ pub(crate) enum ClassExecutionResult {
 
 pub(crate) struct MroIterator<'db, 'a> {
     db: &'db Database,
+    original_class_link: PointLink,
     generics: Generics<'a>,
     pub class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, BaseClass>,
@@ -2369,6 +2372,7 @@ pub(crate) struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
+        original_class_link: PointLink,
         class: TypeOrClass<'a>,
         generics: Generics<'a>,
         iterator: std::slice::Iter<'a, BaseClass>,
@@ -2376,6 +2380,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     ) -> Self {
         Self {
             db,
+            original_class_link,
             generics,
             class: Some(class),
             iterator,
@@ -2511,7 +2516,12 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
-                apply_generics_to_base_class(self.db, &c.type_, self.generics),
+                apply_generics_to_base_class(
+                    self.db,
+                    self.original_class_link,
+                    &c.type_,
+                    self.generics,
+                ),
             ));
             self.mro_index += 1;
             r
@@ -2538,7 +2548,12 @@ impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next_back() {
             let r = Some((
                 MroIndex(self.mro_index),
-                apply_generics_to_base_class(self.db, &c.type_, self.generics),
+                apply_generics_to_base_class(
+                    self.db,
+                    self.original_class_link,
+                    &c.type_,
+                    self.generics,
+                ),
             ));
             self.mro_index += 1;
             r
@@ -2553,6 +2568,7 @@ impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
 
 fn apply_generics_to_base_class<'a>(
     db: &'a Database,
+    original_class_link: PointLink,
     t: &'a Type,
     generics: Generics<'a>,
 ) -> TypeOrClass<'a> {
@@ -2587,7 +2603,10 @@ fn apply_generics_to_base_class<'a>(
         }
         _ => TypeOrClass::Type(t.replace_type_var_likes_and_self(
             db,
-            &mut |usage| Some(generics.nth_usage(db, &usage).into_generic_item()),
+            &mut |usage| {
+                (usage.in_definition() == original_class_link)
+                    .then(|| generics.nth_usage(db, &usage).into_generic_item())
+            },
             &|| None,
         )),
     }
