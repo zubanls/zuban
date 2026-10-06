@@ -132,10 +132,12 @@ impl NamedTuple {
                                 .replace_type_var_likes_and_self(
                                     format_data.db,
                                     &mut |usage| {
-                                        Some(
-                                            generics
-                                                .nth_usage(format_data.db, &usage)
-                                                .into_generic_item(),
+                                        (self.__new__.defined_at == usage.in_definition()).then(
+                                            || {
+                                                generics
+                                                    .nth_usage(format_data.db, &usage)
+                                                    .into_generic_item()
+                                            },
                                         )
                                     },
                                     &|| None,

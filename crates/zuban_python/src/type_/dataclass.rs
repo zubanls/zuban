@@ -738,11 +738,7 @@ fn field_options_from_args(
                     if let Some(c) = converter.as_ref() {
                         // TODO We avoid generics here, is this correct? It feels like we should
                         // type check them, but that gets extremely complicated quickly.
-                        if let new @ Some(_) = c
-                            .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
-                                Some(usage.as_any_generic_item())
-                            })
-                        {
+                        if let new @ Some(_) = c.maybe_erase_type_var_likes(i_s.db, &|| None) {
                             converter = new;
                         }
                     }

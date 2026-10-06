@@ -612,11 +612,7 @@ impl CallableContent {
             Cow::Borrowed(type_)
         } else {
             type_.replace_type_var_likes(db, &mut |usage| {
-                if usage.in_definition() == self.defined_at {
-                    Some(usage.as_any_generic_item())
-                } else {
-                    None
-                }
+                (usage.in_definition() == self.defined_at).then(|| usage.as_any_generic_item())
             })
         }
     }
@@ -887,7 +883,7 @@ impl CallableContent {
                 }
                 Some(
                     result
-                        .maybe_replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
+                        .maybe_replace_type_var_likes(db, &mut &remap_usage)
                         .unwrap_or(result),
                 )
             },
