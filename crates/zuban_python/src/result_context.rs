@@ -193,7 +193,12 @@ impl<'a> ResultContext<'a, '_> {
                             });
                         }
                         // Case x: Iterable[int] = (1, 1)
-                        Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
+                        Type::Class(c)
+                            if c.link == i_s.db.python_state.iterable_link()
+                                || c.link == i_s.db.python_state.sequence_link()
+                                || c.link.file == i_s.db.python_state.typing().file_index
+                                    && c.class(i_s.db).name() == "Reversible" =>
+                        {
                             let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
                             return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
                         }

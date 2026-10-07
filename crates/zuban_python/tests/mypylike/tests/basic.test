@@ -1995,3 +1995,26 @@ a[()[()-1-2-3-4-()-5][0],6,(),(),(),7,(),(  # E: Invalid syntax
 [case lambda_repeated_should_not_crash]
 # From GH #410
 a[lambda _:b,c,d,e,f,lambda:  # E: Invalid syntax
+
+[case sequence_of_literals_list_inference]
+# From GH #594
+from collections.abc import Sequence, Reversible
+from typing import Literal
+
+def takes_seq_of_strs(x: Sequence[str]) -> None:
+    pass
+
+takes_seq_of_strs(["a", "b", "c"])
+takes_seq_of_strs(("a", "b", "c"))
+
+def takes_seq_of_literals(x: Sequence[Literal["a", "b", "c"]]) -> None:
+    pass
+
+takes_seq_of_literals(["a", "b", "c"])
+takes_seq_of_literals(("a", "b", "c"))
+
+def takes_rev_of_literals(x: Reversible[Literal["a", "b", "c"]]) -> None:
+    pass
+
+takes_rev_of_literals(["a", "b", "c"])
+takes_rev_of_literals(("a", "b", "c"))
