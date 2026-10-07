@@ -273,11 +273,15 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             || !self.flags().strict_optional
     }
 
+    pub fn current_file(&self) -> Option<&'a PythonFile> {
+        self.context.current_file()
+    }
+
     pub fn flags(&self) -> &'a TypeCheckerFlags
     where
         'db: 'a,
     {
-        if let Some(file) = self.context.current_file() {
+        if let Some(file) = self.current_file() {
             file.flags(self.db)
         } else {
             &self.db.project.flags

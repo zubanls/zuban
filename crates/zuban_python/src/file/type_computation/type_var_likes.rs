@@ -129,6 +129,10 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
         } else {
             TypeVarKindInfos::Unrestricted
         };
+        debug_assert_eq!(
+            i_s.current_file().map(|f| f.file_index),
+            Some(name_node.file_index())
+        );
         Some(TypeVarLike::TypeVar(Arc::new(TypeVar::new(
             TypeVarLikeName::InString {
                 name_node: PointLink {
