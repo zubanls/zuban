@@ -216,7 +216,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
         class_infos.mro.iter().any(|b| match &b.type_ {
             Type::Class(c) => link == c.link,
             t => t
-                .inner_generic_class_with_db(db)
+                .inner_generic_class_with_db(db, true)
                 .is_some_and(|c| c.node_ref.as_link() == link),
         })
     }

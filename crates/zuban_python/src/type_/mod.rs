@@ -367,6 +367,7 @@ impl Type {
     pub fn inner_generic_class<'db: 'x, 'x>(
         &'x self,
         i_s: &InferenceState<'db, 'x>,
+        allow_callable: bool,
     ) -> Option<Class<'x>> {
         match self {
             Type::Self_ => {
@@ -379,15 +380,19 @@ impl Type {
                 cls
             }
             Type::Type(t) => Some(
-                t.inner_generic_class(i_s)?
+                t.inner_generic_class(i_s, allow_callable)?
                     .use_cached_class_infos(i_s.db)
                     .metaclass(i_s.db),
             ),
-            _ => self.inner_generic_class_with_db(i_s.db),
+            _ => self.inner_generic_class_with_db(i_s.db, allow_callable),
         }
     }
 
-    pub fn inner_generic_class_with_db<'x>(&'x self, db: &'x Database) -> Option<Class<'x>> {
+    pub fn inner_generic_class_with_db<'x>(
+        &'x self,
+        db: &'x Database,
+        allow_callable: bool,
+    ) -> Option<Class<'x>> {
         Some(match self {
             Type::Class(c) => c.class(db),
             Type::Dataclass(dc) => dc.class(db),
@@ -396,17 +401,23 @@ impl Type {
             Type::Literal(l) => l.fallback_class(db),
             Type::LiteralString { .. } => db.python_state.str_class(),
             Type::Type(t) => t
-                .inner_generic_class_with_db(db)?
+                .inner_generic_class_with_db(db, allow_callable)?
                 .use_cached_class_infos(db)
                 .metaclass(db),
             Type::TypeVar(tv) => match tv.type_var.kind(db) {
-                TypeVarKind::Bound(t) => return t.inner_generic_class_with_db(db),
+                TypeVarKind::Bound(t) => return t.inner_generic_class_with_db(db, allow_callable),
                 _ => return None,
             },
             Type::TypedDict(_) => db.python_state.typed_dict_class(),
-            Type::Callable(_) | Type::FunctionOverload(_) => db.python_state.function_class(),
-            Type::RecursiveType(r) => return r.calculated_type(db).inner_generic_class_with_db(db),
-            Type::NewType(n) => return n.type_.inner_generic_class_with_db(db),
+            Type::Callable(_) | Type::FunctionOverload(_) if allow_callable => {
+                db.python_state.function_class()
+            }
+            Type::RecursiveType(r) => {
+                return r
+                    .calculated_type(db)
+                    .inner_generic_class_with_db(db, allow_callable);
+            }
+            Type::NewType(n) => return n.type_.inner_generic_class_with_db(db, allow_callable),
             _ => return None,
         })
     }

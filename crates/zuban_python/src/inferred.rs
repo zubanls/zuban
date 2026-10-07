@@ -37,7 +37,7 @@ use crate::{
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, FuncLike as _,
-        Function, Instance, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
+        Function, LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type,
         execute_cast, execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
     utils::debug_indent,
@@ -252,7 +252,7 @@ impl<'db: 'slf, 'slf> Inferred {
         instance: &'slf Type,
         mro_index: MroIndex,
     ) -> Class<'slf> {
-        let Some(instance_class) = instance.inner_generic_class(i_s) else {
+        let Some(instance_class) = instance.inner_generic_class(i_s, true) else {
             unreachable!("{instance:?}")
         };
         let Some((_, class_t)) = instance_class
@@ -938,7 +938,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     attr_kind,
                                 ))
                             } else if disallow_lazy_bound_method
-                                || instance.inner_generic_class(i_s).is_none()
+                                || instance.inner_generic_class(i_s, true).is_none()
                             {
                                 Some((
                                     Self::from_type(
@@ -1133,7 +1133,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 return Some((
                                     if disallow_lazy_bound_method
-                                        || instance.inner_generic_class(i_s).is_none()
+                                        || instance.inner_generic_class(i_s, true).is_none()
                                     {
                                         Self::from_type(
                                             OverloadedFunction::new(
@@ -1423,14 +1423,10 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let Type::Class(c) = t {
-            let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
-            let potential_descriptor = use_instance_with_ref(
-                class_ref,
-                Generics::from_class_generics(i_s.db, class_ref, &c.generics),
-                None,
-            );
-            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, |i| add_issue(i), instance)
+        if let Some(c) = t.inner_generic_class(i_s, false) {
+            if let Some(inf) = c
+                .instance()
+                .bind_dunder_get(i_s, |i| add_issue(i), instance)
             {
                 return Some(Some((inf, AttributeKind::Attribute)));
             }
@@ -1753,16 +1749,11 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let Type::Class(c) = t
-            && apply_descriptors.should_apply()
+        if apply_descriptors.should_apply()
+            && let Some(c) = t.inner_generic_class(i_s, false)
         {
-            let class_ref = ClassNodeRef::from_link(i_s.db, c.link);
-            let inst = use_instance_with_ref(
-                class_ref,
-                Generics::from_class_generics(i_s.db, class_ref, &c.generics),
-                None,
-            );
-            if let Some(inf) = inst
+            if let Some(inf) = c
+                .instance()
                 .type_lookup(i_s, &add_issue, "__get__")
                 .into_maybe_inferred()
             {
@@ -2640,15 +2631,6 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
         }
         _ => unreachable!(),
     }
-}
-
-fn use_instance_with_ref<'a>(
-    class_reference: ClassNodeRef<'a>,
-    generics: Generics<'a>,
-    instance_reference: Option<&'a Inferred>,
-) -> Instance<'a> {
-    let class = Class::from_position(class_reference, generics, None);
-    Instance::new(class, instance_reference)
 }
 
 fn prepare_func<'db, 'class>(

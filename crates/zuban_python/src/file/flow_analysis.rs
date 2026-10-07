@@ -1209,7 +1209,7 @@ fn has_explicit_literal(db: &Database, t: &Type) -> bool {
 
 pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
     t.iter_with_unpacked_unions(i_s.db).any(|t| {
-        let Some(cls) = t.inner_generic_class(i_s) else {
+        let Some(cls) = t.inner_generic_class(i_s, true) else {
             return false;
         };
         let details = cls.lookup(i_s, method, ClassLookupOptions::new(&|_| false));

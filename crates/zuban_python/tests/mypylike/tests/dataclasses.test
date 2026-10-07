@@ -1353,3 +1353,46 @@ def check(value: Any, z: Box[int]) -> None:
     assert_type(value.value, Any)
     assert value.value == 3
     assert_type(z.value, int)
+
+[case overloaded_dataclass_descriptors]
+from dataclasses import dataclass, asdict
+from typing import Callable, Concatenate, overload, Self, Optional, assert_type
+@dataclass
+class api_method[C, T, **P]:
+    underlying_method: Callable[Concatenate[C, P], T]
+
+    def __call__(self, target: C, *args: P.args, **kwargs: P.kwargs) -> T:
+        return self.underlying_method(target, *args, **kwargs)
+
+    @overload
+    def __get__(self, target: None, owner: type[C]) -> Self: ...
+    @overload
+    def __get__(self, target: C, owner: type[C]) -> bound_api_method[C, T, P]: ...
+
+    def __get__(self, target: Optional[C], owner: type[C]) -> Self | bound_api_method[C, T, P]:
+        if target is not None:
+            return bound_api_method(target=target, function=self.underlying_method)
+        else:
+            return self
+
+@dataclass
+class bound_api_method[C, T, **P]:
+    target: C
+    function: Callable[Concatenate[C, P], T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        return self.function(self.target, *args, **kwargs)
+
+
+class Class:
+    @api_method
+    def f(self, x: int) -> str:
+        return str(x + 1)
+
+c = Class()
+
+assert_type(c.f(12), str)
+assert_type(c.f("12"), str) # E: Argument 1 to "__call__" of "bound_api_method" has incompatible type "str"; expected "int"
+
+assert_type(Class.f(c, 12), str)
+assert_type(Class.f(c, 12), str)

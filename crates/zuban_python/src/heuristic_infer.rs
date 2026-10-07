@@ -1224,7 +1224,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     && let Some(known) = &out
                 {
                     let t = known.as_inferred().as_cow_type(self.inference.i_s);
-                    if (matches!(t.as_ref(), Type::Class(_)))
+                    if t.inner_generic_class(self.inference.i_s, false).is_some()
                         && let Some(descriptor) = t
                             .lookup(
                                 self.inference.i_s,
