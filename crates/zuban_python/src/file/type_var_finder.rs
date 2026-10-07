@@ -234,8 +234,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     BaseLookup::GenericOrProtocol => {
                         if self.infos.generic_or_protocol_slice.is_some() {
                             self.infos.had_generic_or_protocol_issue = true;
-                            NodeRef::new(self.file, primary.index())
-                                .add_issue(self.i_s, IssueKind::EnsureSingleGenericOrProtocol);
+                            NodeRef::new(self.file, primary.index()).add_type_issue(
+                                self.i_s.db,
+                                IssueKind::EnsureSingleGenericOrProtocol,
+                            );
                         }
                         self.infos.generic_or_protocol_slice =
                             Some(SliceType::new(self.file, primary.index(), slice_type));
@@ -376,7 +378,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         if slice_type.iter().count() < self.infos.type_var_manager.len() {
             slice_type
                 .as_node_ref()
-                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars);
+                .add_type_issue(self.i_s.db, IssueKind::IncompleteGenericOrProtocolTypeVars);
         }
     }
 }
