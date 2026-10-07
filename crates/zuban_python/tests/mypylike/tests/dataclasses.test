@@ -1359,8 +1359,16 @@ def check(value: Any, z: Box[int]) -> None:
 from dataclasses import dataclass, asdict
 from typing import Callable, Concatenate, overload, Self, Optional, assert_type
 @dataclass
+class ApiMethodOptions:
+    is_read: bool
+
+    def __call__[C, T, **P](self, underlying_method: Callable[Concatenate[C, P], T]) -> api_method[C, T, P]:
+        return api_method(underlying_method, self)
+
+@dataclass
 class api_method[C, T, **P]:
     underlying_method: Callable[Concatenate[C, P], T]
+    options: ApiMethodOptions
 
     def __call__(self, target: C, *args: P.args, **kwargs: P.kwargs) -> T:
         return self.underlying_method(target, *args, **kwargs)
@@ -1372,21 +1380,23 @@ class api_method[C, T, **P]:
 
     def __get__(self, target: Optional[C], owner: type[C]) -> Self | bound_api_method[C, T, P]:
         if target is not None:
-            return bound_api_method(target=target, function=self.underlying_method)
+            return bound_api_method(options=self.options, target=target, function=self.underlying_method)
         else:
             return self
 
 @dataclass
 class bound_api_method[C, T, **P]:
     target: C
+    options: ApiMethodOptions
     function: Callable[Concatenate[C, P], T]
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         return self.function(self.target, *args, **kwargs)
 
+read_api = ApiMethodOptions(is_read=True)
 
 class Class:
-    @api_method
+    @read_api
     def f(self, x: int) -> str:
         return str(x + 1)
 
