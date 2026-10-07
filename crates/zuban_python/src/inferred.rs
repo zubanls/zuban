@@ -252,7 +252,7 @@ impl<'db: 'slf, 'slf> Inferred {
         instance: &'slf Type,
         mro_index: MroIndex,
     ) -> Class<'slf> {
-        let Some(instance_class) = instance.inner_generic_class(i_s, true) else {
+        let Some(instance_class) = instance.inner_generic_class(i_s) else {
             unreachable!("{instance:?}")
         };
         let Some((_, class_t)) = instance_class
@@ -938,7 +938,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     attr_kind,
                                 ))
                             } else if disallow_lazy_bound_method
-                                || instance.inner_generic_class(i_s, true).is_none()
+                                || instance.inner_generic_class(i_s).is_none()
                             {
                                 Some((
                                     Self::from_type(
@@ -1133,7 +1133,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 return Some((
                                     if disallow_lazy_bound_method
-                                        || instance.inner_generic_class(i_s, true).is_none()
+                                        || instance.inner_generic_class(i_s).is_none()
                                     {
                                         Self::from_type(
                                             OverloadedFunction::new(
@@ -1423,7 +1423,7 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let Some(c) = t.inner_generic_class(i_s, false) {
+        if let Some(c) = t.inner_generic_class(i_s) {
             if let Some(inf) = c
                 .instance()
                 .bind_dunder_get(i_s, |i| add_issue(i), instance)
@@ -1750,7 +1750,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if apply_descriptors.should_apply()
-            && let Some(c) = t.inner_generic_class(i_s, false)
+            && let Some(c) = t.inner_generic_class(i_s)
         {
             if let Some(inf) = c
                 .instance()
