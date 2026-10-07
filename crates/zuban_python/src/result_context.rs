@@ -107,26 +107,7 @@ impl<'a> ResultContext<'a, '_> {
                     if matches!(t, Type::Any(_)) {
                         return None;
                     }
-                    let c = Class::from_non_generic_node_ref(class);
-                    let mut matcher = Matcher::new_class_matcher(i_s, c);
-                    let self_class = Class::with_self_generics(i_s.db, class);
-                    let mut had_same_class_type_var = false;
-
-                    // In case of nested container inference we have to remove the previous
-                    // type vars to avoid leaking type vars.
-                    t.replace_type_var_likes(i_s.db, &mut |usage| {
-                        had_same_class_type_var |= usage.in_definition() == class.as_link();
-                        None
-                    });
-                    if had_same_class_type_var {
-                        return None;
-                    }
-
-                    self_class
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, &t)
-                        .bool()
-                        .then_some(matcher)
+                    try_to_match_generics_of_class(i_s, class, t)
                 },
                 on_unique_found,
             )
@@ -263,6 +244,32 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::Await => write!(f, "Await"),
         }
     }
+}
+
+fn try_to_match_generics_of_class(
+    i_s: &InferenceState,
+    class_node_ref: ClassNodeRef,
+    t: &Type,
+) -> Option<Matcher<'static>> {
+    let self_class = Class::with_self_generics(i_s.db, class_node_ref);
+    let mut matcher = Matcher::new_class_matcher(i_s, self_class);
+    let mut had_same_class_type_var = false;
+
+    // In case of nested container inference we have to remove the previous
+    // type vars to avoid leaking type vars.
+    t.replace_type_var_likes(i_s.db, &mut |usage| {
+        had_same_class_type_var |= usage.in_definition() == self_class.as_link();
+        None
+    });
+    if had_same_class_type_var {
+        return None;
+    }
+
+    self_class
+        .as_type(i_s.db)
+        .is_sub_type_of(i_s, &mut matcher, &t)
+        .bool()
+        .then_some(matcher)
 }
 
 pub(crate) enum TupleContextIterator<'a> {
