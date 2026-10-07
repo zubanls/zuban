@@ -101,25 +101,25 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         parent_scope: ParentScope,
         callback: impl FnOnce(InferenceState<'db, '_>) -> T,
     ) -> T {
-        let class;
-        let func;
-        let context = match parent_scope {
-            ParentScope::Module => Context::File(file),
+        let run = |context| {
+            callback(InferenceState {
+                db,
+                context,
+                mode: Mode::Normal,
+            })
+        };
+        match parent_scope {
+            ParentScope::Module => run(Context::File(file)),
             ParentScope::Function(func_index) => {
-                func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
-                Context::Function(&func)
+                let func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
+                run(Context::Function(&func))
             }
             ParentScope::Class(class_index) => {
-                class =
+                let class =
                     Class::with_self_generics(db, ClassNodeRef::from_node_index(file, class_index));
-                Context::Class(&class)
+                run(Context::Class(&class))
             }
-        };
-        callback(InferenceState {
-            db,
-            context,
-            mode: Mode::Normal,
-        })
+        }
     }
 
     pub(crate) fn with_func_context(&self, func: &'a Function<'a, 'a>) -> Self {
