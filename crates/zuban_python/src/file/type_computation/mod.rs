@@ -2125,6 +2125,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 db,
                 &mut |usage| {
                     let tvl_found = usage.as_type_var_like();
+                    // Use the previously defined generic as a type var
                     for (given_item, tvl) in generics.iter().zip(type_var_likes.iter()) {
                         if tvl == &tvl_found {
                             return Some(given_item.clone());
