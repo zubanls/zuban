@@ -2906,3 +2906,67 @@ class C:
                     # N: Perhaps you need "Callable[...]" or a callback protocol?
 
     def float(self) -> None: ...
+
+[case nested_class_type_vars_not_possible0]
+# flags: --mode default
+from collections.abc import ItemsView, MutableMapping
+
+class CaseInsensitiveOrderedMultiDict[K, V](MutableMapping[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __init__(self, mapping):
+                self._mapping = mapping
+
+            def __iter__(self):
+                return iter(self._mapping._real)
+
+[case nested_class_type_vars_not_possible1]
+# flags: --untyped-function-return-mode inferred --check-untyped-defs
+# From GH #585
+from collections.abc import ItemsView, Iterator
+from typing import assert_type
+
+class CaseInsensitiveOrderedMultiDict[K, V](dict[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __init__(self, mapping: dict[K, V]):
+                self._mapping = mapping
+
+            def __iter__(self):
+                return iter(self._mapping)
+
+        assert_type(iter(OrderedItemsView({})), Iterator[K])
+        return OrderedItemsView({})
+
+i1 = CaseInsensitiveOrderedMultiDict().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+i2 = CaseInsensitiveOrderedMultiDict[int, str]().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+
+# TODO it feels like we don't want to leak the type vars here.
+reveal_type(iter(i1))  # N: Revealed type is "typing.Iterator[K]"
+reveal_type(iter(i2))  # N: Revealed type is "typing.Iterator[K]"
+
+[case nested_class_type_vars_not_possible2]
+# flags: --untyped-function-return-mode inferred --check-untyped-defs
+# From GH #585
+from collections.abc import ItemsView, Iterator
+from typing import assert_type
+
+class CaseInsensitiveOrderedMultiDict[K, V](dict[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __iter__(inner):
+                return iter(self)
+
+        assert_type(iter(OrderedItemsView({})), Iterator[K])
+        return OrderedItemsView({})
+
+i1 = CaseInsensitiveOrderedMultiDict().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+i2 = CaseInsensitiveOrderedMultiDict[int, str]().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+
+# TODO it feels like we don't want to leak the type vars here.
+reveal_type(iter(i1))  # N: Revealed type is "typing.Iterator[K]"
+reveal_type(iter(i2))  # N: Revealed type is "typing.Iterator[K]"
