@@ -429,7 +429,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     fn check_name_def(self, node_ref: NodeRef) -> BaseLookup {
         if node_ref.file_index() != self.file.file_index {
-            return self.with_new_file(node_ref.file).check_name_def(node_ref);
+            return self.with_new_file(node_ref.file, |new| new.check_name_def(node_ref));
         }
         let name_def = node_ref.expect_name_def();
         match name_def.expect_type() {

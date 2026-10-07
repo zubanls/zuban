@@ -3423,12 +3423,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let pr = match base {
             Lookup::T(TypeContent::Module(file)) => {
                 let had_issue = Cell::new(false);
-                let (pr, _) =
-                    self.with_new_file(file)
-                        .resolve_module_access(name.as_code(), |_| {
-                            had_issue.set(true);
-                            false
-                        })?;
+                let (pr, _) = self.with_new_file(file, |new| {
+                    new.resolve_module_access(name.as_code(), |_| {
+                        had_issue.set(true);
+                        false
+                    })
+                })?;
                 if had_issue.get() {
                     return None;
                 }
@@ -3451,12 +3451,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     .class_storage
                     .class_symbol_table
                     .lookup_symbol(name.as_str())?;
-                self.with_new_file(node_ref.file)
-                    .resolve_point_without_narrowing(node_index)
-                    .unwrap_or_else(|| PointResolution::NameDef {
-                        node_ref: NodeRef::new(node_ref.file, node_index).name_def_ref_of_name(),
-                        global_redirect: false,
-                    })
+                self.with_new_file(node_ref.file, |new| {
+                    new.resolve_point_without_narrowing(node_index)
+                        .unwrap_or_else(|| PointResolution::NameDef {
+                            node_ref: NodeRef::new(node_ref.file, node_index)
+                                .name_def_ref_of_name(),
+                            global_redirect: false,
+                        })
+                })
             }
             _ => return None,
         };
@@ -3704,9 +3706,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_special_primary_or_atom_type(primary.first())? {
                         Lookup::T(TypeContent::Module(f)) => {
-                            let (pr, _) = self
-                                .with_new_file(f)
-                                .resolve_module_access(name.as_str(), |_| false)?;
+                            let (pr, _) = self.with_new_file(f, |new| {
+                                new.resolve_module_access(name.as_str(), |_| false)
+                            })?;
                             Some(self.point_resolution_to_type_name_lookup(pr))
                         }
                         _ => None,
@@ -3984,7 +3986,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             start,
             s.trim_end_matches('\\').into(),
         );
-        let name_resolution = self.with_new_file(f);
+        let name_resolution = NameResolution {
+            file: f,
+            i_s: self.i_s,
+            stop_on_assignments: self.stop_on_assignments,
+        };
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {
                 StarExpressionContent::Expression(expr) => {

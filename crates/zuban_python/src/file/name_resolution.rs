@@ -83,15 +83,19 @@ impl PointResolution<'_> {
 }
 
 impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
-    pub(super) fn with_new_file<'new_file>(
+    pub(super) fn with_new_file<'new_file, T>(
         &self,
         file: &'new_file PythonFile,
-    ) -> NameResolution<'db, 'new_file, 'i_s> {
-        NameResolution {
+        callback: impl FnOnce(NameResolution<'db, 'new_file, '_>) -> T,
+    ) -> T
+    where
+        'db: 'new_file,
+    {
+        callback(NameResolution {
             file,
-            i_s: self.i_s,
+            i_s: &InferenceState::new(self.i_s.db, file),
             stop_on_assignments: self.stop_on_assignments,
-        }
+        })
     }
 
     pub(super) fn assign_import_from_only_particular_name_def(
@@ -276,11 +280,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     (PointResolution::Inferred(inf), None)
                 } else {
                     let import_file = self.i_s.db.loaded_python_file(*file_index);
-                    return self
-                        .with_new_file(import_file)
-                        .resolve_module_access(name, |kind| {
+                    return self.with_new_file(import_file, |new| {
+                        new.resolve_module_access(name, |kind| {
                             self.add_issue(import_name.index(), kind)
-                        });
+                        })
+                    });
                 }
             }
             ImportResult::Namespace(namespace) => (
@@ -296,11 +300,11 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if matches!(self.i_s.db.run_cause, RunCause::LanguageServer)
                     && self.file.file_index != *file_index
                     && let import_file = self.i_s.db.loaded_python_file(*file_index)
-                    && let Some((_, Some(access))) = self
-                        .with_new_file(import_file)
-                        .resolve_module_access(name, |kind| {
+                    && let Some((_, Some(access))) = self.with_new_file(import_file, |new| {
+                        new.resolve_module_access(name, |kind| {
                             self.add_issue(import_name.index(), kind)
                         })
+                    })
                 {
                     (
                         PointResolution::Inferred(Inferred::new_unsaved_complex(
@@ -435,9 +439,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                     } else if let Some(r) = global_import(i_s.db, self.file, "__builtins__")
                         && let Some(loaded) = r.ensured_loaded_file(i_s.db)
                         && let Some(dunder_builtins) = loaded.into_file(i_s.db)
-                        && let Some((resolution, _)) = self
-                            .with_new_file(dunder_builtins)
-                            .resolve_module_access(name_str, |_| false)
+                        && let Some((resolution, _)) = self.with_new_file(dunder_builtins, |new| {
+                            new.resolve_module_access(name_str, |_| false)
+                        })
                     {
                         return resolution;
                     }
@@ -569,7 +573,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 if file_index == self.file.file_index {
                     resolve(self)
                 } else {
-                    resolve(&mut self.with_new_file(self.i_s.db.loaded_python_file(file_index)))
+                    self.with_new_file(self.i_s.db.loaded_python_file(file_index), |mut new| {
+                        resolve(&mut new)
+                    })
                 }
             }
             PointKind::Specific => match point.specific() {
@@ -784,8 +790,9 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 None => {
                     let node_ref = NodeRef::from_link(self.i_s.db, link);
                     (
-                        self.with_new_file(node_ref.file)
-                            .resolve_name(node_ref.expect_name(), narrow_name),
+                        self.with_new_file(node_ref.file, |new| {
+                            new.resolve_name(node_ref.expect_name(), narrow_name)
+                        }),
                         Some(link),
                     )
                 }
@@ -922,13 +929,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
             if let Some(result) = lookup_symbol_table(super_file, &super_file.symbol_table) {
                 return Ok(result);
             }
-            self.with_new_file(super_file)
-                .lookup_from_star_import_with_node_index(
+            self.with_new_file(super_file, |new| {
+                new.lookup_from_star_import_with_node_index(
                     name,
                     StarImportResolutionKind::Global,
                     None,
                     star_imports_seen,
                 )
+            })
         } else {
             Err(
                 match import_not_resolvable && !self.i_s.db.project.settings.mypy_compatible() {
@@ -976,14 +984,14 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 return Ok(result);
             }
         }
-        let result = self
-            .with_new_file(other_file)
-            .lookup_from_star_import_with_node_index(
+        let result = self.with_new_file(other_file, |new| {
+            new.lookup_from_star_import_with_node_index(
                 name,
                 StarImportResolutionKind::Global,
                 None,
                 Some(new_seen),
-            );
+            )
+        });
         match &result {
             Ok(_) => {
                 if !other_file.is_name_exported_for_star_import(self.i_s.db, name) {

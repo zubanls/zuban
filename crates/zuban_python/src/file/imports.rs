@@ -437,13 +437,11 @@ impl<'db> Inference<'db, '_, '_> {
                 import_module_by_strings(self.i_s.db, self.file, iterator)?
         {
             let import_on_file = self.i_s.db.ensure_file_for_file_index(file_index).ok()?;
-            return Some(
-                self.infer_point_resolution(
-                    self.with_new_file(import_on_file)
-                        .resolve_module_access(last, |_| false)?
-                        .0,
-                ),
-            );
+            return Some(self.infer_point_resolution(
+                self.with_new_file(import_on_file, |new| {
+                    new.resolve_module_access(last, |_| false).map(|x| x.0)
+                })?,
+            ));
         }
         // This is the rest where no files are involved
         Some(
