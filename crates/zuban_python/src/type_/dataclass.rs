@@ -140,16 +140,7 @@ impl Dataclass {
     }
 
     pub fn as_base_class<'a>(&'a self, db: &'a Database, generics: Generics<'a>) -> Class<'a> {
-        let remap = match &self.class.generics {
-            ClassGenerics::List(list) => Some(list),
-            ClassGenerics::None { .. } => None,
-            _ => unreachable!(),
-        };
-        Class::from_position(
-            ClassNodeRef::from_link(db, self.class.link),
-            generics,
-            remap,
-        )
+        Class::from_position(ClassNodeRef::from_link(db, self.class.link), generics, None)
     }
 
     pub fn has_defined_generics(&self) -> bool {

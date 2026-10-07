@@ -66,12 +66,18 @@ impl<'a> std::ops::Deref for Class<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TypeVarRemap<'a> {
+    pub original_class_link: PointLink,
+    pub generics: &'a GenericsList,
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Class<'a> {
     pub node_ref: ClassNodeRef<'a>,
     pub class_storage: &'a ClassStorage,
     pub generics: Generics<'a>,
-    type_var_remap: Option<&'a GenericsList>,
+    type_var_remap: Option<TypeVarRemap<'a>>,
 }
 
 impl<'db: 'a, 'a> Class<'a> {
@@ -79,7 +85,7 @@ impl<'db: 'a, 'a> Class<'a> {
         node_ref: ClassNodeRef<'a>,
         class_storage: &'a ClassStorage,
         generics: Generics<'a>,
-        type_var_remap: Option<&'a GenericsList>,
+        type_var_remap: Option<TypeVarRemap<'a>>,
     ) -> Self {
         Self {
             node_ref,
@@ -111,7 +117,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn from_position(
         node_ref: ClassNodeRef<'a>,
         generics: Generics<'a>,
-        type_var_remap: Option<&'a GenericsList>,
+        type_var_remap: Option<TypeVarRemap<'a>>,
     ) -> Self {
         Self::new(node_ref, node_ref.class_storage(), generics, type_var_remap)
     }
@@ -1022,7 +1028,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn generics(&self) -> Generics<'_> {
         if let Some(type_var_remap) = self.type_var_remap {
-            Generics::List(type_var_remap, Some(&self.generics))
+            Generics::List(
+                type_var_remap.generics,
+                Some((type_var_remap.original_class_link, &self.generics)),
+            )
         } else {
             self.generics
         }
@@ -1068,7 +1077,10 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> MroIterator<'db, '_> {
         let class_infos = self.use_cached_class_infos(db);
         let generics = if let Some(type_var_remap) = self.type_var_remap {
-            Generics::List(type_var_remap, Some(&self.generics))
+            Generics::List(
+                type_var_remap.generics,
+                Some((type_var_remap.original_class_link, &self.generics)),
+            )
         } else {
             self.generics
         };
@@ -1097,7 +1109,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return Class::new(
                 self.node_ref,
                 self.class_storage,
-                Generics::List(type_var_remap, None),
+                Generics::List(type_var_remap.generics, None),
                 None,
             )
             .mro_without_remap(db, without_object);
@@ -1118,7 +1130,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'_>> {
         let generics = if let Some(type_var_remap) = self.type_var_remap {
-            Generics::List(type_var_remap, Some(&self.generics))
+            Generics::List(
+                type_var_remap.generics,
+                Some((type_var_remap.original_class_link, &self.generics)),
+            )
         } else {
             self.generics
         };
@@ -2581,7 +2596,14 @@ fn apply_generics_to_base_class<'a>(
                         // therefore simply use the class in the mro.
                         c.class(db)
                     } else {
-                        Class::from_position(ClassNodeRef::from_link(db, c.link), generics, Some(g))
+                        Class::from_position(
+                            ClassNodeRef::from_link(db, c.link),
+                            generics,
+                            Some(TypeVarRemap {
+                                original_class_link,
+                                generics: g,
+                            }),
+                        )
                     }
                 }
                 ClassGenerics::None { .. } => {

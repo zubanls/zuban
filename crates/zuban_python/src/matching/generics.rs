@@ -14,12 +14,12 @@ use crate::{
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None) => Generic::new($g),
-            Some(type_var_generics) => Generic::owned(
+            None | Some((_, Generics::None)) => Generic::new($g),
+            Some((class_link, type_var_generics)) => Generic::owned(
                 $g.replace_type_var_likes_and_self(
                     $db,
                     &mut |t| {
-                        Some({
+                        (t.in_definition() == *class_link).then(|| {
                             if matches!(type_var_generics, Generics::NotDefinedYet { .. }) {
                                 t.as_default_or_any_generic_item($db)
                             } else {
@@ -42,7 +42,7 @@ pub(crate) enum Generics<'a> {
     // The remapping of type vars is done by List(). In a lot of
     // cases this is T -> T and S -> S, but it could also be T -> S and S
     // -> List[T] or something completely arbitrary. Therefore we have two generics.
-    List(&'a GenericsList, Option<&'a Generics<'a>>),
+    List(&'a GenericsList, Option<(PointLink, &'a Generics<'a>)>),
     Self_ { class_ref: ClassNodeRef<'a> },
     None,
     NotDefinedYet { class_ref: ClassNodeRef<'a> },
@@ -152,7 +152,10 @@ impl<'a> GenericsIterator<'a> {
 
 enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
-    GenericsList(std::slice::Iter<'a, GenericItem>, Option<&'a Generics<'a>>),
+    GenericsList(
+        std::slice::Iter<'a, GenericItem>,
+        Option<(PointLink, &'a Generics<'a>)>,
+    ),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     TypeVarLikeIterator {
         iterator: std::iter::Enumerate<std::slice::Iter<'a, TypeVarLike>>,

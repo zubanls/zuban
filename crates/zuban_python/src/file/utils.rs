@@ -24,10 +24,9 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue,
-        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
-        UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
-        maybe_add_extra_keys_issue,
+        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue, Tuple,
+        TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError,
+        WithUnpack, check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue,
     },
     utils::join_with_commas,
 };
