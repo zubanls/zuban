@@ -1355,6 +1355,7 @@ def check(value: Any, z: Box[int]) -> None:
     assert_type(z.value, int)
 
 [case overloaded_dataclass_descriptors]
+# From GH #599
 from dataclasses import dataclass, asdict
 from typing import Callable, Concatenate, overload, Self, Optional, assert_type
 @dataclass
