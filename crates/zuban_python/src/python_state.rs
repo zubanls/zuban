@@ -1112,7 +1112,7 @@ impl PythonState {
     class_node_ref!(typing, pub keys_view_node_ref, typing_keys_view_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     class_node_ref!(typing, pub generator_node_ref, typing_generator_index);
-    attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
+    class_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     class_node_ref!(typing, pub sequence_node_ref, typing_sequence_index);
     attribute_node_ref!(
         typing,

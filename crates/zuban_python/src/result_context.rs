@@ -3,12 +3,13 @@ use core::fmt;
 use parsa_python_cst::Assignment;
 
 use crate::{
-    InferenceState,
+    InferenceState, debug,
     file::ClassNodeRef,
     matching::Matcher,
     node_ref::KnownPointLink,
     type_::{AnyCause, ReplaceTypeVarLikes as _, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 pub(crate) enum ResultContext<'a, 'b> {
@@ -174,14 +175,18 @@ impl<'a> ResultContext<'a, '_> {
                             });
                         }
                         // Case x: Iterable[int] = (1, 1)
-                        Type::Class(c)
-                            if c.link == i_s.db.python_state.iterable_link()
-                                || c.link == i_s.db.python_state.sequence_link()
-                                || c.link.file == i_s.db.python_state.typing().file_index
-                                    && c.class(i_s.db).name() == "Reversible" =>
+                        other
+                            if let Some(matcher) = try_to_match_generics_of_class(
+                                i_s,
+                                i_s.db.python_state.tuple_node_ref(),
+                                &other,
+                            ) =>
                         {
-                            let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
-                            return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
+                            let generic_t = matcher
+                                .into_type_arg_iterator_or_any(i_s.db)
+                                .next()
+                                .unwrap();
+                            return Some(callable(TupleContextIterator::ArbitraryLen(&generic_t)));
                         }
                         _ => (),
                     }
@@ -251,6 +256,12 @@ fn try_to_match_generics_of_class(
     class_node_ref: ClassNodeRef,
     t: &Type,
 ) -> Option<Matcher<'static>> {
+    debug!(
+        "Try to find matching generic for {} against {}",
+        class_node_ref.name(),
+        t.format_short(i_s.db)
+    );
+    let _indent = debug_indent();
     let self_class = Class::with_self_generics(i_s.db, class_node_ref);
     let mut matcher = Matcher::new_class_matcher(i_s, self_class);
     let mut had_same_class_type_var = false;
