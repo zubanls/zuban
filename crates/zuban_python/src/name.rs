@@ -4,7 +4,7 @@ use lsp_types::SymbolKind;
 use parsa_python_cst::{
     ClassDef, DefiningStmt, FunctionDef, Name as CSTName, NameParent, NodeIndex, Scope, TypeLike,
 };
-use vfs::NormalizedPath;
+use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
     PositionInfos,
@@ -204,6 +204,14 @@ impl<'db, 'x> Name<'db, 'x> {
                     n.file.byte_to_position_infos(name.db, end),
                 )
             }
+        }
+    }
+
+    pub(crate) fn to_unique_position(&self) -> (FileIndex, NodeIndex) {
+        match self {
+            Name::TreeName(n) => (n.file.file_index, n.cst_name.index()),
+            Name::ModuleName(n) => (n.file.file_index, 0),
+            Name::NodeName(name) => (name.node_ref.file_index(), name.node_ref.node_index),
         }
     }
 

@@ -767,7 +767,7 @@ impl<'db> From<FollowImportResultKind<'db>> for FollowImportResult<'db> {
 
 pub(crate) struct ReferencesResolver<'db, C, T> {
     infos: PositionalDocument<'db, GotoNode<'db>>,
-    definitions: FastHashSet<(FileIndex, usize)>,
+    definitions: FastHashSet<(FileIndex, NodeIndex)>,
     results: Vec<T>,
     on_result: C,
 }
@@ -819,9 +819,9 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
-                self.definitions.insert(to_unique_position(&name));
-                let mut add_definitions = |name| {
-                    self.definitions.insert(to_unique_position(&name));
+                self.definitions.insert(name.to_unique_position());
+                let mut add_definitions = |name: Name<'db, '_>| {
+                    self.definitions.insert(name.to_unique_position());
                     let should_add = include_declarations
                         && (!matches!(goal, ReferencesGoal::OnlyCurrentFile)
                             || include_declarations
@@ -841,7 +841,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                                     cst_name: CSTName::by_index(&n.file.tree, name_index),
                                     ..n
                                 });
-                                self.definitions.insert(to_unique_position(&new_name));
+                                self.definitions.insert(new_name.to_unique_position());
                                 if should_add {
                                     definition_results.push((self.on_result)(new_name));
                                 }
@@ -870,7 +870,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     self.infos.file,
                     on_name,
                 ));
-                self.definitions.insert(to_unique_position(&n));
+                self.definitions.insert(n.to_unique_position());
                 definition_results.push((self.on_result)(n))
             } else {
                 debug!("Did not find the original reference definition for {search_name}");
@@ -922,7 +922,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     GotoGoal::Indifferent,
                     |n: Name| {
                         follow_goto_if_necessary(n, &mut |n| {
-                            if self.definitions.contains(&to_unique_position(&n)) {
+                            if self.definitions.contains(&n.to_unique_position()) {
                                 add_all_names = true;
                             }
                         })
@@ -935,7 +935,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                         file,
                         name,
                     ));
-                    if !self.definitions.contains(&to_unique_position(&n)) {
+                    if !self.definitions.contains(&n.to_unique_position()) {
                         self.results.push((self.on_result)(n));
                     }
                 }
@@ -988,10 +988,6 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
             self.find_references_in_file(file, search_name);
         }
     }
-}
-
-fn to_unique_position(n: &Name) -> (FileIndex, usize) {
-    (n.file().file_index, n.name_range().0.byte_position)
 }
 
 fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnMut(Name<'db, '_>)) {

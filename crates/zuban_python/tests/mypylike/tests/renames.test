@@ -72,3 +72,62 @@ __main__.py:4:rename:  - 2:7 -> 2:10
 __main__.py:4:rename:  - 4:0 -> 4:3
 __main__.py:4:rename: Rename: file:///C:/mypylike/foo.py -> file:///C:/mypylike/foo3.py
 __main__.py:4:rename: Rename: file:///C:/mypylike/foo.pyi -> file:///C:/mypylike/foo3.pyi
+
+[case rename_on_import_should_only_rename_correct_part]
+[file a/a.py]
+a = 42
+[file b/b.py]
+b = 42
+[file c/c.py]
+c = 42
+[file d/d.py]
+d = 42
+[file e/e.py]
+e = 42
+[file f/f.py]
+f = 42
+[file g/g.py]
+g = 42
+
+[file m.py]
+# TODO Currently namespaces are not supported #? --codepoint-column 5 rename A
+from a.a import a
+#? --codepoint-column 8 rename B
+from b.b import b
+#? --codepoint-column 17 rename C
+from c.c import c
+#? --codepoint-column 8 rename D
+from d.d import d as d
+
+#? --codepoint-column 8 rename E
+import e.e
+#? --codepoint-column 10 rename F
+import f.f as m
+#? --codepoint-column 15 rename G
+import g.g as n
+
+[out]
+m.py:4:rename: b -> B
+m.py:4:rename: file:///mypylike/m.py:
+m.py:4:rename:  - 4:7 -> 4:8
+m.py:4:rename: Rename: file:///mypylike/b/b.py -> file:///mypylike/b/B.py
+m.py:6:rename: c -> C
+m.py:6:rename: file:///mypylike/c/c.py:
+m.py:6:rename:  - 1:0 -> 1:1
+m.py:6:rename: file:///mypylike/m.py:
+m.py:6:rename:  - 6:16 -> 6:17
+m.py:8:rename: d -> D
+m.py:8:rename: file:///mypylike/m.py:
+m.py:8:rename:  - 8:7 -> 8:8
+m.py:8:rename: Rename: file:///mypylike/d/d.py -> file:///mypylike/d/D.py
+m.py:11:rename: e -> E
+m.py:11:rename: file:///mypylike/m.py:
+m.py:11:rename:  - 11:7 -> 11:8
+m.py:13:rename: f -> F
+m.py:13:rename: file:///mypylike/m.py:
+m.py:13:rename:  - 13:9 -> 13:10
+m.py:13:rename: Rename: file:///mypylike/f/f.py -> file:///mypylike/f/F.py
+m.py:15:rename: n -> G
+m.py:15:rename: file:///mypylike/m.py:
+m.py:15:rename:  - 15:14 -> 15:15
+m.py:15:rename: Rename: file:///mypylike/g/g.py -> file:///mypylike/g/G.py
