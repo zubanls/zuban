@@ -27,7 +27,7 @@ use lsp_types::{
         GotoImplementation, GotoTypeDefinition, HoverRequest, InlayHintRequest,
         PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
         SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
-        WorkspaceDiagnosticRefresh, WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
+        WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
     },
 };
 
