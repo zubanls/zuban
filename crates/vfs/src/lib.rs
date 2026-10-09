@@ -34,7 +34,7 @@ pub trait VfsHandler: Sync + Send {
     /// exists.                                                                
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String>;
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>>;
-    fn on_invalidated_in_memory_file(&self, path: PathWithScheme);
+    fn on_invalidated_in_memory_file(&self, f: InvalidatedInMemoryFile);
     fn read_and_watch_dir(
         &self,
         workspaces: &[Arc<Workspace>],
@@ -165,6 +165,10 @@ pub trait VfsHandler: Sync + Send {
             (None, path)
         }
     }
+}
+
+pub struct InvalidatedInMemoryFile {
+    pub path: PathWithScheme,
 }
 
 fn path_relative_to(from: &AbsPath, to: &Path, separator: char) -> Option<String> {

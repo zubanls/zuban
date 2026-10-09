@@ -10,7 +10,7 @@ use utils::{FastHashSet, InsertOnlyVec};
 
 use crate::{
     AbsPath, DirOrFile, Directory, DirectoryEntry, FileEntry, FileIndex, GitignoreFile,
-    NormalizedPath, Parent, VfsHandler, WorkspaceKind, WorkspacesBuilder,
+    InvalidatedInMemoryFile, NormalizedPath, Parent, VfsHandler, WorkspaceKind, WorkspacesBuilder,
     tree::{AddedKind, InvalidationDetail, Invalidations},
     workspaces::Workspaces,
 };
@@ -165,7 +165,9 @@ impl<F: VfsFile> Vfs<F> {
                         // panic. Essentially after a panic we do not know what changed between the panic
                         // and now, so we simply push the diagnostic to the user again.
                         self.handler
-                            .on_invalidated_in_memory_file(file_state.path.clone());
+                            .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
+                                path: file_state.path.clone(),
+                            });
                     }
                     Some(RecoveryFile {
                         is_in_memory_file,
@@ -248,7 +250,8 @@ impl<F: VfsFile> Vfs<F> {
                 original_file_index.map(|f| &self.file_state(f).path)
             );
             for path in self.in_memory_files.keys() {
-                self.handler.on_invalidated_in_memory_file(path.clone());
+                self.handler
+                    .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path: path.clone() });
             }
             return InvalidationResult::InvalidatedDb;
         };
@@ -288,7 +291,9 @@ impl<F: VfsFile> Vfs<F> {
         let file = self.file_state(invalid_index);
         if self.in_memory_files.contains_key(&file.path) {
             self.handler
-                .on_invalidated_in_memory_file(file.path.clone());
+                .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
+                    path: file.path.clone(),
+                });
         }
         InvalidationResult::InvalidatedFiles
     }
@@ -433,7 +438,8 @@ impl<F: VfsFile> Vfs<F> {
                 .insert(path.clone(), InMemoryKind::File(file_index));
             Some(file_index)
         });
-        self.handler.on_invalidated_in_memory_file(path.clone());
+        self.handler
+            .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path: path.clone() });
         let mut result = InvalidationResult::InvalidatedFiles;
         if let Some(file_index) = in_mem_file {
             if self.file_state(file_index).code() == Some(&code) {
@@ -754,7 +760,8 @@ impl<F: VfsFile> Vfs<F> {
             match ensured.kind {
                 AddedKind::FileEntry(file_entry) => {
                     file_entry.with_set_file_index(|| file_index);
-                    self.handler.on_invalidated_in_memory_file(path);
+                    self.handler
+                        .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path });
                 }
                 AddedKind::Gitignore(_) => {
                     // TODO Simply creating the file again is good enough, but this is not done

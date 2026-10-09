@@ -315,7 +315,7 @@ impl<'sender> GlobalState<'sender> {
         } else {
             let new_changed_files = self.changed_in_memory_files.clone();
             let should_push = self.client_capabilities.should_push_diagnostics();
-            let vfs_handler = LocalFS::with_watcher(move |path| {
+            let vfs_handler = LocalFS::with_watcher(move |invalidated| {
                 let mut changed = new_changed_files.as_ref().write().unwrap();
                 if should_push {
                     let files = match &mut *changed {
@@ -329,13 +329,13 @@ impl<'sender> GlobalState<'sender> {
                         }
                     };
                     // This is currently a not a set, because the order matters
-                    if !files.contains(&path) {
-                        files.push(path)
+                    if !files.contains(&invalidated.path) {
+                        files.push(invalidated.path)
                     }
                 } else {
                     tracing::debug!(
                         "Set needs_refresh, because of the invalidation of {}",
-                        path.as_uri()
+                        invalidated.path.as_uri()
                     );
                     *changed = ChangeInMemoryFiles::Pull {
                         needs_refresh: true,

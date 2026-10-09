@@ -8,22 +8,22 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
 use utils::{FastHashMap, FastHashSet};
 
 use crate::{
-    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
-    NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace,
+    AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, InvalidatedInMemoryFile,
+    NormalizedPath, NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace,
     workspaces::add_nested_workspace_if_necessary,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
 
-pub type SimpleLocalFS = LocalFS<Box<dyn Fn(PathWithScheme) + Sync + Send>>;
+pub type SimpleLocalFS = LocalFS<Box<dyn Fn(InvalidatedInMemoryFile) + Sync + Send>>;
 
-pub struct LocalFS<T: Fn(PathWithScheme) + Sync + Send> {
+pub struct LocalFS<T: Fn(InvalidatedInMemoryFile) + Sync + Send> {
     watcher: Option<(RwLock<RecommendedWatcher>, Receiver<NotifyEvent>)>,
     already_watched_dirs: RwLock<FastHashSet<PathBuf>>,
     on_invalidated_in_memory_file: Option<T>,
 }
 
-impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
+impl<T: Fn(InvalidatedInMemoryFile) + Sync + Send> VfsHandler for LocalFS<T> {
     fn read_and_watch_file(&self, path: &PathWithScheme) -> Option<String> {
         tracing::debug!("Read from FS: {}", path.as_uri());
         if **path.scheme != *"file" {
@@ -168,9 +168,9 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
         self.watcher.as_ref().map(|(_, r)| r)
     }
 
-    fn on_invalidated_in_memory_file(&self, path: PathWithScheme) {
+    fn on_invalidated_in_memory_file(&self, f: InvalidatedInMemoryFile) {
         if let Some(callback) = self.on_invalidated_in_memory_file.as_ref() {
-            callback(path)
+            callback(f)
         }
     }
 
@@ -210,7 +210,7 @@ impl SimpleLocalFS {
     }
 }
 
-impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
+impl<T: Fn(InvalidatedInMemoryFile) + Sync + Send> LocalFS<T> {
     pub fn with_watcher(on_invalidated_memory_file: T) -> Self {
         let (watcher_sender, watcher_receiver) = unbounded();
         let watcher = log_notify_error(recommended_watcher(move |event| {
