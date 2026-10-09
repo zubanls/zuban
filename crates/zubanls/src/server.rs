@@ -12,7 +12,9 @@ use config::{Mode, ModeChoice, ProjectOptions};
 use crossbeam_channel::{Receiver, Sender, never, select};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
-use lsp_types::request::{Request as _, WorkspaceDiagnosticRefresh};
+use lsp_types::request::{
+    InlayHintRefreshRequest, SemanticTokensRefresh, WorkspaceDiagnosticRefresh,
+};
 use lsp_types::{TextDocumentPositionParams, Url};
 use notify::EventKind;
 use serde::{Serialize, de::DeserializeOwned};
@@ -666,7 +668,7 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn complete_request(&mut self, response: lsp_server::Response) {
-        tracing::error!("unhandled request: {:?}", response);
+        tracing::warn!("unhandled request: {:?}", response);
     }
 
     fn publish_diagnostics_if_necessary(&mut self) {
@@ -738,18 +740,24 @@ impl<'sender> GlobalState<'sender> {
                         self.sent_diagnostic_count,
                         self.request_counter,
                     );
-                    let request_id = self.request_counter;
-                    self.request_counter = self.request_counter.wrapping_add(1);
-                    let r = lsp_server::Request::new(
-                        request_id.into(),
-                        WorkspaceDiagnosticRefresh::METHOD.to_string(),
-                        (),
-                    );
-                    let _ = self.sender.send(r.into());
+                    self.send_refresh::<WorkspaceDiagnosticRefresh>();
+                }
+                if self.client_capabilities.semantic_tokens_refresh_support() {
+                    self.send_refresh::<SemanticTokensRefresh>();
+                }
+                if self.client_capabilities.inlay_hint_refresh_support() {
+                    self.send_refresh::<InlayHintRefreshRequest>();
                 }
             }
             _ => (),
         }
+    }
+
+    fn send_refresh<R: lsp_types::request::Request>(&mut self) {
+        let request_id = self.request_counter;
+        self.request_counter = self.request_counter.wrapping_add(1);
+        let r = lsp_server::Request::new(request_id.into(), R::METHOD.to_string(), ());
+        let _ = self.sender.send(r.into());
     }
 
     pub(crate) fn uri_to_path(project: &Project, uri: &Url) -> anyhow::Result<PathWithScheme> {

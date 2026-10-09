@@ -308,6 +308,30 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
+    pub fn inlay_hint_refresh_support(&self) -> bool {
+        (|| {
+            self.caps
+                .workspace
+                .as_ref()?
+                .inlay_hint
+                .as_ref()?
+                .refresh_support
+        })()
+        .unwrap_or_default()
+    }
+
+    pub fn semantic_tokens_refresh_support(&self) -> bool {
+        (|| {
+            self.caps
+                .workspace
+                .as_ref()?
+                .semantic_tokens
+                .as_ref()?
+                .refresh_support
+        })()
+        .unwrap_or_default()
+    }
+
     #[expect(dead_code)]
     pub(crate) fn insert_replace_support(&self) -> bool {
         (|| {

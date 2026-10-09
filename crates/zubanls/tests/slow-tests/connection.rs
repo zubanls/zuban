@@ -7,6 +7,7 @@ use lsp_types::{
     DocumentSymbolClientCapabilities, GotoCapability, InitializeResult,
     InlayHintWorkspaceClientCapabilities, SemanticTokensWorkspaceClientCapabilities,
     ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
+    request::{InlayHintRefreshRequest, SemanticTokensRefresh, WorkspaceDiagnosticRefresh},
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -268,6 +269,15 @@ impl Connection {
     fn recv_timeout(&self) -> Result<Message, RecvTimeoutError> {
         let timeout = Duration::from_secs(5);
         self.client.receiver.recv_timeout(timeout)
+    }
+
+    pub fn expect_refreshes(&self) {
+        let (request_id, _) = self.expect_request::<WorkspaceDiagnosticRefresh>();
+        self.send(lsp_server::Response::new_ok(request_id, &()));
+        let (request_id, _) = self.expect_request::<SemanticTokensRefresh>();
+        self.send(lsp_server::Response::new_ok(request_id, &()));
+        let (request_id, _) = self.expect_request::<InlayHintRefreshRequest>();
+        self.send(lsp_server::Response::new_ok(request_id, &()));
     }
 
     pub(crate) fn shutdown_and_exit(&self) {

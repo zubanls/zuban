@@ -868,11 +868,12 @@ fn pull_notifications_and_refresh_notification() {
     const NO_FOO: &str = "Cannot find implementation or library stub for module named \"foo\"";
 
     server.open_in_memory_file("in_mem.py", "import foo");
-    server.expect_request::<WorkspaceDiagnosticRefresh>();
+    server.expect_refreshes();
+
     assert!(server.diagnostics_for_file("in_mem.py").is_empty());
 
     server.remove_file_and_wait("foo.py");
-    server.expect_request::<WorkspaceDiagnosticRefresh>();
+    server.expect_refreshes();
 
     assert_eq!(server.diagnostics_for_file("in_mem.py"), [NO_FOO]);
 
