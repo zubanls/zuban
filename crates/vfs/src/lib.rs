@@ -169,6 +169,7 @@ pub trait VfsHandler: Sync + Send {
 
 pub struct InvalidatedInMemoryFile {
     pub path: PathWithScheme,
+    pub maybe_from_outside_of_in_memory_files: bool,
 }
 
 fn path_relative_to(from: &AbsPath, to: &Path, separator: char) -> Option<String> {

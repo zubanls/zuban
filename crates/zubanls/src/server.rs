@@ -332,7 +332,7 @@ impl<'sender> GlobalState<'sender> {
                     if !files.contains(&invalidated.path) {
                         files.push(invalidated.path)
                     }
-                } else {
+                } else if invalidated.maybe_from_outside_of_in_memory_files {
                     tracing::debug!(
                         "Set needs_refresh, because of the invalidation of {}",
                         invalidated.path.as_uri()

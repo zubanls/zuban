@@ -167,6 +167,7 @@ impl<F: VfsFile> Vfs<F> {
                         self.handler
                             .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
                                 path: file_state.path.clone(),
+                                maybe_from_outside_of_in_memory_files: true,
                             });
                     }
                     Some(RecoveryFile {
@@ -241,6 +242,7 @@ impl<F: VfsFile> Vfs<F> {
         &mut self,
         original_file_index: Option<FileIndex>,
         invalidations: Invalidations,
+        maybe_from_outside_of_in_memory_files: bool,
     ) -> InvalidationResult {
         let InvalidationDetail::Some(invalidations) = invalidations.into_iter() else {
             // This means that the file was created with `invalidates_db = true`, which
@@ -251,13 +253,19 @@ impl<F: VfsFile> Vfs<F> {
             );
             for path in self.in_memory_files.keys() {
                 self.handler
-                    .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path: path.clone() });
+                    .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
+                        path: path.clone(),
+                        maybe_from_outside_of_in_memory_files,
+                    });
             }
             return InvalidationResult::InvalidatedDb;
         };
         for invalid_index in invalidations {
-            if self.invalidate_file_by_index(original_file_index, invalid_index)
-                == InvalidationResult::InvalidatedDb
+            if self.invalidate_file_by_index(
+                original_file_index,
+                invalid_index,
+                maybe_from_outside_of_in_memory_files,
+            ) == InvalidationResult::InvalidatedDb
             {
                 return InvalidationResult::InvalidatedDb;
             }
@@ -269,6 +277,7 @@ impl<F: VfsFile> Vfs<F> {
         &mut self,
         original_file_index: Option<FileIndex>,
         invalid_index: FileIndex,
+        maybe_from_outside_of_in_memory_files: bool,
     ) -> InvalidationResult {
         let file = self.file_state_mut(invalid_index);
         let new_invalidations = file.file_entry.invalidations.take();
@@ -283,8 +292,11 @@ impl<F: VfsFile> Vfs<F> {
                 );
             }
         }
-        if self.invalidate_files(original_file_index, new_invalidations)
-            == InvalidationResult::InvalidatedDb
+        if self.invalidate_files(
+            original_file_index,
+            new_invalidations,
+            maybe_from_outside_of_in_memory_files,
+        ) == InvalidationResult::InvalidatedDb
         {
             return InvalidationResult::InvalidatedDb;
         }
@@ -293,6 +305,7 @@ impl<F: VfsFile> Vfs<F> {
             self.handler
                 .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
                     path: file.path.clone(),
+                    maybe_from_outside_of_in_memory_files,
                 });
         }
         InvalidationResult::InvalidatedFiles
@@ -439,7 +452,10 @@ impl<F: VfsFile> Vfs<F> {
             Some(file_index)
         });
         self.handler
-            .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path: path.clone() });
+            .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
+                path: path.clone(),
+                maybe_from_outside_of_in_memory_files: false,
+            });
         let mut result = InvalidationResult::InvalidatedFiles;
         if let Some(file_index) = in_mem_file {
             if self.file_state(file_index).code() == Some(&code) {
@@ -447,7 +463,7 @@ impl<F: VfsFile> Vfs<F> {
                 // file.
                 return (Some(file_index), result);
             }
-            result |= self.invalidate_and_unload_file(file_index);
+            result |= self.invalidate_and_unload_file(file_index, false);
         }
 
         let file_index = if let Some(file_index) = in_mem_file {
@@ -489,7 +505,7 @@ impl<F: VfsFile> Vfs<F> {
                 tracing::info!("Invalidate {p} because we're loading {path}");
             }
         }
-        result |= self.invalidate_files(Some(file_index), ensured.invalidations);
+        result |= self.invalidate_files(Some(file_index), ensured.invalidations, false);
         (Some(file_index), result)
     }
 
@@ -501,14 +517,22 @@ impl<F: VfsFile> Vfs<F> {
         let file_state = &self.files[file_index.0 as usize];
         self.workspaces
             .unload_file(&*self.handler, case_sensitive, &file_state.path);
-        self.invalidate_and_unload_file(file_index)
+        self.invalidate_and_unload_file(file_index, false)
     }
 
-    fn invalidate_and_unload_file(&mut self, file_index: FileIndex) -> InvalidationResult {
+    fn invalidate_and_unload_file(
+        &mut self,
+        file_index: FileIndex,
+        maybe_from_outside_of_in_memory_files: bool,
+    ) -> InvalidationResult {
         let file_state = &mut self.files[file_index.0 as usize];
         file_state.unload();
         let invalidations = file_state.file_entry.invalidations.take();
-        self.invalidate_files(Some(file_index), invalidations)
+        self.invalidate_files(
+            Some(file_index),
+            invalidations,
+            maybe_from_outside_of_in_memory_files,
+        )
     }
 
     pub fn close_in_memory_file(
@@ -529,7 +553,11 @@ impl<F: VfsFile> Vfs<F> {
                         // This is the very typical case of closing a buffer after saving it and therefore
                         // unloading the file from memory and using the file from the file system.
                         if Some(on_file_system_code.as_str()) != file_state.code() {
-                            self.update_file(file_index, on_file_system_code.into(), to_file)
+                            self.update_in_memory_file(
+                                file_index,
+                                on_file_system_code.into(),
+                                to_file,
+                            )
                         } else {
                             InvalidationResult::InvalidatedFiles
                         }
@@ -740,17 +768,17 @@ impl<F: VfsFile> Vfs<F> {
             return InvalidationResult::InvalidatedDb;
         }
         for inv in all_unloads.into_iter() {
-            if self.invalidate_and_unload_file(inv) == InvalidationResult::InvalidatedDb {
+            if self.invalidate_and_unload_file(inv, true) == InvalidationResult::InvalidatedDb {
                 tracing::debug!("caused an invalidated db");
                 return InvalidationResult::InvalidatedDb;
             }
         }
         for inv in all_invalidations.into_iter() {
-            if self.invalidate_file_by_index(None, inv) == InvalidationResult::InvalidatedDb {
+            if self.invalidate_file_by_index(None, inv, true) == InvalidationResult::InvalidatedDb {
                 return InvalidationResult::InvalidatedDb;
             }
         }
-        // After unloading in memory files (especially it they are within unloaded directories need
+        // After invalidating in memory files (especially it they are within unloaded directories need
         // to be ensured).
         for (path, file_index) in ensure_unloaded_in_memory_paths {
             let ensured = self
@@ -761,7 +789,10 @@ impl<F: VfsFile> Vfs<F> {
                 AddedKind::FileEntry(file_entry) => {
                     file_entry.with_set_file_index(|| file_index);
                     self.handler
-                        .on_invalidated_in_memory_file(InvalidatedInMemoryFile { path });
+                        .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
+                            path,
+                            maybe_from_outside_of_in_memory_files: true,
+                        });
                 }
                 AddedKind::Gitignore(_) => {
                     // TODO Simply creating the file again is good enough, but this is not done
@@ -791,13 +822,13 @@ impl<F: VfsFile> Vfs<F> {
         }
     }
 
-    fn update_file(
+    fn update_in_memory_file(
         &mut self,
         file_index: FileIndex,
         new_code: Box<str>,
         to_file: impl FnOnce(&FileState<F>, FileIndex, Box<str>) -> F,
     ) -> InvalidationResult {
-        let result = self.invalidate_and_unload_file(file_index);
+        let result = self.invalidate_and_unload_file(file_index, false);
         let file_state = self.file_state_mut(file_index);
         let new_file = to_file(file_state, file_index, new_code);
         file_state.update(new_file);
