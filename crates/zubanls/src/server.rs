@@ -465,6 +465,12 @@ impl<'sender> GlobalState<'sender> {
     fn on_notification(&mut self, not: lsp_server::Notification) {
         use lsp_types::notification::*;
 
+        if self.shutdown_requested {
+            // We don't need to handle notifications anymore, because we're going to shutdown
+            // anyway.
+            return;
+        }
+
         NotificationDispatcher {
             not: Some(not),
             global_state: self,
@@ -521,7 +527,6 @@ impl<'sender> GlobalState<'sender> {
         .on_sync_mut::<FoldingRangeRequest>(GlobalState::folding_ranges)
         .on_sync_mut::<SelectionRangeRequest>(GlobalState::selection_ranges)
         .on_sync_mut::<InlayHintRequest>(GlobalState::inlay_hints)
-        .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .on_sync_mut::<Shutdown>(GlobalState::handle_shutdown)
         .on_sync_mut::<custom::DisplayStatusRequest>(GlobalState::display_status)
         .finish();
@@ -665,6 +670,9 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn publish_diagnostics_if_necessary(&mut self) {
+        if self.shutdown_requested {
+            return;
+        }
         let encoding = self.client_capabilities.negotiated_encoding();
         let changed = std::mem::take(&mut *self.changed_in_memory_files.as_ref().write().unwrap());
         match changed {
