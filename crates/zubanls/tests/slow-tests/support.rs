@@ -39,6 +39,7 @@ pub(crate) struct Project<'a> {
     roots: Vec<String>,
     root_dir_contains_symlink: bool,
     push_diagnostics: bool,
+    refresh_support: bool,
     hierarchical_document_symbol_support: bool,
     initialization_options: Option<Value>,
 }
@@ -51,6 +52,7 @@ impl<'a> Project<'a> {
             roots: vec![],
             root_dir_contains_symlink: false,
             push_diagnostics: false,
+            refresh_support: false,
             hierarchical_document_symbol_support: true,
             initialization_options: None,
         }
@@ -68,6 +70,11 @@ impl<'a> Project<'a> {
 
     pub(crate) fn with_push_diagnostics(mut self) -> Self {
         self.push_diagnostics = true;
+        self
+    }
+
+    pub(crate) fn with_refresh_support(mut self) -> Self {
+        self.refresh_support = true;
         self
     }
 
@@ -113,6 +120,7 @@ impl<'a> Project<'a> {
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
                 !self.push_diagnostics,
+                self.refresh_support,
                 self.hierarchical_document_symbol_support,
                 self.initialization_options,
             ),

@@ -296,6 +296,18 @@ impl ClientCapabilities {
         self.should_push_diagnostics
     }
 
+    pub fn diagnostics_refresh_support(&self) -> bool {
+        (|| {
+            self.caps
+                .workspace
+                .as_ref()?
+                .diagnostics
+                .as_ref()?
+                .refresh_support
+        })()
+        .unwrap_or_default()
+    }
+
     #[expect(dead_code)]
     pub(crate) fn insert_replace_support(&self) -> bool {
         (|| {

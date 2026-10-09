@@ -1,10 +1,12 @@
 use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 
 use crossbeam_channel::RecvTimeoutError;
-use lsp_server::Message;
+use lsp_server::{Message, RequestId};
 use lsp_types::{
-    DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, GotoCapability,
-    InitializeResult, ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
+    DiagnosticClientCapabilities, DiagnosticWorkspaceClientCapabilities,
+    DocumentSymbolClientCapabilities, GotoCapability, InitializeResult,
+    InlayHintWorkspaceClientCapabilities, SemanticTokensWorkspaceClientCapabilities,
+    ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -58,6 +60,7 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        refresh_support: bool,
         hierarchical_document_symbol_support: bool,
         initialization_options: Option<Value>,
     ) -> Self {
@@ -66,6 +69,7 @@ impl Connection {
             roots,
             position_encodings,
             pull_diagnostics,
+            refresh_support,
             hierarchical_document_symbol_support,
             initialization_options,
         );
@@ -78,6 +82,7 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        refresh_support: bool,
         hierarchical_document_symbol_support: bool,
         initialization_options: Option<Value>,
     ) -> InitializeResult {
@@ -96,6 +101,15 @@ impl Connection {
                         lsp_types::ResourceOperationKind::Rename,
                     ]),
                     ..Default::default()
+                }),
+                diagnostics: Some(DiagnosticWorkspaceClientCapabilities {
+                    refresh_support: Some(refresh_support),
+                }),
+                inlay_hint: Some(InlayHintWorkspaceClientCapabilities {
+                    refresh_support: Some(refresh_support),
+                }),
+                semantic_tokens: Some(SemanticTokensWorkspaceClientCapabilities {
+                    refresh_support: Some(refresh_support),
                 }),
                 ..Default::default()
             }),
@@ -230,6 +244,19 @@ impl Connection {
             Err(err) => {
                 tracing::error!("Why no notification, expected {}", N::METHOD);
                 panic!("Expected the notification {}, but got: {err:?}", N::METHOD)
+            }
+        }
+    }
+
+    pub fn expect_request<R: lsp_types::request::Request>(&self) -> (RequestId, R::Params) {
+        match self.recv_timeout() {
+            Ok(Message::Request(req)) => req
+                .extract::<R::Params>(R::METHOD)
+                .unwrap_or_else(|err| panic!("Wanted {}, got {err:?}", R::METHOD)),
+            Ok(msg) => panic!("Unexpected message, expected notification: {msg:?}"),
+            Err(err) => {
+                tracing::error!("Why no request, expected {}", R::METHOD);
+                panic!("Expected the notification {}, but got: {err:?}", R::METHOD)
             }
         }
     }

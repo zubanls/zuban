@@ -27,7 +27,7 @@ use lsp_types::{
         GotoImplementation, GotoTypeDefinition, HoverRequest, InlayHintRequest,
         PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
         SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
-        WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
+        WorkspaceDiagnosticRefresh, WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
     },
 };
 
@@ -51,7 +51,7 @@ use support::Project;
 #[parallel]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"], None, true, false, None);
+    let response = con.initialize(&["/foo/bar"], None, true, false, false, None);
 
     // Check diagnostic capabilities
     {
@@ -78,7 +78,7 @@ fn basic_server_setup() {
 #[test]
 #[parallel]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, false, None);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -112,7 +112,7 @@ fn request_after_shutdown_is_invalid() {
 #[test]
 #[parallel]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, false, None);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -847,6 +847,37 @@ fn files_outside_of_root_with_push_diagnostics() {
     expected.push((m_uri, vec![NO_OUTSIDE]));
     let expected: std::collections::HashMap<_, _> = expected.into_iter().collect();
     server.expect_multiple_diagnostics_pushes_with_uris(expected);
+}
+
+#[test]
+#[serial]
+fn pull_notifications_and_refresh_notification() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        [file unrelated.py]
+
+        [file outside_workdir.py]
+        import foo
+
+        "#,
+    )
+    .with_refresh_support()
+    .into_server();
+
+    const NO_FOO: &str = "Cannot find implementation or library stub for module named \"foo\"";
+
+    server.open_in_memory_file("in_mem.py", "import foo");
+    server.expect_request::<WorkspaceDiagnosticRefresh>();
+    assert!(server.diagnostics_for_file("in_mem.py").is_empty());
+
+    server.remove_file_and_wait("foo.py");
+    server.expect_request::<WorkspaceDiagnosticRefresh>();
+
+    assert_eq!(server.diagnostics_for_file("in_mem.py"), [NO_FOO]);
+
+    // This should not cause refreshes, because unrelated is not used in memory files
+    server.remove_file_and_wait("unrelated.py");
 }
 
 #[test]

@@ -12,6 +12,7 @@ use config::{Mode, ModeChoice, ProjectOptions};
 use crossbeam_channel::{Receiver, Sender, never, select};
 use lsp_server::{Connection, ExtractError, Message, Request};
 use lsp_types::notification::Notification as _;
+use lsp_types::request::{Request as _, WorkspaceDiagnosticRefresh};
 use lsp_types::{TextDocumentPositionParams, Url};
 use notify::EventKind;
 use serde::{Serialize, de::DeserializeOwned};
@@ -220,6 +221,19 @@ struct NotificationDispatcher<'a, 'sender> {
     global_state: &'a mut GlobalState<'sender>,
 }
 
+enum ChangeInMemoryFiles {
+    Push { files: Vec<PathWithScheme> },
+    Pull { needs_refresh: bool },
+}
+
+impl Default for ChangeInMemoryFiles {
+    fn default() -> Self {
+        Self::Pull {
+            needs_refresh: false,
+        }
+    }
+}
+
 pub(crate) struct GlobalState<'sender> {
     pub client_config: ClientConfig,
     paths_that_invalidate_whole_project: HashSet<PathBuf>,
@@ -230,7 +244,8 @@ pub(crate) struct GlobalState<'sender> {
     project: Option<Project>,
     panic_recovery: Option<PanicRecovery>,
     pub sent_diagnostic_count: usize,
-    changed_in_memory_files: Arc<RwLock<Vec<PathWithScheme>>>,
+    pub request_counter: i32,
+    changed_in_memory_files: Arc<RwLock<ChangeInMemoryFiles>>,
     pub notebooks: Notebooks,
     pub last_completion_position: Option<TextDocumentPositionParams>,
     pub shutdown_requested: bool,
@@ -256,6 +271,7 @@ impl<'sender> GlobalState<'sender> {
             changed_in_memory_files: Default::default(),
             notebooks: Default::default(),
             sent_diagnostic_count: 0,
+            request_counter: 0,
             last_completion_position: None,
             shutdown_requested: false,
         }
@@ -298,11 +314,29 @@ impl<'sender> GlobalState<'sender> {
             let new_changed_files = self.changed_in_memory_files.clone();
             let should_push = self.client_capabilities.should_push_diagnostics();
             let vfs_handler = LocalFS::with_watcher(move |path| {
+                let mut changed = new_changed_files.as_ref().write().unwrap();
                 if should_push {
-                    let mut changed_files = new_changed_files.as_ref().write().unwrap();
+                    let files = match &mut *changed {
+                        ChangeInMemoryFiles::Push { files } => files,
+                        ChangeInMemoryFiles::Pull { .. } => {
+                            *changed = ChangeInMemoryFiles::Push { files: vec![] };
+                            let ChangeInMemoryFiles::Push { files } = &mut *changed else {
+                                unreachable!()
+                            };
+                            files
+                        }
+                    };
                     // This is currently a not a set, because the order matters
-                    if !changed_files.contains(&path) {
-                        changed_files.push(path)
+                    if !files.contains(&path) {
+                        files.push(path)
+                    }
+                } else {
+                    tracing::debug!(
+                        "Set needs_refresh, because of the invalidation of {}",
+                        path.as_uri()
+                    );
+                    *changed = ChangeInMemoryFiles::Pull {
+                        needs_refresh: true,
                     }
                 }
             });
@@ -535,11 +569,7 @@ impl<'sender> GlobalState<'sender> {
     }
 
     fn recover_from_panic(&mut self) {
-        self.changed_in_memory_files
-            .as_ref()
-            .write()
-            .unwrap()
-            .clear();
+        *self.changed_in_memory_files.as_ref().write().unwrap() = Default::default();
         if let Some(project) = self.project.take() {
             self.panic_recovery = Some(project.into_panic_recovery());
         }
@@ -636,57 +666,81 @@ impl<'sender> GlobalState<'sender> {
 
     fn publish_diagnostics_if_necessary(&mut self) {
         let encoding = self.client_capabilities.negotiated_encoding();
-        let files = std::mem::take(&mut *self.changed_in_memory_files.as_ref().write().unwrap());
-        if !files.is_empty() {
-            tracing::info!(
-                "Needs to publish diagnostics for {} files start at #{}",
-                files.len(),
-                self.sent_diagnostic_count
-            );
-            for path in files {
-                self.sent_diagnostic_count += 1;
-                let project = self.project();
-                let Some(document) = project.document(&path) else {
-                    tracing::info!(
-                        "Wanted to publish diagnostics for {}, but it does not exist anymore",
-                        path.as_uri()
-                    );
-                    continue;
-                };
-                let diagnostics = Self::diagnostics_for_file(document, encoding);
+        let changed = std::mem::take(&mut *self.changed_in_memory_files.as_ref().write().unwrap());
+        match changed {
+            ChangeInMemoryFiles::Push { files } if !files.is_empty() => {
                 tracing::info!(
-                    "Publish diagnostics for {}, (#{} overall)",
-                    path.as_uri(),
-                    self.sent_diagnostic_count,
+                    "Needs to publish diagnostics for {} files start at #{}",
+                    files.len(),
+                    self.sent_diagnostic_count
                 );
-                tracing::trace!(
-                    "Diagnostics [{}]",
-                    diagnostics
-                        .iter()
-                        .map(|d| {
-                            format!(
-                                "{}:{}-{}:{}: {}",
-                                d.range.start.line,
-                                d.range.start.character,
-                                d.range.end.line,
-                                d.range.end.character,
-                                d.message,
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-                let not = lsp_server::Notification::new(
-                    <lsp_types::notification::PublishDiagnostics
-                        as lsp_types::notification::Notification>::METHOD.to_owned(),
-                    lsp_types::PublishDiagnosticsParams {
-                        uri: to_uri(path.as_uri()),
-                        diagnostics,
-                        version: None,
-                    }
-                );
-                _ = self.sender.send(not.into());
+                for path in files {
+                    self.sent_diagnostic_count += 1;
+                    let project = self.project();
+                    let Some(document) = project.document(&path) else {
+                        tracing::info!(
+                            "Wanted to publish diagnostics for {}, but it does not exist anymore",
+                            path.as_uri()
+                        );
+                        continue;
+                    };
+                    let diagnostics = Self::diagnostics_for_file(document, encoding);
+                    tracing::info!(
+                        "Publish diagnostics for {}, (#{} overall)",
+                        path.as_uri(),
+                        self.sent_diagnostic_count,
+                    );
+                    tracing::trace!(
+                        "Diagnostics [{}]",
+                        diagnostics
+                            .iter()
+                            .map(|d| {
+                                format!(
+                                    "{}:{}-{}:{}: {}",
+                                    d.range.start.line,
+                                    d.range.start.character,
+                                    d.range.end.line,
+                                    d.range.end.character,
+                                    d.message,
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    let not = lsp_server::Notification::new(
+                        <lsp_types::notification::PublishDiagnostics
+                            as lsp_types::notification::Notification>::METHOD.to_owned(),
+                        lsp_types::PublishDiagnosticsParams {
+                            uri: to_uri(path.as_uri()),
+                            diagnostics,
+                            version: None,
+                        }
+                    );
+                    _ = self.sender.send(not.into());
+                }
             }
+            ChangeInMemoryFiles::Pull {
+                needs_refresh: true,
+            } => {
+                // Make sure the clients know that some underlying files have changed and
+                // diagnostics and other things need to be re-fetched.
+                if self.client_capabilities.diagnostics_refresh_support() {
+                    tracing::info!(
+                        "Send refresh diagnostics to client, at #{}, request id {}",
+                        self.sent_diagnostic_count,
+                        self.request_counter,
+                    );
+                    let request_id = self.request_counter;
+                    self.request_counter = self.request_counter.wrapping_add(1);
+                    let r = lsp_server::Request::new(
+                        request_id.into(),
+                        WorkspaceDiagnosticRefresh::METHOD.to_string(),
+                        (),
+                    );
+                    let _ = self.sender.send(r.into());
+                }
+            }
+            _ => (),
         }
     }
 
@@ -785,7 +839,6 @@ impl<'sender> RequestDispatcher<'_, 'sender> {
         if let Ok(response) = result_to_response::<R>(req.id, result) {
             self.global_state.respond(response);
         }
-
         self
     }
 
