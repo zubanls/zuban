@@ -16,8 +16,13 @@ d: Literal[1] | Literal['x']
 def x(y: int) -> None: ...
 x(a)
 x(b)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2] | str | float"; expected "int"
-x(c)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x'] | str | float"; expected "int"
+x(c)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2] | str | float | Literal['x']"; expected "int"
 x(d)  # E: Argument 1 to "x" has incompatible type "Literal[1, 'x']"; expected "int"
+
+type X = str | Literal[1, 2]
+type Y = float | Literal['x']
+def f(a: X | Y):
+    x(a)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2] | str | float | Literal['x']"; expected "int"
 
 [case literal_union_formatting_through_type_vars]
 from typing import Literal, TypeVar
@@ -363,3 +368,12 @@ queue.append((foo, bar))
 def f(x: int):
     l = list([(0, 0)])
     l.append((x, x))
+
+[case sum_should_not_cause_division_by_zero]
+# From GH #388
+x = [.1,.1]
+y = sum(x)
+reveal_type(y)  # N: Revealed type is "float | Literal[0]"
+reveal_type(1/y)  # N: Revealed type is "float"
+1 // y
+1 % y

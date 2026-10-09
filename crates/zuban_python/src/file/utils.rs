@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use num_bigint::BigInt;
 use parsa_python_cst::{
-    DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression, FunctionDef,
-    NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression, StarLikeExpressionIterator,
+    Block, DefiningStmt, Dict, DictElement, DictElementIterator, DictStarred, Expression,
+    FunctionDef, IfBlockType, IfStmt, NAME_DEF_TO_NAME_DIFFERENCE, NodeIndex, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -23,10 +24,9 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, IterCause, Literal, LiteralKind, LiteralValue, NeverCause, ReplaceTypeVarLikes,
-        Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics,
-        UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
-        maybe_add_extra_keys_issue,
+        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue, Tuple,
+        TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError,
+        WithUnpack, check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue,
     },
     utils::join_with_commas,
 };
@@ -98,7 +98,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result.unwrap_or(Type::Never(NeverCause::Other))
+        result.unwrap_or(Type::NEVER)
     }
 
     pub fn infer_list_or_set_literal_from_context(
@@ -138,9 +138,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     found.unwrap_or_else(|| {
                         generic_t
-                            .replace_type_var_likes(self.i_s.db, &mut |tv| {
-                                Some(tv.as_any_generic_item())
-                            })
+                            .maybe_erase_type_var_likes(self.i_s.db, &|| None)
                             .unwrap_or(generic_t)
                     })
                 };
@@ -183,7 +181,8 @@ impl<'db> Inference<'db, '_, '_> {
                     Err(UniqueInUnpackedUnionError::None) => None,
                     Err(UniqueInUnpackedUnionError::Multiple) => {
                         let mut non_matches = vec![];
-                        for inner in t.iter_with_unpacked_unions(i_s.db) {
+                        let new_t = matcher.replace_type_var_likes_for_nested_context(i_s.db, t);
+                        for inner in new_t.iter_with_unpacked_unions(i_s.db) {
                             if let Type::TypedDict(td) = inner {
                                 let (result, has_error) = i_s.avoid_errors_within(|i_s| {
                                     self.file
@@ -491,8 +490,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
         }
-        let mut key_t = Type::Never(NeverCause::Other);
-        let mut value_t = Type::Never(NeverCause::Other);
+        let mut key_t = Type::NEVER;
+        let mut value_t = Type::NEVER;
         for (i, child) in dict_elements.enumerate() {
             match child {
                 DictElement::KeyValue(key_value) => {
@@ -549,14 +548,13 @@ impl<'db> Inference<'db, '_, '_> {
 }
 
 fn is_any_dict(db: &Database, t: &Type) -> bool {
-    match t {
+    t.for_all_in_union(db, &|t| match t {
         Type::Any(_) => true,
         Type::Class(c) => {
             c.link == db.python_state.dict_node_ref().as_link() && c.generics.all_any()
         }
-        Type::Union(u) => u.iter().all(|t| is_any_dict(db, t)),
         _ => false,
-    }
+    })
 }
 
 fn check_elements_with_context<'db>(
@@ -577,7 +575,7 @@ fn check_elements_with_context<'db>(
     for (item, element) in elements.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, matcher, inferred: Inferred, index| {
             let value_t = inferred.as_cow_type(i_s);
-            let m = generic_t.error_if_t_not_matches_with_matcher(
+            let m = generic_t.error_if_t_not_assignable_with_matcher(
                 i_s,
                 matcher,
                 &value_t,
@@ -640,7 +638,7 @@ fn check_elements_with_context<'db>(
     }
     (!had_error).then(|| {
         let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, generic_t);
-        if needs_actual_return_type && (replaced.has_any(i_s) || has_any_match) {
+        if needs_actual_return_type && (replaced.has_any(i_s.db) || has_any_match) {
             result
         } else {
             replaced.into_owned()
@@ -708,32 +706,24 @@ pub fn infer_string_index(
         callable(s)
     };
 
-    match simple
+    let maybe = || match simple
         .infer(i_s, &mut ResultContext::ValueExpected)
         .maybe_literal(i_s.db)
     {
         UnionValue::Single(literal) => infer(i_s, literal),
-        UnionValue::Multiple(mut literals) => {
-            literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                })
+        UnionValue::Multiple(literals) => {
+            let mut gatherer = InferredTypeGatherer::default();
+            for literal in literals {
+                gatherer.add(infer(i_s, literal)?);
+            }
+            gatherer.into_inferred_if_not_never(i_s)
         }
         UnionValue::Any => {
             on_non_literal();
             None
         }
-    }
-    .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
+    };
+    maybe().unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
 }
 
 pub fn infer_dict_like(
@@ -758,10 +748,10 @@ pub fn infer_dict_like(
                 new_class!(
                     i_s.db.python_state.dict_node_ref().as_link(),
                     key_t
-                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .maybe_erase_type_var_likes(i_s.db, &|| None)
                         .unwrap_or(key_t),
                     value_t
-                        .replace_type_var_likes(i_s.db, &mut |tv| Some(tv.as_any_generic_item()))
+                        .maybe_erase_type_var_likes(i_s.db, &|| None)
                         .unwrap_or(value_t)
                 )
             })))
@@ -780,6 +770,32 @@ pub fn infer_dict_like(
     }
 }
 
+pub(crate) fn maybe_func_of_self_symbol(
+    file: &PythonFile,
+    self_symbol: NodeIndex,
+) -> Option<FunctionDef<'_>> {
+    // This is due to the fact that the nodes before <name> in self.<name> are
+    // name_definition, `.` and then finally `self`.
+    let self_index = self_symbol - NAME_DEF_TO_NAME_DIFFERENCE - 2;
+    let self_point = file.points.get(self_index);
+    if !self_point.calculated() || self_point.kind() != PointKind::Redirect {
+        return None;
+    }
+    let param_name_node_ref = NodeRef::new(file, self_point.node_index());
+    (param_name_node_ref
+        .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+        .point()
+        .maybe_calculated_and_specific()?
+        == Specific::MaybeSelfParam)
+        .then(|| {
+            param_name_node_ref
+                .expect_name()
+                .expect_as_param_of_function()
+        })
+}
+
+// Implement this function essentially twice, because if we just unwrap here we lose valuable debug
+// information, and this one is also faster without a lot of branches.
 pub(super) fn func_of_self_symbol(file: &PythonFile, self_symbol: NodeIndex) -> FunctionDef<'_> {
     // This is due to the fact that the nodes before <name> in self.<name> are
     // name_definition, `.` and then finally `self`.
@@ -910,4 +926,39 @@ impl TupleGatherer {
         );
         Inferred::from_type(Type::Tuple(content))
     }
+}
+
+pub(super) fn for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+    file: &PythonFile,
+    if_stmt: IfStmt,
+    mut callback: impl FnMut(Block),
+) -> bool {
+    let mut reachability_always_known = true;
+    for b in if_stmt.iter_blocks() {
+        let name_binder_check = file
+            .points
+            .get(b.first_leaf_index())
+            .maybe_calculated_and_specific();
+        let block = match b {
+            IfBlockType::If(_, block) => block,
+            IfBlockType::Else(e) => e.block(),
+        };
+        match name_binder_check {
+            Some(
+                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                | Specific::IfBranchAlwaysReachableInNameBinder,
+            ) => callback(block),
+            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                return reachability_always_known;
+            }
+            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
+                return reachability_always_known;
+            }
+            _ => {
+                reachability_always_known = false;
+                callback(block)
+            }
+        }
+    }
+    reachability_always_known
 }

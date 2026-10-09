@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
-use super::{Match, Matcher};
+use super::Matcher;
 use crate::{
     database::Database,
     format_data::FormatData,
     inference_state::InferenceState,
+    match_::Match,
     params::matches_params_with_variance,
     type_::{
         AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
@@ -53,7 +54,7 @@ impl<'a> Generic<'a> {
                     .unwrap_or_else(|| {
                         format!(
                             "[{}]",
-                            &format_callable_params(format_data, false, params.iter(), false)
+                            &format_callable_params(format_data, false, params.iter(), false, None)
                         )
                         .into()
                     }),
@@ -79,13 +80,9 @@ impl<'a> Generic<'a> {
                 _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
-                Self::TypeArgs(ts2) => match_tuple_type_arguments(
-                    i_s,
-                    matcher,
-                    &ts1.args,
-                    &ts2.args,
-                    Variance::Invariant,
-                ),
+                Self::TypeArgs(ts2) => {
+                    match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
+                }
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(p1) => match other {

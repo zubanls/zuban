@@ -17,15 +17,15 @@ use crate::{
     },
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableContent, FunctionOverload, NeverCause, ReplaceSelf,
-        ReplaceTypeVarLikes as _, Type,
+        AnyCause, CallableContent, ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions,
+        ReplaceSelf, ReplaceTypeVarLikes as _, Type,
     },
     utils::debug_indent,
 };
 
 #[derive(Debug)]
 pub(crate) struct OverloadedFunction<'a> {
-    overload: &'a Arc<FunctionOverload>,
+    overload: &'a FunctionOverload,
     class: Option<Class<'a>>,
 }
 
@@ -47,7 +47,7 @@ pub(crate) enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(overload: &'a Arc<FunctionOverload>, class: Option<Class<'a>>) -> Self {
+    pub fn new(overload: &'a FunctionOverload, class: Option<Class<'a>>) -> Self {
         Self { overload, class }
     }
 
@@ -58,14 +58,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         skip_first_argument: bool,
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
-        result_context: &mut ResultContext,
         replace_self: Option<ReplaceSelf>,
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
-        let match_signature = |i_s: &InferenceState<'db, '_>,
-                               result_context: &mut ResultContext,
-                               callable: Callable| {
+        let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
             if search_init {
                 calc_callable_dunder_init_type_vars(
                     i_s,
@@ -74,7 +71,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     true,
-                    result_context,
+                    &mut ResultContext::Unknown,
                     None,
                 )
             } else {
@@ -84,7 +81,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args.iter(i_s.mode),
                     |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
-                    result_context,
+                    &mut ResultContext::Unknown,
                     replace_self,
                     None,
                 )
@@ -96,8 +93,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             {
                 let fmt = callable.content.format_pretty_detailed(
                     &FormatData::new_reveal_type(i_s.db),
-                    false,
-                    true,
+                    PrettyCallableOptions {
+                        avoid_classmethod_param: true,
+                        ..Default::default()
+                    },
                 );
                 args.add_issue(
                     i_s,
@@ -120,9 +119,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
             debug!("Checking overload item #{i}");
+            let _indent = debug_indent();
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
-                i_s.avoid_errors_within(|i_s| match_signature(i_s, result_context, callable));
+                i_s.avoid_errors_within(|i_s| match_signature(i_s, callable));
             if had_error && had_error_in_func.is_none() {
                 had_error_in_func = Some(callable);
             }
@@ -212,63 +212,46 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(callable);
         }
         // Mypy has a bit of a different way of working than the conformance tests
-        if (first_similar.is_none() || !i_s.db.mypy_compatible())
-            && args.should_do_union_math_for_overloads(i_s)
-        {
-            let mut non_union_args = vec![];
-            match self.check_union_math(
-                i_s,
-                result_context,
-                args.iter(i_s.mode),
-                skip_first_argument,
-                &mut non_union_args,
-                &|issue| args.add_issue(i_s, issue),
-                search_init,
-                class,
-                replace_self,
-                as_union_math_type,
-                0,
-            ) {
-                UnionMathResult::Match { result, .. } => {
-                    debug!(
-                        "Decided overload as union math result {} (called on #{}): {:?}",
-                        self.name(i_s.db),
-                        args.starting_line(i_s.db),
-                        result.format(&FormatData::new_short(i_s.db))
-                    );
-                    return OverloadResult::Union(result);
-                }
-                UnionMathResult::FirstSimilarIndex(index) => {
-                    first_similar = Some(Callable::new(
-                        self.overload.iter_functions().nth(index).unwrap(),
-                        self.class,
-                    ))
-                }
-                UnionMathResult::NoMatch => (),
-                UnionMathResult::TooManyUnions => {
-                    args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+        if first_similar.is_none() || !i_s.db.mypy_compatible() {
+            debug!("Find out if we want to check union math");
+            let _indent = debug_indent();
+            if args.should_do_union_math_for_overloads(i_s) {
+                debug!("Checking overload union math");
+                let _indent = debug_indent();
+                let mut non_union_args = vec![];
+                match self.check_union_math(
+                    i_s,
+                    args.iter(i_s.mode),
+                    skip_first_argument,
+                    &mut non_union_args,
+                    &|issue| args.add_issue(i_s, issue),
+                    search_init,
+                    class,
+                    replace_self,
+                    as_union_math_type,
+                    0,
+                ) {
+                    UnionMathResult::Match { result, .. } => {
+                        debug!(
+                            "Decided overload as union math result {} (called on #{}): {:?}",
+                            self.name(i_s.db),
+                            args.starting_line(i_s.db),
+                            result.format(&FormatData::new_short(i_s.db))
+                        );
+                        return OverloadResult::Union(result);
+                    }
+                    UnionMathResult::FirstSimilarIndex(index) => {
+                        first_similar = Some(Callable::new(
+                            self.overload.iter_functions().nth(index).unwrap(),
+                            self.class,
+                        ))
+                    }
+                    UnionMathResult::NoMatch => (),
+                    UnionMathResult::TooManyUnions => {
+                        args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+                    }
                 }
             }
-        }
-        if result_context.has_explicit_type() {
-            // In case the context causes issues where an overload cannot be resolved, we just try
-            // to run it without it. Note that we know at this point that the overload failed, it's
-            // just a matter of what to display in case of failure. It's also a bit weird that we
-            // run everything again, but in normal code overloads almost always do not fail, so
-            // it shouldn't impact performance, really.
-            debug!("Rerun overload without context");
-            let _indent = debug_indent();
-            return self.find_matching_function(
-                i_s,
-                args,
-                skip_first_argument,
-                class,
-                search_init,
-                &mut ResultContext::Unknown,
-                replace_self,
-                on_type_error,
-                as_union_math_type,
-            );
         }
         if let Some(callable) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
@@ -285,6 +268,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch()
         } else {
+            debug!("Overload fallback: Infer arguments and add errors since no match was found");
+            let _indent = debug_indent();
             let c = Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
             let t = IssueKind::OverloadMismatch {
                 name: (on_type_error.generate_diagnostic_string)(&c, i_s.db)
@@ -302,7 +287,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, result_context, callable);
+            match_signature(i_s, callable);
         }
         OverloadResult::NotFound
     }
@@ -310,7 +295,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     fn check_union_math<'x>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
         mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
@@ -328,11 +312,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
 
         if let Some(next_arg) = args.next() {
-            let InferredArg::Inferred(inf) = next_arg.infer(result_context) else {
+            let InferredArg::Inferred(inf) = next_arg.infer(&mut ResultContext::Unknown) else {
                 non_union_args.push(next_arg);
                 return self.check_union_math(
                     i_s,
-                    result_context,
                     args,
                     skip_first_argument,
                     non_union_args,
@@ -344,10 +327,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     recursion_depth,
                 );
             };
-            if let Some(u) = inf
-                .as_cow_type(i_s)
-                .maybe_union_like_with_materializations(i_s.db)
-            {
+            let t = inf.as_cow_type(i_s);
+            if let Some(u) = t.maybe_union_like_with_materializations(i_s.db) {
                 // This unsafe feels very bad, but it seems to be fine, because we don't reuse the
                 // argument we add here outside of this function. It is only ever used in recursive
                 // function calls of this function.
@@ -359,18 +340,23 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_any(AnyCause::Todo),
                     },
                 });
-                let mut unioned = Type::Never(NeverCause::Other);
+                let mut unioned = ComplexTypeGatherer::default();
                 let mut first_similar = None;
                 let mut mismatch = false;
-                for entry in u.into_owned().entries.into_vec().into_iter() {
+                for entry in u.entries.iter() {
+                    debug!(
+                        "Split union math, use {:?} of {:?}",
+                        entry.format_short(i_s.db),
+                        t.format_short(i_s.db)
+                    );
+                    let _indent = debug_indent();
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
-                        inferred: Inferred::from_type(entry.type_),
+                        inferred: Inferred::from_type(entry.clone()),
                     };
                     let r = self.check_union_math(
                         i_s,
-                        result_context,
                         args.clone(),
                         skip_first_argument,
                         non_union_args,
@@ -394,7 +380,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                     match r {
                         UnionMathResult::Match { result, .. } if !mismatch => {
-                            unioned = unioned.simplified_union(i_s, &result);
+                            unioned.add(result);
                         }
                         UnionMathResult::TooManyUnions => return UnionMathResult::TooManyUnions,
                         _ => mismatch = true,
@@ -409,7 +395,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                 } else {
                     UnionMathResult::Match {
-                        result: unioned,
+                        result: unioned.into_simplified_type(i_s),
                         first_similar_index: first_similar.unwrap(),
                     }
                 }
@@ -417,7 +403,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 non_union_args.push(next_arg);
                 self.check_union_math(
                     i_s,
-                    result_context,
                     args,
                     skip_first_argument,
                     non_union_args,
@@ -441,7 +426,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         non_union_args.clone().into_iter(),
                         add_issue,
                         true,
-                        result_context,
+                        &mut ResultContext::Unknown,
                         None,
                     )
                 } else {
@@ -451,7 +436,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         non_union_args.clone().into_iter(),
                         add_issue,
                         skip_first_argument,
-                        result_context,
+                        &mut ResultContext::Unknown,
                         replace_self,
                         None,
                     )
@@ -497,7 +482,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable,
                             Some(&class),
                             &|| None,
-                        );
+                        )
+                        .unwrap_or_else(|| (**callable).clone());
                         if let Some(init_cls) = init_cls {
                             c.return_type = init_cls.as_type(i_s.db)
                         }
@@ -520,20 +506,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 self.overload
                     .iter_functions()
                     .map(|callable| {
+                        let without_first_param = callable
+                            .remove_first_positional_param()
+                            // The callable did not have a first positional param. This
+                            // should be flagged when generating diagnostics. here we just
+                            // try to not crash.
+                            .unwrap_or_else(|| (**callable).clone());
                         let mut callable = replace_class_type_vars_in_callable(
                             i_s.db,
-                            callable
-                                .remove_first_positional_param()
-                                .as_ref()
-                                .unwrap_or_else(|| {
-                                    // The callable did not have a first positional param. This
-                                    // should be flagged when generating diagnostics. here we just
-                                    // try to not crash.
-                                    callable
-                                }),
+                            &without_first_param,
                             self.class.as_ref(),
                             &|| Some(replace_self_type()),
-                        );
+                        )
+                        .unwrap_or(without_first_param);
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);
@@ -573,7 +558,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             skip_first_argument,
             None,
             false,
-            result_context,
             Some(replace_self),
             on_type_error,
             &|callable, calculated_type_args| {
@@ -605,44 +589,24 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             OverloadResult::NotFound => {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
-                        if let Some(new) =
-                            c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
-                                maybe_class_usage(i_s.db, &cls, &usage)
-                            })
-                        {
-                            return Cow::Owned(new);
-                        }
+                        return c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                            maybe_class_usage(i_s.db, &cls, &usage)
+                        });
                     }
                     Cow::Borrowed(&c.return_type)
                 };
-                if i_s.db.mypy_compatible() {
-                    let mut t: Option<Type> = None;
-                    for callable in self.overload.iter_functions() {
-                        let f_t = to_type(callable);
-                        if let Some(old_t) = t.take() {
-                            t = Some(old_t.merge_matching_parts(i_s.db, &f_t))
-                        } else {
-                            t = Some(f_t.into_owned());
-                        }
-                    }
-                    Inferred::from_type(t.unwrap().replace_self_if_necessary(i_s.db, replace_self))
-                } else {
-                    // Conformance tests define the fallback as Any if the return types are not all
-                    // equivalent.
-                    let mut iterator = self.overload.iter_functions();
-                    let first = to_type(iterator.next().unwrap());
-                    if iterator
-                        .all(|other_callable| first.is_equal_type(i_s.db, &to_type(other_callable)))
-                    {
-                        Inferred::from_type(
-                            first
-                                .into_owned()
-                                .replace_self_if_necessary(i_s.db, replace_self),
-                        )
+                let mut t: Option<Type> = None;
+                for callable in self.overload.iter_functions() {
+                    let f_t = to_type(callable);
+                    if let Some(old_t) = t.take() {
+                        t = Some(old_t.merge_matching_parts(i_s.db, &f_t))
                     } else {
-                        Inferred::new_any_from_error()
+                        t = Some(f_t.into_owned());
                     }
                 }
+
+                let t = t.unwrap();
+                Inferred::from_type(t.maybe_replace_self(i_s.db, replace_self).unwrap_or(t))
             }
         }
     }

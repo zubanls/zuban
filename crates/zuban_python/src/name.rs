@@ -128,7 +128,7 @@ impl<'db, 'x> Name<'db, 'x> {
                 fn qualified(file: &PythonFile, scope: Scope) -> Option<String> {
                     match scope {
                         Scope::Class(class_def) => {
-                            let parent_scope = ClassNodeRef::new(file, class_def.index())
+                            let parent_scope = ClassNodeRef::new(file, class_def)
                                 .class_storage()
                                 .parent_scope;
                             let name = class_def.name().as_code();
@@ -139,7 +139,7 @@ impl<'db, 'x> Name<'db, 'x> {
                                     let parent = qualified(
                                         file,
                                         Scope::Class(
-                                            ClassNodeRef::new(file, cls_index)
+                                            ClassNodeRef::from_node_index(file, cls_index)
                                                 .maybe_class()
                                                 .unwrap(),
                                         ),
@@ -283,11 +283,20 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub fn class_symbols(&self) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
+    pub fn class_symbols(
+        &self,
+        // It might look very weird why we use this parameter here since we could theoretically
+        // access it. This is a simple optimization to avoid recalculating the kind for N symbols.
+        for_kind: SymbolKind,
+    ) -> Option<impl ExactSizeIterator<Item = NameSymbol<'db>>> {
+        debug_assert_eq!(self.lsp_kind(), for_kind);
+        if !matches!(for_kind, SymbolKind::CLASS | SymbolKind::ENUM) {
+            return None;
+        }
         match self {
             Self::TreeName(tree_name) => {
                 let cls = tree_name.cst_name.name_def()?.maybe_name_of_class()?;
-                let cls_storage = ClassNodeRef::new(tree_name.file, cls.index()).class_storage();
+                let cls_storage = ClassNodeRef::new(tree_name.file, cls).class_storage();
                 Some(NameSymbol::symbol_iterator_from_symbol_table(
                     tree_name.db,
                     tree_name.file,
@@ -349,7 +358,7 @@ fn lookup_parent_scope_in_other_file<'db>(
                 .maybe_name_of_class()?;
             Some(FileOrClass::Class(Class::with_self_generics(
                 db,
-                ClassNodeRef::new(file, cls.index()),
+                ClassNodeRef::new(file, cls),
             )))
         }
         Scope::Function(_) | Scope::Lambda(_) => None,
@@ -391,7 +400,7 @@ impl<'db> TreeName<'db> {
                 if class_def.name_def().name_index() == cst_name.index() {
                     parent_scope = parent_scope_to_scope(
                         file,
-                        ClassNodeRef::new(file, class_def.index())
+                        ClassNodeRef::new(file, class_def)
                             .class_storage()
                             .parent_scope,
                     )
@@ -401,7 +410,7 @@ impl<'db> TreeName<'db> {
                 if function_def.name_def().name_index() == cst_name.index() {
                     parent_scope = parent_scope_to_scope(
                         file,
-                        FuncNodeRef::new(file, function_def.index()).parent_scope(),
+                        FuncNodeRef::new(file, function_def).parent_scope(),
                     )
                 }
             }
@@ -571,7 +580,13 @@ impl<'db> NameSymbol<'db> {
         parent_scope: Scope<'db>,
         symbol_table: &'db SymbolTable,
     ) -> impl ExactSizeIterator<Item = Self> {
-        symbol_table.iter().map(move |(symbol, &node_index)| Self {
+        // It's a bit suboptimal that we always have to sort here. It might be worth exploring if
+        // we can simply store the entries in this order and query (like the CPython dict
+        // implementation works).
+        let mut sorted: Vec<_> = symbol_table.iter().collect();
+        sorted.sort_by_key(|(_, node_index)| **node_index);
+
+        sorted.into_iter().map(move |(symbol, &node_index)| Self {
             db,
             file,
             parent_scope,

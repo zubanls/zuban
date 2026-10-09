@@ -18,7 +18,7 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     result_context::ResultContext,
-    type_::{IterCause, ParamSpecUsage, StringSlice, TupleArgs, Type, TypedDict, WithUnpack},
+    type_::{DbString, IterCause, ParamSpecUsage, TupleArgs, Type, TypedDict, WithUnpack},
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {
@@ -104,35 +104,40 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         ))
     }
 
-    fn maybe_single_positional_arg(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        context: &mut ResultContext,
-    ) -> Option<Inferred> {
+    fn maybe_single_arg<'x>(&'x self, i_s: &InferenceState<'db, 'x>) -> Option<Arg<'db, 'x>> {
         let mut iterator = self.iter(i_s.mode);
         let first = iterator.next()?;
         if iterator.next().is_some() {
             return None;
         }
+        Some(first)
+    }
+
+    fn maybe_single_positional_arg(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        let first = self.maybe_single_arg(i_s)?;
         first.maybe_positional_arg(i_s, context)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         None
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct SimpleArgs<'db, 'a> {
+pub(crate) struct SimpleArgs<'db, 'file, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    pub file: &'a PythonFile,
+    pub file: &'file PythonFile,
     primary_node_index: NodeIndex,
     pub details: ArgumentsDetails<'a>,
     i_s: InferenceState<'db, 'a>,
 }
 
-impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
+impl<'db: 'a, 'file: 'a, 'a> Args<'db> for SimpleArgs<'db, 'file, 'a> {
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         ArgIterator::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgIteratorBase::Iterator {
@@ -217,15 +222,15 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         self.file.points.reset_from_backup(backup.as_ref().unwrap());
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         Some(self)
     }
 }
 
-impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
+impl<'db: 'a, 'file: 'a, 'a> SimpleArgs<'db, 'file, 'a> {
     pub fn new(
         i_s: InferenceState<'db, 'a>,
-        file: &'a PythonFile,
+        file: &'file PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
     ) -> Self {
@@ -239,7 +244,7 @@ impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
 
     pub fn from_primary(
         i_s: InferenceState<'db, 'a>,
-        file: &'a PythonFile,
+        file: &'file PythonFile,
         primary_node: Primary<'a>,
     ) -> Self {
         match primary_node.second() {
@@ -400,6 +405,12 @@ impl KeywordArg<'_, '_> {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) enum TypedDictExtraItemsOrigin {
+    ExtraItems,
+    UnknownDueToLength,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(KeywordArg<'db, 'a>),
@@ -408,7 +419,8 @@ pub(crate) enum ArgKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
-        is_keyword: Option<Option<StringSlice>>,
+        typed_dict_extra_items_origin: Option<TypedDictExtraItemsOrigin>,
+        is_keyword: Option<Option<DbString>>,
     },
     InferredWithCustomAddIssue {
         inferred: Inferred,
@@ -485,7 +497,7 @@ pub(crate) struct Arg<'db, 'a> {
     pub index: usize,
 }
 
-impl<'db> Arg<'db, '_> {
+impl<'db, 'a> Arg<'db, 'a> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
         match &self.kind {
             ArgKind::Inferred {
@@ -493,19 +505,21 @@ impl<'db> Arg<'db, '_> {
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
             ArgKind::StarredWithUnpack { .. } | ArgKind::ParamSpec { .. } => true,
+            ArgKind::Overridden { original, .. } => original.in_args_or_kwargs_and_arbitrary_len(),
             _ => false,
         }
     }
 
     pub fn is_arbitrary_kwargs(&self) -> bool {
-        matches!(
-            &self.kind,
+        match &self.kind {
             ArgKind::Inferred {
                 in_args_or_kwargs_and_arbitrary_len: true,
                 is_keyword: Some(None),
                 ..
-            }
-        )
+            } => true,
+            ArgKind::Overridden { original, .. } => original.is_arbitrary_kwargs(),
+            _ => false,
+        }
     }
 
     pub fn infer_inferrable(
@@ -609,13 +623,7 @@ impl<'db> Arg<'db, '_> {
             .and_then(|star_star| {
                 // If we have a defined kwargs name, that's from a TypedDict and
                 // shouldn't be formatted.
-                if matches!(
-                    &self.kind,
-                    ArgKind::Inferred {
-                        is_keyword: Some(Some(_)),
-                        ..
-                    }
-                ) {
+                if self.keyword_name(i_s.db).is_some() {
                     None
                 } else {
                     Some(
@@ -656,14 +664,15 @@ impl<'db> Arg<'db, '_> {
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(
-            self.kind,
+        match self.kind {
             ArgKind::Keyword { .. }
-                | ArgKind::Inferred {
-                    is_keyword: Some(_),
-                    ..
-                }
-        )
+            | ArgKind::Inferred {
+                is_keyword: Some(_),
+                ..
+            } => true,
+            ArgKind::Overridden { original, .. } => original.is_keyword_argument(),
+            _ => false,
+        }
     }
 
     pub fn keyword_name(&self, db: &'db Database) -> Option<&str> {
@@ -673,7 +682,33 @@ impl<'db> Arg<'db, '_> {
                 is_keyword: Some(Some(key)),
                 ..
             } => Some(key.as_str(db)),
+            ArgKind::Overridden { original, .. } => original.keyword_name(db),
             _ => None,
+        }
+    }
+
+    pub fn maybe_positional_expr(&self) -> Option<NamedExpression<'a>> {
+        match &self.kind {
+            ArgKind::Positional(positional) => Some(positional.named_expr),
+            ArgKind::Overridden { original, .. } => original.maybe_positional_expr(),
+            _ => None,
+        }
+    }
+
+    pub fn can_be_used_to_match_positional_param(&self) -> bool {
+        match &self.kind {
+            ArgKind::Positional { .. } | ArgKind::Comprehension { .. } => true,
+            ArgKind::Inferred {
+                is_keyword: None, ..
+            }
+            | ArgKind::InferredWithCustomAddIssue { .. } => true,
+            ArgKind::Overridden { original, .. } => {
+                original.can_be_used_to_match_positional_param()
+            }
+            ArgKind::ParamSpec { .. }
+            | ArgKind::StarredWithUnpack { .. }
+            | ArgKind::Keyword(KeywordArg { .. })
+            | ArgKind::Inferred { .. } => false,
         }
     }
 
@@ -703,10 +738,21 @@ impl<'db> Arg<'db, '_> {
             | ArgKind::Inferred { .. } => None,
         }
     }
+
+    pub fn has_unknown_typed_dict_extra_items(&self) -> bool {
+        match &self.kind {
+            ArgKind::Inferred {
+                typed_dict_extra_items_origin: Some(TypedDictExtraItemsOrigin::UnknownDueToLength),
+                ..
+            } => true,
+            ArgKind::Overridden { original, .. } => original.has_unknown_typed_dict_extra_items(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-enum ArgIteratorBase<'db, 'a> {
+pub enum ArgIteratorBase<'db, 'a> {
     Iterator {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
@@ -727,13 +773,14 @@ enum ArgIteratorBase<'db, 'a> {
     Finished,
 }
 
-enum BaseArgReturn<'db, 'a> {
+#[derive(Debug)]
+pub enum BaseArgReturn<'db, 'a> {
     ArgsKwargs(ArgsKwargsIterator<'a>),
     Arg(ArgKind<'db, 'a>),
 }
 
 impl<'db, 'a> ArgIteratorBase<'db, 'a> {
-    fn expect_i_s(&mut self) -> &InferenceState<'db, 'a> {
+    fn expect_i_s(&self) -> &InferenceState<'db, 'a> {
         if let Self::Iterator { i_s, .. } = self {
             i_s
         } else {
@@ -805,6 +852,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                         position: 1,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
+                        typed_dict_extra_items_origin: None,
                         is_keyword: None,
                     }))
                 } else {
@@ -909,7 +957,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     node_ref.add_issue(
                                         i_s,
                                         IssueKind::ArgumentIssue(Box::from(
-                                            "Keywords must be strings",
+                                            "Argument after ** must have string keys",
                                         )),
                                     );
                                 }
@@ -977,6 +1025,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                     position: 1,
                     node_ref: slice_type.as_argument_node_ref(),
                     in_args_or_kwargs_and_arbitrary_len: false,
+                    typed_dict_extra_items_origin: None,
                     is_keyword: None,
                 }))
             }
@@ -1001,8 +1050,8 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ArgIterator<'db, 'a> {
-    current: ArgIteratorBase<'db, 'a>,
-    args_kwargs_iterator: ArgsKwargsIterator<'a>,
+    pub current: ArgIteratorBase<'db, 'a>,
+    pub args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<(Mode<'a>, &'a dyn Args<'db>)>,
     counter: usize,
 }
@@ -1041,22 +1090,28 @@ impl<'db, 'a> ArgIterator<'db, 'a> {
         }
         result.into_boxed_slice()
     }
+
+    #[inline]
+    pub fn next_from_args_kwargs_iterator(&mut self) -> Option<<Self as Iterator>::Item> {
+        self.args_kwargs_iterator
+            .next(&self.current, &mut self.counter)
+    }
 }
 
 impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
     type Item = Arg<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match std::mem::replace(&mut self.args_kwargs_iterator, ArgsKwargsIterator::None) {
-            ArgsKwargsIterator::None => match self.current.next() {
+        self.next_from_args_kwargs_iterator().or_else(|| {
+            match self.current.next() {
                 Some(BaseArgReturn::Arg(mut kind)) => {
                     let index = self.counter;
                     if let ArgKind::Inferred { position, .. }
                     | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
                     {
-                        // This is a bit of a special case where 0 means that we're on a bound self
-                        // argument. In that case we do not want to increase the counter, because
-                        // the bound argument is not counted as an argument.
+                        // This is a bit of a special case where 0 means that we're on a bound
+                        // self argument. In that case we do not want to increase the counter,
+                        // because the bound argument is not counted as an argument.
                         if *position != 0 {
                             self.counter += 1;
                         }
@@ -1084,160 +1139,13 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                         None
                     }
                 }
-            },
-            ArgsKwargsIterator::Args {
-                mut iterator,
-                node_ref,
-                position,
-            } => match iterator.next_as_argument(self.current.expect_i_s()) {
-                Some(UnpackedArgument::Normal {
-                    inferred,
-                    arbitrary_len,
-                }) => {
-                    let index = self.counter;
-                    self.counter += 1;
-                    if !arbitrary_len {
-                        self.args_kwargs_iterator = ArgsKwargsIterator::Args {
-                            iterator,
-                            node_ref,
-                            position,
-                        };
-                    }
-                    Some(Arg {
-                        kind: ArgKind::Inferred {
-                            inferred,
-                            position,
-                            node_ref,
-                            in_args_or_kwargs_and_arbitrary_len: arbitrary_len,
-                            is_keyword: None,
-                        },
-                        index,
-                    })
-                }
-                Some(UnpackedArgument::WithUnpack(with_unpack)) => {
-                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
-                        with_unpack,
-                        before_iterator_index: 0,
-                        node_ref,
-                        position,
-                    };
-                    self.next()
-                }
-                None => self.next(),
-            },
-            ArgsKwargsIterator::Kwargs {
-                inferred_value,
-                node_ref,
-                position,
-            } => {
-                let index = self.counter;
-                self.counter += 1;
-                Some(Arg {
-                    kind: ArgKind::Inferred {
-                        inferred: inferred_value,
-                        position,
-                        node_ref,
-                        in_args_or_kwargs_and_arbitrary_len: true,
-                        is_keyword: Some(None),
-                    },
-                    index,
-                })
             }
-            ArgsKwargsIterator::TypedDict {
-                db,
-                node_ref,
-                position,
-                typed_dict,
-                iterator_index,
-            } => {
-                let index = self.counter;
-                self.counter += 1;
-                let ms = typed_dict.members(db);
-                let Some((name, t)) = ms
-                    .named
-                    .get(iterator_index)
-                    .map(|member| (member.name, member.type_.clone()))
-                else {
-                    if let Some(e) = &ms.extra_items {
-                        return Some(Arg {
-                            kind: ArgKind::Inferred {
-                                inferred: Inferred::from_type(e.t.clone()),
-                                position,
-                                node_ref,
-                                in_args_or_kwargs_and_arbitrary_len: true,
-                                is_keyword: Some(None),
-                            },
-                            index,
-                        });
-                    }
-                    return self.next();
-                };
-                self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
-                    db,
-                    node_ref,
-                    position,
-                    typed_dict,
-                    iterator_index: iterator_index + 1,
-                };
-                Some(Arg {
-                    kind: ArgKind::Inferred {
-                        inferred: Inferred::from_type(t),
-                        position,
-                        node_ref,
-                        in_args_or_kwargs_and_arbitrary_len: false,
-                        is_keyword: Some(Some(name)),
-                    },
-                    index,
-                })
-            }
-            ArgsKwargsIterator::WithUnpack {
-                mut with_unpack,
-                mut before_iterator_index,
-                position,
-                node_ref,
-            } => {
-                let index = self.counter;
-                self.counter += 1;
-                if let Some(t) = with_unpack.before.get(before_iterator_index) {
-                    let current_t = t.clone();
-                    before_iterator_index += 1;
-                    self.args_kwargs_iterator = ArgsKwargsIterator::WithUnpack {
-                        with_unpack,
-                        before_iterator_index,
-                        position,
-                        node_ref,
-                    };
-                    Some(Arg {
-                        kind: ArgKind::Inferred {
-                            inferred: Inferred::from_type(current_t),
-                            position,
-                            node_ref,
-                            in_args_or_kwargs_and_arbitrary_len: false,
-                            is_keyword: None,
-                        },
-                        // counter was increased before
-                        index,
-                    })
-                } else {
-                    if !with_unpack.before.is_empty() {
-                        with_unpack.before = Arc::new([]);
-                    }
-                    Some(Arg {
-                        kind: ArgKind::StarredWithUnpack {
-                            with_unpack,
-                            position,
-                            node_ref,
-                        },
-                        index,
-                    })
-                }
-            }
-        }
+        })
     }
 }
 
 #[derive(Debug, Clone)]
-enum ArgsKwargsIterator<'a> {
+pub enum ArgsKwargsIterator<'a> {
     Args {
         iterator: IteratorContent,
         position: usize,
@@ -1262,6 +1170,182 @@ enum ArgsKwargsIterator<'a> {
         node_ref: NodeRef<'a>,
     },
     None,
+}
+
+impl<'a> ArgsKwargsIterator<'a> {
+    pub fn next<'db>(
+        &mut self,
+        current: &ArgIteratorBase<'db, 'a>,
+        counter: &mut usize,
+    ) -> Option<Arg<'static, 'a>> {
+        match std::mem::replace(self, Self::None) {
+            Self::None => None,
+            Self::Args {
+                mut iterator,
+                node_ref,
+                position,
+            } => match iterator.next_as_argument(current.expect_i_s())? {
+                UnpackedArgument::Normal {
+                    inferred,
+                    arbitrary_len,
+                } => {
+                    let index = *counter;
+                    *counter += 1;
+                    if !arbitrary_len {
+                        *self = Self::Args {
+                            iterator,
+                            node_ref,
+                            position,
+                        };
+                    }
+                    Some(Arg {
+                        kind: ArgKind::Inferred {
+                            inferred,
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len: arbitrary_len,
+                            typed_dict_extra_items_origin: None,
+                            is_keyword: None,
+                        },
+                        index,
+                    })
+                }
+                UnpackedArgument::WithUnpack(with_unpack) => {
+                    *self = Self::WithUnpack {
+                        with_unpack,
+                        before_iterator_index: 0,
+                        node_ref,
+                        position,
+                    };
+                    self.next(current, counter)
+                }
+            },
+            Self::Kwargs {
+                inferred_value,
+                node_ref,
+                position,
+            } => {
+                let index = *counter;
+                *counter += 1;
+                Some(Arg {
+                    kind: ArgKind::Inferred {
+                        inferred: inferred_value,
+                        position,
+                        node_ref,
+                        in_args_or_kwargs_and_arbitrary_len: true,
+                        typed_dict_extra_items_origin: None,
+                        is_keyword: Some(None),
+                    },
+                    index,
+                })
+            }
+            Self::TypedDict {
+                db,
+                node_ref,
+                position,
+                typed_dict,
+                iterator_index,
+            } => {
+                let index = *counter;
+                let ms = typed_dict.members(db);
+                let Some((name, t)) = ms
+                    .named
+                    .get(iterator_index)
+                    .map(|member| (member.name.clone(), member.type_.clone()))
+                else {
+                    let e = ms.extra_items.as_ref();
+                    let (inferred, typed_dict_extra_items_origin) = if let Some(e) = e {
+                        if e.t.is_never() {
+                            return None;
+                        }
+                        (
+                            Inferred::from_type(e.t.clone()),
+                            Some(TypedDictExtraItemsOrigin::ExtraItems),
+                        )
+                    } else {
+                        (
+                            Inferred::new_object(db),
+                            Some(TypedDictExtraItemsOrigin::UnknownDueToLength),
+                        )
+                    };
+                    *counter += 1;
+                    return Some(Arg {
+                        kind: ArgKind::Inferred {
+                            inferred,
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len: true,
+                            typed_dict_extra_items_origin,
+                            is_keyword: Some(None),
+                        },
+                        index,
+                    });
+                };
+                *self = Self::TypedDict {
+                    db,
+                    node_ref,
+                    position,
+                    typed_dict,
+                    iterator_index: iterator_index + 1,
+                };
+                *counter += 1;
+                Some(Arg {
+                    kind: ArgKind::Inferred {
+                        inferred: Inferred::from_type(t),
+                        position,
+                        node_ref,
+                        in_args_or_kwargs_and_arbitrary_len: false,
+                        typed_dict_extra_items_origin: None,
+                        is_keyword: Some(Some(name)),
+                    },
+                    index,
+                })
+            }
+            Self::WithUnpack {
+                mut with_unpack,
+                mut before_iterator_index,
+                position,
+                node_ref,
+            } => {
+                let index = *counter;
+                *counter += 1;
+                if let Some(t) = with_unpack.before.get(before_iterator_index) {
+                    let current_t = t.clone();
+                    before_iterator_index += 1;
+                    *self = Self::WithUnpack {
+                        with_unpack,
+                        before_iterator_index,
+                        position,
+                        node_ref,
+                    };
+                    Some(Arg {
+                        kind: ArgKind::Inferred {
+                            inferred: Inferred::from_type(current_t),
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len: false,
+                            typed_dict_extra_items_origin: None,
+                            is_keyword: None,
+                        },
+                        // counter was increased before
+                        index,
+                    })
+                } else {
+                    if !with_unpack.before.is_empty() {
+                        with_unpack.before = Arc::new([]);
+                    }
+                    Some(Arg {
+                        kind: ArgKind::StarredWithUnpack {
+                            with_unpack,
+                            position,
+                            node_ref,
+                        },
+                        index,
+                    })
+                }
+            }
+        }
+    }
 }
 
 pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
@@ -1319,9 +1403,9 @@ impl<'db> Args<'db> for NoArgs<'_> {
 }
 
 #[derive(Debug)]
-pub(crate) struct InitSubclassArgs<'db, 'a>(pub SimpleArgs<'db, 'a>);
+pub(crate) struct InitSubclassArgs<'db, 'file, 'a>(pub SimpleArgs<'db, 'file, 'a>);
 
-impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
+impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, '_, 'a> {
     fn iter<'x>(&'x self, mode: Mode<'x>) -> ArgIterator<'db, 'x> {
         let mut iterator = self.0.iter(mode);
         for arg in iterator.clone() {
@@ -1357,7 +1441,7 @@ impl<'db: 'a, 'a> Args<'db> for InitSubclassArgs<'db, 'a> {
         self.0.reset_points_from_backup(backup)
     }
 
-    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_>> {
+    fn maybe_simple_args(&self) -> Option<&SimpleArgs<'_, '_, '_>> {
         None
     }
 }

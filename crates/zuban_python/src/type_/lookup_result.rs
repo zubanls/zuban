@@ -28,6 +28,10 @@ impl LookupResult {
         !matches!(self, Self::None)
     }
 
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+
     pub fn maybe_any(&self, db: &Database) -> Option<AnyCause> {
         self.maybe_inferred().and_then(|inf| inf.maybe_any(db))
     }

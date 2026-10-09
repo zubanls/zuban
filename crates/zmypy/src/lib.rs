@@ -7,13 +7,13 @@ use colored::Colorize as _;
 pub use config::DiagnosticConfig;
 pub use zuban_python::Diagnostics;
 
-use config::find_cli_config;
+use config::{Mode, ModeChoice, ProjectOptions, find_config};
 use vfs::{NormalizedPath, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
 pub fn run(cli: Cli) -> ExitCode {
     /*
-     * TODO renenable this after alpha in some form
+     * TODO is this ever going to be needed anymore?
     if let Err(err) = licensing::verify_license_in_config_dir() {
         eprintln!("{err}");
         return ExitCode::from(10);
@@ -73,14 +73,31 @@ fn project_from_cli(
     typeshed_path: Option<Arc<NormalizedPath>>,
     lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
 ) -> (Project, DiagnosticConfig) {
+    let (local_fs, options, diagnostic_config) =
+        project_options_from_cli(cli, current_dir, typeshed_path, lookup_env_var);
+    (
+        Project::new(local_fs, options, RunCause::TypeChecking),
+        diagnostic_config,
+    )
+}
+
+fn project_options_from_cli(
+    cli: Cli,
+    current_dir: &str,
+    typeshed_path: Option<Arc<NormalizedPath>>,
+    lookup_env_var: impl Fn(&str) -> Result<String, VarError>,
+) -> (Box<dyn VfsHandler>, ProjectOptions, DiagnosticConfig) {
     let local_fs = SimpleLocalFS::without_watcher();
     let current_dir = local_fs.unchecked_abs_path(current_dir);
-    let mut found = find_cli_config(
+    let mut found = find_config(
         &local_fs,
         current_dir.clone(),
         cli.mypy_options.config_file.as_deref(),
-        // Set the default to not mypy compatible, at least for now
-        cli.mode(),
+        match cli.mode {
+            Some(mode) => mode.into(),
+            None => ModeChoice::Implicit(Mode::Default),
+        },
+        |_| (),
     )
     .unwrap_or_else(|err| panic!("Problem parsing Mypy config: {err}"));
     let mut options = found.project_options;
@@ -94,20 +111,43 @@ fn project_from_cli(
         lookup_env_var,
     );
 
+    let has_explicit_config_file = cli.mypy_options.config_file.is_some();
+
     cli_args::apply_flags(
         &local_fs,
         &mut options,
         &mut found.diagnostic_config,
-        current_dir,
+        current_dir.clone(),
         cli,
         found.most_probable_base,
         found.config_path.as_deref(),
     );
 
-    (
-        Project::new(Box::new(local_fs), options, RunCause::LanguageServer),
-        found.diagnostic_config,
-    )
+    let files_and_dir = &mut options.settings.files_or_directories_to_check;
+    if files_and_dir.is_empty()
+        && has_explicit_config_file
+        && let Some(config_path) = &found.config_path
+        // Check if the config file is in a subdirectory and we should therefore check the current
+        // dir, which probably makes more sense than (potentially) just checking the sub dir. This
+        // came up on GitHub #455.
+        && options
+            .settings
+            .mypy_path
+            .iter()
+            .all(|p| p.contains_sub_file(config_path))
+    {
+        options
+            .settings
+            .set_files_or_directories_to_check(
+                &local_fs,
+                &current_dir,
+                found.config_path.as_deref(),
+                [".".into()],
+            )
+            .expect("Need a valid glob path as a files argument");
+    }
+
+    (Box::new(local_fs), options, found.diagnostic_config)
 }
 
 #[cfg(test)]
@@ -155,6 +195,19 @@ mod tests {
             .to_string()
     }
 
+    fn init_options<'x>(
+        current_dir: &str,
+        args: impl IntoIterator<Item = &'x str>,
+    ) -> ProjectOptions {
+        project_options_from_cli(
+            Cli::parse_from(std::iter::once("").chain(args.into_iter())),
+            current_dir,
+            None,
+            |_| Err(VarError::NotPresent),
+        )
+        .1
+    }
+
     #[test]
     fn test_diagnostics() {
         logging_config::setup_logging_for_tests();
@@ -180,7 +233,7 @@ mod tests {
             d(),
             vec![
                 NOT_CALLABLE.to_string(),
-                "foo.py:2: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]"
+                "foo.py:2: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]"
                     .to_string()
             ]
         );
@@ -229,7 +282,7 @@ mod tests {
             "[tool.zuban]\ndisallow_untyped_defs = true",
         );
         const MISSING_ANNOTATION: &str = "bar.py:1: error: Function is missing a type \
-                                          annotation for one or more arguments  [no-untyped-def]";
+                                          annotation for one or more parameters  [no-untyped-def]";
         assert_eq!(d(), [MISSING_ANNOTATION]);
 
         // Using --config-file should disable all other config files and only use the one
@@ -299,12 +352,16 @@ mod tests {
         // We intentionally also test that dirs with dashes are also checked.
         let fixture = if cfg!(windows) {
             r#"
-            [file venv/Scripts/python.exe]
+            [file venvs/venv/Scripts/python.exe]
 
-            [file venv/site-packages/foo.py]
+            [file venvs/venv/site-packages/foo.py]
 
-            [file venv/site-packages/bar.py]
+            [file venvs/venv/site-packages/bar.py]
             1()
+
+            [file custom-zuban.toml]
+            [tool.zuban]
+            strict = true
 
             [file m.py]
             import foo
@@ -314,16 +371,20 @@ mod tests {
             "#
         } else {
             r#"
-            [file venv/bin/python]
+            [file venvs/venv/bin/python]
 
-            [file venv/lib/python3.12/site-packages/foo.py]
+            [file venvs/venv/lib/python3.12/site-packages/foo.py]
 
-            [file venv/lib/python3.12/site-packages/bar.py]
+            [file venvs/venv/lib/python3.12/site-packages/bar.py]
             1()
 
-            [file venv/src/baz/baz/__init__.py]
+            [file venvs/venv/src/baz/baz/__init__.py]
             # Installing with pip install -e works similar to this
             my_baz = 1
+
+            [file custom-zuban.toml]
+            [tool.zuban]
+            python_executable = "venvs/venv/bin/python"
 
             [file m.py]
             import foo
@@ -343,16 +404,49 @@ mod tests {
         );
         // venv information via --python-executable should work
         let empty: [&str; _] = [];
-        assert_eq!(d(&["", "--python-executable", "venv/bin/python"]), empty);
+        assert_eq!(
+            d(&["", "--python-executable", "venvs/venv/bin/python"]),
+            empty
+        );
 
         // venv information via $VIRTUAL_ENV
         let ds = diagnostics_with_env_lookup(Cli::parse_from([""]), test_dir.path(), |name| {
             match name == "VIRTUAL_ENV" {
-                true => Ok("venv".to_string()),
+                true => Ok("venvs/venv".to_string()),
                 false => Err(VarError::NotPresent),
             }
         });
         assert_eq!(ds.unwrap(), empty);
+
+        if !cfg!(windows) {
+            assert_eq!(d(&["", "--config-file", "custom-zuban.toml"]), empty);
+
+            // Checking the venv explicitly
+            let err = r#"venvs/venv/lib/python3.12/site-packages/bar.py:1: error: "int" not callable  [operator]"#;
+            assert_eq!(
+                d(&[
+                    "",
+                    "--config-file",
+                    "custom-zuban.toml",
+                    "venvs/venv/lib/python3.12/site-packages/bar.py"
+                ]),
+                [err]
+            );
+            assert_eq!(
+                d(&[
+                    "",
+                    "--config-file",
+                    "custom-zuban.toml",
+                    "venvs/venv/lib/python3.12/site-packages/"
+                ]),
+                [err]
+            );
+            let err = expect_diagnostics_error(
+                Cli::parse_from(["", "--config-file", "custom-zuban.toml", "venvs/"]),
+                test_dir.path(),
+            );
+            assert!(err.starts_with("No Python files found to check"), "{err:?}");
+        }
     }
 
     #[test]
@@ -535,6 +629,41 @@ mod tests {
         // List only m2 diagnostics but with an empty pyproject.toml, see also #330
         let ds = diagnostics(Cli::parse_from(["", "../folder2"]), dir);
         assert_eq!(ds, [m2]);
+    }
+
+    #[test]
+    fn test_relative_dirs_with_relative_config() {
+        // From GH #455
+        logging_config::setup_logging_for_tests();
+        let fixture = format!(
+            r#"
+            [file configs/zuban.toml]
+            [tool.zuban]
+            strict = true
+
+            [file src/example.py]
+            x: int = "5"
+
+            "#
+        );
+        let test_dir = test_utils::write_files_from_fixture(&fixture, false);
+        let configs_dir = &format!("{}/configs", test_dir.path());
+
+        let err = "1: error: Incompatible types in assignment (expression has \
+                    type \"str\", variable has type \"int\")  [assignment]";
+        let ds = diagnostics(
+            Cli::parse_from(["", "--config-file", "configs/zuban.toml"]),
+            test_dir.path(),
+        );
+        // By default within a subfolder we still show all issues
+        assert_eq!(ds, [format!("src/example.py:{err}")]);
+
+        let ds = diagnostics(Cli::parse_from(["", "../src/example.py"]), configs_dir);
+        assert_eq!(ds, [format!("../src/example.py:{err}")]);
+        let ds = diagnostics(Cli::parse_from(["", "../src/"]), configs_dir);
+        assert_eq!(ds, [format!("../src/example.py:{err}")]);
+        let err = expect_diagnostics_error(Cli::parse_from([""]), configs_dir);
+        assert_eq!(err, "No Python files found to check");
     }
 
     #[test]
@@ -992,6 +1121,556 @@ mod tests {
             [
                 r#"m.py:2: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]"#
             ]
+        );
+    }
+
+    #[test]
+    fn test_mode_matrix() {
+        // Test without actually running the diagnostics/running the language server to avoid
+        // initializing the expensive typeshed stuff again and again.
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file m.py]
+            ",
+            false,
+        );
+
+        let is_mypy = |args: &[&str]| {
+            let options = init_options(test_dir.path(), args.iter().copied());
+            let is_mypy = options.settings.mypy_compatible();
+
+            // Ensure that the internal defaults are carried over as well:
+            assert_eq!(is_mypy, !options.flags.check_untyped_defs);
+
+            return is_mypy;
+        };
+
+        let is_mypy_empty_args = || is_mypy(&[]);
+        let is_mypy_in_auto_mode = || {
+            // Ensure that the explicit modes work as well
+            assert!(!is_mypy(&["--mode", "default"]));
+            assert!(is_mypy(&["--mode", "mypy"]));
+            is_mypy(&["--mode", "auto"])
+        };
+        let is_mypy_empty_args_with_explicit_config_pyproject_toml = || is_mypy(&[]);
+        let is_mypy_in_auto_mode_with_explicit_config_pyproject_toml = || {
+            // Ensure that the explicit modes work as well
+            assert!(!is_mypy(&[
+                "--config-file",
+                "pyproject.toml",
+                "--mode",
+                "default"
+            ]));
+            assert!(is_mypy(&[
+                "--config-file",
+                "pyproject.toml",
+                "--mode",
+                "mypy"
+            ]));
+            is_mypy(&["--config-file", "pyproject.toml", "--mode", "auto"])
+        };
+
+        let write_pyproject_toml = |has_zuban, has_mypy, mode: Option<&str>| {
+            let zuban_section = match has_zuban {
+                true => "[tool.zuban]\n",
+                false => {
+                    assert!(mode.is_none());
+                    ""
+                }
+            };
+            let mypy_section = match has_mypy {
+                true => "[tool.mypy]\n",
+                false => "",
+            };
+            let explicit_mode = match mode {
+                Some(mode) => format!("mode = {mode:?}\n"),
+                _ => "".into(),
+            };
+            test_dir.write_file(
+                "pyproject.toml",
+                &format!("{zuban_section}{explicit_mode}{mypy_section}"),
+            );
+        };
+
+        let pyproject_zuban_section_only = |mode| write_pyproject_toml(true, false, mode);
+        let pyproject_both_sections = |mode| write_pyproject_toml(true, true, mode);
+        let pyproject_mypy_section_only = || write_pyproject_toml(false, true, None);
+        let pyproject_empty = || write_pyproject_toml(false, false, None);
+
+        // Test in the following order with every explicit/implicit mode:
+        //
+        // 1. pyproject.toml only
+        // 2. pyproject.toml with mypy.ini/.mypy.ini/setup.cfg
+        // 3. Only mypy.ini/.mypy.ini
+        // 4. Only setup.cfg
+        // 5. Combinations of mypy.ini/.mypy.ini/setup.cfg
+        // 6. --config-file pyproject.toml when mypy.ini exists
+        // 7. --config-file mypy.ini when pyproject.toml exists
+        //
+        // All pyproject.toml tests additionally have the following properties:
+        //
+        // a. Only tool.zuban section
+        //    - 1. No explicit mode
+        //    - 2. mode = default
+        //    - 3. mode = mypy
+        // b. Both tool.zuban and tool.mypy sections
+        //    - 1. No explicit mode
+        //    - 2. mode = default
+        //    - 3. mode = mypy
+        // c. Only tool.mypy section
+        // d. Empty pyprojec.toml
+
+        // (1a1)
+        pyproject_zuban_section_only(None);
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        // (1a2)
+        pyproject_zuban_section_only(Some("default"));
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        // (1a3)
+        pyproject_zuban_section_only(Some("mypy"));
+        assert!(is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        // (1b1)
+        pyproject_both_sections(None);
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        // (1b2)
+        pyproject_both_sections(Some("default"));
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        // (1b3)
+        pyproject_both_sections(Some("mypy"));
+        assert!(is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        // (1c)
+        pyproject_mypy_section_only();
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        // (1d)
+        pyproject_empty();
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        for file_name in [".mypy.ini", "mypy.ini", "setup.cfg"] {
+            for mypy_content in ["", "[mypy]"] {
+                test_dir.write_file(file_name, mypy_content);
+                println!("Write {file_name}");
+
+                // (2a1)
+                pyproject_zuban_section_only(None);
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
+
+                // (2a2)
+                pyproject_zuban_section_only(Some("default"));
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
+
+                // (2a3)
+                pyproject_zuban_section_only(Some("mypy"));
+                assert!(is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
+
+                // (2b1)
+                pyproject_both_sections(None);
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
+
+                // (2b2)
+                pyproject_both_sections(Some("default"));
+                assert!(!is_mypy_empty_args());
+                assert!(!is_mypy_in_auto_mode());
+
+                // (2b3)
+                pyproject_both_sections(Some("mypy"));
+                assert!(is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
+
+                // (2c)
+                pyproject_mypy_section_only();
+                assert!(!is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
+
+                // (2d)
+                pyproject_empty();
+                assert!(!is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
+            }
+            test_dir.remove_file(file_name)
+        }
+
+        test_dir.remove_file("pyproject.toml");
+
+        // (3)
+        for file_name in [".mypy.ini", "mypy.ini"] {
+            for mypy_content in ["", "[mypy]"] {
+                test_dir.write_file(file_name, mypy_content);
+                println!("Write {file_name}");
+
+                assert!(!is_mypy_empty_args());
+                assert!(is_mypy_in_auto_mode());
+
+                test_dir.remove_file(file_name)
+            }
+        }
+
+        // (4)
+        test_dir.write_file("setup.cfg", "");
+        assert!(!is_mypy_empty_args());
+        assert!(!is_mypy_in_auto_mode());
+
+        test_dir.write_file("setup.cfg", "[mypy]");
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        // (5)
+        for file_name in [".mypy.ini", "mypy.ini"] {
+            test_dir.write_file(file_name, "[mypy]");
+        }
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        test_dir.remove_file("mypy.ini");
+        assert!(!is_mypy_empty_args());
+        assert!(is_mypy_in_auto_mode());
+
+        // (6a1)
+        pyproject_zuban_section_only(None);
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6a2)
+        pyproject_zuban_section_only(Some("default"));
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6a3)
+        pyproject_zuban_section_only(Some("mypy"));
+        assert!(is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b1)
+        pyproject_both_sections(None);
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b2)
+        pyproject_both_sections(Some("default"));
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6b3)
+        pyproject_both_sections(Some("mypy"));
+        assert!(is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6c)
+        pyproject_mypy_section_only();
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (6d)
+        pyproject_empty();
+        assert!(!is_mypy_empty_args_with_explicit_config_pyproject_toml());
+        assert!(!is_mypy_in_auto_mode_with_explicit_config_pyproject_toml());
+
+        // (7)
+        pyproject_both_sections(None);
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
+
+        pyproject_zuban_section_only(Some("default"));
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
+
+        pyproject_empty();
+        assert!(!is_mypy(&["--config-file", ".mypy.ini"]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "mypy"]));
+        assert!(!is_mypy(&[
+            "--config-file",
+            ".mypy.ini",
+            "--mode",
+            "default"
+        ]));
+        assert!(is_mypy(&["--config-file", ".mypy.ini", "--mode", "auto"]));
+    }
+
+    #[test]
+    fn test_mypy_config_with_explicit_mode() {
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r"
+            [file m.py]
+            1()
+            def f(x):
+                ''()
+
+            [file mypy.ini]
+            [mypy]
+            disallow_untyped_defs = true
+            ",
+            false,
+        );
+        let not_int = "m.py:1: error: \"int\" not callable  [operator]";
+        let missing_annotation =
+            "m.py:2: error: Function is missing a type annotation  [no-untyped-def]";
+        assert_eq!(
+            diagnostics(Cli::parse_from(["", "--mode", "auto"]), test_dir.path()),
+            [not_int, missing_annotation]
+        );
+        assert_eq!(
+            diagnostics(Cli::parse_from(["", "--mode", "default"]), test_dir.path()),
+            [
+                not_int,
+                missing_annotation,
+                "m.py:3: error: \"str\" not callable  [operator]"
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_order_should_not_matter() {
+        // From GH #371
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file m.py]
+            from typing import Any
+            def f(x): return x
+            class X(Any): ...
+
+            [file mypy.ini]
+            [mypy]
+            allow_untyped_defs = true
+            strict = true
+            "#,
+            false,
+        );
+        let check = || {
+            let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+            assert_eq!(
+                ds,
+                ["m.py:3: error: Class cannot subclass \"Any\" (has type \"Any\")  [misc]"]
+            );
+        };
+        check();
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.zuban]\nallow_untyped_defs = true\nstrict = true",
+        );
+        check();
+        test_dir.write_file(
+            "pyproject.toml",
+            "[tool.mypy]\nallow_untyped_defs = true\nstrict = true",
+        );
+        check();
+    }
+
+    #[test]
+    fn ignore_extensions() {
+        // From GH #392
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file file1.cpython-314-x86_64-linux-gnu.so]
+            [file file1.pypy311-pp73-win_amd64.pyd]
+            [file file1.pypy311-pp73-win_amd64.pyd]
+
+            [file dir/__init__.py]
+            [file dir/file2.pyd]
+            [file dir/file2.so]
+            [file dir/file2.dylib]
+
+            [file namespace/file3.pyd]
+            [file namespace/file3.so]
+            [file namespace/file3.dylib]
+
+            [file star_imp1.py]
+            from file1 import *
+
+            [file star_imp2.py]
+            from dir.file2 import *
+
+            [file star_imp3.py]
+            from namespace.file3 import *
+
+            [file star_imp.py]
+            from file1 import *
+
+            [file check.py]
+            import file1
+            from dir import file2
+            from namespace import file3
+            import dir
+            import namespace
+
+            import undefined1
+            from dir import undefined2
+            from namespace import undefined3
+
+            from star_imp1 import something
+            import star_imp1
+            star_imp1.something
+            from star_imp2 import something
+            import star_imp2
+            star_imp2.something
+            from star_imp3 import something
+            import star_imp3
+            star_imp3.something
+
+            file1.something
+            file2.something
+            file3.something
+            dir.file2
+            namespace.file3
+            "#,
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from(["", "check.py"]), test_dir.path());
+        assert_eq!(
+            ds,
+            [
+                "check.py:7: error: Cannot find implementation or library \
+                 stub for module named \"undefined1\"  [import-not-found]",
+                "check.py:8: error: Module \"dir\" has no attribute \
+                 \"undefined2\"  [attr-defined]",
+                "check.py:9: error: Module \"namespace\" has no attribute \
+                 \"undefined3\"  [attr-defined]",
+            ]
+        );
+    }
+
+    #[test]
+    fn non_determinism_avoid_regression() {
+        // From GH #412, this does not reproduce in normal tests, only in zmypy
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file main.py]
+            class RClip:
+              def __init__(self):
+                self._db = None
+
+              def clear_db(self):
+                self._db = None
+
+            def main():
+              rclip = RClip()
+              rclip.clear_db()
+
+            [file test_rclip.py]
+            from main import main
+
+            main()
+            "#,
+            false,
+        );
+        let ds = diagnostics(
+            Cli::parse_from(["", "--disallow-untyped-defs"]),
+            test_dir.path(),
+        );
+        // The error should only appear once, not multiple times
+        assert_eq!(
+            ds.iter()
+                .filter(|s| s
+                    .starts_with("main.py:2: error: Function is missing a return type annotation"))
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn test_additional_paths() {
+        // From GH #453
+        logging_config::setup_logging_for_tests();
+        if cfg!(unix) {
+            let options = init_options(".", ["--extra-search-path", "/my-additional-path"]);
+            assert_eq!(
+                options
+                    .settings
+                    .prepended_site_packages
+                    .iter()
+                    .map(|normalized| normalized as &str)
+                    .collect::<Vec<_>>(),
+                ["/my-additional-path"]
+            );
+            let options = init_options(
+                ".",
+                [
+                    "--extra-search-path",
+                    "/my-additional-path",
+                    "--extra-search-path",
+                    "/my-additional-path/inner",
+                ],
+            );
+            assert_eq!(
+                options
+                    .settings
+                    .prepended_site_packages
+                    .iter()
+                    .map(|normalized| normalized as &str)
+                    .collect::<Vec<_>>(),
+                ["/my-additional-path", "/my-additional-path/inner"]
+            );
+        }
+    }
+
+    #[test]
+    fn test_typeshed_path() {
+        logging_config::setup_logging_for_tests();
+        if cfg!(unix) {
+            let options = init_options(".", ["--custom-typeshed-dir", "/my-typeshed-path"]);
+            assert_eq!(
+                &*options.settings.typeshed_path.unwrap() as &str,
+                "/my-typeshed-path"
+            )
+        }
+    }
+
+    #[test]
+    fn deterministic_cycles() {
+        // Related to GH #311
+        logging_config::setup_logging_for_tests();
+        let test_dir = test_utils::write_files_from_fixture(
+            r#"
+            [file x.py]
+            from y import a
+            print(a)
+
+            [file y.py]
+            from x import a
+            print(a)
+            "#,
+            false,
+        );
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        // The error should only appear once, not multiple times
+        assert_eq!(
+            ds,
+            [r#"y.py:1: error: Cannot resolve name "a" (possible cyclic definition)  [misc]"#]
         );
     }
 }

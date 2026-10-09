@@ -12,8 +12,8 @@ use utils::FastHashMap;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    GenericClass, Literal, LiteralKind, LookupResult, NeverCause, ParamType, StringSlice, Tuple,
-    Type, TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    GenericClass, Literal, LiteralKind, LookupResult, ParamType, StringSlice, Tuple, Type, TypeVar,
+    TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::{
     arguments::{ArgKind, Args, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
@@ -28,7 +28,7 @@ use crate::{
         replace_class_type_vars,
     },
     new_class,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     result_context::ResultContext,
@@ -140,16 +140,7 @@ impl Dataclass {
     }
 
     pub fn as_base_class<'a>(&'a self, db: &'a Database, generics: Generics<'a>) -> Class<'a> {
-        let remap = match &self.class.generics {
-            ClassGenerics::List(list) => Some(list),
-            ClassGenerics::None { .. } => None,
-            _ => unreachable!(),
-        };
-        Class::from_position(
-            ClassNodeRef::from_link(db, self.class.link),
-            generics,
-            remap,
-        )
+        Class::from_position(ClassNodeRef::from_link(db, self.class.link), generics, None)
     }
 
     pub fn has_defined_generics(&self) -> bool {
@@ -196,8 +187,7 @@ struct Inits {
     non_init_fields: Box<[DbString]>,
 }
 
-fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Inits {
-    let cls = dataclass.class(db);
+fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: Class) -> Inits {
     let mut with_indexes = vec![];
     let file = cls.node_ref.file;
     let i_s = &InferenceState::new(db, file);
@@ -217,7 +207,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
             // We need to remap generics in case of inheritance or more complex types.
             match &mut new_param.type_ {
                 ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => {
-                    if let Some(new_t) = t.replace_type_var_likes(i_s.db, &mut |usage| {
+                    if let Some(new_t) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                         maybe_class_usage(db, &cls, &usage)
                     }) {
                         *t = new_t
@@ -257,7 +247,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                 dataclass.options.frozen.zip(super_dataclass.options.frozen)
                 && frozen1 != frozen2
             {
-                let arguments = cls.node().arguments().unwrap();
+                let arguments = cls.as_node().arguments().unwrap();
                 NodeRef::new(file, arguments.index()).add_issue(
                     i_s,
                     match frozen1 {
@@ -390,7 +380,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                 inference.assign_for_annotation(
                     annotation,
                     target,
-                    NodeRef::new(file, right_side.index()),
+                    KnownNodeRef::new(file, assignment),
                 );
                 file.points.set(
                     assignment.index(),
@@ -496,7 +486,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>) -> Ini
                 } else {
                     // The class arguments are always set, because we are working with params from
                     // a different file, which means inheritance.
-                    let arguments = cls.node().arguments().unwrap();
+                    let arguments = cls.as_node().arguments().unwrap();
                     NodeRef::new(file, arguments.index()).add_issue(i_s, issue_type);
                 }
             }
@@ -680,7 +670,9 @@ fn field_options_from_args(
     let args = SimpleArgs::new(*i_s, file, primary_index, details);
     for arg in args.iter(i_s.mode) {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
-            arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
+            if !arg.has_unknown_typed_dict_extra_items() {
+                arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
+            }
             continue;
         }
         if let Some(key) = arg.keyword_name(i_s.db) {
@@ -737,9 +729,7 @@ fn field_options_from_args(
                     if let Some(c) = converter.as_ref() {
                         // TODO We avoid generics here, is this correct? It feels like we should
                         // type check them, but that gets extremely complicated quickly.
-                        if let new @ Some(_) = c.replace_type_var_likes(i_s.db, &mut |usage| {
-                            Some(usage.as_any_generic_item())
-                        }) {
+                        if let new @ Some(_) = c.maybe_erase_type_var_likes(i_s.db, &|| None) {
                             converter = new;
                         }
                     }
@@ -781,10 +771,9 @@ fn apply_default_options_from_dataclass_transform_field<'db>(
                     false,
                     None,
                     false,
-                    &mut ResultContext::Unknown,
                     None,
                     OnTypeError::new(&|_, _, _, _| ()),
-                    &|_, _| Type::Never(NeverCause::Other),
+                    &|_, _| Type::NEVER,
                 )
             {
                 apply_from_callable(c.content)
@@ -1034,23 +1023,44 @@ pub fn dataclass_converter_fields_lookup<'a>(
 
 pub fn ensure_calculated_dataclass(self_: &Arc<Dataclass>, db: &Database) {
     if self_.inits.get().is_none() {
-        debug!("Calculate dataclass {}", self_.class(db).name());
+        let cls = self_.class(db);
+        // Some dataclasses have things like `name: str = Field(_REGEX)`, which would lead to
+        // inference to local identifiers and not just type computation.
+        if might_have_complicated_field_inference(&cls) {
+            let _ = cls.file.ensure_module_symbols_flow_analysis(db);
+            if self_.inits.get().is_some() {
+                return;
+            }
+        }
+        debug!("Calculate dataclass {}", cls.name());
         let indent = debug_indent();
         // Cannot use get_or_init, because this might recurse for some reasons (check for
         // example the test testDeferredDataclassInitSignatureSubclass)
         if self_
             .inits
-            .set(calculate_init_of_dataclass(db, self_))
+            .set(calculate_init_of_dataclass(db, self_, cls))
             .is_err()
         {
-            recoverable_error!(
-                "Looped dataclass initialization for {:?}",
-                self_.class(db).name()
-            );
+            recoverable_error!("Looped dataclass initialization for {:?}", cls.name());
         }
         drop(indent);
-        debug!("Finished calculating dataclass {}", self_.class(db).name());
+        debug!("Finished calculating dataclass {}", cls.name());
     }
+}
+
+fn might_have_complicated_field_inference(cls: &Class) -> bool {
+    cls.class_storage
+        .class_symbol_table
+        .iter()
+        .any(|(_, name_index)| {
+            let name = NodeRef::new(cls.file, *name_index).expect_name();
+            if let Some(assignment) = name.maybe_assignment_definition_name()
+                && let AssignmentContent::WithAnnotation(_, _, Some(_)) = assignment.unpack()
+            {
+                return true;
+            }
+            false
+        })
 }
 
 pub fn dataclass_post_init_func<'a>(
@@ -1214,11 +1224,20 @@ pub(crate) fn lookup_on_dataclass<'a>(
     if self_.options.frozen == Some(true)
         && let Some(param) = Dataclass::lookup(i_s.db, self_, name)
     {
+        let mut t = param.type_.maybe_type().unwrap().clone();
+        if matches!(self_.class.generics, ClassGenerics::NotDefinedYet)
+            && let Some(new) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
+                if usage.in_definition() == self_.class.link {
+                    return Some(usage.as_any_generic_item());
+                }
+                None
+            })
+        {
+            t = new
+        }
         return LookupDetails::new(
             Type::Dataclass(self_.clone()),
-            LookupResult::UnknownName(Inferred::from_type(
-                param.type_.maybe_type().unwrap().clone(),
-            )),
+            LookupResult::UnknownName(Inferred::from_type(t)),
             AttributeKind::Property {
                 setter_type: None,
                 is_final: false,

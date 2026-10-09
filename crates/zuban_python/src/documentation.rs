@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
@@ -5,13 +7,17 @@ use crate::{
     database::ComplexPoint,
     file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     format_data::FormatData,
-    goto::{GotoResolver, PositionalDocument, with_i_s_non_self},
+    goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     inference_state::InferenceState,
     name::{Range, TreeName},
     node_ref::NodeRef,
     recoverable_error,
-    type_::{CallableLike, FunctionKind, Type, TypeVarLike, TypeVarLikeUsage, TypeVarVariance},
+    type_::{
+        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, Type, TypeGatherer,
+        TypeVarLike, TypeVarVariance,
+    },
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 impl<'project> Document<'project> {
@@ -21,6 +27,7 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let document = self.positional_document(position)?;
+        let _indent = debug_indent();
         Ok(with_i_s_non_self(
             document.db,
             document.file,
@@ -43,7 +50,7 @@ impl<'project> Document<'project> {
                             i_s.db,
                             cls.file,
                             cls.class_storage.parent_scope,
-                            cls.node().name(),
+                            cls.as_node().name(),
                         )
                         .documentation();
                         if !doc.is_empty() {
@@ -53,7 +60,7 @@ impl<'project> Document<'project> {
                         result
                     } else {
                         recoverable_error!(
-                            "There should to be a current class for Self documentation"
+                            "There should be a current class for Self documentation"
                         );
                         "".into()
                     }
@@ -61,7 +68,7 @@ impl<'project> Document<'project> {
                 _ => n.name.documentation().to_string(),
             }
         });
-        let (inf, mut results) = resolver.infer_definition();
+        let (inf, mut results) = resolver.infer_definition(Some(HeuristicDetail::Deep));
         let Some(on_symbol_range) = resolver.on_node_range() else {
             // This is probably not reachable
             return None;
@@ -74,12 +81,34 @@ impl<'project> Document<'project> {
         let mut type_formatted = if only_docstrings {
             "".into()
         } else {
-            let t = inf.as_cow_type(i_s);
+            let t = inf.typed.as_cow_type(i_s);
             if let Type::Namespace(_) = t.as_ref() {
                 // Namespaces need a kind earlier, because goto doesn't work on them
                 known_kind = Some("namespace");
             }
-            pretty_type_formatting(i_s, &t).into_string()
+            let mut s = pretty_type_formatting(i_s, &t, false).into_string();
+            if let Some(heuristic) = inf.heuristic {
+                let mut t = heuristic.as_cow_type(i_s);
+                let t = t.to_mut();
+                if let Type::Union(union) = t {
+                    // Here we avoid union entries that have the untyped type vars and therefore show up
+                    // as A | A.
+                    let mut previous_formatting = HashSet::new();
+                    let keep_entries = TypeGatherer::from_iter(
+                        union
+                            .entries
+                            .iter()
+                            .filter(|entry| previous_formatting.insert(entry.format_short(i_s.db)))
+                            .cloned(),
+                    );
+                    *t = keep_entries.into_type();
+                }
+                let heuristic = pretty_type_formatting(i_s, &t, true).into_string();
+                if s != heuristic {
+                    s = format!("{s}\n\nMight be: {heuristic}")
+                }
+            }
+            s
         };
 
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
@@ -103,25 +132,17 @@ impl<'project> Document<'project> {
                                     if definition.maybe_class().is_some() {
                                         let class_ref = ClassNodeRef::from_node_ref(definition);
                                         doc += &format!("Bound in class `{}`", class_ref.name());
-                                        if let TypeVarLikeUsage::TypeVar(tv) = usage {
-                                            let variance = tv.type_var.inferred_variance(
-                                                db,
-                                                &Class::from_undefined_generics(
-                                                    i_s.db,
-                                                    in_definition,
-                                                ),
-                                            );
-                                            doc += &format!(
-                                                "\n\n`{}` is `{}`",
-                                                tv.type_var.name(i_s.db),
-                                                variance.name().to_lowercase()
-                                            );
-                                            if matches!(
-                                                tv.type_var.variance,
-                                                TypeVarVariance::Inferred
-                                            ) {
-                                                doc += " (inferred)";
-                                            }
+                                        let variance = usage.inferred_variance(
+                                            db,
+                                            &Class::from_undefined_generics(i_s.db, in_definition),
+                                        );
+                                        doc += &format!(
+                                            "\n\n`{}` is `{}`",
+                                            usage.name(i_s.db),
+                                            variance.name().to_lowercase()
+                                        );
+                                        if matches!(usage.variance(), TypeVarVariance::Inferred) {
+                                            doc += " (inferred)";
                                         }
                                     }
                                     if definition.maybe_function().is_some() {
@@ -281,30 +302,52 @@ impl<'project> Document<'project> {
     }
 }
 
-fn pretty_type_formatting(i_s: &InferenceState, t: &Type) -> Box<str> {
+fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) -> Box<str> {
     let db = i_s.db;
+    let format_callable = |c: &CallableContent| {
+        c.format_pretty_detailed(
+            &FormatData::new_short(db),
+            PrettyCallableOptions {
+                try_to_format_default: Some(&|db, name| {
+                    let func = c.maybe_original_function(db)?;
+                    func.params()
+                        .iter()
+                        .find(|param| param.name_def().as_code() == name)
+                        .map(|param| param.default().map(|expr| expr.as_code()))
+                        .flatten()
+                }),
+                ..Default::default()
+            },
+        )
+    };
     match t {
         Type::FunctionOverload(o) => format!(
             "Overload(\n    {})",
             o.iter_functions()
-                .map(|callable| { callable.format_pretty(&FormatData::new_short(db)) })
+                .map(|callable| format_callable(callable))
                 .collect::<Vec<_>>()
                 .join("\n    ")
         )
         .into(),
-        Type::Callable(c) => c.format_pretty(&FormatData::new_short(db)),
+        Type::Callable(c) => format_callable(c),
         Type::Type(inner) => {
             let mut out = inner.format_short(db).into_string();
             if let Some(CallableLike::Callable(callable)) =
                 t.maybe_callable(&InferenceState::new_in_unknown_file(db))
             {
-                let formatted = callable.format_pretty(&FormatData::new_short(db));
+                let formatted = format_callable(&callable);
                 out += "(";
                 out += formatted.split_once('(').unwrap().1;
             }
             out.into_boxed_str()
         }
-        Type::Module(m) => db.loaded_python_file(*m).qualified_name(db).into(),
+        Type::Module(m) => {
+            let mut s = db.loaded_python_file(*m).qualified_name(db);
+            if from_heuristic {
+                s.insert_str(0, "module ");
+            }
+            s.into()
+        }
         Type::Namespace(n) => n.qualified_name().into(),
         _ => t.format_short(db),
     }

@@ -6,11 +6,9 @@ use parsa_python_cst::{CodeIndex, Name as CstName};
 use crate::{
     Document, InputPosition, PositionInfos,
     database::{ComplexPoint, Database, Point, PointKind, Specific},
-    file::{
-        ClassNodeRef, File as _, PythonFile, use_cached_annotation_or_type_comment,
-        use_cached_param_annotation_type,
-    },
+    file::{ClassNodeRef, File as _, PythonFile, use_cached_param_annotation_type},
     inference_state::InferenceState,
+    inferred::specific_to_type,
     node_ref::NodeRef,
     type_::{FunctionKind, Type},
 };
@@ -147,17 +145,23 @@ impl<'project> Document<'project> {
                 }
                 Specific::MaybeSelfParam => Some(SemanticTokenType::VARIABLE),
                 Specific::OverloadUnreachable => Some(SemanticTokenType::FUNCTION),
+                Specific::TypingAny => Some(SemanticTokenType::CLASS),
                 specific => {
                     if specific.is_partial() {
                         Some(SemanticTokenType::VARIABLE)
-                    } else if specific.is_annotation_or_type_comment() {
-                        let t = use_cached_annotation_or_type_comment(
+                    } else {
+                        let t = specific_to_type(
                             &InferenceState::new(db, node_ref.file),
                             node_ref,
+                            specific,
                         );
-                        with_t(&t)
-                    } else {
-                        Some(SemanticTokenType::CLASS)
+                        if let Type::Class(c) = t.as_ref()
+                            && c.link == db.python_state.typing_special_form_link()
+                        {
+                            Some(SemanticTokenType::CLASS)
+                        } else {
+                            with_t(&t)
+                        }
                     }
                 }
             },

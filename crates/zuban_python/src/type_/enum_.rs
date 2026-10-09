@@ -100,8 +100,9 @@ impl EnumMemberDefinition {
 
     pub fn infer_value(&self, i_s: &InferenceState, enum_: &Enum) -> Inferred {
         match self.value {
-            // I'm not 100% sure why this is, but Mypy returns Any on all enums that have a __new__
-            // defined.
+            // Since __new__ can be used to customize the value, especially with tuples, we have to
+            // just return Any in that case, see also:
+            // https://docs.python.org/3/howto/enum.html#when-to-use-new-vs-init
             Some(link) if !enum_.has_customized_new(i_s) => {
                 let node_ref = NodeRef::from_link(i_s.db, link);
                 let enum_class = enum_.class(i_s.db);

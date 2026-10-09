@@ -136,6 +136,41 @@ if int == type(x):
 else:
     reveal_type(x)  # N: Revealed type is "Any"
 
+[case narrowing_type_of_final_dataclass]
+from typing import final, assert_type
+from dataclasses import dataclass
+
+@dataclass
+@final
+class D:
+    x: int
+
+def f(x: D | None):
+    if type(x) is D:
+        assert_type(x, D)
+    else:
+        assert_type(x, None)
+
+[case narrowing_type_of_enum]
+# flags: --warn-unreachable
+from typing import final, assert_type, Literal
+from enum import Enum
+
+class E(Enum):
+    X = 1
+    Y = 2
+
+def f(x: E | None, y: Literal[E.X] | None):
+    if type(x) is E:
+        assert_type(x, E)
+    else:
+        assert_type(x, None)
+
+    if type(y) is E:
+        assert_type(y, Literal[E.X] | None)  # TODO enum members are a bit hard to narrow
+    else:
+        assert_type(y, Literal[E.X] | None)
+
 [case avoid_narrowing_of_len_with_big_unpack]
 from typing import Tuple
 from typing_extensions import Unpack
@@ -1084,7 +1119,7 @@ def foo(x: int | str, y: Any):
         reveal_type(x)  # N: Revealed type is "str"
 
     if isinstance(x, y | int):
-        reveal_type(x)  # N: Revealed type is "Any | int"
+        reveal_type(x)  # N: Revealed type is "int | Any"
     else:
         reveal_type(x)  # N: Revealed type is "str"
 
@@ -1506,6 +1541,27 @@ class X(Y):
     def f(self) -> None:
         x = [1] if bool() else []
         reveal_type(x)  # N: Revealed type is "list[int]"
+
+[case context_for_ternary_else_should_be_open_to_new_values]
+# From GH #558
+from typing import overload
+
+flag = True
+
+class Box[T]:
+    @overload
+    def __init__(self: Box[None]) -> None: ...
+    @overload
+    def __init__(self, value: T) -> None: ...
+    def __init__(self, value: object = None) -> None:
+        self.value = value
+
+fine_reversed = Box() if flag else None
+fine_explicit = None if flag else Box[None]()
+fine_with_value = None if flag else Box(1)
+fine_no_ternary: Box[None] | None = Box()
+
+bad = None if flag else Box()
 
 [case tuple_assign_none]
 x, y = None, None
@@ -2307,3 +2363,94 @@ y = 'a'
 reveal_type(y)  # N: Revealed type is "Literal['a']?"
 z = 'a'
 reveal_type(z)  # N: Revealed type is "Literal['a']?"
+
+[case isinstance_with_and_without_something_narrowable]
+# flags: --warn-unreachable
+x = 1
+if isinstance(x, str):  # E: Subclass of "int" and "str" cannot exist: have distinct disjoint bases
+    print()  # E: Statement is unreachable
+if isinstance(int(), str):  # E: Subclass of "int" and "str" cannot exist: have distinct disjoint bases
+    print()  # E: Statement is unreachable
+
+[case intersection_can_not_be_passed_to_invariant]
+# From GH #438
+class A:
+    pass
+
+class B:
+    pass
+
+def g(x: list[A]): pass
+
+def f(x: A):
+    if isinstance(x, B):
+        y = [x]
+        g(y)  # E: Argument 1 to "g" has incompatible type "list[<subclass of "__main__.A" and "__main__.B">]"; expected "list[A]" \
+              # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+              # N: Consider using "Sequence" instead, which is covariant
+
+        y = [x, x]  # This should be fine
+
+[case intersection_binding_retains_narrowing]
+# From GH #441
+from typing import Any, Self, overload, reveal_type
+
+class Descriptor:
+    @overload
+    def __get__(self, instance: None, owner: type, /) -> Self: ...
+    @overload
+    def __get__[T](self, instance: T, owner: type | None = None, /) -> T: ...
+    def __get__(self, instance: object, owner: type | None = None, /) -> Any: ...
+
+class A:
+    desc = Descriptor()
+
+class Mixin:
+    desc2 = Descriptor()
+
+def g(x: A) -> None:
+    if isinstance(x, Mixin):
+        reveal_type(x.desc)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"
+        reveal_type(x.desc2)  # N: Revealed type is "<subclass of "__main__.A" and "__main__.Mixin">"
+
+[case narrowing_type_var_should_not_fail]
+# flags: --warn-unreachable
+# From GH #507
+from abc import ABC, abstractmethod
+
+class Box[A](ABC): # Invariant in A
+    @abstractmethod
+    def get(self) -> A: ...
+    @abstractmethod
+    def set(self, other: A) -> None: ...
+
+class BoxInt(Box[int]):
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def get(self) -> int:
+        return self.x
+    def set(self, other: int) -> None:
+        self.x = other
+
+def use[A](box: Box[A], other: A) -> None:
+    if isinstance(box, BoxInt):
+        other_int: int = other  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+
+[case dataclass_narrowing]
+# From GH #535
+from dataclasses import dataclass
+from typing import assert_type, final
+
+@dataclass
+@final
+class A:
+    flag: bool
+
+    @staticmethod
+    def new() -> 'A|None':
+        return A(flag=True)
+
+
+one = A.new()
+two = one and one.flag
+assert_type(two, None | bool)

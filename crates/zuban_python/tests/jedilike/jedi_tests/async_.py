@@ -117,3 +117,22 @@ async def asyncctxmgr():
         acm
         #? ['some_method']
         acm.som
+
+# Only for zuban
+
+async def return_first(a):
+    return a[0]
+
+async def check():
+    result = await return_first([1])
+    #? int()
+    result
+    result2 = await return_first([""])
+    #? str()
+    result2
+    result3 = return_first([1.0])
+    #? types.CoroutineType()
+    result3
+    result4 = await result3
+    #? float()
+    result4

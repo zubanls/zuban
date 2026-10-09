@@ -2,7 +2,7 @@
 #? ['raise']
 raise
 
-#? ['Exception']
+#? ['Exception', 'ExceptionGroup']
 except
 
 #? []
@@ -37,8 +37,9 @@ def i
 #? []
 class i
 
-#? []
-continue i
+# zuban-diff: #? []
+#? ["IndexError"]
+continue IndexE
 
 # More syntax details, e.g. while only after newline, but not after semicolon,
 # continue also after semicolon

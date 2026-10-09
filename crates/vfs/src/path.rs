@@ -15,8 +15,10 @@ impl AbsPath {
         unsafe { std::mem::transmute(x) }
     }
 
-    pub fn contains_sub_file(&self, path: &str) -> bool {
-        Path::new(path).starts_with(Path::new(&self.0))
+    pub fn contains_sub_file(&self, path: &Self) -> bool {
+        let path: &Path = path.as_ref();
+        let base: &Path = self.as_ref();
+        path.starts_with(base)
     }
 }
 

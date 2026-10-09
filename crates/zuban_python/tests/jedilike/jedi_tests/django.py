@@ -165,7 +165,7 @@ model_instance.method
 # Queries
 # -----------------
 
-#? ['objects']
+#? []
 model_instance.object
 #?
 model_instance.objects

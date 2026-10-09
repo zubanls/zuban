@@ -1,4 +1,12 @@
-use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::Write,
+    path::Path,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use colored::{ColoredString, Colorize as _};
 use config::DiagnosticConfig;
@@ -28,6 +36,7 @@ pub(crate) enum IssueKind {
     StarExceptionWithoutTypingSupport,
     TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code: Box<str> },
     DirectiveSyntaxError(Box<str>),
+    TemplateStringConcatenatedWithString,
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -148,7 +157,9 @@ pub(crate) enum IssueKind {
     MetaclassConflict,
     CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
-    InconsistentMro { name: Box<str> },
+    InconsistentMro { class_name: Box<str> },
+    DisjointBases { class_name: Box<str> },
+    DisjointBaseCannotBeUsedWith { with: &'static str },
     CyclicDefinition { name: Box<str> },
     InvalidTypeCycle,
     CurrentlyUnsupportedBaseClassCycle,
@@ -215,14 +226,14 @@ pub(crate) enum IssueKind {
     FreeTypeVariableExpectInTypeAliasTypeTypeParams { is_unpack: bool },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
-    TypeVarCoAndContravariant,
+    TypeVarLikeCoAndContravariant { kind: &'static str },
     TypeVarValuesAndUpperBound,
     TypeVarValuesNeedsAtLeastTwo,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     InvalidAssignmentForm { class_name: &'static str },
     TypeVarLikeTooFewArguments { class_name: &'static str },
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
-    TypeVarVarianceMustBeBool { argument: &'static str },
+    TypeVarLikeVarianceMustBeBool { kind: &'static str, argument: &'static str },
     TypeVarTypeExpected,
     TypeVarBoundMustNotContainTypeVars,
     TypeVarBoundMustBeType,
@@ -238,8 +249,8 @@ pub(crate) enum IssueKind {
         variable_name: Box<str>
     },
     TypeVarInReturnButNotArgument { note: Option<Box<str>> },
-    TypeVarCovariantInParamType,
-    TypeVarContravariantInReturnType,
+    TypeVarWrongVarianceInParamType { variance: &'static str, kind: &'static str } ,
+    TypeVarContravariantInReturnType { variance: &'static str, kind: &'static str },
     TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
     UnexpectedTypeForTypeVar,
     ParamSpecKeywordArgumentWithoutDefinedSemantics,
@@ -344,6 +355,7 @@ pub(crate) enum IssueKind {
     IntersectionCannotExistDueToIncompatibleMethodSignatures { intersection: Box<str> },
     IntersectionCannotExistDueToFinalClass { intersection: Box<str>, final_class: Box<str> },
     IntersectionCannotExistDueToInconsistentMro { intersection: Box<str> },
+    IntersectionCannotExistDueToDisjointBases { intersection: Box<str> },
 
     TypeGuardFunctionsMustHaveArgument { name: &'static str },
     TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t: Box<str>, input_t: Box<str> },
@@ -412,6 +424,7 @@ pub(crate) enum IssueKind {
     TypedDictCannotUseCloseFalseIfSuperClassClosed,
     TypedDictCannotUseCloseFalseIfSuperClassHasExtraItems,
     TypedDictExtraItemsCannotBe { kind: &'static str },
+    TypedDictCannotCombineClosedAndExtraItems,
     TypedDictExtraItemsNonReadOnlyChangeDisallowed,
     TypedDictExtraItemsIncompatibleTypes { in_super_class: Box<str>, in_sub_class: Box<str> },
     TypedDictSetItemWithExtraItemsMismatch { got: Box<str>, expected: Box<str> },
@@ -447,7 +460,7 @@ pub(crate) enum IssueKind {
     MethodWithoutArguments,
     TypeOfSelfIsNotASupertypeOfItsClass { self_type: Box<str>, class: Box<str> },
     TypeOfSelfHasTypeVars { type_var_like: TypeVarLike, class_name: Box<str> },
-    SelfArgumentMissing,
+    SelfParameterMissing,
     SelfAlreadyBoundInFirstParam,
     MultipleStarredExpressionsInAssignment,
 
@@ -497,7 +510,7 @@ pub(crate) enum IssueKind {
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
     CoroutineValueMustBeUsed { type_: Box<str> },
     AwaitableValueMustBeUsed { type_: Box<str> }, // From --enable-error-code unused-awaitable
-    MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
+    MissingTypeArguments { name: Box<str> }, // From --disallow-any-generics
     UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
     UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
     DisallowedAnySubclass { class: Box<str> }, // From --disallow-subclassing-any
@@ -527,6 +540,7 @@ impl IssueKind {
             | InvalidSyntaxInTypeComment { .. }
             | InvalidSyntaxInTypeAnnotation
             | TypeIgnoreWithErrorCodeNotSupportedForModules { .. }
+            | TemplateStringConcatenatedWithString
             | DirectiveSyntaxError(..) => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
@@ -558,8 +572,8 @@ impl IssueKind {
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument { .. }
-            | TypeVarCovariantInParamType
-            | TypeVarContravariantInReturnType
+            | TypeVarWrongVarianceInParamType { .. }
+            | TypeVarContravariantInReturnType { .. }
             | TypeVarVarianceIncompatibleWithParentType { .. }
             | InvalidTypeVarValue { .. }
             | TypeVarBoundViolation { .. } => "type-var",
@@ -569,7 +583,7 @@ impl IssueKind {
             | UnsupportedOperandForUnary { .. }
             | NotCallable { .. }
             | UnknownFunctionNotCallable => "operator",
-            TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
+            TypeArgumentIssue { .. } | MissingTypeArguments { .. } => "type-arg",
             ModuleNotFound { module_name } => {
                 if has_known_types_package(module_name).is_some() {
                     "import-untyped"
@@ -614,6 +628,8 @@ impl IssueKind {
             | DisallowedAnyMetaclass { .. }
             | MetaclassMustInheritFromType
             | MetaclassConflict => "metaclass",
+            UntypedDecorator { .. } => "untyped-decorator",
+            ExplicitOverrideFlagRequiresOverride { .. } => "explicit-override",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
@@ -631,7 +647,8 @@ impl IssueKind {
             | RightOperandIsNeverOperated { .. }
             | IntersectionCannotExistDueToFinalClass { .. }
             | IntersectionCannotExistDueToIncompatibleMethodSignatures { .. }
-            | IntersectionCannotExistDueToInconsistentMro { .. } => "unreachable",
+            | IntersectionCannotExistDueToInconsistentMro { .. }
+            | IntersectionCannotExistDueToDisjointBases { .. } => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
             NonOverlappingEqualityCheck { .. }
@@ -817,7 +834,7 @@ impl<'db> Diagnostic<'db> {
                 | BaseExceptionExpected
                 | BaseExceptionExpectedForRaise { .. }
                 | TypeOfSelfIsNotASupertypeOfItsClass { .. }
-                | SelfArgumentMissing
+                | SelfParameterMissing
         )
     }
 
@@ -834,12 +851,13 @@ impl<'db> Diagnostic<'db> {
                 "Missing the typing symbols for star exceptions".to_string()
             }
             TypeIgnoreWithErrorCodeNotSupportedForModules { ignore_code } => {
-                additional_notes.push(r#"Error code "syntax" not covered by "type: ignore" comment"#.to_string());
                 format!(
                     "type ignore with error code is not supported for modules; \
                      use `# mypy: disable-error-code=\"{ignore_code}\"`"
                 )
             }
+            TemplateStringConcatenatedWithString =>
+                "Cannot mix t-string literals with string literals".to_string(),
             DirectiveSyntaxError(s) => s.to_string(),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
@@ -1008,8 +1026,8 @@ impl<'db> Diagnostic<'db> {
                     additional_notes.push("Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase".into());
                 }
                 format!(
-                    "Incompatible default for argument \"{argument_name}\" \
-                     (default has type \"{got}\", argument has type \"{expected}\")"
+                    "Incompatible default for parameter \"{argument_name}\" \
+                     (default has type \"{got}\", parameter has type \"{expected}\")"
                 )
             },
             TypeNotFound => format!("Name {:?} is not defined", self.code_under_issue()),
@@ -1138,8 +1156,8 @@ impl<'db> Diagnostic<'db> {
                 r#"The type of self "{}" has type vars in non standard positions for class "{class_name}""#,
                 type_var_like.name(self.db),
             ),
-            SelfArgumentMissing =>
-                "Self argument missing for a non-static method (or an invalid type for self)".to_string(),
+            SelfParameterMissing =>
+                "\"self\" parameter missing for a non-static method (or an invalid type for self)".to_string(),
             SelfAlreadyBoundInFirstParam =>
                 "Self is already bound in the first param, use that type instead".to_string(),
             MultipleStarredExpressionsInAssignment =>
@@ -1242,7 +1260,7 @@ impl<'db> Diagnostic<'db> {
                 "Function is missing a return type annotation".to_string()
             }
             FunctionMissingParamAnnotations =>
-                "Function is missing a type annotation for one or more arguments".to_string(),
+                "Function is missing a type annotation for one or more parameters".to_string(),
             CallToUntypedFunction{name} => format!(
                 "Call to untyped function \"{name}\" in typed context"
             ),
@@ -1254,8 +1272,8 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("Are you missing an await?".to_string());
                 format!(r#"Value of type "{type_}" must be used"#)
             }
-            MissingTypeParameters { name } => format!(
-                r#"Missing type parameters for generic type "{name}""#
+            MissingTypeArguments { name } => format!(
+                r#"Missing type arguments for generic type "{name}""#
             ),
             UntypedDecorator { name } => format!(
                 r#"Untyped decorator makes function "{name}" untyped"#
@@ -1378,8 +1396,14 @@ impl<'db> Diagnostic<'db> {
                  a (non-strict) subclass of the metaclasses of all its bases".to_string(),
             CannotSubclassNewType => "Cannot subclass \"NewType\"".to_string(),
             DuplicateBaseClass{name} => format!("Duplicate base class \"{name}\""),
-            InconsistentMro{name} => format!(
-                "Cannot determine consistent method resolution order (MRO) for \"{name}\""
+            InconsistentMro { class_name } => format!(
+                "Cannot determine consistent method resolution order (MRO) for \"{class_name}\""
+            ),
+            DisjointBases { class_name } => format!(
+                "Class \"{class_name}\" has incompatible disjoint bases"
+            ),
+            DisjointBaseCannotBeUsedWith { with } => format!(
+                "@disjoint_base cannot be used with {with}"
             ),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
@@ -1530,11 +1554,13 @@ impl<'db> Diagnostic<'db> {
             TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
-            InvalidTypeVarValue{type_var_name, of, actual} =>
-                format!("Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"),
+            InvalidTypeVarValue{type_var_name, of, actual} => format!(
+                "Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"
+            ),
             InvalidCastTarget => "Cast target is not a type".to_string(),
-            TypeVarCoAndContravariant =>
-                "TypeVar cannot be both covariant and contravariant".to_string(),
+            TypeVarLikeCoAndContravariant { kind } => format!(
+                "{kind} cannot be both covariant and contravariant"
+            ),
             TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_string(),
             TypeVarValuesNeedsAtLeastTwo =>
@@ -1548,8 +1574,8 @@ impl<'db> Diagnostic<'db> {
             TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
             TypeVarLikeFirstArgMustBeString{class_name} => format!(
                 "{class_name}() expects a string literal as first argument"),
-            TypeVarVarianceMustBeBool{argument} => format!(
-                "TypeVar \"{argument}\" may only be a literal bool"
+            TypeVarLikeVarianceMustBeBool{ kind, argument } => format!(
+                "{kind} \"{argument}\" may only be a literal bool"
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarBoundMustNotContainTypeVars =>
@@ -1576,10 +1602,12 @@ impl<'db> Diagnostic<'db> {
                 }
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string()
             }
-            TypeVarCovariantInParamType =>
-                "Cannot use a covariant type variable as a parameter".to_string(),
-            TypeVarContravariantInReturnType =>
-                "Cannot use a contravariant type variable as return type".to_string(),
+            TypeVarWrongVarianceInParamType { variance, kind } => format!(
+                "Cannot use a {variance} {kind} as a parameter"
+            ),
+            TypeVarContravariantInReturnType { variance, kind } => format!(
+                "Cannot use a {variance} {kind} as return type"
+            ),
             TypeVarVarianceIncompatibleWithParentType{ type_var_name } => format!(
                 r#"Variance of TypeVar "{type_var_name}" incompatible with variance in parent type"#
             ),
@@ -1874,6 +1902,9 @@ impl<'db> Diagnostic<'db> {
             IntersectionCannotExistDueToInconsistentMro { intersection } => format!(
                 r#"Subclass of {intersection} cannot exist: would have inconsistent method resolution order"#
             ),
+            IntersectionCannotExistDueToDisjointBases { intersection } => format!(
+                r#"Subclass of {intersection} cannot exist: have distinct disjoint bases"#
+            ),
 
             TypeGuardFunctionsMustHaveArgument { name } => format!(
                 "{name} functions must have a positional argument"
@@ -2017,10 +2048,10 @@ impl<'db> Diagnostic<'db> {
                 r#"Unsupported type "{type_}" for ** expansion in TypedDict"#
             ),
             TypedDictArgumentNameOverlapWithUnpack { names } => format!(
-                r#"Overlap between argument names and ** TypedDict items: {names}"#
+                r#"Overlap between parameter names and ** TypedDict items: {names}"#
             ),
             UnpackItemInStarStarMustBeTypedDict =>
-                "Unpack item in ** argument must be a TypedDict".to_string(),
+                "Unpack item in ** parameter must be a TypedDict".to_string(),
             TypedDictSetdefaultWrongDefaultType { got, expected } => format!(
                 r#"Argument 2 to "setdefault" of "TypedDict" has incompatible type "{got}"; expected "{expected}""#,
             ),
@@ -2036,6 +2067,8 @@ impl<'db> Diagnostic<'db> {
             TypedDictExtraItemsCannotBe { kind } => format!(
                 r#""extra_items" value cannot be "{kind}[...]""#
             ),
+            TypedDictCannotCombineClosedAndExtraItems =>
+                "Cannot combine closed=True and extra_items".to_string(),
             TypedDictExtraItemsNonReadOnlyChangeDisallowed =>
                 r#"Cannot change "extra_items" type unless it is "ReadOnly" in the superclass"#.to_string(),
             TypedDictExtraItemsIncompatibleTypes { in_super_class, in_sub_class } => format!(
@@ -2081,7 +2114,7 @@ impl<'db> Diagnostic<'db> {
                 "Overloaded function implementation cannot produce return type of signature {signature_index}"
             ),
             OverloadImplementationParamsNotBroadEnough{signature_index} => format!(
-                "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
+                "Overloaded function implementation does not accept all possible parameters of signature {signature_index}"
             ),
             OverloadInconsistentKind { kind } => format!(
                 "Overload does not consistently use the \"@{kind}\" decorator on all function signatures.",
@@ -2352,8 +2385,13 @@ impl std::fmt::Debug for Diagnostic<'_> {
     }
 }
 
-#[derive(Default, Clone)]
-pub(crate) struct Diagnostics(InsertOnlyVec<Issue>);
+#[derive(Default)]
+pub(crate) struct Diagnostics {
+    issues: InsertOnlyVec<Issue>,
+    // Issues can be finished once the whole file is checked to avoid some completion/goto add
+    // issues, especially when checking code that should not be checked in Mypy.
+    diagnostics_are_complete: AtomicBool,
+}
 
 impl Diagnostics {
     pub fn add_if_not_ignored(
@@ -2361,32 +2399,40 @@ impl Diagnostics {
         issue: Issue,
         maybe_ignored: Option<TypeIgnoreComment>,
     ) -> Result<&Issue, Issue> {
-        let (is_ignored, add_not_covered_note) =
+        let (is_ignored, add_not_covered_note, in_brackets) =
             self.is_ignored_and_return_non_covered_error_code(&issue.kind, maybe_ignored);
         if is_ignored {
             return Err(issue);
         }
         let from_name_binder = issue.from_name_binder;
-        let result = self.add(issue);
+        self.add_with_result(issue)?;
+        let last = self.issues.last().unwrap();
         if let Some(s) = add_not_covered_note {
-            self.0.push(Box::pin(Issue::from_start_stop(
-                result.start_position,
-                result.end_position,
+            let rest = if in_brackets.is_empty() {
+                "".into()
+            } else {
+                format!("[{}]", in_brackets.trim())
+            };
+            self.issues.push(Box::pin(Issue::from_start_stop(
+                last.start_position,
+                last.end_position,
                 IssueKind::Note(
-                    format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
+                    format!(r#"Error code "{s}" not covered by "type: ignore{rest}" comment"#)
+                        .into(),
                 ),
                 from_name_binder,
             )));
         }
-        Ok(result)
+        Ok(last)
     }
 
-    pub fn is_ignored_and_return_non_covered_error_code(
+    pub fn is_ignored_and_return_non_covered_error_code<'type_ignore>(
         &self,
         issue: &IssueKind,
-        maybe_ignored: Option<TypeIgnoreComment>,
-    ) -> (bool, Option<&'static str>) {
+        maybe_ignored: Option<TypeIgnoreComment<'type_ignore>>,
+    ) -> (bool, Option<&'static str>, &'type_ignore str) {
         let mut add_not_covered_note = None;
+        let mut in_brackets = "";
         if let Some(specific) = maybe_ignored {
             if let TypeIgnoreComment::WithCodes {
                 codes,
@@ -2394,6 +2440,7 @@ impl Diagnostics {
                 ..
             } = specific
             {
+                in_brackets = codes;
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.mypy_error_code();
                 let super_ = issue.mypy_error_supercode();
@@ -2406,28 +2453,54 @@ impl Diagnostics {
                         e == Some(code) || super_ == Some(code) || e.is_none()
                     })
                 {
-                    return (true, None);
+                    return (true, None, in_brackets);
                 } else if e.is_some() {
                     add_not_covered_note = e;
                 }
             } else {
-                return (true, None);
+                return (true, None, in_brackets);
             }
         }
-        (false, add_not_covered_note)
+        (false, add_not_covered_note, in_brackets)
     }
 
-    pub fn add(&self, issue: Issue) -> &Issue {
-        self.0.push(Box::pin(issue));
-        self.0.last().unwrap()
+    pub fn add(&self, issue: Issue) {
+        let _ = self.add_with_result(issue);
+    }
+
+    pub fn add_with_result(&self, issue: Issue) -> Result<(), Issue> {
+        if self.diagnostics_are_complete.load(Ordering::Relaxed) {
+            Err(issue)
+        } else {
+            self.issues.push(Box::pin(issue));
+            Ok(())
+        }
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
-        unsafe { self.0.iter() }
+        unsafe { self.issues.iter() }
     }
 
     pub fn invalidate_non_name_binder_issues(&mut self) {
-        self.0.as_vec_mut().retain(|issue| issue.from_name_binder)
+        self.diagnostics_are_complete.store(false, Ordering::SeqCst);
+        self.issues
+            .as_vec_mut()
+            .retain(|issue| issue.from_name_binder)
+    }
+
+    pub fn set_complete_diagnostics(&self) {
+        self.diagnostics_are_complete.store(true, Ordering::SeqCst);
+    }
+}
+
+impl Clone for Diagnostics {
+    fn clone(&self) -> Self {
+        Self {
+            issues: self.issues.clone(),
+            diagnostics_are_complete: AtomicBool::new(
+                self.diagnostics_are_complete.load(Ordering::SeqCst).clone(),
+            ),
+        }
     }
 }
 

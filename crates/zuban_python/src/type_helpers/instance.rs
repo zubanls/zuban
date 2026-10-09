@@ -18,8 +18,8 @@ use crate::{
     node_ref::NodeRef,
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableLike, CallableParams, FunctionKind, IterInfos, LookupResult,
-        PropertySetterType, Type, TypeVarKind,
+        AnyCause, CallableLike, CallableParams, DbString, FunctionKind, IterInfos, Literal,
+        LiteralKind, LookupResult, PropertySetterType, Type, TypeVarKind,
     },
 };
 
@@ -68,7 +68,7 @@ impl<'a> Instance<'a> {
         }
         let check_compatible = |t: &Type, value: &_| {
             let mut had_errors = false;
-            t.error_if_not_matches(
+            t.error_if_not_assignable(
                 i_s,
                 value,
                 |issue| from.add_issue(i_s, issue),
@@ -416,8 +416,8 @@ impl<'a> Instance<'a> {
                 if let TypeOrClass::Class(c) = class
                     && let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                 {
-                    let i_s = i_s.with_class_context(&c);
-                    let inference = c.node_ref.file.inference(&i_s);
+                    let new_i_s = i_s.with_class_context(&c);
+                    let inference = c.node_ref.file.inference(&new_i_s);
                     let maybe_found = match inference.self_lookup_with_flow_analysis(
                         c,
                         self_symbol,
@@ -425,7 +425,11 @@ impl<'a> Instance<'a> {
                     ) {
                         Ok(maybe_found) => maybe_found,
                         Err(func) => {
-                            if func.is_typed() {
+                            // We only want to report that we cannot determine the type in typed
+                            // contexts. Otherwise Any are excepted anyways.
+                            if func.is_typed()
+                                && i_s.current_function().is_none_or(|f| f.is_typed())
+                            {
                                 (options.add_issue)(IssueKind::CannotDetermineType {
                                     for_: name.into(),
                                 });
@@ -434,7 +438,7 @@ impl<'a> Instance<'a> {
                         }
                     };
                     if let Some(inf) = maybe_found {
-                        if inf.maybe_saved_specific(i_s.db)
+                        if inf.maybe_saved_specific(new_i_s.db)
                             == Some(Specific::AnnotationOrTypeCommentFinal)
                         {
                             attr_kind = AttributeKind::Final
@@ -444,7 +448,7 @@ impl<'a> Instance<'a> {
                             attr_kind,
                             lookup: LookupResult::GotoName {
                                 name: PointLink::new(c.node_ref.file.file_index, self_symbol),
-                                inf: inf.resolve_class_type_vars(&i_s, &self.class, &c),
+                                inf: inf.resolve_class_type_vars(&new_i_s, &self.class, &c),
                             },
                             mro_index: Some(mro_index),
                         };
@@ -461,12 +465,18 @@ impl<'a> Instance<'a> {
         }
         if options.kind == LookupKind::Normal && options.check_dunder_getattr {
             for method_name in ["__getattr__", "__getattribute__"] {
+                let had_error = Cell::new(false);
                 let l = self.lookup(
                     i_s,
                     method_name,
-                    InstanceLookupOptions::new(&options.add_issue)
-                        .with_kind(LookupKind::OnlyType)
-                        .without_object(),
+                    InstanceLookupOptions::new(&|issue| {
+                        debug!("Unable to execute {method_name}, because of issue: {issue:?}");
+                        had_error.set(true);
+                        false
+                    })
+                    .with_kind(LookupKind::OnlyType)
+                    .with_maybe_as_self_instance(options.as_self_instance)
+                    .without_object(),
                 );
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
@@ -476,37 +486,53 @@ impl<'a> Instance<'a> {
                     let lookup = LookupResult::UnknownName(inf.execute(
                         i_s,
                         &KnownArgsWithCustomAddIssue::new(
-                            &Inferred::new_any(AnyCause::Internal),
+                            &Inferred::from_type(Type::Literal(Literal::new_implicit(
+                                LiteralKind::String(DbString::ArcStr(name.into())),
+                            ))),
                             &|issue| {
-                                (options.add_issue)(issue);
+                                debug!(
+                                    "Was not able to execute {method_name}, because of issue: {issue:?}"
+                                );
+                                had_error.set(true);
                                 true
                             },
                         ),
                     ));
-                    let is_writable = {
-                        let details = self.lookup(
-                            i_s,
-                            "__setattr__",
-                            InstanceLookupOptions::new(&options.add_issue)
-                                .with_kind(LookupKind::OnlyType)
-                                .without_object(),
-                        );
-                        details.lookup.is_some()
-                    };
-                    return LookupDetails {
-                        class: TypeOrClass::Class(self.class),
-                        lookup,
-                        attr_kind: match is_writable {
-                            false => AttributeKind::Property {
-                                setter_type: None,
-                                // This is abstract, because this is not an actual property.
-                                is_abstract: true,
-                                is_final: false,
+                    // If there were errors this is likely something like:
+                    //
+                    //     def __getattr__(self, x: Literal["x"]):
+                    //         if x != "x":
+                    //             raise AttributeError
+                    //          return 1
+                    //
+                    // This is why we simply ignore the errors.
+                    if !had_error.get() {
+                        let is_writable = {
+                            let details = self.lookup(
+                                i_s,
+                                "__setattr__",
+                                InstanceLookupOptions::new(&options.add_issue)
+                                    .with_kind(LookupKind::OnlyType)
+                                    .with_maybe_as_self_instance(options.as_self_instance)
+                                    .without_object(),
+                            );
+                            details.lookup.is_some()
+                        };
+                        return LookupDetails {
+                            class: TypeOrClass::Class(self.class),
+                            lookup,
+                            attr_kind: match is_writable {
+                                false => AttributeKind::Property {
+                                    setter_type: None,
+                                    // This is abstract, because this is not an actual property.
+                                    is_abstract: true,
+                                    is_final: false,
+                                },
+                                true => AttributeKind::Attribute,
                             },
-                            true => AttributeKind::Attribute,
-                        },
-                        mro_index: None,
-                    };
+                            mro_index: None,
+                        };
+                    }
                 }
             }
         }
@@ -795,7 +821,7 @@ fn execute_super_internal<'db>(
             mro_index,
         }))
     };
-    let fallback = |assume_instance| {
+    let fallback = |assume_instance: bool| {
         if let Some(func) = i_s.current_function() {
             if let Some(cls) = func.class {
                 let first_param_kind = func.first_param_kind(i_s);
@@ -809,19 +835,23 @@ fn execute_super_internal<'db>(
                         IssueKind::SuperRequiresOneOrTwoPositionalArgumentsInEnclosingFunction,
                     );
                 };
+                let is_type = match first_param_kind {
+                    FirstParamKind::Self_ => false,
+                    FirstParamKind::ClassOfSelf => !assume_instance,
+                    FirstParamKind::InStaticmethod => unreachable!(),
+                };
                 let t = if let Some(first_annotation) = first_param.annotation(i_s.db) {
+                    if first_annotation.is_any() || first_annotation.is_type_of_any() {
+                        return Ok(Inferred::new_any_from_error());
+                    }
                     first_annotation.into_owned()
                 } else {
-                    match first_param_kind {
-                        FirstParamKind::Self_ => Type::Self_,
-                        FirstParamKind::ClassOfSelf if assume_instance => Type::Self_,
-                        FirstParamKind::ClassOfSelf => Type::Type(Arc::new(Type::Self_)),
-                        FirstParamKind::InStaticmethod => unreachable!(),
+                    if is_type {
+                        Type::Type(Arc::new(Type::Self_))
+                    } else {
+                        Type::Self_
                     }
                 };
-                if t.is_any() || t.is_type_of_any() {
-                    return Ok(Inferred::new_any_from_error());
-                }
                 success(&cls, t, 1)
             } else {
                 Err(IssueKind::SuperUsedOutsideClass)
@@ -889,7 +919,7 @@ fn execute_super_internal<'db>(
                 TypeOrClass::Class(c) => c.node_ref.as_link(),
                 TypeOrClass::Type(t) => match t.as_ref() {
                     Type::Dataclass(d) => d.class.link,
-                    _ => unreachable!(),
+                    _ => continue,
                 },
             };
             if first_class == found_link {
@@ -1150,6 +1180,14 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
+    pub fn with_maybe_as_self_instance(
+        mut self,
+        as_self_instance: Option<&'x dyn Fn() -> Type>,
+    ) -> Self {
+        self.as_self_instance = as_self_instance;
+        self
+    }
+
     pub fn with_as_self_instance(mut self, as_self_instance: &'x dyn Fn() -> Type) -> Self {
         self.as_self_instance = Some(as_self_instance);
         self
@@ -1176,7 +1214,6 @@ impl<'x> InstanceLookupOptions<'x> {
     }
 
     pub fn with_avoid_inferring_return_types(mut self) -> Self {
-        self.disallow_lazy_bound_method = true;
         self.avoid_inferring_return_types = true;
         self
     }

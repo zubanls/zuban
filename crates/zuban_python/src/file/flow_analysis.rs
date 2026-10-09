@@ -2,6 +2,7 @@ use std::{
     borrow::{Borrow, Cow},
     cell::{Cell, OnceCell, Ref, RefCell, RefMut},
     collections::VecDeque,
+    rc::Rc,
     sync::Arc,
 };
 
@@ -22,7 +23,8 @@ use parsa_python_cst::{
 use crate::{
     arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, WidenedType,
+        ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
+        WidenedType,
     },
     debug,
     diagnostics::IssueKind,
@@ -36,16 +38,17 @@ use crate::{
     new_class,
     node_ref::NodeRef,
     recoverable_error,
-    result_context::{CouldBeALiteral, ResultContext},
+    result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbBytes, DbString,
-        Enum, EnumKind, EnumMember, GenericClass, Intersection, Literal, LiteralKind, LookupResult,
-        NamedTuple, NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVar,
-        TypeVarKind, TypedDict, UnionEntry, UnionType, WithUnpack, lookup_on_enum_instance,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
+        ComplexTypeGatherer, DbBytes, DbString, Enum, EnumKind, EnumMember, GenericClass,
+        Intersection, Literal, LiteralKind, LookupResult, NamedTuple, NeverCause, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeGatherer, TypeVar, TypeVarKind, TypedDict,
+        UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
-        LookupDetails, OverloadResult, OverloadedFunction,
+        OverloadResult, OverloadedFunction,
     },
     utils::{EitherIterator, debug_indent},
 };
@@ -63,8 +66,79 @@ type ParentUnions = Vec<(FlowKey, UnionType)>;
 
 const MAX_PRECISE_TUPLE_SIZE: usize = 8; // Constant taken from Mypy
 
+pub const FLOW_ANALYSIS: FlowAnalysisHelper = FlowAnalysisHelper();
 thread_local! {
-    pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
+    static FLOW_ANALYSIS_INNER: RefCell<Rc<FlowAnalysis>> = RefCell::new(Rc::new(FlowAnalysis::default()));
+}
+
+pub struct FlowAnalysisHelper();
+
+impl FlowAnalysisHelper {
+    pub fn with<T>(&self, callback: impl FnOnce(&FlowAnalysis) -> T) -> T {
+        let fa = FLOW_ANALYSIS_INNER.with(|fa| fa.borrow().clone());
+        callback(&fa)
+    }
+
+    fn with_new_empty<T>(&self, db: &Database, callable: impl FnOnce(&FlowAnalysis) -> T) -> T {
+        let FlowAnalysisResult {
+            result,
+            unfinished_partials,
+        } = self.with_new_empty_without_unfinished_partial_checking(callable);
+        process_unfinished_partials(db, unfinished_partials);
+        result
+    }
+
+    pub fn with_new_empty_for_file<T>(
+        &self,
+        db: &Database,
+        file: &PythonFile,
+        callable: impl FnOnce(&FlowAnalysis) -> T,
+    ) -> T {
+        self.with_new_empty(db, |flow_analysis| {
+            debug_assert!(flow_analysis.delayed_diagnostics.borrow().is_empty());
+            *flow_analysis.delayed_diagnostics.borrow_mut() =
+                std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
+            let result = callable(flow_analysis);
+            let mut delayed = flow_analysis.delayed_diagnostics.take();
+            if db.project.flags.local_partial_types {
+                let mut file_delayed = file.delayed_diagnostics.write().unwrap();
+                delayed.extend(file_delayed.drain(..));
+                *file_delayed = delayed;
+            } else {
+                flow_analysis.process_delayed_diagnostics(db, delayed)
+            }
+            result
+        })
+    }
+
+    pub fn with_new_empty_and_delay_further<T>(
+        &self,
+        db: &Database,
+        callable: impl FnOnce() -> T,
+    ) -> T {
+        let (result, delayed) = self.with_new_empty(db, |flow_analysis| {
+            let result = callable();
+            let delayed: VecDeque<_> =
+                std::mem::take(&mut flow_analysis.delayed_diagnostics.borrow_mut());
+            (result, delayed)
+        });
+        self.with(|fa| fa.delayed_diagnostics.borrow_mut().extend(delayed));
+        result
+    }
+
+    pub fn with_new_empty_without_unfinished_partial_checking<T>(
+        &self,
+        callable: impl FnOnce(&FlowAnalysis) -> T,
+    ) -> FlowAnalysisResult<T> {
+        let new = Rc::new(FlowAnalysis::default());
+        let old = FLOW_ANALYSIS_INNER.replace(new.clone());
+        let result = callable(&new);
+        let inner = FLOW_ANALYSIS_INNER.replace(old);
+        return FlowAnalysisResult {
+            result,
+            unfinished_partials: inner.partials_in_module.take(),
+        };
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -342,6 +416,13 @@ impl Frame {
         }
     }
 
+    fn from_type_gatherer_without_entry(t: &TypeGatherer) -> Self {
+        match t.is_empty() {
+            true => Self::new_unreachable(),
+            false => Self::new_conditional(),
+        }
+    }
+
     fn lookup_entry(&self, db: &Database, key: &FlowKey) -> Option<&Entry> {
         self.entries.iter().find(|entry| entry.key.equals(db, key))
     }
@@ -421,90 +502,6 @@ pub(crate) struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_new_empty<T>(&self, db: &Database, callable: impl FnOnce() -> T) -> T {
-        let FlowAnalysisResult {
-            result,
-            unfinished_partials,
-        } = self.with_new_empty_without_unfinished_partial_checking(callable);
-        process_unfinished_partials(db, unfinished_partials);
-        result
-    }
-
-    pub fn with_new_empty_for_file<T>(
-        &self,
-        db: &Database,
-        file: &PythonFile,
-        callable: impl FnOnce() -> T,
-    ) -> T {
-        self.with_new_empty(db, || {
-            debug_assert!(self.delayed_diagnostics.borrow().is_empty());
-            *self.delayed_diagnostics.borrow_mut() =
-                std::mem::take(&mut file.delayed_diagnostics.write().unwrap());
-            let result = callable();
-            let mut delayed = self.delayed_diagnostics.take();
-            if db.project.flags.local_partial_types {
-                let mut file_delayed = file.delayed_diagnostics.write().unwrap();
-                delayed.extend(file_delayed.drain(..));
-                *file_delayed = delayed;
-            } else {
-                self.process_delayed_diagnostics(db, delayed)
-            }
-            result
-        })
-    }
-    pub fn with_new_empty_and_delay_further<T>(
-        &self,
-        db: &Database,
-        callable: impl FnOnce() -> T,
-    ) -> T {
-        let (result, delayed) = self.with_new_empty(db, || {
-            let result = callable();
-            let delayed: VecDeque<_> = std::mem::take(&mut self.delayed_diagnostics.borrow_mut());
-            (result, delayed)
-        });
-        self.delayed_diagnostics.borrow_mut().extend(delayed);
-        result
-    }
-
-    pub fn with_new_empty_without_unfinished_partial_checking<T>(
-        &self,
-        callable: impl FnOnce() -> T,
-    ) -> FlowAnalysisResult<T> {
-        if self.frames.try_borrow_mut().is_err() {
-            // TODO This is completely wrong, but is related to the test
-            // narrowing_with_key_in_different_file and executing narrows
-            return FlowAnalysisResult {
-                result: callable(),
-                unfinished_partials: Default::default(),
-            };
-        }
-        let old_frames = self.frames.take();
-        let try_frames = self.try_frames.take();
-        let loop_details = self.loop_details.take();
-        let delayed = self.delayed_diagnostics.take();
-        let partials = self.partials_in_module.take();
-        let in_type_checking_only_block = self.in_type_checking_only_block.take();
-        let accumulating_types = self.accumulating_types.take();
-        let in_pattern_matching = self.in_pattern_matching.take();
-
-        let result = FlowAnalysisResult {
-            result: callable(),
-            unfinished_partials: self.partials_in_module.take(),
-        };
-        self.debug_assert_is_empty();
-
-        *self.frames.borrow_mut() = old_frames;
-        *self.try_frames.borrow_mut() = try_frames;
-        *self.loop_details.borrow_mut() = loop_details;
-        *self.delayed_diagnostics.borrow_mut() = delayed;
-        *self.partials_in_module.borrow_mut() = partials;
-        self.in_type_checking_only_block
-            .set(in_type_checking_only_block);
-        self.accumulating_types.set(accumulating_types);
-        self.in_pattern_matching.set(in_pattern_matching);
-        result
-    }
-
     pub(crate) fn add_delayed_func_with_reused_narrowings_for_nested_function(
         &self,
         func_node_ref: FuncNodeRef,
@@ -547,17 +544,6 @@ impl FlowAnalysis {
                 in_type_checking_only_block: self.in_type_checking_only_block.get(),
                 reused_narrowings,
             }))
-    }
-
-    pub fn debug_assert_is_empty(&self) {
-        debug_assert!(self.frames.borrow().is_empty());
-        debug_assert!(self.try_frames.borrow().is_empty());
-        debug_assert!(self.loop_details.borrow().is_none());
-        debug_assert!(self.delayed_diagnostics.borrow().is_empty());
-        debug_assert!(self.partials_in_module.borrow().is_empty());
-        debug_assert!(!self.in_type_checking_only_block.get());
-        debug_assert!(!self.in_type_checking_only_block.get());
-        debug_assert_eq!(self.in_pattern_matching.get(), 0);
     }
 
     fn lookup_narrowed_key_and_deleted(
@@ -608,7 +594,8 @@ impl FlowAnalysis {
     #[inline]
     fn maybe_tos_frame(&self) -> Option<RefMut<'_, Frame>> {
         // tos = top of the stack
-        let frames = self.frames.borrow_mut();
+        // TODO We should be able to borrow frames all the time.
+        let frames = self.frames.try_borrow_mut().ok()?;
         (!frames.is_empty()).then(|| RefMut::map(frames, |frames| frames.last_mut().unwrap()))
     }
 
@@ -777,25 +764,24 @@ impl FlowAnalysis {
         i_s: &InferenceState,
         search_for: &Entry,
     ) -> Entry {
-        self.frames
-            .borrow()
-            .iter()
-            .rev()
-            .find_map(|frame| {
-                frame.entries.iter().find_map(|e| {
-                    if e.key.equals(i_s.db, &search_for.key) {
-                        return Some(e.union_of_refs(i_s, search_for));
-                    }
-                    None
-                })
-            })
+        // We have to use a separate way of borrowing frames and create a union, because that might
+        // need mutable access to frames again.
+        let found = self.frames.borrow().iter().rev().find_map(|frame| {
+            frame
+                .entries
+                .iter()
+                .find_map(|e| e.key.equals(i_s.db, &search_for.key).then(|| e.clone()))
+        });
+        if let Some(mut found) = found {
+            found.union(i_s, search_for, false);
+            found
+        } else {
             // The fallback just assigns an "empty" key. This is needed, because otherwise we would
             // not be able to know if the entry invalidated entries further up the stack.
-            .unwrap_or_else(|| {
-                search_for.with_declaration(
-                    i_s.flags().allow_redefinition || self.in_pattern_matching.get() > 0,
-                )
-            })
+            search_for.with_declaration(
+                i_s.flags().allow_redefinition || self.in_pattern_matching.get() > 0,
+            )
+        }
     }
 
     fn remove_key(&self, i_s: &InferenceState, key: &FlowKey) {
@@ -1040,19 +1026,10 @@ impl FlowAnalysis {
                             .map(|c| Class::with_self_generics(db, ClassNodeRef::from_link(db, c))),
                     );
                     let run = || {
-                        let i_s = if let Some(cls) = &func.class {
-                            InferenceState::from_class(db, cls)
-                        } else {
-                            InferenceState::new(db, func.node_ref.file)
-                        };
                         self.with_frame(
                             Frame::new(FrameKind::BaseScope, delayed_func.reused_narrowings),
                             || {
-                                let result = func
-                                    .node_ref
-                                    .file
-                                    .inference(&i_s)
-                                    .ensure_func_diagnostics(func);
+                                let result = func.ensure_func_diagnostics(db);
                                 debug_assert!(result.is_ok());
                             },
                         );
@@ -1208,7 +1185,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
                 } else if let Some(t) = x_entry.common_sub_type(i_s, &y_entry) {
                     x_entry.type_ = t
                 } else {
-                    x_entry.type_ = EntryKind::Type(Type::Never(NeverCause::Other));
+                    x_entry.type_ = EntryKind::Type(Type::NEVER);
                     x.unreachable = true;
                 }
                 continue 'outer;
@@ -1249,10 +1226,9 @@ fn split_off_enum_member(
     of_type: &Type,
     enum_member: &EnumMember,
     abort_on_custom_eq: bool,
-) -> Option<(Type, Type)> {
-    let mut truthy = Type::Never(NeverCause::Other);
-    let mut falsey = Type::Never(NeverCause::Other);
-    let mut add = |t| falsey.union_in_place(t);
+) -> Option<(Type, TypeGatherer)> {
+    let mut truthy = Type::NEVER;
+    let mut falsey = TypeGatherer::default();
     let mut set_truthy = || truthy = Type::EnumMember(enum_member.clone());
 
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
@@ -1263,7 +1239,6 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                add(sub_t.clone());
             }
             Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
                 if abort_on_custom_eq {
@@ -1271,7 +1246,6 @@ fn split_off_enum_member(
                 }
                 // Add it to both sides
                 set_truthy();
-                add(sub_t.clone());
             }
             Type::EnumMember(m) => {
                 if enum_member.is_same_member(m) {
@@ -1293,13 +1267,13 @@ fn split_off_enum_member(
                                 })
                             });
                     if is_flag {
-                        add(sub_t.clone())
+                        falsey.add(sub_t.clone())
                     }
                     for new_member in Enum::implicit_members(e2) {
                         if new_member.member_index == enum_member.member_index {
                             set_truthy();
                         } else if !is_flag {
-                            add(Type::EnumMember(new_member))
+                            falsey.add(Type::EnumMember(new_member))
                         }
                     }
                     continue;
@@ -1318,7 +1292,7 @@ fn split_off_enum_member(
                         abort_on_custom_eq,
                     )?;
                     set_truthy();
-                    add(f);
+                    falsey.extend(f);
                     continue;
                 }
                 let is_class = |link| match sub_t {
@@ -1352,7 +1326,7 @@ fn split_off_enum_member(
                 return None;
             }
         }
-        add(sub_t.clone())
+        falsey.add(sub_t.clone())
     }
     Some((truthy, falsey))
 }
@@ -1362,26 +1336,24 @@ fn split_off_singleton(
     of_type: &Type,
     singleton: &Type,
     is_eq: bool,
-) -> (Type, Type) {
-    let mut truthy = Type::Never(NeverCause::Other);
-    let mut falsey = Type::Never(NeverCause::Other);
-    let mut add = |t| falsey.union_in_place(t);
-
+) -> (TypeGatherer, TypeGatherer) {
+    let mut truthy = TypeGatherer::default();
+    let mut falsey = TypeGatherer::default();
     for sub_t in of_type.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
             Type::Any(_) | Type::TypeVar(_) => {
                 // Any can be None or something else.
                 if is_eq {
-                    truthy.union_in_place(sub_t.clone());
+                    truthy.add(sub_t.clone());
                 } else {
-                    truthy.union_in_place(singleton.clone());
+                    truthy.add(singleton.clone());
                 }
-                add(sub_t.clone());
+                falsey.add(sub_t.clone());
             }
             Type::Class(c) if c.link == i_s.db.python_state.object_link() => {
                 // TODO shouldn't this have the same way of narrowing as Type::Any()?
-                truthy.union_in_place(singleton.clone());
-                add(sub_t.clone());
+                truthy.add(singleton.clone());
+                falsey.add(sub_t.clone());
             }
             Type::Literal(literal1) => match singleton {
                 Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
@@ -1390,34 +1362,39 @@ fn split_off_singleton(
                         new_literal.implicit = false;
                         Type::Literal(new_literal)
                     };
-                    truthy.union_in_place(true_literal());
+                    truthy.add(true_literal());
                 }
-                _ => add(sub_t.clone()),
+                _ => falsey.add(sub_t.clone()),
             },
-            _ if singleton == sub_t => truthy.union_in_place(singleton.clone()),
+            Type::NewType(new_type) if is_eq => {
+                let (_, f) = split_off_singleton(i_s, &new_type.type_, singleton, is_eq);
+                truthy.add(sub_t.clone());
+                falsey.extend(f);
+            }
+            _ if singleton == sub_t => truthy.add(singleton.clone()),
             _ => {
                 if let Type::Literal(literal2) = singleton {
                     if let Some((tr, fa)) =
                         maybe_split_bool_from_literal(i_s.db, sub_t, &literal2.kind)
                     {
-                        truthy.union_in_place(tr);
-                        add(fa);
+                        truthy.add(tr);
+                        falsey.add(fa);
                         continue;
                     }
                     if has_custom_eq(i_s, sub_t) {
-                        truthy.union_in_place(sub_t.clone());
-                        add(sub_t.clone());
+                        truthy.add(sub_t.clone());
+                        falsey.add(sub_t.clone());
                         continue;
                     }
                     if sub_t.is_simple_super_type_of(i_s, singleton).bool() {
-                        truthy.union_in_place(singleton.clone())
+                        truthy.add(singleton.clone())
                     } else if let Type::Enum(e) = sub_t
                         && matches!(e.kind(i_s), EnumKind::IntEnum | EnumKind::StrEnum)
                     {
-                        truthy.union_in_place(sub_t.clone());
+                        truthy.add(sub_t.clone());
                     }
                 }
-                add(sub_t.clone())
+                falsey.add(sub_t.clone())
             }
         }
     }
@@ -1434,8 +1411,8 @@ fn narrow_is_or_eq(
     let split_singleton = |key: FlowKey| {
         let (truthy, falsey) = split_off_singleton(i_s, checking_t, other_t, is_eq);
         (
-            Frame::from_type(key.clone(), truthy),
-            Frame::from_type(key, falsey),
+            Frame::from_type(key.clone(), truthy.into_type()),
+            Frame::from_type(key, falsey.into_type()),
         )
     };
 
@@ -1453,7 +1430,10 @@ fn narrow_is_or_eq(
         }
         Type::None => {
             let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq);
-            Some((Frame::new_conditional(), Frame::from_type(key, falsey)))
+            Some((
+                Frame::new_conditional(),
+                Frame::from_type(key, falsey.into_type()),
+            ))
         }
         Type::EnumMember(member) if member.implicit => {
             let mut new_member = member.clone();
@@ -1464,7 +1444,7 @@ fn narrow_is_or_eq(
             let (truthy, falsey) = split_off_enum_member(i_s, checking_t, member, is_eq)?;
             let result = (
                 Frame::from_type(key.clone(), truthy),
-                Frame::from_type(key, falsey),
+                Frame::from_type(key, falsey.into_type()),
             );
             Some(result)
         }
@@ -1481,16 +1461,15 @@ fn narrow_is_or_eq(
         // Mypy does only want to narrow if there are explicit literals on one side. See also
         // comments around testNarrowingEqualityFlipFlop.
         Type::Literal(literal1)
-            if is_eq
-                && (!literal1.implicit
-                    || key.is_simple_name() && !i_s.db.mypy_compatible()
-                    || has_explicit_literal(i_s.db, checking_t))
-                || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
+            if !is_eq
+                || !literal1.implicit
+                || key.is_simple_name() && !i_s.db.mypy_compatible()
+                || has_explicit_literal(i_s.db, checking_t) =>
         {
             let (true_type, false_type) = split_off_singleton(i_s, checking_t, other_t, is_eq);
             Some((
-                Frame::from_type(key.clone(), true_type),
-                Frame::from_type(key, false_type),
+                Frame::from_type(key.clone(), true_type.into_type()),
+                Frame::from_type(key, false_type.into_type()),
             ))
         }
         /* Originally enabled in 566ee94f6, but had issues...
@@ -1502,6 +1481,7 @@ fn narrow_is_or_eq(
         Type::Class(c) if c.link == i_s.db.python_state.ellipsis_link() => {
             Some(split_singleton(key))
         }
+        Type::Sentinel(_) => Some(split_singleton(key)),
         _ => match checking_t {
             Type::Union(_) => {
                 // Remove None from the checking side, if the other side matches everything except None.
@@ -1510,6 +1490,7 @@ fn narrow_is_or_eq(
                     .any(|t| matches!(t, Type::None))
                 {
                     let (_, falsey) = split_off_singleton(i_s, checking_t, &Type::None, is_eq);
+                    let falsey = falsey.into_type();
                     if falsey.is_simple_sub_type_of(i_s, other_t).bool()
                         || falsey.is_simple_super_type_of(i_s, other_t).bool()
                     {
@@ -1540,7 +1521,10 @@ fn maybe_split_bool_from_literal(
     None
 }
 
-fn split_truthy_and_falsey(i_s: &InferenceState, inf: &TruthyInferred) -> Option<(Type, Type)> {
+fn split_truthy_and_falsey(
+    i_s: &InferenceState,
+    inf: &TruthyInferred,
+) -> Option<(TypeGatherer, TypeGatherer)> {
     if inf.has_partial_container(i_s.db) {
         None // Do not narrow here for now. The truthy side could be narrowed to Never.
     } else {
@@ -1552,21 +1536,21 @@ fn split_truthy_and_falsey(i_s: &InferenceState, inf: &TruthyInferred) -> Option
             TruthyInferred::Simple {
                 inf,
                 truthiness: Some(true),
-            } => Some((inf.as_type(i_s), Type::Never(NeverCause::Other))),
+            } => Some((inf.as_type(i_s).into(), Default::default())),
             TruthyInferred::Simple {
                 inf,
                 truthiness: Some(false),
-            } => Some((Type::Never(NeverCause::Other), inf.as_type(i_s))),
+            } => Some((Default::default(), inf.as_type(i_s).into())),
             TruthyInferred::Union(infs) => {
-                let mut truthy = Type::Never(NeverCause::Other);
-                let mut falsey = Type::Never(NeverCause::Other);
+                let mut truthy = TypeGatherer::default();
+                let mut falsey = TypeGatherer::default();
                 for inf in infs {
                     if let Some((t, f)) = split_truthy_and_falsey(i_s, inf) {
-                        truthy.union_in_place(t);
-                        falsey.union_in_place(f);
+                        truthy.extend(t);
+                        falsey.extend(f);
                     } else {
-                        truthy.union_in_place(inf.as_cow_type(i_s).into_owned());
-                        falsey.union_in_place(inf.as_cow_type(i_s).into_owned());
+                        truthy.add(inf.as_cow_type(i_s).into_owned());
+                        falsey.add(inf.as_cow_type(i_s).into_owned());
                     }
                 }
                 Some((truthy, falsey))
@@ -1575,13 +1559,16 @@ fn split_truthy_and_falsey(i_s: &InferenceState, inf: &TruthyInferred) -> Option
     }
 }
 
-fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
+fn split_truthy_and_falsey_t(
+    i_s: &InferenceState,
+    t: &Type,
+) -> Option<(TypeGatherer, TypeGatherer)> {
     let split_truthy_and_falsey_single = |t: &Type| {
         let check = |condition| {
             if condition {
-                Some((t.clone(), Type::Never(NeverCause::Other)))
+                Some((t.clone().into(), Default::default()))
             } else {
-                Some((Type::Never(NeverCause::Other), t.clone()))
+                Some((Default::default(), t.clone().into()))
             }
         };
         let check_literal = |literal: &Literal| match &literal.kind {
@@ -1589,29 +1576,39 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
             LiteralKind::Int(i) => check(*i != 0.into()),
             _ => None,
         };
-        let narrow_by_return_literal = |l: LookupDetails| {
-            let inf = l.lookup.into_maybe_inferred()?;
-            Some(match inf.as_cow_type(i_s).maybe_callable(i_s)? {
-                CallableLike::Callable(c) => match &c.return_type {
-                    Type::Literal(literal) => check_literal(literal),
+
+        let check_class = |class: Class| {
+            let narrow_class_by_return_literal = |name| {
+                let l = match t {
+                    Type::EnumMember(e) => lookup_on_enum_instance(i_s, &|_| false, &e.enum_, name),
+                    Type::Enum(e) => lookup_on_enum_instance(i_s, &|_| false, e, name),
+                    _ => class.lookup(i_s, name, ClassLookupOptions::new(&|_| false)),
+                };
+                let inf = l.lookup.into_maybe_inferred()?;
+                Some(match inf.as_cow_type(i_s).maybe_callable(i_s)? {
+                    CallableLike::Callable(c) => match &c.return_type {
+                        Type::Literal(literal) => check_literal(literal),
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
-            })
+                })
+            };
+
+            if let Some(maybe_specific_bool) = narrow_class_by_return_literal("__bool__") {
+                maybe_specific_bool
+            } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
+                check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
+            } else if let Some(maybe_specific_len) = narrow_class_by_return_literal("__len__") {
+                maybe_specific_len
+            } else if t.is_final(i_s.db) {
+                Some((t.clone().into(), TypeGatherer::default()))
+            } else {
+                None
+            }
         };
 
-        let check_enum = |enum_| {
-            // By default bool(<Some Enum Member>) is True, but __bool__/__len__ can change that.
-            let check_dunder = |name| {
-                let l = lookup_on_enum_instance(i_s, &|_| false, enum_, name);
-                narrow_by_return_literal(l)
-            };
-            check_dunder("__bool__")
-                .or_else(|| check_dunder("__len__"))
-                .unwrap_or_else(|| Some((t.clone(), Type::Never(NeverCause::Other))))
-        };
         match t {
-            Type::None => Some((Type::Never(NeverCause::Other), Type::None)),
+            Type::None => Some((Default::default(), Type::None.into())),
             Type::Literal(literal) => check_literal(literal),
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::ArbitraryLen(t) => Some((
@@ -1619,54 +1616,41 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
                         before: Arc::new([(**t).clone()]),
                         unpack: TupleUnpack::ArbitraryLen((**t).clone()),
                         after: Arc::new([]),
-                    }))),
-                    Type::Tuple(Tuple::new_fixed_length(Arc::new([]))),
+                    })))
+                    .into(),
+                    Type::Tuple(Tuple::new_fixed_length(Arc::new([]))).into(),
                 )),
                 _ => None,
             },
             Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
+                .map(|(t, f)| (t.into(), f.into()))
                 .or_else(|| {
-                    let class = c.class(i_s.db);
-                    let narrow_class_by_return_literal = |name| {
-                        let l = class.lookup(i_s, name, ClassLookupOptions::new(&|_| false));
-                        narrow_by_return_literal(l)
-                    };
-
                     if c.link == i_s.db.python_state.int_link() {
                         Some((
-                            t.clone(),
-                            Type::Literal(Literal::new(LiteralKind::Int(0.into()))),
+                            t.clone().into(),
+                            Type::Literal(Literal::new(LiteralKind::Int(0.into()))).into(),
                         ))
                     } else if c.link == i_s.db.python_state.str_link() {
                         Some((
-                            t.clone(),
-                            Type::Literal(Literal::new(LiteralKind::String(DbString::Static("")))),
+                            t.clone().into(),
+                            Type::Literal(Literal::new(LiteralKind::String(DbString::Static(""))))
+                                .into(),
                         ))
                     } else if c.link == i_s.db.python_state.bytes_link() {
                         Some((
-                            t.clone(),
-                            Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Static(b"")))),
+                            t.clone().into(),
+                            Type::Literal(Literal::new(LiteralKind::Bytes(DbBytes::Static(b""))))
+                                .into(),
                         ))
-                    } else if let Some(maybe_specific_bool) =
-                        narrow_class_by_return_literal("__bool__")
-                    {
-                        maybe_specific_bool
-                    } else if let Some(nt) = class.maybe_named_tuple_base(i_s.db) {
-                        check_literal(&Literal::new(LiteralKind::Int(nt.params().len().into())))
-                    } else if let Some(maybe_specific_len) =
-                        narrow_class_by_return_literal("__len__")
-                    {
-                        maybe_specific_len
-                    } else if class.use_cached_class_infos(i_s.db).is_final {
-                        Some((t.clone(), Type::Never(NeverCause::Other)))
                     } else {
-                        None
+                        check_class(c.class(i_s.db))
                     }
                 }),
-            Type::EnumMember(member) => check_enum(&member.enum_),
-            Type::Enum(enum_) => check_enum(enum_),
+            Type::Dataclass(c) => check_class(c.class(i_s.db)),
+            Type::EnumMember(member) => check_class(member.enum_.class(i_s.db)),
+            Type::Enum(enum_) => check_class(enum_.class(i_s.db)),
             Type::TypedDict(td) if td.has_required_members(i_s.db) => {
-                Some((t.clone(), Type::NEVER))
+                Some((t.clone().into(), Default::default()))
             }
             _ => None,
         }
@@ -1674,19 +1658,23 @@ fn split_truthy_and_falsey_t(i_s: &InferenceState, t: &Type) -> Option<(Type, Ty
 
     match t {
         Type::Union(union) => {
-            let mut truthy = Type::Never(NeverCause::Other);
-            let mut falsey = Type::Never(NeverCause::Other);
+            let mut truthy = TypeGatherer::default();
+            let mut falsey = TypeGatherer::default();
             let mut had_split = false;
             for t in union.iter() {
                 let result = split_truthy_and_falsey_t(i_s, t);
                 had_split |= result.is_some();
-                let (new_true, new_false) = result.unwrap_or_else(|| (t.clone(), t.clone()));
-                truthy.union_in_place(new_true);
-                falsey.union_in_place(new_false);
+                if let Some((new_true, new_false)) = result {
+                    truthy.extend(new_true);
+                    falsey.extend(new_false);
+                } else {
+                    truthy.add(t.clone());
+                    falsey.add(t.clone());
+                }
             }
             had_split.then_some((truthy, falsey))
         }
-        Type::Never(cause) => Some((Type::Never(*cause), Type::Never(*cause))),
+        Type::Never(_) => Some((Default::default(), Default::default())),
         _ => split_truthy_and_falsey_single(t),
     }
 }
@@ -1706,14 +1694,10 @@ impl<'file> Inference<'_, 'file, '_> {
 
     pub fn in_conditional(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| {
-            let frames = fa.frames.borrow();
-            let Some(last) = frames.last() else {
-                //recoverable_error!("in_conditional should not have empty frames");
-                // TODO This should probably not happen, because we are not sure if we are in a
-                // conditional
-                return false;
-            };
-            matches!(last.kind, FrameKind::Conditional)
+            // TODO The tos should probably always be available, because we are not sure if we are
+            // in a conditional
+            fa.maybe_tos_frame()
+                .is_some_and(|tos| matches!(tos.kind, FrameKind::Conditional))
         })
     }
 
@@ -2000,11 +1984,13 @@ impl<'file> Inference<'_, 'file, '_> {
                     }
                     let inference = self.file.inference(i_s);
                     inference.ensure_cached_annotation(annotation, right_side.is_some());
-                    if !matches!(
-                        self.file.points.get(annotation.index()).specific(),
-                        Specific::AnnotationOrTypeCommentClassVar
-                            | Specific::AnnotationOrTypeCommentFinal
-                    ) {
+                    if self
+                        .file
+                        .points
+                        .get(annotation.index())
+                        .specific()
+                        .is_guaranteed_complete_annotation_or_type_comment()
+                    {
                         return Ok(Some(inference.use_cached_annotation(annotation)));
                     }
                 }
@@ -2023,10 +2009,8 @@ impl<'file> Inference<'_, 'file, '_> {
             if !recheck_if_on_actual_self() {
                 return Ok(None);
             }
-            let result = FLOW_ANALYSIS.with(|fa| {
-                // The class should have self generics within the functions
-                self.ensure_func_diagnostics_for_self_attribute(fa, func)
-            });
+            // The class should have self generics within the functions
+            let result = self.ensure_func_diagnostics_for_self_attribute(func);
             if result.is_err() {
                 // It is possible that the self variable is defined in a super class and we are
                 // accessing it before definition in the current class, so use the one from the
@@ -2056,11 +2040,7 @@ impl<'file> Inference<'_, 'file, '_> {
         ))
     }
 
-    fn ensure_func_diagnostics_for_self_attribute(
-        &self,
-        fa: &FlowAnalysis,
-        function: Function,
-    ) -> Result<(), ()> {
+    fn ensure_func_diagnostics_for_self_attribute(&self, function: Function) -> Result<(), ()> {
         let mut function = function; // lifetime issues?!
         if let Some(class) = function.class.as_mut() {
             let result = class.ensure_calculated_diagnostics_for_class(self.i_s.db);
@@ -2074,7 +2054,9 @@ impl<'file> Inference<'_, 'file, '_> {
             result?
         }
 
-        fa.with_new_empty_and_delay_further(self.i_s.db, || self.ensure_func_diagnostics(function))
+        FLOW_ANALYSIS.with_new_empty_and_delay_further(self.i_s.db, || {
+            function.ensure_body_diagnostics(self.i_s.db)
+        })
     }
 
     pub fn flow_analysis_for_ternary(
@@ -2118,9 +2100,12 @@ impl<'file> Inference<'_, 'file, '_> {
                         // Mypy passes the context without literals here.
                         self.infer_expression_with_context(
                             else_,
-                            &mut ResultContext::new_known(
-                                &if_inf.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
-                            ),
+                            &mut ResultContext::Known {
+                                type_: &if_inf
+                                    .as_type(self.i_s)
+                                    .avoid_implicit_literal(self.i_s.db),
+                                origin: ResultContextOrigin::OtherSideOfTernary,
+                            },
                         )
                     } else {
                         self.infer_expression_with_context(else_, result_context)
@@ -2135,11 +2120,12 @@ impl<'file> Inference<'_, 'file, '_> {
                             // Mypy passes the context without literals here.
                             self.infer_expression_part_with_context(
                                 if_,
-                                &mut ResultContext::new_known(
-                                    &else_inf
+                                &mut ResultContext::Known {
+                                    type_: &else_inf
                                         .as_type(self.i_s)
                                         .avoid_implicit_literal(self.i_s.db),
-                                ),
+                                    origin: ResultContextOrigin::OtherSideOfTernary,
+                                },
                             )
                         } else {
                             self.infer_expression_part_with_context(if_, result_context)
@@ -2265,28 +2251,30 @@ impl<'file> Inference<'_, 'file, '_> {
         let Some(if_block) = if_blocks.next() else {
             return;
         };
-        let name_binder_check = self
-            .point(if_block.first_leaf_index())
-            .maybe_calculated_and_specific();
-        if name_binder_check == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
-            return self.process_ifs(if_blocks, class, func);
-        }
 
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-                match name_binder_check {
+                match self
+                    .point(if_block.first_leaf_index())
+                    .maybe_calculated_and_specific()
+                {
                     Some(Specific::IfBranchAlwaysReachableInTypeCheckingBlock) => {
                         FLOW_ANALYSIS.with(|fa| {
                             fa.with_in_type_checking_only_block(|| {
                                 self.calc_block_diagnostics(block, class, func);
                             })
                         });
-                        self.process_ifs(if_blocks, class, func)
                     }
                     Some(Specific::IfBranchAlwaysReachableInNameBinder) => {
                         self.calc_block_diagnostics(block, class, func);
-                        self.process_ifs(if_blocks, class, func)
+                        FLOW_ANALYSIS.with(|fa| {
+                            if let Some(mut tos) = fa.maybe_tos_frame() {
+                                // Since the other branches might be reachable on other operating
+                                // systems/Python versions we just say
+                                tos.reported_unreachable = true;
+                            }
+                        });
                     }
                     Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
                         self.process_ifs(if_blocks, class, func)
@@ -2816,7 +2804,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let (case_pattern, guard, block) = case_block.unpack();
         FLOW_ANALYSIS.with(|fa| {
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() + 1);
-            let (mut truthy_frame, mut frames) = fa
+            let (mut truthy_frame, mut pattern_result) = fa
                 .with_frame_and_result(Frame::new_conditional(), || {
                     self.find_guards_in_case_pattern(subject.clone(), subject_key, case_pattern)
                 });
@@ -2824,7 +2812,7 @@ impl<'file> Inference<'_, 'file, '_> {
             // calculated in normal ways
             fa.in_pattern_matching.set(fa.in_pattern_matching.get() - 1);
 
-            let falsey_t = frames.falsey_t.as_cow_type(self.i_s);
+            let falsey_t = pattern_result.falsey_t.as_cow_type(self.i_s);
             let mut falsey_frame = if let Some(SubjectKey::Expr { key, .. }) = subject_key {
                 Frame::from_type(key.clone(), falsey_t.into_owned())
             } else {
@@ -2833,7 +2821,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.narrow_subject(
                 subject_key,
                 &mut truthy_frame,
-                frames.truthy_t.as_cow_type(self.i_s),
+                pattern_result.truthy_t.as_cow_type(self.i_s),
             );
 
             if let Some(guard) = guard {
@@ -2852,7 +2840,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key)
                         && let EntryKind::Type(t) = &found.type_
                     {
-                        frames.falsey_t = Inferred::from_type(t.clone());
+                        pattern_result.falsey_t = Inferred::from_type(t.clone());
                         input_for_next_case_should_be_rewritten = false;
                     }
                     if let Some(found) = guard_truthy.lookup_entry(self.i_s.db, &key)
@@ -2867,12 +2855,12 @@ impl<'file> Inference<'_, 'file, '_> {
 
                 falsey_frame = fa.merge_or(self.i_s, falsey_frame, guard_falsey, false);
                 if !falsey_frame.unreachable && input_for_next_case_should_be_rewritten {
-                    frames.falsey_t = subject;
+                    pattern_result.falsey_t = subject;
                 }
                 self.narrow_subject(
                     subject_key,
                     &mut falsey_frame,
-                    frames.falsey_t.as_cow_type(self.i_s),
+                    pattern_result.falsey_t.as_cow_type(self.i_s),
                 );
             }
             let true_frame = fa.with_frame(truthy_frame, || {
@@ -2880,7 +2868,7 @@ impl<'file> Inference<'_, 'file, '_> {
             });
             let (false_frame, result) = fa.with_frame_and_result(falsey_frame, || {
                 self.process_match_cases_and_return_rest(
-                    frames.falsey_t,
+                    pattern_result.falsey_t,
                     subject_key,
                     case_blocks,
                     class,
@@ -2939,7 +2927,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
             let falsey = TruthyInferred::Simple {
                 inf: if let Some((_, falsey)) = split_truthy_and_falsey(self.i_s, &left_inf) {
-                    Inferred::from_type(falsey)
+                    Inferred::from_type(falsey.into_type())
                 } else {
                     left_inf.into_inferred(self.i_s)
                 },
@@ -3014,7 +3002,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
             let truthy = TruthyInferred::Simple {
                 inf: if let Some((truthy, _)) = split_truthy_and_falsey(self.i_s, &left_inf) {
-                    Inferred::from_type(truthy)
+                    Inferred::from_type(truthy.into_type())
                 } else {
                     left_inf.into_inferred(self.i_s)
                 },
@@ -3058,18 +3046,21 @@ impl<'file> Inference<'_, 'file, '_> {
             EntryKind::Type(t) => t,
             EntryKind::OriginalDeclaration => return None,
         };
-        let mut matching_entries = vec![];
-        for union_entry in base_union.entries.iter() {
-            let (inf, had_error) = replay(&union_entry.type_);
+        debug!("Propagate parent unions");
+        let _indent = debug_indent();
+        let mut matching_entries = TypeGatherer::default();
+        for entry in base_union.iter() {
+            let (inf, had_error) = replay(entry);
             if had_error {
                 return None;
             }
             if inf.as_cow_type(self.i_s).simple_overlaps(self.i_s, child_t) {
-                matching_entries.push(union_entry.clone());
+                matching_entries.add(entry.clone());
             }
         }
-        (base_union.entries.len() != matching_entries.len())
-            .then(|| Type::from_union_entries(matching_entries, base_union.might_have_type_vars))
+        (base_union.entries.len() != matching_entries.len()).then(|| {
+            matching_entries.into_type_with_might_have_type_vars(base_union.might_have_type_vars)
+        })
     }
 
     fn propagate_parent_unions(&self, frame: &mut Frame, parent_unions: &[(FlowKey, UnionType)]) {
@@ -3153,12 +3144,18 @@ impl<'file> Inference<'_, 'file, '_> {
             pattern.as_code(),
             inf.format_short(self.i_s)
         );
-        let _indent = debug_indent();
+        let indent = debug_indent();
         let (pattern_kind, as_name) = pattern.unpack();
         let result = self.find_guards_in_pattern_kind(inf, subject_key, pattern_kind.clone());
         if let Some(as_name) = as_name {
             self.assign_to_pattern_name(as_name, &result.truthy_t)
         }
+        drop(indent);
+        debug!(
+            "Pattern result truthy: {} falsey: {}",
+            result.truthy_t.format_short(self.i_s),
+            result.falsey_t.format_short(self.i_s)
+        );
         result
     }
 
@@ -3205,32 +3202,15 @@ impl<'file> Inference<'_, 'file, '_> {
                     // Floats for example are not literals and can therefore never change the
                     // falsey side and can therefore not be matched as a singleton.
                     (
-                        Type::from_union_entries(
-                            of_type
-                                .iter_with_unpacked_unions(i_s.db)
-                                .enumerate()
-                                .filter_map(|(format_index, t)| {
-                                    match t {
-                                        Type::Class(c) if *t == expected => (),
-                                        Type::TypeVar(_) | Type::Any(_) => (),
-                                        _ => {
-                                            if !has_custom_eq(i_s, t) {
-                                                return None;
-                                            }
-                                        }
-                                    };
-                                    Some(UnionEntry {
-                                        format_index,
-                                        type_: t.clone(),
-                                    })
-                                })
-                                .collect(),
-                            true,
-                        ),
+                        of_type.filter(i_s.db, |t| match t {
+                            Type::Class(c) if *t == expected => true,
+                            Type::TypeVar(_) | Type::Any(_) => true,
+                            _ => has_custom_eq(i_s, t),
+                        }),
                         of_type.into_owned(),
                     )
                 } else {
-                    split_off_singleton(
+                    let (truthy, falsey) = split_off_singleton(
                         i_s,
                         &of_type,
                         &expected,
@@ -3240,7 +3220,8 @@ impl<'file> Inference<'_, 'file, '_> {
                             // compared using the is operator."
                             LiteralPatternContent::Bool(_) | LiteralPatternContent::None
                         ),
-                    )
+                    );
+                    (truthy.into_type(), falsey.into_type())
                 };
                 PatternResult {
                     truthy_t: Inferred::from_type(truthy),
@@ -3301,7 +3282,7 @@ impl<'file> Inference<'_, 'file, '_> {
         let fallback = |inf_t| {
             let (truthy, mut falsey) = split_and_intersect(self.i_s, &inf_t, dotted_t, |_| false);
             if !truthy.is_singleton(self.i_s.db) {
-                falsey.union_in_place(inf_t)
+                falsey = falsey.union(inf_t)
             }
             (truthy, falsey)
         };
@@ -3310,6 +3291,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 let mut member = member.clone();
                 member.implicit = false;
                 split_off_enum_member(self.i_s, &inf_t, &member, true)
+                    .map(|(t, f)| (t, f.into_type()))
                     .unwrap_or_else(|| fallback(inf_t))
             }
             _ => fallback(inf_t),
@@ -3403,7 +3385,7 @@ impl<'file> Inference<'_, 'file, '_> {
             self.find_guards_in_class_pattern_part2(t, subject_key, params.clone(), target_t)
         });
         if inf_type.is_never() {
-            truthy = Type::Never(NeverCause::Other)
+            truthy = Type::NEVER
         }
 
         PatternResult {
@@ -3436,11 +3418,16 @@ impl<'file> Inference<'_, 'file, '_> {
             )
         };
         let mut added_no_match_args_issue = false;
-        //for e in truthy.into_iter_with_unpacked_unions(i_s.db, true) {
-        let mut inner_mismatch = false;
+        let inner_mismatch = Cell::new(false);
         let match_args = OnceCell::new();
         let mut nth_positional = 0;
-        let mut find_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
+        let falsey_unreachable = Cell::new(true);
+        let find_inner_guards = |inf, subject_key, pat| {
+            let inner_result = self.find_guards_in_pattern(inf, subject_key, pat);
+            inner_mismatch.update(|i| i || inner_result.truthy_t.as_cow_type(i_s).is_never());
+            falsey_unreachable.update(|f| f && inner_result.is_falsey_unreachable(i_s));
+        };
+        let infer_inner_guards_and_return_unreachable = |node_ref: NodeRef, name: &str, pat| {
             let lookup = lookup(truthy, name);
             let inf = lookup.into_maybe_inferred().unwrap_or_else(|| {
                 node_ref.add_issue(
@@ -3452,9 +3439,8 @@ impl<'file> Inference<'_, 'file, '_> {
                 );
                 Inferred::new_any_from_error()
             });
-            let inner_result = self.find_guards_in_pattern(inf, None, pat);
-            inner_mismatch |= inner_result.truthy_t.as_cow_type(i_s).is_never();
-            inner_mismatch
+            find_inner_guards(inf, None, pat);
+            inner_mismatch.get()
         };
         let mut used_keywords: Vec<(&str, bool)> = vec![];
         for param in params.clone() {
@@ -3476,7 +3462,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 {
                                     let key = s.as_str(i_s.db);
                                     used_keywords.push((key, false));
-                                    if find_inner_guards_and_return_unreachable(
+                                    if infer_inner_guards_and_return_unreachable(
                                         NodeRef::new(self.file, pat.index()),
                                         key,
                                         pat,
@@ -3487,11 +3473,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                     // If the type is not a literal, an error should be added
                                     // in diagnostics that __match_args__ is not correct and we
                                     // can simply work with Any here.
-                                    self.find_guards_in_pattern(
-                                        Inferred::new_any_from_error(),
-                                        None,
-                                        pat,
-                                    );
+                                    find_inner_guards(Inferred::new_any_from_error(), None, pat);
                                 }
                             } else if !added_no_match_args_issue {
                                 node_ref.add_issue(
@@ -3500,7 +3482,7 @@ impl<'file> Inference<'_, 'file, '_> {
                                 );
                                 // If there are too many positional patterns don't mark the
                                 // rest as potentially unreachable, since an error occured.
-                                return (Type::Never(NeverCause::Other), truthy.clone());
+                                return (Type::NEVER, truthy.clone());
                             }
                         } else {
                             // If match args are incorrect, we simply assume it's matching, because
@@ -3509,11 +3491,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             return (truthy.clone(), truthy.clone());
                         }
                     } else if params.clone().count() == 1 && is_self_match_type(i_s.db, truthy) {
-                        self.find_guards_in_pattern(
-                            Inferred::from_type(truthy.clone()),
-                            subject_key,
-                            pat,
-                        );
+                        find_inner_guards(Inferred::from_type(truthy.clone()), subject_key, pat);
                     } else {
                         if !added_no_match_args_issue {
                             node_ref.add_issue(
@@ -3524,7 +3502,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             );
                         }
                         added_no_match_args_issue = true;
-                        self.find_guards_in_pattern(Inferred::new_any_from_error(), None, pat);
+                        find_inner_guards(Inferred::new_any_from_error(), None, pat);
                     }
                     nth_positional += 1;
                 }
@@ -3543,7 +3521,7 @@ impl<'file> Inference<'_, 'file, '_> {
                             );
                         }
                     }
-                    if find_inner_guards_and_return_unreachable(
+                    if infer_inner_guards_and_return_unreachable(
                         NodeRef::new(self.file, keyword_pattern.index()),
                         key,
                         pat,
@@ -3554,10 +3532,17 @@ impl<'file> Inference<'_, 'file, '_> {
                 }
             }
         }
-        if inner_mismatch {
+        if inner_mismatch.get() {
             (Type::NEVER, truthy.clone())
         } else {
-            (truthy.clone(), Type::NEVER)
+            (
+                truthy.clone(),
+                if falsey_unreachable.get() {
+                    Type::NEVER
+                } else {
+                    truthy.clone()
+                },
+            )
         }
     }
 
@@ -3827,7 +3812,7 @@ impl<'file> Inference<'_, 'file, '_> {
             || has_fixed_len_items < normal_patterns
                 && !matches!(&tup.args, TupleArgs::WithUnpack(_))
         {
-            return (Type::Never(NeverCause::Other), Type::Tuple(tup));
+            return (Type::NEVER, Type::Tuple(tup));
         }
         let i_s = self.i_s;
         let mut value_iterator = tup.iter();
@@ -3852,7 +3837,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         pattern,
                     );
                     if result.truthy_t.is_never(i_s) {
-                        return (Type::Never(NeverCause::Other), Type::Tuple(tup));
+                        return (Type::NEVER, Type::Tuple(tup));
                     }
                     falsey_unreachable &= result.is_falsey_unreachable(i_s);
                     truthy_gatherer.add(result.truthy_t.into_type(i_s));
@@ -3886,7 +3871,7 @@ impl<'file> Inference<'_, 'file, '_> {
                 .into_tuple(i_s.db, || unreachable!())
                 .into_type(i_s),
             if falsey_unreachable && (matches!(&tup.args, TupleArgs::FixedLen(_)) || had_star) {
-                Type::Never(NeverCause::Other)
+                Type::NEVER
             } else {
                 Type::Tuple(tup)
             },
@@ -3936,8 +3921,10 @@ impl<'file> Inference<'_, 'file, '_> {
                     } else if let Some((walrus_truthy, walrus_falsey)) =
                         split_truthy_and_falsey(self.i_s, &inf)
                     {
+                        let walrus_truthy = walrus_truthy.into_type();
+                        let walrus_falsey = walrus_falsey.into_type();
                         debug!(
-                            "Narrowed {} to true: {} and false: {}",
+                            "Walrus: Narrowed {} to true: {} and false: {}",
                             named_expr.as_code(),
                             walrus_truthy.format_short(self.i_s.db),
                             walrus_falsey.format_short(self.i_s.db)
@@ -4021,16 +4008,19 @@ impl<'file> Inference<'_, 'file, '_> {
         self.find_guards_in_expression_parts_inner(part, result_context)
             .unwrap_or_else(|inf| {
                 let inf = inf.into();
+                debug!("Try to split reachability for expr");
+                let indent = debug_indent();
                 if let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf) {
                     let frames = FramesWithParentUnions {
-                        truthy: Frame::from_type_without_entry(&truthy),
-                        falsey: Frame::from_type_without_entry(&falsey),
+                        truthy: Frame::from_type_gatherer_without_entry(&truthy),
+                        falsey: Frame::from_type_gatherer_without_entry(&falsey),
                         ..Default::default()
                     };
                     let as_s = |frame: &Frame| match frame.unreachable {
                         true => "unreachable",
                         false => "reachable",
                     };
+                    drop(indent);
                     debug!(
                         "Split reachability for {} into true: {} and false: {}",
                         part.as_code(),
@@ -4054,6 +4044,8 @@ impl<'file> Inference<'_, 'file, '_> {
             if let Some(key) = key
                 && let Some((truthy, falsey)) = split_truthy_and_falsey(self.i_s, &inf)
             {
+                let truthy = truthy.into_type();
+                let falsey = falsey.into_type();
                 debug!(
                     "Narrowed {} to true: {} and false: {}",
                     part.as_code(),
@@ -4073,6 +4065,8 @@ impl<'file> Inference<'_, 'file, '_> {
         };
         match part {
             ExpressionPart::Atom(atom) => {
+                debug!("Find guards for atom");
+                let _indent = debug_indent();
                 if let AtomContent::NamedExpression(named_expr) = atom.unpack() {
                     let (inf, truthy, falsey) = self.find_guards_in_named_expr(named_expr);
                     return Ok((
@@ -4088,18 +4082,24 @@ impl<'file> Inference<'_, 'file, '_> {
                 return narrow_from_key(self.key_from_atom(atom), inf, Default::default());
             }
             ExpressionPart::Comparisons(comps) => {
+                debug!("Guard comparisons");
+                let _indent = debug_indent();
                 if let Some(frames) = self.find_guards_in_comparisons(comps) {
                     return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
                 }
                 return Ok((Inferred::new_bool(self.i_s.db).into(), Default::default()));
             }
             ExpressionPart::Conjunction(and) => {
+                debug!("Guard any");
+                let _indent = debug_indent();
                 let (inf, left, right) = self.check_conjunction(and);
 
                 return FLOW_ANALYSIS
                     .with(|fa| Ok((inf, fa.merge_conjunction(self.i_s, Some(left), right))));
             }
             ExpressionPart::Disjunction(or) => {
+                debug!("Guard or");
+                let _indent = debug_indent();
                 let (inf, left_frames, right_frames) = self.check_disjunction(or, result_context);
                 let mut parent_unions = left_frames.parent_unions;
                 parent_unions.extend(right_frames.parent_unions);
@@ -4118,6 +4118,8 @@ impl<'file> Inference<'_, 'file, '_> {
                 ));
             }
             ExpressionPart::Inversion(inv) => {
+                debug!("Guard not");
+                let _indent = debug_indent();
                 let (_, mut frames) = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
                 return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
@@ -4127,6 +4129,8 @@ impl<'file> Inference<'_, 'file, '_> {
                     let first = self.infer_primary_or_atom(primary.first());
                     match first.maybe_saved_specific(self.i_s.db) {
                         Some(Specific::BuiltinsIsinstance) => {
+                            debug!("Calculate isinstance for {}", primary.as_code());
+                            let _indent = debug_indent();
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, false)
                             {
@@ -4134,6 +4138,8 @@ impl<'file> Inference<'_, 'file, '_> {
                             }
                         }
                         Some(Specific::BuiltinsIssubclass) => {
+                            debug!("Calculate issubclass for {}", primary.as_code());
+                            let _indent = debug_indent();
                             if let Some(frames) =
                                 self.find_isinstance_or_issubclass_frames(args, true)
                             {
@@ -4143,6 +4149,8 @@ impl<'file> Inference<'_, 'file, '_> {
                         _ => {
                             if let Some(saved) = first.maybe_saved_link() {
                                 if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
+                                    debug!("Guard callable");
+                                    let _indent = debug_indent();
                                     if let Some(frames) = self.guard_callable(args) {
                                         return Ok((
                                             Inferred::new_bool(self.i_s.db).into(),
@@ -4151,9 +4159,15 @@ impl<'file> Inference<'_, 'file, '_> {
                                     }
                                 } else if saved
                                     == self.i_s.db.python_state.hasattr_node_ref().as_link()
-                                    && let Some(frames) = self.guard_hasattr(args)
                                 {
-                                    return Ok((Inferred::new_bool(self.i_s.db).into(), frames));
+                                    debug!("Guard callable");
+                                    let _indent = debug_indent();
+                                    if let Some(frames) = self.guard_hasattr(args) {
+                                        return Ok((
+                                            Inferred::new_bool(self.i_s.db).into(),
+                                            frames,
+                                        ));
+                                    }
                                 }
                             }
                             if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
@@ -4334,15 +4348,24 @@ impl<'file> Inference<'_, 'file, '_> {
             &isinstance_type,
             |issue| self.flags().warn_unreachable && self.add_issue(args.index(), issue),
         );
-        let key = input.key?;
-        Some(FramesWithParentUnions {
-            truthy: Frame::from_type(key.clone(), truthy),
-            falsey: Frame::from_type(key, falsey),
-            parent_unions: input.parent_unions,
+        Some(if let Some(key) = input.key {
+            FramesWithParentUnions {
+                truthy: Frame::from_type(key.clone(), truthy),
+                falsey: Frame::from_type(key, falsey),
+                parent_unions: input.parent_unions,
+            }
+        } else {
+            FramesWithParentUnions {
+                truthy: Frame::from_type_without_entry(&truthy),
+                falsey: Frame::from_type_without_entry(&falsey),
+                parent_unions: input.parent_unions,
+            }
         })
     }
 
     fn guard_hasattr(&self, args: Arguments) -> Option<FramesWithParentUnions> {
+        debug!("Find hasattr guards");
+        let _indent = debug_indent();
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None;
@@ -4356,8 +4379,8 @@ impl<'file> Inference<'_, 'file, '_> {
         let attr = attr_inf.maybe_string_literal(self.i_s)?;
 
         let mut all_have_attr = true;
-        let mut attr_t = Type::Never(NeverCause::Other);
-        let mut falsey_parent = Type::Never(NeverCause::Other);
+        let mut attr_t = ComplexTypeGatherer::default();
+        let mut falsey_parent = TypeGatherer::default();
         for t in result
             .inf
             .as_cow_type(self.i_s)
@@ -4367,10 +4390,10 @@ impl<'file> Inference<'_, 'file, '_> {
                 .check_attr(t, attr.as_str(self.i_s.db))
                 .into_maybe_inferred()
             {
-                attr_t.union_in_place(inf.as_type(self.i_s));
+                attr_t.add(inf.as_type(self.i_s));
             } else {
-                attr_t.union_in_place(Type::Any(AnyCause::Todo));
-                falsey_parent.union_in_place(t.clone());
+                attr_t.add(&Type::Any(AnyCause::Todo));
+                falsey_parent.add(t.clone());
                 all_have_attr = false;
             }
         }
@@ -4379,14 +4402,17 @@ impl<'file> Inference<'_, 'file, '_> {
             // perform any narrowing.
             return None;
         }
-        let falsey = match falsey_parent {
+        let falsey = match falsey_parent.is_empty() {
             // Frames should not be unreachable, because people might be checking for deleted
             // attributes.
-            Type::Never(_) => Frame::new_conditional(),
-            _ => Frame::from_type(key.clone(), falsey_parent),
+            true => Frame::new_conditional(),
+            false => Frame::from_type(key.clone(), falsey_parent.into_type()),
         };
         Some(FramesWithParentUnions {
-            truthy: Frame::from_type(FlowKey::Member(Arc::new(key), attr), attr_t),
+            truthy: Frame::from_type(
+                FlowKey::Member(Arc::new(key), attr),
+                attr_t.into_simplified_type(self.i_s),
+            ),
             falsey,
             parent_unions: ParentUnions::default(),
         })
@@ -4401,21 +4427,21 @@ impl<'file> Inference<'_, 'file, '_> {
         let result = self.key_from_namedexpression(arg);
         let key = result.key?;
 
-        let mut callable_t = Type::Never(NeverCause::Other);
-        let mut other_side = Type::Never(NeverCause::Other);
+        let mut callable_t = TypeGatherer::default();
+        let mut other_side = TypeGatherer::default();
         let input_t = result.inf.as_cow_type(self.i_s);
         for t in input_t.iter_with_unpacked_unions(self.i_s.db) {
             let mut add_t = |t: &Type| {
                 if t.is_any() {
-                    callable_t.union_in_place(t.clone());
-                    other_side.union_in_place(t.clone());
+                    callable_t.add(t.clone());
+                    other_side.add(t.clone());
                 } else if let Some(callable_like) = t.maybe_callable(self.i_s) {
                     if !callable_like.is_typed(false) {
-                        other_side.union_in_place(t.clone());
+                        other_side.add(t.clone());
                     }
-                    callable_t.union_in_place(t.clone());
+                    callable_t.add(t.clone());
                 } else {
-                    other_side.union_in_place(t.clone());
+                    other_side.add(t.clone());
                 }
             };
             match t {
@@ -4430,14 +4456,19 @@ impl<'file> Inference<'_, 'file, '_> {
                 _ => add_t(t),
             }
         }
-        let falsey = if matches!(callable_t, Type::Never(_)) {
-            callable_t = Type::Intersection(Intersection::new(Arc::new([
-                Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
-                input_t.into_owned(),
-            ])));
-            Frame::new_conditional()
+        let (callable_t, falsey) = if callable_t.is_empty() {
+            (
+                Type::Intersection(Intersection::new(Arc::new([
+                    Type::Callable(self.i_s.db.python_state.any_callable_from_error.clone()),
+                    input_t.into_owned(),
+                ]))),
+                Frame::new_conditional(),
+            )
         } else {
-            Frame::from_type(key.clone(), other_side)
+            (
+                callable_t.into_type(),
+                Frame::from_type(key.clone(), other_side.into_type()),
+            )
         };
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key, callable_t),
@@ -4452,6 +4483,11 @@ impl<'file> Inference<'_, 'file, '_> {
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
+        debug!(
+            "Check TypeGuard/TypeIs for {}",
+            might_have_guard.format(&FormatData::new_short(self.i_s.db))
+        );
+        let _indent = debug_indent();
         match &might_have_guard {
             CallableLike::Callable(c) => self.check_type_guard_callable(simple_args, args, c, None),
             CallableLike::Overload(o) => {
@@ -4474,13 +4510,12 @@ impl<'file> Inference<'_, 'file, '_> {
                     false,
                     None,
                     false,
-                    &mut ResultContext::ValueExpected,
                     None,
                     OnTypeError::new(&on_argument_type_error),
                     &|c, calculated_type_args| {
                         let Some(guard) = &c.content.guard else {
                             had_non_guard_match.set(true);
-                            return Type::Never(NeverCause::Other);
+                            return Type::NEVER;
                         };
                         let resolved_t = calculated_type_args
                             .into_return_type(self.i_s, &guard.type_, None, &|| None)
@@ -4524,7 +4559,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         } else {
                             had_non_guard_match.set(true);
                         }
-                        Type::Never(NeverCause::Other)
+                        Type::NEVER
                     },
                 );
                 match matching {
@@ -4664,7 +4699,7 @@ impl<'file> Inference<'_, 'file, '_> {
                     .iter_with_unpacked_unions(db)
                     .any(|t| t == &Type::None)
                     && left_t.simple_overlaps(self.i_s, &container_item)
-                    && let Some(t) = removed_optional(db, &left_t)
+                    && let Some(t) = left_t.maybe_remove_none(db)
                 {
                     return maybe_invert(
                         Frame::from_type(left_key.clone(), t),
@@ -4693,37 +4728,40 @@ impl<'file> Inference<'_, 'file, '_> {
                 })
                 .collect();
             if !str_literals.is_empty() {
-                let mut true_types = Type::Never(NeverCause::Other);
-                let false_types = right_t.retain_in_union(|t| match t {
-                    Type::TypedDict(td) => {
-                        let mut true_only_count = 0;
-                        let mut false_only_count = 0;
-                        for str_literal in &str_literals {
-                            // TODO extra_items: handle?
-                            if let Some(m) = td.find_member(db, str_literal) {
-                                if m.required {
-                                    true_only_count += 1;
+                let mut true_types = TypeGatherer::default();
+                let mut false_types = TypeGatherer::default();
+                for t in right_t.iter_with_unpacked_unions(db) {
+                    match t {
+                        Type::TypedDict(td) => {
+                            let mut true_only_count = 0;
+                            let mut false_only_count = 0;
+                            for str_literal in &str_literals {
+                                // TODO extra_items: handle?
+                                if let Some(m) = td.find_member(db, str_literal) {
+                                    if m.required {
+                                        true_only_count += 1;
+                                    }
+                                } else {
+                                    false_only_count += 1;
                                 }
-                            } else {
-                                false_only_count += 1;
                             }
+                            if true_only_count == str_literals.len() {
+                                true_types.add(t.clone());
+                                continue;
+                            } else if !td.is_final || false_only_count != str_literals.len() {
+                                true_types.add(t.clone());
+                            }
+                            false_types.add(t.clone())
                         }
-                        if true_only_count == str_literals.len() {
-                            true_types.union_in_place(t.clone());
-                            return false;
-                        } else if !td.is_final || false_only_count != str_literals.len() {
-                            true_types.union_in_place(t.clone());
+                        _ => {
+                            true_types.add(t.clone());
+                            false_types.add(t.clone())
                         }
-                        true
                     }
-                    _ => {
-                        true_types.union_in_place(t.clone());
-                        true
-                    }
-                });
+                }
                 return maybe_invert(
-                    Frame::from_type(right_key.clone(), true_types),
-                    Frame::from_type(right_key.clone(), false_types),
+                    Frame::from_type(right_key.clone(), true_types.into_type()),
+                    Frame::from_type(right_key.clone(), false_types.into_type()),
                     // Taking it here is fine, because we don't want these to be duplicated
                     // entries from different comparisons
                     std::mem::take(&mut right.parent_unions.borrow_mut()),
@@ -4911,6 +4949,27 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 
     fn maybe_has_primary_entry(&self, primary: Primary) -> Option<(FlowKey, Inferred)> {
+        if let PrimaryContent::GetItem(getitem) = primary.second() {
+            if !matches!(getitem, parsa_python_cst::SliceType::NamedExpression(_)) {
+                return None;
+            }
+            // Here we skip some cases that are typically type applications and should not be
+            // inferred.
+            let base = self.infer_primary_or_atom(primary.first());
+            if let Some(ComplexPoint::Class(_) | ComplexPoint::TypeAlias(_)) =
+                base.maybe_complex_point(self.i_s.db)
+            {
+                // Classes can be part of typing and would therefore cause problems with things
+                // like Sequence[] and other classes probably don't narrow.
+                return None;
+            }
+            if let Some(specific) = base.maybe_specific(self.i_s.db)
+                && specific.might_be_used_in_alias()
+            {
+                return None;
+            }
+            SliceType::new(self.file, primary.index(), getitem).infer(self.i_s);
+        }
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
@@ -5060,10 +5119,6 @@ impl<'file> Inference<'_, 'file, '_> {
         )
     }
 
-    pub fn has_frames(&self) -> bool {
-        !FLOW_ANALYSIS.with(|f| f.frames.borrow().is_empty())
-    }
-
     pub fn add_star_import_to_base_narrowing(&self, name_def: NameDef, original: Inferred) {
         // This is a bit weird and probably only correct in most cases, not in all
         FLOW_ANALYSIS.with(|fa| {
@@ -5093,11 +5148,7 @@ fn run_pattern_for_each_type<'x>(
         callback: impl Fn(&'x Type) -> (Type, Type),
     ) -> (Frame, Type, Type) {
         let Some(t) = iterator.next() else {
-            return (
-                Frame::new_conditional(),
-                Type::Never(NeverCause::Other),
-                Type::Never(NeverCause::Other),
-            );
+            return (Frame::new_conditional(), Type::NEVER, Type::NEVER);
         };
         FLOW_ANALYSIS.with(|fa| {
             let (first_frame, (truthy1, falsey1)) =
@@ -5353,6 +5404,7 @@ struct ComparisonPartInfos {
     parent_unions: RefCell<ParentUnions>,
 }
 
+#[derive(Debug)]
 struct FramesWithParentUnions {
     truthy: Frame,
     falsey: Frame,
@@ -5409,15 +5461,6 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
         return None;
     }
     Some(item)
-}
-
-fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
-    for t in full.iter_with_unpacked_unions(db) {
-        if matches!(t, Type::None) {
-            return Some(full.retain_in_union(|t| !matches!(t, Type::None)));
-        }
-    }
-    None
 }
 
 fn find_comparison_guards(
@@ -5491,28 +5534,34 @@ fn check_for_comparison_guard(
                     return None;
                 }
                 let mut truthy = (**base_truthy).clone();
-                let is_final = match &truthy {
-                    Type::Class(c) => {
-                        if c.class(i_s.db).is_metaclass(i_s.db) {
-                            // For now ignore this, Mypy has only very few tests about this.
-                            return None;
-                        }
-                        c.class(i_s.db).use_cached_class_infos(i_s.db).is_final
-                    }
-                    _ => false,
-                };
+                if truthy.is_metaclass(i_s.db) {
+                    // For now ignore this, Mypy has only very few tests about this.
+                    return None;
+                }
+                let is_final = truthy.is_final(i_s.db);
                 let inf_t = inf.as_cow_type(i_s);
                 if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
-                    truthy = Type::Never(NeverCause::Other);
+                    truthy = Type::NEVER;
+                }
+                if inf_t
+                    .iter_with_unpacked_unions(i_s.db)
+                    .any(|t| matches!(t, Type::EnumMember(_)))
+                {
+                    // TODO enum members should be narrowed, but otherwise have weird behavior if
+                    // we don't special case them.
+                    return None;
                 }
                 Some(FramesWithParentUnions {
                     truthy: Frame::from_type(key.clone(), truthy),
                     falsey: match is_final {
                         true => Frame::from_type(
                             key.clone(),
-                            inf_t.retain_in_union(|t| {
-                                !t.is_simple_same_type(i_s, base_truthy).bool()
-                            }),
+                            Type::from_iter(
+                                inf_t
+                                    .iter_with_unpacked_unions(i_s.db)
+                                    .filter(|t| !t.is_simple_same_type(i_s, base_truthy).bool())
+                                    .cloned(),
+                            ),
                         ),
                         false => Frame::new_conditional(),
                     },
@@ -5533,7 +5582,7 @@ fn check_for_comparison_guard(
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum LenNarrowing {
     Equals, // NotEquals will be done by inverting in a separate place
     GreaterThan,
@@ -5580,13 +5629,11 @@ fn narrow_len(
     {
         let inf_t = inferred_type_param.as_cow_type(i_s);
         let retain = |full: &Type, negative| {
-            let mut out = Type::Never(NeverCause::Other);
+            let mut out = TypeGatherer::default();
             for part_t in full.iter_with_unpacked_unions(i_s.db) {
                 match part_t {
                     Type::Tuple(tup) => {
-                        if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| {
-                            out.union_in_place(t)
-                        }) {
+                        if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| out.add(t)) {
                             continue;
                         }
                     }
@@ -5604,9 +5651,9 @@ fn narrow_len(
                     }
                     _ => (),
                 }
-                out.union_in_place(part_t.clone())
+                out.add(part_t.clone())
             }
-            out
+            out.into_type()
         };
         let truthy = retain(&inf_t, false);
         let falsey = retain(&inf_t, true);
@@ -5723,21 +5770,24 @@ fn narrow_len_for_tuples(
                 )));
             };
             if let Some(lower_than) = lower_than {
-                if invert == negative {
-                    for i in 0..(lower_than - min_len) {
-                        add_fixed_len_tuple(i);
+                // The other case is unreachable and should not add any types
+                if let Some(difference) = lower_than.checked_sub(min_len) {
+                    if invert == negative {
+                        for i in 0..difference {
+                            add_fixed_len_tuple(i);
+                        }
+                    } else {
+                        add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                            before: with_unpack
+                                .before
+                                .iter()
+                                .chain(middle_iter(difference))
+                                .cloned()
+                                .collect(),
+                            unpack: with_unpack.unpack.clone(),
+                            after: with_unpack.after.clone(),
+                        }))));
                     }
-                } else {
-                    add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                        before: with_unpack
-                            .before
-                            .iter()
-                            .chain(middle_iter(lower_than - min_len))
-                            .cloned()
-                            .collect(),
-                        unpack: with_unpack.unpack.clone(),
-                        after: with_unpack.after.clone(),
-                    }))));
                 }
                 return true;
             } else if !negative {
@@ -5756,11 +5806,11 @@ fn split_and_intersect(
     mut add_issue: impl Fn(IssueKind) -> bool,
 ) -> (Type, Type) {
     // Please listen to "Red Hot Chili Peppers - Otherside" here.
-    let mut true_type = Type::Never(NeverCause::Other);
-    let mut other_side = Type::Never(NeverCause::Other);
+    let mut true_types = ComplexTypeGatherer::default();
+    let mut other_side = TypeGatherer::default();
     let matcher = &mut Matcher::with_ignored_promotions();
     let mut type_var_split = false;
-    for t in original_t.iter_with_unpacked_unions(i_s.db) {
+    for e in original_t.iter_with_unpacked_unions(i_s.db) {
         let mut split = |t: &Type| {
             let mut matched = false;
             let mut matched_with_any = true;
@@ -5791,72 +5841,86 @@ fn split_and_intersect(
                     }
                     Match::False { .. } => {
                         if isinstance_t.is_sub_type_of(i_s, matcher, t).bool() {
-                            true_type.simplified_union_in_place(i_s, isinstance_t);
+                            true_types.add(isinstance_t.clone());
                         }
                     }
                 }
             }
             if matched {
                 if matched_with_any {
-                    true_type.simplified_union_in_place(i_s, isinstance_type);
-                    other_side.union_in_place(t.clone());
+                    true_types.add(isinstance_type.clone());
+                    other_side.add(t.clone());
                 } else {
                     // This used to just use union_in_place. However this caused problems with bool
                     // | int, which could not be added to complex. I'm still not sure what's
                     // correct here. This feels like a very weird consequence of type promotions.
                     // This caused issues when type checking Mypy.
-                    true_type.simplified_union_in_place(i_s, t);
+                    true_types.add(t.clone());
                 }
             } else {
-                other_side.union_in_place(t.clone())
+                other_side.add(t.clone())
             }
             if let Some(any) = had_any {
-                // This piece of code is completely weird and only needed because of the weird
-                // Any ordering.
-                if matches!(isinstance_type, Type::Union(u) if u.entries.first().unwrap().format_index > 0)
-                {
-                    true_type = any.union(true_type.clone());
-                } else {
-                    true_type.union_in_place(any);
-                }
+                true_types.add(any);
             }
         };
-        match t {
+        match e {
             Type::Type(inner) => match inner.as_ref() {
                 Type::Union(union) => {
                     for inner in union.iter() {
                         split(&Type::Type(Arc::new(inner.clone())))
                     }
                 }
-                _ => split(t),
+                _ => split(e),
             },
             Type::Any(_) => {
-                true_type = isinstance_type.clone();
-                other_side.union_in_place(t.clone())
+                true_types.add(isinstance_type.clone());
+                other_side.add(e.clone())
             }
             Type::TypeVar(tv) if matches!(tv.type_var.kind(i_s.db), TypeVarKind::Unrestricted) => {
-                if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
+                if let Some(new) = intersect(i_s, e, isinstance_type, &mut add_issue) {
                     type_var_split = true;
-                    true_type = new.into_owned();
-                    other_side.union_in_place(t.clone())
+                    true_types.add(new.into_owned());
+                    other_side.add(e.clone())
                 } else {
-                    split(t)
+                    split(e)
                 }
             }
-            _ => split(t),
+            _ => split(e),
         }
     }
-    if true_type.is_never() {
+    if true_types.is_empty() {
         if original_t.overlaps(i_s, matcher, isinstance_type) {
-            true_type = isinstance_type.clone();
+            true_types.add(isinstance_type.clone());
         } else {
             for t in original_t.iter_with_unpacked_unions(i_s.db) {
                 if let Some(new) = intersect(i_s, t, isinstance_type, &mut add_issue) {
-                    true_type.simplified_union_in_place(i_s, &new);
+                    true_types.add(new.into_owned());
+                } else {
+                    // Avoid follow up errors for protocols that are runtime_checkable. Protocols
+                    // cannot be matched properly at runtime and therefore we should not assume
+                    // that a branch is unreachable even the type system theoretically does.
+                    let mut is_protocol = |check_t: &Type| {
+                        for isinstance_t in check_t.iter_with_unpacked_unions(i_s.db) {
+                            if let Some(class) = isinstance_t.maybe_class(i_s.db) {
+                                let class_infos = class.use_cached_class_infos(i_s.db);
+                                if matches!(class_infos.kind, ClassKind::Protocol) {
+                                    true_types.add(t.clone());
+                                }
+                            }
+                        }
+                    };
+                    if let Type::Type(check) = isinstance_type {
+                        is_protocol(check)
+                    } else {
+                        is_protocol(isinstance_type)
+                    }
                 }
             }
         }
     }
+    let mut other_side = other_side.into_type();
+    let true_type = true_types.into_simplified_type(i_s);
     // Handle int/float/complex promotions
     {
         if let Type::Class(c) = isinstance_type {
@@ -5977,7 +6041,13 @@ fn intersect<'x>(
     t2: &'x Type,
     add_issue: &mut dyn FnMut(IssueKind) -> bool,
 ) -> Option<Cow<'x, Type>> {
-    Some(if t2.is_simple_sub_type_of(i_s, t1).bool() {
+    // This is kind of isinstance logic and basic TypeVars should be intersected
+    let erased_t1 = if matches!(t1, Type::TypeVar(_)) {
+        Cow::Borrowed(t1)
+    } else {
+        t1.erase_type_var_likes(i_s.db, &|| None)
+    };
+    Some(if t2.is_simple_sub_type_of(i_s, &erased_t1).bool() {
         Cow::Borrowed(t2)
     } else if t2.is_simple_super_type_of(i_s, t1).bool() {
         Cow::Borrowed(t1)

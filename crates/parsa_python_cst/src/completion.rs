@@ -37,18 +37,25 @@ impl Tree {
             leaf = leaf.next_leaf().unwrap();
         }
         let scope = scope_for_node(leaf);
-        let rest = RestNode::new(
-            self,
-            if leaf.end() == position
-                && is_control(leaf)
-                && let Some(n) = leaf.next_leaf()
-            {
-                n
-            } else {
-                leaf
-            },
-            position,
-        );
+        let rest_node = if leaf.end() == position
+            && is_control(leaf)
+            && let Some(n) = leaf.next_leaf()
+        {
+            n
+        } else {
+            leaf
+        };
+        let rest = RestNode::new(self, rest_node, position);
+        if let Some((comment_start, comment)) = maybe_in_comment(rest_node, position) {
+            return (
+                scope,
+                CompletionNode::InsideComment {
+                    comment,
+                    comment_start,
+                },
+                rest,
+            );
+        }
 
         if leaf.is_type(PyNodeType::Terminal(TerminalType::String)) {
             if let Some(maybe_dict_node) = maybe_inside_square_braces(leaf)
@@ -472,6 +479,39 @@ pub(crate) fn scope_for_node<'db>(node: PyNode<'db>) -> Scope<'db> {
     }
 }
 
+fn maybe_in_comment(after_node: PyNode<'_>, position: CodeIndex) -> Option<(CodeIndex, &str)> {
+    if after_node.start() <= position {
+        return None;
+    }
+    let prefix = after_node.prefix_to_previous_leaf();
+    let start = after_node.start() - prefix.len() as CodeIndex;
+    let position_in_prefix = position.checked_sub(start)?;
+    let mut comment_start = None;
+    for (i, &byte) in prefix.as_bytes().iter().enumerate() {
+        match byte {
+            b'#' if comment_start.is_none() => {
+                if position_in_prefix as usize <= i {
+                    return None;
+                }
+                comment_start = Some(i);
+            }
+            b'\n' => {
+                if let Some(comment_start) = comment_start
+                    && position_in_prefix as usize <= i
+                {
+                    return Some((
+                        start + comment_start as CodeIndex,
+                        &prefix[comment_start + 1..i],
+                    ));
+                }
+                comment_start = None;
+            }
+            _ => (),
+        }
+    }
+    comment_start.map(|c| (start + c as CodeIndex, &prefix[c + 1..]))
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum Scope<'db> {
     Module,
@@ -480,7 +520,7 @@ pub enum Scope<'db> {
     Lambda(Lambda<'db>),
 }
 
-impl Scope<'_> {
+impl<'db> Scope<'db> {
     pub fn short_debug_info(&self) -> String {
         match self {
             Scope::Module => "Module".into(),
@@ -530,6 +570,10 @@ pub enum CompletionNode<'db> {
         maybe_dict_node: PrimaryOrAtom<'db>,
         quote_state: QuoteState,
     },
+    InsideComment {
+        comment_start: CodeIndex,
+        comment: &'db str,
+    },
     Global {
         context: Option<CompletionContext<'db>>,
     },
@@ -548,6 +592,7 @@ pub enum CompletionContext<'db> {
 }
 
 /// Holds all kinds of nodes including invalid ones that might be valid starts for completion.
+#[derive(Copy, Clone)]
 pub struct RestNode<'db> {
     tree: &'db Tree,
     node: PyNode<'db>,
@@ -596,5 +641,40 @@ impl std::fmt::Debug for RestNode<'_> {
             .field("node", &self.node)
             .field("position", &self.position)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn check_comments() {
+        let get = |code: &str, position| {
+            let tree = Tree::parse(code.into());
+            match tree.completion_node(position).1 {
+                CompletionNode::InsideComment {
+                    comment_start,
+                    comment,
+                } => Some((comment_start, comment.to_string())),
+                _ => None,
+            }
+        };
+        assert_eq!(get(" # ", 1), None);
+        assert_eq!(get(" # ", 2), Some((1, " ".to_string())));
+        assert_eq!(get(" # ", 3), Some((1, " ".to_string())));
+        assert_eq!(get(" # asdf", 1), None);
+        assert_eq!(get(" # asdf", 2), Some((1, " asdf".to_string())));
+        assert_eq!(get(" # asdf", 3), Some((1, " asdf".to_string())));
+        assert_eq!(get(" # asdf", 6), Some((1, " asdf".to_string())));
+
+        assert_eq!(get("a# asdf\nb", 1), None);
+        assert_eq!(get("a# asdf\nb", 2), Some((1, " asdf".to_string())));
+        assert_eq!(get("a# asdf\nb", 3), Some((1, " asdf".to_string())));
+        assert_eq!(get("a# asdf\nb", 6), Some((1, " asdf".to_string())));
+
+        assert_eq!(get("# a # b", 0), None);
+        assert_eq!(get("# a # b", 1), Some((0, " a # b".to_string())));
+        assert_eq!(get("# a # b", 4), Some((0, " a # b".to_string())));
+        assert_eq!(get("# a # b", 7), Some((0, " a # b".to_string())));
     }
 }

@@ -540,3 +540,132 @@ def f(p: Period, e: Literal[Period.day]):
     takes_float(e)
     takes_float(24)
     takes_float(24.0)
+
+[case enum_matched_with_protocol]
+# From GH #435
+from collections.abc import Iterator
+from enum import Enum
+from typing import Generic, Protocol, TypeVar
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+class _EnumLike(Protocol, Generic[_T_co]):
+    def __call__(self, key: str, /) -> _T_co: ...
+    def __iter__(self, /) -> Iterator[_T_co]: ...
+
+def construct_from_string(key: str, enum_type: _EnumLike[_T_co]) -> _T_co:
+    return enum_type(key.lower())
+
+class Color(Enum):
+    GREEN = "green"
+    RED = "red"
+
+construct_from_string("red", Color)
+
+class ColorWithInit(Enum):
+    GREEN = "green"
+    RED = "red"
+
+    # The int is wrong, but it shouldn't influence the __call__ on the enum
+    def __init__(self, index: int): ...
+
+construct_from_string("red", ColorWithInit)
+
+[case enum_as_callable]
+from enum import Enum
+from typing import Callable
+
+class Color(Enum):
+    GREEN = "green"
+    RED = "red"
+
+y: Callable[[], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[], Color]")
+x: Callable[[str], Color] = Color
+z: Callable[[str, int], Color] = Color  # E: Incompatible types in assignment (expression has type "type[Color]", variable has type "Callable[[str, int], Color]")
+
+[case narrowing_int_flag]
+# From GH #476
+from enum import auto, IntFlag
+from typing import Literal, assert_type
+
+class Flags(IntFlag):
+    A = auto()
+    B = auto()
+assert_type(int() & Flags.A, Flags)
+assert_type(Flags.A & int(), Flags)
+
+def f(a: Literal[Flags.A], b: Flags):
+    assert_type(int() & a, Flags)
+    assert_type(a & int(), Flags)
+    assert_type(int() & b, Flags)
+    assert_type(b & int(), Flags)
+
+assert_type(int() & Flags.A, Flags)
+
+[case enum_multi_items]
+# From GH #500
+from typing import Any, assert_type
+import enum
+
+class Operation(str, enum.Enum):
+    code: str
+    label: str
+
+    def __new__(cls, code: str, label: str) -> Operation:
+        op = str.__new__(cls, code)
+        op._value_ = code
+        op.label = label
+        return op
+
+    BUY = ("buy", "Buy")
+    SELL = ("sell", "Sell")
+
+assert_type(Operation.BUY.value, Any)
+
+[case enum_with_all_members_equivalency]
+# From GH #514
+import enum
+from typing import Literal, assert_type
+class Answer(enum.Enum):
+    Yes = 1
+    No = 2
+
+def test4(a: Answer) -> None:
+    x: Literal[Answer.Yes, Answer.No] = a
+    y: Answer = x
+    assert_type(a, Literal[Answer.Yes, Answer.No])
+    assert_type(x, Answer)
+
+[case enum_callable]
+# Related to GH #524
+import enum
+from dataclasses import dataclass
+from typing import Any, cast, Callable, Literal
+
+class D(enum.Enum):
+    X = "A"
+    Y = "B"
+
+    def __call__(self, a: int) -> str:
+        return "x"
+
+class E(enum.Enum):
+    X = "A"
+    Y = "B"
+
+d = D.X
+c1: Callable[..., Any] = d
+
+d(1)
+d("")  # E: Argument 1 to "__call__" of "D" has incompatible type "str"; expected "int"
+
+e = E(1)
+c2: Callable[..., Any] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Callable[..., Any]")
+
+e(1)  # E: "E" not callable
+
+def f(d: D, d2: Literal[D.X]) -> Callable[..., Any]:
+    if bool():
+        return d
+    else:
+        return d2

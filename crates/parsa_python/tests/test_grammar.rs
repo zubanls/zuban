@@ -378,6 +378,9 @@ parametrize_snapshots!(
         {1: 2 for x in [1]}
         {a: bc for x in [1]}
         ");
+    avoid_crash_from_github_411: dedent("\
+        tuple[1,2,3,4,5,(
+        ");
 );
 
 #[test]

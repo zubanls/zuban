@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use arc_swap::{ArcSwap, Guard};
 use utils::match_case;
@@ -262,6 +265,33 @@ impl Workspaces {
         unreachable!("Expected to be able to place the file {path:?}")
     }
 
+    pub(crate) fn ensure_fallback(
+        &self,
+        vfs: &dyn VfsHandler,
+        path: PathWithScheme,
+    ) -> Option<DirectoryEntry> {
+        for workspace in self.items.load().iter() {
+            if workspace.kind == WorkspaceKind::Fallback {
+                let dir_entry = vfs.read_and_watch_entry(
+                    &*self.items.load(),
+                    &path.path,
+                    Parent::Workspace(Arc::downgrade(workspace)),
+                    &path.path,
+                )?;
+                // We just use the full entry as a name, this is not supposed to be looked up by
+                // anything. It's just a fallback so we have a node to store the entry.
+                let name = NormalizedPath::arc_to_str(path.path);
+                workspace
+                    .entries
+                    .borrow_mut()
+                    .insert(name, dir_entry.clone());
+                return Some(dir_entry);
+            }
+        }
+        tracing::error!("Would typically expect a fallback workspace");
+        return None;
+    }
+
     pub(crate) fn unload_file(
         &mut self,
         vfs: &dyn VfsHandler,
@@ -398,6 +428,7 @@ pub struct Workspace {
     pub(crate) scheme: Scheme,
     pub entries: Entries,
     pub kind: WorkspaceKind,
+    pub parent: WorkspaceParent,
 }
 
 impl Workspace {
@@ -408,7 +439,34 @@ impl Workspace {
         root_path: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) -> Arc<Self> {
-        tracing::debug!("Add workspace {root_path}");
+        tracing::debug!("Add workspace \"{root_path}\" as {kind:?}");
+
+        // Workspaces are added as nested workspaces already for workspaces that are contained
+        // within this one. But this workspace could be contained by another one, check for that
+        // here.
+        let mut parent_dir = None;
+        if !workspaces.is_empty()
+            && let (Some(folder), name) = vfs.split_off_last_item(&root_path)
+        {
+            for old in workspaces {
+                if ***old.root_path == *folder
+                    && let Some(dir_entry) = old.entries.search(name)
+                    && let DirectoryEntry::Directory(dir) = &*dir_entry
+                {
+                    tracing::debug!(
+                        "Added nested workspace for {folder} while creating new workspace"
+                    );
+                    parent_dir = Some(dir.clone());
+                    break;
+                }
+            }
+        }
+        let parent = WorkspaceParent::new(
+            parent_dir
+                .as_ref()
+                .map(|dir| Parent::Directory(Arc::downgrade(dir))),
+        );
+
         let workspace;
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
@@ -447,6 +505,7 @@ impl Workspace {
                 canonicalized_path: vfs
                     .unchecked_normalized_path(vfs.unchecked_abs_path(&canonicalized_path)),
                 kind,
+                parent,
             });
         };
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios")))]
@@ -456,6 +515,7 @@ impl Workspace {
                 scheme,
                 root_path,
                 kind,
+                parent,
             })
         }
         if kind == WorkspaceKind::Fallback {
@@ -468,23 +528,11 @@ impl Workspace {
         );
         *workspace.entries.borrow_mut() = std::mem::take(&mut new_entries.borrow_mut());
 
-        // Workspaces are added as nested workspaces already for workspaces that are contained
-        // within this one. But this workspace could be contained by another one, check for that
-        // here.
-        if !workspaces.is_empty()
-            && let (Some(folder), name) = vfs.split_off_last_item(&workspace.root_path)
-        {
-            for old in workspaces {
-                if ***old.root_path == *folder
-                    && let Some(dir_entry) = old.entries.search(name)
-                    && let DirectoryEntry::Directory(dir) = &*dir_entry
-                {
-                    let result = dir
-                        .entries
-                        .set(DirEntries::NestedWorkspace(Arc::downgrade(&workspace)));
-                    debug_assert!(result.is_ok());
-                }
-            }
+        if let Some(dir) = parent_dir {
+            let result = dir
+                .entries
+                .set(DirEntries::NestedWorkspace(Arc::downgrade(&workspace)));
+            debug_assert!(result.is_ok());
         }
         workspace
     }
@@ -513,7 +561,7 @@ impl Workspace {
     }
 
     pub fn root_path_starts_with(&self, path: &NormalizedPath) -> bool {
-        let path = path.as_ref();
+        let path: &Path = path.as_ref();
         #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios"))]
         {
             if self.canonicalized_path.as_ref().as_ref().starts_with(path) {
@@ -596,5 +644,58 @@ fn strip_path_prefix<'x>(
             return Some(path);
         };
         to_strip = rest_to_strip
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct WorkspaceParent(Mutex<Option<Parent>>);
+
+impl WorkspaceParent {
+    fn new(mutex: Option<Parent>) -> Self {
+        Self(Mutex::new(mutex))
+    }
+
+    pub fn lock(&self) -> impl std::ops::Deref<Target = Option<Parent>> {
+        self.0.lock().unwrap()
+    }
+
+    pub(crate) fn change(&self, new: Option<Parent>) {
+        *self.0.lock().unwrap() = new
+    }
+}
+
+impl Clone for WorkspaceParent {
+    fn clone(&self) -> Self {
+        if self.lock().is_some() {
+            unimplemented!("Currently nested workspaces cannot be cloned")
+        }
+        Self::default()
+    }
+}
+
+pub(crate) fn add_nested_workspace_if_necessary(
+    vfs: &dyn VfsHandler,
+    workspaces: &[Arc<Workspace>],
+    dir: &Arc<Directory>,
+) {
+    if let Some(workspace) = workspaces.iter().find(|workspace| {
+        // Checking ends_with first is a performance optimization to avoid creating a
+        // lot of paths.
+        workspace.root_path.ends_with(&*dir.name) && {
+            let absolute = dir.absolute_path(vfs);
+            absolute.path == workspace.root_path && absolute.scheme == workspace.scheme
+        }
+    }) {
+        tracing::debug!(
+            "Added nested workspace for {:?} while creating new dir",
+            dir.absolute_path(vfs)
+        );
+        workspace
+            .parent
+            .change(Some(Parent::Directory(Arc::downgrade(&dir))));
+        let result = dir
+            .entries
+            .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));
+        debug_assert!(result.is_ok());
     }
 }

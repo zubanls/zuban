@@ -1,0 +1,46 @@
+use serde::Deserialize;
+
+#[derive(Default, Deserialize, Debug)]
+#[serde(default, rename_all = "camelCase")]
+pub(crate) struct ClientConfig {
+    /// Default mode to use if there is no explicit Zuban config in `pyproject.toml`.
+    pub python_executable: Option<String>,
+    pub type_checking_mode: TypeCheckingMode,
+    pub diagnostic_mode: DiagnosticMode,
+    pub disable_language_services: bool,
+    pub inlay_hint_mode: InlayHintMode,
+}
+
+#[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum InlayHintMode {
+    #[default]
+    Default,
+    Off,
+}
+
+#[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum TypeCheckingMode {
+    #[default]
+    Auto,
+    Default,
+    Mypy,
+    Off,
+}
+
+impl TypeCheckingMode {
+    pub fn is_enabled(self) -> bool {
+        !matches!(self, Self::Off)
+    }
+}
+
+#[derive(Clone, Copy, Deserialize, Default, PartialEq, Eq, Debug)]
+pub(crate) enum DiagnosticMode {
+    #[default]
+    #[serde(rename = "open-files-only")]
+    OpenFilesOnly,
+    /// Compute and publish diagnostics for all files in the workspace, not just open files.
+    #[serde(rename = "workspace")]
+    Workspace,
+}

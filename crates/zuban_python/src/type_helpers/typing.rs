@@ -186,6 +186,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
                 )
                 .into();
             }
+            Type::NewType(_) => (), // No special formatting for NewTypes
             _ => {
                 if let Some(callable) = t.maybe_callable(i_s) {
                     return callable.format(&format_data).into();
@@ -233,24 +234,21 @@ pub(crate) fn execute_assert_type<'db>(
     } else {
         first.infer(result_context)
     };
-    let mut first_type = first.as_cow_type(i_s);
-
+    let first_type = first.as_cow_type(i_s);
     // The untyped TypeVars are not really assertable and are internal types mostly for type
     // inference. Type assertion should simply report Any.
-    if let Some(new) = first_type.replace_type_var_likes(i_s.db, &mut |usage| {
+    let first_type = first_type.replace_type_var_likes(i_s.db, &mut |usage| {
         usage
             .as_type_var_like()
             .is_untyped()
             .then(|| usage.as_any_generic_item())
-    }) {
-        first_type = Cow::Owned(new)
-    }
+    });
 
     let Ok(second) = second_positional
         .node_ref
         .file
         .name_resolution_for_types(i_s)
-        .compute_cast_target(second_positional.node_ref)
+        .compute_assert_type(second_positional.node_ref)
     else {
         return Inferred::new_any_from_error();
     };
@@ -465,8 +463,8 @@ impl Type {
             (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(
                 db,
                 checking_type_recursion,
-                u1.entries.iter().map(|e| &e.type_),
-                u2.entries.iter().map(|e| &e.type_),
+                u1.entries.iter(),
+                u2.entries.iter(),
                 unpack_recursive_type,
                 any_is_all,
             ),
@@ -483,6 +481,12 @@ impl Type {
             }
             (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
             (Type::TypeForm(t1), Type::TypeForm(t2)) => eq(t1, t2),
+            (Type::Enum(_), Type::Union(u)) | (Type::Union(u), Type::Enum(_))
+                if u.iter().all(|t| matches!(t, Type::EnumMember(_))) =>
+            {
+                self.is_simple_same_type(&InferenceState::new_in_unknown_file(db), other)
+                    .bool()
+            }
             _ => self == other,
         }
     }

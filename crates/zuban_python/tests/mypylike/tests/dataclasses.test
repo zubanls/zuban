@@ -681,7 +681,7 @@ def bad_converter2(*, x: int) -> int:
 
 class DC1(ModelBase):
     field1: int = model_field(converter=bad_converter1)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[], int]"; expected "Callable[[Never], int]"
-    field2: int = model_field(converter=bad_converter2)  # E: Argument "converter" to "model_field" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[Never], int]"
+    field2: int = model_field(converter=bad_converter2)  # E: Argument "converter" to "model_field" has incompatible type "def bad_converter2(*, x: int) -> int"; expected "Callable[[Never], int]"
 
 [case dataclass_transform_converter_conformance]
 # Copied from conformance tests (dataclasses_transform_converter.py)
@@ -1310,3 +1310,100 @@ assert_type(D2(1).__hash__, None)
 assert_type(D3(1).__hash__, None)
 assert_type(D4(1).__hash__, Callable[[object], int])
 assert_type(D5(1).__hash__, Callable[[object], int])
+
+[case dataclass_callable]
+# From GH #524
+from dataclasses import dataclass
+from typing import Any, cast, Callable
+
+@dataclass
+class E[R]:
+    x: R
+
+@dataclass
+class D[R]:
+    x: R
+    def __call__(self, a: R) -> R:
+        return a
+
+d = D(1)
+c1: Callable[..., Any] = d
+
+d(1)
+d("")  # E: Argument 1 to "__call__" of "D" has incompatible type "str"; expected "int"
+
+e = E(1)
+c2: Callable[..., Any] = e  # E: Incompatible types in assignment (expression has type "E[int]", variable has type "Callable[..., Any]")
+
+e(1)  # E: "E[int]" not callable
+
+[case dataclass_narrowed_from_any]
+# From GH #561
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar, assert_type
+
+T = TypeVar("T")
+
+@dataclass(frozen=True)
+class Box(Generic[T]):
+    value: T
+
+def check(value: Any, z: Box[int]) -> None:
+    assert isinstance(value, Box)
+    assert_type(value.value, Any)
+    assert value.value == 3
+    assert_type(z.value, int)
+
+[case overloaded_dataclass_descriptors]
+# From GH #599
+from dataclasses import dataclass, asdict
+from typing import Callable, Concatenate, overload, Self, Optional, assert_type
+@dataclass
+class ApiMethodOptions:
+    is_read: bool
+
+    def __call__[C, T, **P](self, underlying_method: Callable[Concatenate[C, P], T]) -> api_method[C, T, P]:
+        return api_method(underlying_method, self)
+
+@dataclass
+class api_method[C, T, **P]:
+    underlying_method: Callable[Concatenate[C, P], T]
+    options: ApiMethodOptions
+
+    def __call__(self, target: C, *args: P.args, **kwargs: P.kwargs) -> T:
+        return self.underlying_method(target, *args, **kwargs)
+
+    @overload
+    def __get__(self, target: None, owner: type[C]) -> Self: ...
+    @overload
+    def __get__(self, target: C, owner: type[C]) -> bound_api_method[C, T, P]: ...
+
+    def __get__(self, target: Optional[C], owner: type[C]) -> Self | bound_api_method[C, T, P]:
+        if target is not None:
+            return bound_api_method(options=self.options, target=target, function=self.underlying_method)
+        else:
+            return self
+
+@dataclass
+class bound_api_method[C, T, **P]:
+    target: C
+    options: ApiMethodOptions
+    function: Callable[Concatenate[C, P], T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        return self.function(self.target, *args, **kwargs)
+
+read_api = ApiMethodOptions(is_read=True)
+
+class Class:
+    @read_api
+    def f(self, x: int) -> str:
+        return str(x + 1)
+
+c = Class()
+
+assert_type(c.f(12), str)
+assert_type(c.f("12"), str) # E: Argument 1 to "__call__" of "bound_api_method" has incompatible type "str"; expected "int"
+
+assert_type(Class.f(c, 12), str)
+assert_type(Class.f(c, 12), str)

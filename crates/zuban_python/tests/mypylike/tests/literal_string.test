@@ -271,3 +271,14 @@ def f(y: LiteralString):
     reveal_type(5 * y)  # N: Revealed type is "LiteralString"
     reveal_type(y * 1000000)  # N: Revealed type is "LiteralString"
     reveal_type(1000000 * y)  # N: Revealed type is "LiteralString"
+
+[case literal_string_is_indexable]
+# From GH #447
+from typing import Final, Literal, LiteralString
+
+a: LiteralString = "foobar"
+b: Literal["foobar"] = "foobar"
+c: str = "foobar"
+d: Final = "foobar"
+
+print(a[2:4], b[2:4], c[2:4], d[2:4])

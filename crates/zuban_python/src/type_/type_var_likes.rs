@@ -12,7 +12,7 @@ use super::{
     ReplaceTypeVarLikes, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
-    database::{ComplexPoint, Database, ParentScope, PointLink},
+    database::{ComplexPoint, Database, Locality, ParentScope, PointLink},
     debug,
     diagnostics::IssueKind,
     file::{PythonFile, TypeVarTupleDefaultOrigin},
@@ -20,6 +20,8 @@ use crate::{
     inference_state::InferenceState,
     matching::Matcher,
     node_ref::NodeRef,
+    recoverable_error,
+    type_::ParamSpecArg,
     type_helpers::Class,
     utils::join_with_commas,
 };
@@ -300,24 +302,6 @@ impl TypeVarManager<PointLink> {
             }
             prev = Some(unfinished)
         }
-        if has_default {
-            for index in 0..self.type_vars.len() {
-                let unfinished = &self.type_vars[index];
-                let current = &unfinished.type_var_like;
-                if current.default(db).is_some() {
-                    if let Some(new) = current.replace_type_var_like_defaults_that_are_out_of_scope(
-                        db,
-                        self.iter().take(index),
-                        &|kind| {
-                            NodeRef::new(in_file, unfinished.defined_at.unwrap())
-                                .add_type_issue(db, kind)
-                        },
-                    ) {
-                        self.type_vars[index].type_var_like = new;
-                    }
-                }
-            }
-        }
         self.into_type_vars()
     }
 }
@@ -374,7 +358,7 @@ impl CallableId for Arc<CallableContent> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[repr(u32)]
 pub(crate) enum Variance {
     Invariant = 0,
@@ -404,6 +388,37 @@ impl Variance {
 pub(crate) enum TypeVarVariance {
     Known(Variance),
     Inferred,
+}
+
+impl TypeVarVariance {
+    fn infer(self, db: &Database, class: &Class, name: TypeVarLikeName) -> Variance {
+        match self {
+            TypeVarVariance::Known(variance) => variance,
+            TypeVarVariance::Inferred => {
+                let Some(class_infos) = class.maybe_cached_class_infos(db) else {
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because of uncalculated class infos",
+                        name.as_str(db)
+                    );
+                    return Variance::Covariant;
+                };
+                let variance = class_infos
+                    .variance_map
+                    .iter()
+                    .find_map(|(n, variance)| (name == *n).then_some(variance))
+                    .unwrap();
+                variance.get().copied().unwrap_or_else(|| {
+                    // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
+                    // while calculating.
+                    debug!(
+                        "Using covariant variance for TypeVar {}, because the variance is not yet ready",
+                        name.as_str(db)
+                    );
+                    Variance::Covariant
+                })
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -599,6 +614,42 @@ impl TypeVarLikes {
             }
         }
     }
+
+    pub fn maybe_replace_invalid_type_var_defaults(
+        &self,
+        db: &Database,
+        add_issue: impl Fn(IssueKind) -> bool,
+    ) -> Option<Self> {
+        let mut new = None;
+        for (i, tvl) in self.iter().enumerate() {
+            if let Some(replaced) = tvl.replace_type_var_like_defaults_that_are_out_of_scope(
+                db,
+                self.iter().take(i),
+                &add_issue,
+            ) {
+                if let Some(name) = tvl.type_var_like_name() {
+                    if let TypeVarLikeName::SyntaxNode(link) = name {
+                        debug!("Replace type var syntax node because of invalid defaults");
+                        let name_ref = NodeRef::from_link(db, link);
+                        debug_assert!(name_ref.maybe_name_def().is_some());
+                        name_ref.insert_complex(
+                            ComplexPoint::TypeVarLike(replaced.clone()),
+                            Locality::Todo,
+                        );
+                    }
+                } else {
+                    recoverable_error!("There should always be a known position");
+                }
+                // Need to overwrite the old definition
+                let mut n: Vec<_> = self.iter().cloned().take(i).collect();
+                n.push(replaced);
+                new = Some(n);
+            } else if let Some(new) = &mut new {
+                new.push(tvl.clone())
+            }
+        }
+        new.map(TypeVarLikes::from_vec)
+    }
 }
 
 impl std::ops::Index<usize> for TypeVarLikes {
@@ -622,6 +673,17 @@ impl TypeVarLike {
             Self::TypeVar(t) => t.name(db),
             Self::TypeVarTuple(t) => Cow::Borrowed(t.name(db)),
             Self::ParamSpec(s) => Cow::Borrowed(s.name(db)),
+        }
+    }
+
+    pub fn type_var_like_name(&self) -> Option<TypeVarLikeName> {
+        match self {
+            Self::TypeVar(t) => match t.name {
+                TypeVarName::Name(n) => Some(n),
+                _ => None,
+            },
+            Self::TypeVarTuple(t) => Some(t.name),
+            Self::ParamSpec(s) => Some(s.name),
         }
     }
 
@@ -807,7 +869,7 @@ impl TypeVarLike {
     ) -> Option<Self> {
         if let Some(default) = self.default(db) {
             let mut had_issue = false;
-            let replaced = default.replace_type_var_likes(db, &mut |usage| {
+            let replaced = default.maybe_replace_type_var_likes(db, &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
                 if previous_type_vars.clone().any(|tvl| tvl == &tvl_found) {
                     None
@@ -836,6 +898,30 @@ impl TypeVarLike {
             _ => false,
         }
     }
+
+    pub fn variance(&self) -> TypeVarVariance {
+        match self {
+            TypeVarLike::TypeVar(type_var) => type_var.variance,
+            TypeVarLike::TypeVarTuple(type_var_tuple) => type_var_tuple.variance,
+            TypeVarLike::ParamSpec(param_spec) => param_spec.variance,
+        }
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        match self {
+            TypeVarLike::TypeVar(type_var) => type_var.inferred_variance(db, class),
+            TypeVarLike::TypeVarTuple(tvt) => tvt.inferred_variance(db, class),
+            TypeVarLike::ParamSpec(param_spec) => param_spec.inferred_variance(db, class),
+        }
+    }
+
+    pub fn kind(&self) -> TypeVarLikeKind {
+        match self {
+            TypeVarLike::TypeVar(_) => TypeVarLikeKind::TypeVar,
+            TypeVarLike::TypeVarTuple(_) => TypeVarLikeKind::TypeVarTuple,
+            TypeVarLike::ParamSpec(_) => TypeVarLikeKind::ParamSpec,
+        }
+    }
 }
 
 impl Hash for TypeVarLike {
@@ -846,6 +932,13 @@ impl Hash for TypeVarLike {
             TypeVarLike::ParamSpec(p) => Arc::as_ptr(p).hash(state),
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum TypeVarLikeKind {
+    TypeVar,
+    TypeVarTuple,
+    ParamSpec,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -862,6 +955,16 @@ pub(crate) enum TypeVarName {
     Name(TypeVarLikeName),
     UntypedParam { nth: usize },
     Self_,
+}
+
+impl TypeVarName {
+    pub fn as_str<'db>(&self, db: &'db Database) -> Cow<'db, str> {
+        match self {
+            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
+            TypeVarName::Self_ => Cow::Borrowed("Self"),
+            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
+        }
+    }
 }
 
 impl TypeVarLikeName {
@@ -951,12 +1054,14 @@ impl TypeLikeInTypeVar<Type> {
         db: &Database,
         name: TypeVarName,
         scope: ParentScope,
-        calculate_type: impl FnOnce(&InferenceState, NodeRef) -> Type,
+        calculate_type: impl FnOnce(&InferenceState, TypeVarLikeName, NodeRef) -> Type,
     ) -> Result<&Type, ()> {
         let TypeVarName::Name(name) = name else {
             return Ok(self.t.get().unwrap());
         };
-        self.get_type_like(db, name, scope, calculate_type)
+        self.get_type_like(db, name, scope, |i_s, node_ref| {
+            calculate_type(i_s, name, node_ref)
+        })
     }
 }
 
@@ -1041,40 +1146,21 @@ impl TypeVar {
     }
 
     pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
-        match self.variance {
-            TypeVarVariance::Known(variance) => variance,
-            TypeVarVariance::Inferred => {
-                let Some(class_infos) = class.maybe_cached_class_infos(db) else {
-                    debug!(
-                        "Using covariant variance for TypeVar {}, because of uncalculated class infos",
-                        self.name(db)
-                    );
-                    return Variance::Covariant;
-                };
-                let variance = class_infos
-                    .variance_map
-                    .iter()
-                    .find_map(|(n, variance)| (self.name == *n).then_some(variance))
-                    .unwrap();
-                variance.get().copied().unwrap_or_else(|| {
-                    // Fallback to Covariant if it was not calculated yet. Mypy also falls back to it
-                    // while calculating.
-                    debug!(
-                        "Using covariant variance for TypeVar {}, because the variance is not yet ready",
-                        self.name(db)
-                    );
+        match self.name {
+            //
+            TypeVarName::Name(n) => self.variance.infer(db, class, n),
+            _ => match self.variance {
+                TypeVarVariance::Known(variance) => variance,
+                TypeVarVariance::Inferred => {
+                    recoverable_error!("Variance should be known for non-standard names");
                     Variance::Covariant
-                })
-            }
+                }
+            },
         }
     }
 
     pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
-        match &self.name {
-            TypeVarName::Name(n) => Cow::Borrowed(n.as_str(db)),
-            TypeVarName::Self_ => Cow::Borrowed("Self"),
-            TypeVarName::UntypedParam { nth } => Cow::Owned(format!("T{}", nth + 1)),
-        }
+        self.name.as_str(db)
     }
 
     fn is_from_type_var_syntax(&self) -> bool {
@@ -1096,11 +1182,12 @@ impl TypeVar {
             TypeVarKindInfos::Unrestricted => TypeVarKind::Unrestricted,
             TypeVarKindInfos::Bound(bound) => TypeVarKind::Bound(
                 bound
-                    .get_type(db, self.name, self.scope, |i_s, node_ref| {
+                    .get_type(db, self.name, self.scope, |i_s, name, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
                             .compute_type_var_bound(
+                                name,
                                 node_ref.expect_expression(),
                                 self.is_from_type_var_syntax(),
                             )
@@ -1110,7 +1197,7 @@ impl TypeVar {
             ),
             TypeVarKindInfos::Constraints(constraints) => {
                 TypeVarKind::Constraints(constraints.iter().map(|c| {
-                    c.get_type(db, self.name, self.scope, |i_s, node_ref| {
+                    c.get_type(db, self.name, self.scope, |i_s, _, node_ref| {
                         node_ref
                             .file
                             .name_resolution_for_types(i_s)
@@ -1131,11 +1218,11 @@ impl TypeVar {
         let default = self.default.as_ref()?;
         Some(
             default
-                .get_type(db, self.name, self.scope, |i_s, node_ref| {
+                .get_type(db, self.name, self.scope, |i_s, name, node_ref| {
                     let default = if let Some(t) = node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_default(node_ref.expect_expression())
+                        .compute_type_var_default(name, node_ref.expect_expression())
                     {
                         t
                     } else {
@@ -1192,6 +1279,10 @@ impl TypeVar {
 
             TypeVarName::Self_ | TypeVarName::UntypedParam { .. } => self.name(db).into(),
         }
+    }
+
+    pub fn format_short(&self, db: &Database) -> String {
+        self.format(&FormatData::new_short(db))
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -1252,14 +1343,21 @@ pub(crate) struct TypeVarTuple {
     name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<TypeArgs>>,
+    pub variance: TypeVarVariance,
 }
 
 impl TypeVarTuple {
-    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+    pub fn new(
+        name: TypeVarLikeName,
+        scope: ParentScope,
+        default: Option<NodeIndex>,
+        variance: TypeVarVariance,
+    ) -> Self {
         Self {
             name,
             scope,
             default: default.map(TypeLikeInTypeVar::new_lazy),
+            variance,
         }
     }
 
@@ -1295,7 +1393,7 @@ impl TypeVarTuple {
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_type_var_tuple_default(origin)
+                        .compute_type_var_tuple_default(self.name, origin)
                         .unwrap_or_else(|| {
                             node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
                             TypeArgs::new_arbitrary_from_error()
@@ -1304,6 +1402,10 @@ impl TypeVarTuple {
                 // TODO add an error here
                 .unwrap_or(&db.python_state.type_args_from_err),
         )
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        self.variance.infer(db, class, self.name)
     }
 }
 
@@ -1331,14 +1433,21 @@ pub(crate) struct ParamSpec {
     pub name: TypeVarLikeName,
     scope: ParentScope,
     default: Option<TypeLikeInTypeVar<CallableParams>>,
+    pub variance: TypeVarVariance,
 }
 
 impl ParamSpec {
-    pub fn new(name: TypeVarLikeName, scope: ParentScope, default: Option<NodeIndex>) -> Self {
+    pub fn new(
+        name: TypeVarLikeName,
+        scope: ParentScope,
+        default: Option<NodeIndex>,
+        variance: TypeVarVariance,
+    ) -> Self {
         Self {
             name,
             scope,
             default: default.map(TypeLikeInTypeVar::new_lazy),
+            variance,
         }
     }
 
@@ -1370,7 +1479,7 @@ impl ParamSpec {
                     node_ref
                         .file
                         .name_resolution_for_types(i_s)
-                        .compute_param_spec_default(node_ref.expect_expression())
+                        .compute_param_spec_default(self.name, node_ref.expect_expression())
                         .unwrap_or_else(|| {
                             node_ref.add_issue(i_s, IssueKind::ParamSpecInvalidDefault);
                             CallableParams::ERROR
@@ -1378,6 +1487,10 @@ impl ParamSpec {
                 })
                 .unwrap_or(&CallableParams::ERROR),
         )
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        self.variance.infer(db, class, self.name)
     }
 }
 
@@ -1504,31 +1617,6 @@ impl Hash for ParamSpecUsage {
         self.in_definition.hash(state);
         self.index.hash(state);
         self.temporary_matcher_id.hash(state);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ParamSpecTypeVars {
-    pub type_vars: TypeVarLikes,
-    pub in_definition: PointLink,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ParamSpecArg {
-    pub params: CallableParams,
-    pub type_vars: Option<ParamSpecTypeVars>,
-}
-
-impl ParamSpecArg {
-    pub fn new(params: CallableParams, type_vars: Option<ParamSpecTypeVars>) -> Self {
-        Self { params, type_vars }
-    }
-
-    pub fn new_any(cause: AnyCause) -> Self {
-        Self {
-            params: CallableParams::Any(cause),
-            type_vars: None,
-        }
     }
 }
 
@@ -1699,6 +1787,49 @@ impl TypeVarLikeUsage {
                 ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)),
                 ParamsStyle::Unreachable => unreachable!(),
             },
+        }
+    }
+
+    pub fn name<'db>(&self, db: &'db Database) -> Cow<'db, str> {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.name(db),
+            TypeVarLikeUsage::TypeVarTuple(usage) => Cow::Borrowed(usage.type_var_tuple.name(db)),
+            TypeVarLikeUsage::ParamSpec(usage) => Cow::Borrowed(usage.param_spec.name(db)),
+        }
+    }
+
+    pub fn variance(&self) -> TypeVarVariance {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.variance,
+            TypeVarLikeUsage::TypeVarTuple(usage) => usage.type_var_tuple.variance,
+            TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.variance,
+        }
+    }
+
+    pub fn inferred_variance(&self, db: &Database, class: &Class) -> Variance {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => usage.type_var.inferred_variance(db, class),
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                usage.type_var_tuple.inferred_variance(db, class)
+            }
+            TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.inferred_variance(db, class),
+        }
+    }
+}
+
+impl NodeRef<'_> {
+    pub fn insert_type_var_likes(&self, db: &Database, type_var_likes: TypeVarLikes) {
+        self.insert_complex(
+            ComplexPoint::TypeVarLikes(type_var_likes.clone()),
+            Locality::Todo,
+        );
+        if let Some(new) = type_var_likes
+            .maybe_replace_invalid_type_var_defaults(db, |issue| self.add_type_issue(db, issue))
+        {
+            debug!("Replace type vars because of invalid defaults");
+            // The type var defaults might have invalid cycles. In that case we have to replace the
+            // type vars again with the correct type vars.
+            self.insert_complex(ComplexPoint::TypeVarLikes(new), Locality::Todo);
         }
     }
 }

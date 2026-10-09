@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
+    cell::{Cell, LazyCell},
     collections::{HashMap, HashSet},
     sync::Arc,
 };
@@ -21,7 +21,10 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueKind},
-    file::{File, Inference, inference::AssignKind},
+    file::{
+        File, Inference, flow_analysis::DelayedDiagnostic, inference::AssignKind,
+        utils::for_each_reachable_if_stmt_block_and_return_reachability_always_known,
+    },
     format_data::FormatData,
     imports::ImportResult,
     inference_state::InferenceState,
@@ -33,11 +36,11 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, FunctionKind,
-        FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind, LookupResult,
-        NeverCause, ParamType, ReplaceTypeVarLikes, TupleArgs, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypeVarVariance, Variance, dataclass_post_init_func,
-        ensure_calculated_dataclass, format_callable_params,
+        AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics, DbString,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause, Literal, LiteralKind,
+        LookupArgs, LookupResult, NeverCause, ParamType, ReplaceTypeVarLikes, StarParamType,
+        TupleArgs, TupleUnpack, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarVariance,
+        Variance, dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, Class, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function,
@@ -139,32 +142,74 @@ lazy_static::lazy_static! {
 
 impl Inference<'_, '_, '_> {
     pub fn calculate_module_diagnostics(&self) -> Result<(), ()> {
+        debug!(
+            "Full module analysis for {} ({})",
+            self.file.file_path(self.i_s.db),
+            self.file.file_index(),
+        );
+        debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
+        let indent = debug_indent();
         let result = self.ensure_module_symbols_flow_analysis();
         self.file.process_delayed_diagnostics(self.i_s.db);
+        self.file.issues.set_complete_diagnostics();
+        drop(indent);
+        debug!(
+            "End of module analysis for {} ({})",
+            self.file.file_path(self.i_s.db),
+            self.file.file_index(),
+        );
         result
     }
 
     pub fn ensure_module_symbols_flow_analysis(&self) -> Result<(), ()> {
         diagnostics_for_scope(NodeRef::new(self.file, 0), || {
-            FLOW_ANALYSIS.with(|fa| {
-                fa.with_new_empty_for_file(self.i_s.db, self.file, || {
-                    let file_path = self.file.file_path(self.i_s.db);
-                    let _panic_context = utils::panic_context::enter(file_path.to_string());
-                    debug!(
-                        "Diagnostics for module {file_path} ({})",
-                        self.file.file_index(),
+            FLOW_ANALYSIS.with_new_empty_for_file(self.i_s.db, self.file, |flow_analysis| {
+                let file_path = self.file.file_path(self.i_s.db);
+                let _panic_context = utils::panic_context::enter(file_path.to_string());
+                debug!(
+                    "Global symbol analysis for module {file_path} ({})",
+                    self.file.file_index(),
+                );
+                debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
+                let indent = debug_indent();
+                flow_analysis.with_frame_that_exports_widened_entries(self.i_s, || {
+                    self.calc_stmts_diagnostics(
+                        self.file.tree.root().iter_stmt_likes(),
+                        None,
+                        None,
                     );
-                    debug_assert!(self.i_s.is_file_context(), "{:?}", self.i_s);
-                    let _indent = debug_indent();
-                    fa.with_frame_that_exports_widened_entries(self.i_s, || {
-                        self.calc_stmts_diagnostics(
-                            self.file.tree.root().iter_stmt_likes(),
-                            None,
-                            None,
-                        );
-                    });
-                })
+                });
+                drop(indent);
+                debug!(
+                    "End of global symbol analysis for module {file_path} ({})",
+                    self.file.file_index(),
+                );
             });
+
+            let classes: Vec<_> = self
+                .file
+                .delayed_diagnostics
+                .read()
+                .unwrap()
+                .iter()
+                .filter_map(|delayed| match delayed {
+                    DelayedDiagnostic::ClassTypeParams { class_link } => {
+                        debug_assert_eq!(class_link.file, self.file.file_index);
+                        Some(ClassNodeRef::from_node_index(
+                            self.file,
+                            class_link.node_index,
+                        ))
+                    }
+                    _ => None,
+                })
+                .collect();
+
+            // We need to infer class variances once the module is defined, otherwise the variances
+            // might not have been inferred correctly while matching types.
+            for class in classes {
+                class.infer_variance_of_type_params(self.i_s.db, true);
+            }
+
             // Unsafe is fine here, because it only copies existing values. If we used
             // ensure_calculated_types here, the complex values might be increased in size and we
             // therefore need to clone all type vars first.
@@ -312,9 +357,9 @@ impl Inference<'_, '_, '_> {
         let inf = self.infer_expression(expr);
         let t = inf.as_cow_type(self.i_s);
         // First check if it's a `raise NotImplemented` (which is invalid)
-        if t.maybe_class(self.i_s.db)
-            .is_some_and(|c| c.node_ref == self.i_s.db.python_state.notimplemented_type_node_ref())
-        {
+        if t.maybe_class(self.i_s.db).is_some_and(|c| {
+            c.node_ref.as_link() == self.i_s.db.python_state.notimplemented_type_link
+        }) {
             NodeRef::new(self.file, expr.index()).add_issue(
                 self.i_s,
                 IssueKind::BaseExceptionExpectedForRaise {
@@ -533,7 +578,7 @@ impl Inference<'_, '_, '_> {
     fn stmt_is_allowed_when_unreachable(&self, s: StmtLikeContent) -> bool {
         // In Mypy this is called is_noop_for_reachability
         match s {
-            StmtLikeContent::RaiseStmt(_) | StmtLikeContent::PassStmt(_) => true,
+            StmtLikeContent::RaiseStmt(_) => true,
             StmtLikeContent::AssertStmt(assert_stmt) => {
                 match assert_stmt.unpack().0.maybe_unpacked_atom() {
                     Some(AtomContent::Bool(b)) if b.as_code() == "False" => true,
@@ -623,7 +668,7 @@ impl Inference<'_, '_, '_> {
         let check_with = |with_stmt: WithStmt| {
             self.calc_untyped_block_diagnostics(with_stmt.unpack().1, from_type_var_value)
         };
-        'outer: for stmt_like in block.iter_stmt_likes() {
+        for stmt_like in block.iter_stmt_likes() {
             match stmt_like.node {
                 StmtLikeContent::StarExpressions(star_exprs) => {
                     let Some(expr) = star_exprs.maybe_simple_expression() else {
@@ -700,15 +745,19 @@ impl Inference<'_, '_, '_> {
                             }
                             */
                             self.ensure_cached_annotation(annotation, right_side.is_some());
-                            if let Target::Name(n) | Target::NameExpression(_, n) = target {
-                                self.set_point(
-                                    n.index(),
-                                    Point::new_redirect(
-                                        self.file.file_index,
-                                        annotation.index(),
-                                        Locality::Todo,
-                                    ),
-                                );
+                            if self.has_complete_annotation_type(annotation) {
+                                if let Target::Name(n) | Target::NameExpression(_, n) = target {
+                                    self.set_point(
+                                        n.index(),
+                                        Point::new_redirect(
+                                            self.file.file_index,
+                                            annotation.index(),
+                                            Locality::Todo,
+                                        ),
+                                    );
+                                }
+                            } else {
+                                self.assign_any_to_untyped_target(target)
                             }
                             add_annotation_in_untyped_issue()
                         }
@@ -731,28 +780,11 @@ impl Inference<'_, '_, '_> {
                     AsyncStmtContent::WithStmt(w) => check_with(w),
                 },
                 StmtLikeContent::IfStmt(if_stmt) => {
-                    for b in if_stmt.iter_blocks() {
-                        let name_binder_check = self
-                            .point(b.first_leaf_index())
-                            .maybe_calculated_and_specific();
-                        let block = match b {
-                            IfBlockType::If(_, block) => block,
-                            IfBlockType::Else(e) => e.block(),
-                        };
-                        match name_binder_check {
-                            Some(
-                                Specific::IfBranchAlwaysReachableInTypeCheckingBlock
-                                | Specific::IfBranchAlwaysReachableInNameBinder,
-                            ) => self.calc_untyped_block_diagnostics(block, from_type_var_value),
-                            Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
-                                continue 'outer;
-                            }
-                            Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) => {
-                                continue 'outer;
-                            }
-                            _ => self.calc_untyped_block_diagnostics(block, from_type_var_value),
-                        }
-                    }
+                    for_each_reachable_if_stmt_block_and_return_reachability_always_known(
+                        self.file,
+                        if_stmt,
+                        |block| self.calc_untyped_block_diagnostics(block, from_type_var_value),
+                    );
                 }
                 StmtLikeContent::WhileStmt(while_stmt) => {
                     let (_, block, else_block) = while_stmt.unpack();
@@ -792,7 +824,10 @@ impl Inference<'_, '_, '_> {
         match target {
             Target::NameExpression(_, n) => {
                 // Assign any to potential self assignments
-                Inferred::new_any_from_error().save_redirect(self.i_s, self.file, n.index());
+                NodeRef::new(self.file, n.index()).set_point(Point::new_specific(
+                    Specific::UntypedFunctionSelfAssignment,
+                    Locality::File,
+                ));
             }
             Target::Tuple(targets) => {
                 for target in targets {
@@ -829,12 +864,12 @@ impl Inference<'_, '_, '_> {
         let type_vars = match parent_scope {
             ParentScope::Module => return,
             ParentScope::Function(index) => {
-                let func = FuncNodeRef::new(self.file, index);
+                let func = FuncNodeRef::from_node_ref(NodeRef::new(self.file, index));
                 self.check_parent_type_params_redefinitions(func.parent_scope(), type_params);
                 func.type_vars(self.i_s.db)
             }
             ParentScope::Class(index) => {
-                let class = ClassNodeRef::new(self.file, index);
+                let class = ClassNodeRef::from_node_index(self.file, index);
                 let storage = class.class_storage();
                 self.check_parent_type_params_redefinitions(storage.parent_scope, type_params);
                 class.type_vars(self.i_s)
@@ -888,7 +923,7 @@ impl Inference<'_, '_, '_> {
 
         let (type_params, arguments, block) = class.unpack();
         cache_class_name(NodeRef::new(self.file, class.name_def().index()), class);
-        let class_node_ref = ClassNodeRef::new(self.file, class.index());
+        let class_node_ref = ClassNodeRef::from_node_index(self.file, class.index());
         class_node_ref.ensure_cached_class_infos(self.i_s);
         let db = self.i_s.db;
 
@@ -1085,10 +1120,18 @@ impl Inference<'_, '_, '_> {
             self.i_s,
             || class_infos.base_types(),
             // Don't check symbols if they are part of the instance that we are currently using.
+            // Also, Django models routinely combine abstract "model mixins" that each declare their
+            // own inner "Meta" class. Those inner classes are unrelated and would otherwise be
+            // reported as incompatible, but the django-stubs mypy plugin ignores them, so we do the
+            // same for any class derived from the django-stubs base classes.
             |name| {
-                c.lookup_symbol(self.i_s, name)
-                    .into_maybe_inferred()
-                    .is_none()
+                if name == "Meta" && c.has_django_stubs_base_class(self.i_s.db) {
+                    return false;
+                } else {
+                    c.lookup_symbol(self.i_s, name)
+                        .into_maybe_inferred()
+                        .is_none()
+                }
             },
             |issue| c.add_issue_on_args(self.i_s, issue),
         );
@@ -1323,6 +1366,7 @@ impl Inference<'_, '_, '_> {
                         false,
                         __post_init__.expect_simple_params().iter(),
                         false,
+                        None,
                     );
                     format!("def __post_init__(self, {params}) -> None")
                 }),
@@ -1338,8 +1382,30 @@ impl Inference<'_, '_, '_> {
             }
         };
 
+        let func_node_ref = FuncNodeRef::new(self.file, func_def);
+        // Calculate if there is an @override decorator
+        let has_override_decorator = LazyCell::new(|| {
+            if let Some(overload) = func_node_ref.maybe_overload() {
+                return overload.is_override;
+            } else if let Some(decorated) = func_def.maybe_decorated() {
+                let decorators = decorated.decorators();
+                for decorator in decorators.iter() {
+                    if let Some(redirect) =
+                        NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
+                        && redirect.as_link() == i_s.db.python_state.typing_override_link
+                    {
+                        return true;
+                    }
+                }
+            }
+            false
+        });
+
+        let is_special_override = IGNORED_INHERITANCE_NAMES.contains(&name);
         // Mypy completely ignores untyped functions.
-        if IGNORED_INHERITANCE_NAMES.contains(&name) || !should_check_func_override() {
+        if is_special_override && (i_s.db.mypy_compatible() || !*has_override_decorator)
+            || !should_check_func_override()
+        {
             let original_details = c.lookup(
                 i_s,
                 name,
@@ -1349,24 +1415,15 @@ impl Inference<'_, '_, '_> {
             return;
         }
 
-        let func_node_ref = FuncNodeRef::new(self.file, func_def.index());
         Function::new_with_unknown_parent(i_s.db, *func_node_ref).cache_func_from_diagnostics(i_s);
-        // Calculate if there is an @override decorator
-        let mut has_override_decorator = false;
-        if let Some(ComplexPoint::FunctionOverload(overload)) = func_node_ref.maybe_complex() {
-            has_override_decorator = overload.is_override;
-        } else if let Some(decorated) = func_def.maybe_decorated() {
-            let decorators = decorated.decorators();
-            for decorator in decorators.iter() {
-                if let Some(redirect) =
-                    NodeRef::new(self.file, decorator.index()).maybe_redirect(i_s.db)
-                    && redirect.as_link() == i_s.db.python_state.typing_override_link
-                {
-                    has_override_decorator = true;
-                }
-            }
-        }
-        find_and_check_override(self.i_s, from, c, name, has_override_decorator)
+        find_and_check_override(
+            self.i_s,
+            from,
+            c,
+            name,
+            *has_override_decorator,
+            is_special_override,
+        )
     }
 
     fn maybe_delay_func_diagnostics(
@@ -1455,7 +1512,7 @@ impl Inference<'_, '_, '_> {
 
     pub(crate) fn ensure_func_diagnostics(&self, function: Function) -> Result<(), ()> {
         function.cache_func_from_diagnostics(self.i_s);
-        let func_node = function.node();
+        let func_node = function.as_node();
         if let Some(decorated) = func_node.maybe_decorated()
             && function.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable)
             && self.is_no_type_check(decorated)
@@ -1468,7 +1525,7 @@ impl Inference<'_, '_, '_> {
             function.name(),
             self.file_path(),
             self.file.file_index,
-            func_node.index(),
+            function.as_node().index(),
             function.node_ref.line_one_based(self.i_s.db)
         );
         let _indent = debug_indent();
@@ -1476,7 +1533,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub(crate) fn ensure_calculated_function_body(&self, function: Function) -> Result<(), ()> {
-        let func_node = function.node();
+        let func_node = function.as_node();
         let (name_def, _, params, _, body) = func_node.unpack();
         let body_ref = NodeRef::new(self.file, body.index());
         let point = body_ref.point();
@@ -1488,21 +1545,29 @@ impl Inference<'_, '_, '_> {
         }
         body_ref.set_point(Point::new_calculating());
         FLOW_ANALYSIS.with(|fa| {
+            let mut checked = false;
             let unreachable = fa.with_new_func_frame_and_return_unreachable(self.i_s.db, || {
                 if self.is_empty_generator_function(func_node) {
                     fa.enable_reported_unreachable_in_top_frame();
                 }
                 let flags = self.flags();
-                self.file
+                checked = self
+                    .file
                     .inference(&self.i_s.with_func_context(&function))
-                    .function_diagnostics_with_correct_i_s(function, flags, name_def, params, body);
+                    .function_diagnostics_with_correct_i_s_and_return_checked(
+                        function, flags, name_def, params, body,
+                    );
             });
             let specific = if unreachable {
                 Specific::FunctionEndIsUnreachable
             } else {
-                Specific::Analyzed
+                Specific::FunctionEndIsReachable
             };
-            body_ref.set_point(Point::new_specific(specific, Locality::Todo));
+            let mut point = Point::new_specific(specific, Locality::Todo);
+            if checked {
+                point = point.set_checked_function()
+            }
+            body_ref.set_point(point);
         });
         Ok(())
     }
@@ -1512,10 +1577,10 @@ impl Inference<'_, '_, '_> {
 
         let i_s = self.i_s;
 
-        let (name_def, type_params, params, return_annotation, body) = function.node().unpack();
+        let (name_def, type_params, params, return_annotation, body) = function.as_node().unpack();
 
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.maybe_complex() {
+        if let Some(o) = function.maybe_overload() {
             is_overload_member = true;
             if let Some(implementation) = &o.implementation {
                 let maybe_remap = |class: Class, c: &mut Cow<CallableContent>| {
@@ -1600,10 +1665,27 @@ impl Inference<'_, '_, '_> {
                 if let Some(annotation) = param.annotation()
                     && let Some(default) = param.default()
                 {
-                    let t = self.use_cached_param_annotation_type(annotation);
+                    let mut t = self.use_cached_param_annotation_type(annotation);
+                    if let Some(new) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
+                        let from = usage.in_definition();
+                        if function.as_link() == from
+                            || function.class?.as_link() == from
+                                && (matches!(
+                                    function.kind(i_s),
+                                    FunctionKind::Classmethod { .. } | FunctionKind::Staticmethod
+                                ) || function.name() == "__init__"
+                                    || function.name() == "__new__")
+                        {
+                            usage.as_type_var_like().default(i_s.db)
+                        } else {
+                            None
+                        }
+                    }) {
+                        t = Cow::Owned(new)
+                    }
                     let inf = self
                         .infer_expression_with_context(default, &mut ResultContext::new_known(&t));
-                    t.error_if_not_matches(
+                    t.error_if_not_assignable(
                         i_s,
                         &inf,
                         |issue| self.add_issue(default.index(), issue),
@@ -1636,7 +1718,7 @@ impl Inference<'_, '_, '_> {
         }
 
         if NodeRef::new(self.file, body.index()).point().specific()
-            != Specific::FunctionEndIsUnreachable
+            == Specific::FunctionEndIsReachable
             && !is_overload_member
             && !self.file.is_stub()
             && function.return_annotation().is_some()
@@ -1752,14 +1834,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(new) = new {
                         self_t = Cow::Owned(new)
                     }
-                    let erased = self_t
-                        .replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |u| Some(u.as_any_generic_item()),
-                            &|| Some(class_t.clone()),
-                        )
-                        .map(Cow::Owned)
-                        .unwrap_or(self_t);
+                    let erased = self_t.erase_type_var_likes(i_s.db, &|| Some(class_t.clone()));
                     let erased_is_protocol = match erased.as_ref() {
                         Type::Class(c) => c.class(i_s.db).is_protocol(i_s.db),
                         Type::Type(t) => {
@@ -1786,7 +1861,7 @@ impl Inference<'_, '_, '_> {
                                     class: class_t.format(format_data),
                                 }
                             } else {
-                                IssueKind::SelfArgumentMissing
+                                IssueKind::SelfParameterMissing
                             };
                             self.add_issue(annotation.index(), issue);
                         } else {
@@ -1801,7 +1876,7 @@ impl Inference<'_, '_, '_> {
                                     .enumerate()
                                 {
                                     let mut has_unrelated_type_var = false;
-                                    generic.replace_type_var_likes(i_s.db, &mut |usage| {
+                                    generic.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                                         if usage.in_definition() == definition
                                             && usage.index().as_usize() != i
                                         {
@@ -1836,11 +1911,16 @@ impl Inference<'_, '_, '_> {
         for param in params_iterator {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_param_annotation_type(annotation);
-                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Covariant))
-                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
+                if let Some(cls) = function.class
+                    && let Some((variance, kind)) =
+                        t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Covariant)
                 {
-                    NodeRef::new(self.file, annotation.index())
-                        .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
+                    if !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code()) {
+                        NodeRef::new(self.file, annotation.index()).add_issue(
+                            i_s,
+                            IssueKind::TypeVarWrongVarianceInParamType { variance, kind },
+                        );
+                    }
                 }
 
                 if param.kind() == ParamKind::StarStar
@@ -1874,11 +1954,15 @@ impl Inference<'_, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             let t = self.use_cached_return_annotation_type(return_annotation);
-            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == TypeVarVariance::Known(Variance::Contravariant))
+            if let Some(cls) = function.class
+                && let Some((variance, kind)) =
+                    t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Contravariant)
             {
-                NodeRef::new(self.file, return_annotation.index())
-                    .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
-            }
+                NodeRef::new(self.file, return_annotation.index()).add_issue(
+                    i_s,
+                    IssueKind::TypeVarContravariantInReturnType { variance, kind },
+                );
+            };
             if function.is_generator() {
                 let expected = if function.is_async() {
                     &i_s.db.python_state.async_generator_with_any_generics
@@ -1914,19 +1998,20 @@ impl Inference<'_, '_, '_> {
 
     // This is mostly a helper function to avoid using the wrong InferenceState accidentally.
     #[inline]
-    fn function_diagnostics_with_correct_i_s(
+    fn function_diagnostics_with_correct_i_s_and_return_checked(
         &self,
         function: Function,
         flags: &TypeCheckerFlags,
         name: NameDef,
         params: FunctionDefParameters,
         block: Block,
-    ) {
+    ) -> bool {
         for param in params.iter() {
             self.add_initial_name_definition(param.name_def());
         }
         let i_s = self.i_s;
         let is_typed = function.is_typed();
+        let mut was_checked = false;
         if is_typed || flags.check_untyped_defs {
             // TODO for now we skip checking functions with TypeVar constraints
             if function.type_vars(i_s.db).has_constraints(i_s.db)
@@ -1938,14 +2023,15 @@ impl Inference<'_, '_, '_> {
                 self.calc_untyped_block_diagnostics(block, true);
                 self.mark_current_frame_unreachable()
             } else {
+                was_checked = true;
                 self.calc_block_diagnostics(block, None, Some(&function))
             }
             if !is_typed {
-                return;
+                return false;
             }
         } else {
             self.calc_untyped_block_diagnostics(block, false);
-            return;
+            return false;
         }
 
         if let Some(return_annotation) = function.return_annotation()
@@ -2049,6 +2135,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
+        was_checked
     }
 
     fn calc_overload_implementation_diagnostics(
@@ -2137,7 +2224,7 @@ impl Inference<'_, '_, '_> {
                         );
                     }
 
-                    t.error_if_not_matches(
+                    t.error_if_not_assignable(
                         i_s,
                         &inf,
                         |issue| self.add_issue(star_exprs.index(), issue),
@@ -2324,15 +2411,11 @@ impl Inference<'_, '_, '_> {
             return; // If the type is Any, we do not need to check.
         };
         forward_type.run_after_lookup_on_each_union_member(
-            i_s,
             None,
-            from.file,
-            normal_magic,
-            LookupKind::OnlyType,
+            LookupArgs::new(i_s, from.file, normal_magic).with_kind(LookupKind::OnlyType),
             &mut ResultContext::ValueExpected,
-            // Theoretically this should not be ignored, but for now I'm not sure if self types are
-            // working anyway.
-            &|_| false,
+            // Theoretically we should add a add_with_ignore, but for now I'm not sure if self
+            // types are working anyway.
             &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
@@ -2386,22 +2469,29 @@ impl Inference<'_, '_, '_> {
                         );
                     }
                 };
-                match lookup_details.lookup.into_inferred().as_type(i_s) {
-                    Type::Callable(c) => check(&c),
-                    Type::FunctionOverload(overload) => {
-                        for c in overload.iter_functions() {
-                            check(c)
-                        }
-                    }
+                match lookup_details
+                    .lookup
+                    .into_inferred()
+                    .as_cow_type(i_s)
+                    .as_ref()
+                {
                     Type::Any(_) | Type::CustomBehavior(_) => (),
-                    _ => {
-                        from.add_issue(
-                            i_s,
-                            IssueKind::ForwardOperatorIsNotCallable {
-                                forward_name: normal_magic,
-                            },
-                        );
-                    }
+                    t => match t.maybe_callable(i_s) {
+                        Some(CallableLike::Callable(c)) => check(&c),
+                        Some(CallableLike::Overload(overload)) => {
+                            for c in overload.iter_functions() {
+                                check(c)
+                            }
+                        }
+                        None => {
+                            from.add_issue(
+                                i_s,
+                                IssueKind::ForwardOperatorIsNotCallable {
+                                    forward_name: normal_magic,
+                                },
+                            );
+                        }
+                    },
                 }
             },
         )
@@ -2477,10 +2567,48 @@ impl Inference<'_, '_, '_> {
     }
 }
 
+impl Type {
+    fn maybe_type_var_like_invalid_variance(
+        &self,
+        for_cls: PointLink,
+        unwanted_variance: Variance,
+    ) -> Option<(&'static str, &'static str)> {
+        let check = |variance| variance == TypeVarVariance::Known(unwanted_variance);
+        let variance_to_name = |v| match v {
+            Variance::Covariant => "covariant",
+            Variance::Contravariant => "contravariant",
+            Variance::Invariant => unreachable!(),
+        };
+        match self {
+            Type::TypeVar(tv) => check(tv.type_var.variance)
+                .then(|| (variance_to_name(unwanted_variance), "type variable")),
+            Type::Tuple(tup)
+                if let TupleArgs::WithUnpack(w) = &tup.args
+                    && let TupleUnpack::TypeVarTuple(tvt) = &w.unpack =>
+            {
+                check(tvt.type_var_tuple.variance)
+                    .then(|| (variance_to_name(unwanted_variance), "type var tuples"))
+            }
+            Type::Callable(c) if let CallableParams::Simple(params) = &c.params => {
+                for p in params.iter() {
+                    if let ParamType::Star(StarParamType::ParamSpecArgs(usage)) = &p.type_
+                        && for_cls == usage.in_definition
+                        && check(usage.param_spec.variance)
+                    {
+                        return Some((variance_to_name(unwanted_variance.invert()), "param spec"));
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+}
+
 fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: bool) -> bool {
     let db = i_s.db;
     let check = |cls: Class| cls.incomplete_mro(db) || cls.is_base_exception(db);
-    match t {
+    t.for_all_in_union(db, &|t| match t {
         Type::Class(c) => check(c.class(db)),
         Type::Dataclass(dc) => check(dc.class(db)),
         Type::Type(inner_t) => {
@@ -2509,15 +2637,16 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             _ => false,
         },
         Type::Any(_) | Type::Never(_) => true,
-        Type::Union(union) => union
-            .iter()
-            .all(|t| valid_raise_type(i_s, from, t, allow_none)),
         Type::None if allow_none => true,
         _ => false,
-    }
+    })
 }
 
-pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
+pub(crate) fn await_aiter_and_next(
+    i_s: &InferenceState,
+    base: Inferred,
+    from: NodeRef,
+) -> Inferred {
     await_(
         i_s,
         base.type_lookup_and_execute(
@@ -2614,11 +2743,12 @@ fn create_matcher_with_independent_type_vars<T>(
 ) -> T {
     let c = Callable::new(c1, None);
     let matcher = Matcher::new_reverse_callable_matcher(&c, replace_self);
-    if c1.defined_at == c2.defined_at {
-        let c2 = c2.change_temporary_matcher_index(db, 1);
+    // Use a temporary matcher index that will never be reached, because we want to ensure that
+    // no conflict is going to happen.
+    if let Some(c2) = c2.change_temporary_matcher_index(db, u32::MAX) {
         callback(matcher, c1, &c2)
     } else {
-        callback(matcher, c1, c2)
+        callback(matcher, c1, &c2)
     }
 }
 
@@ -2645,18 +2775,16 @@ fn find_and_check_override(
     override_class: Class,
     name: &str,
     has_override_decorator: bool,
+    is_special_override: bool,
 ) {
     let instance = Instance::new(override_class, None);
     let add_lookup_issue = |_issue| {
         // TODO we need to work on this, see testSelfTypeOverrideCompatibility
         false
     };
-    let mut lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
+    let lookup_options = InstanceLookupOptions::new(&add_lookup_issue)
         .with_skip_first_of_mro(i_s.db, &override_class)
         .with_avoid_inferring_return_types();
-    if instance.class.is_protocol(i_s.db) {
-        lookup_options = lookup_options.without_object();
-    }
     let mut original_details = instance.lookup(
         i_s,
         name,
@@ -2678,6 +2806,7 @@ fn find_and_check_override(
                 .enabled_error_codes
                 .iter()
                 .any(|c| c == "explicit-override")
+            && !is_special_override
         {
             from.add_issue(
                 i_s,
@@ -2687,30 +2816,38 @@ fn find_and_check_override(
                 },
             );
         }
-        while let Some(mro_index) = original_details.mro_index {
-            check_override(
-                i_s,
-                from,
-                original_details,
-                &override_details,
-                name,
-                |c| {
-                    if let TypeOrClass::Class(c) = c
-                        && c.file_index() != from.file_index()
-                    {
-                        return c.qualified_name(i_s.db).into();
-                    }
-                    c.name(i_s.db).into()
-                },
-                None,
-            );
-            original_details = instance.lookup(
-                i_s,
-                name,
-                // NamedTuple / Tuple are special, because they insert an additional type of themselves.
-                InstanceLookupOptions::new(&add_lookup_issue)
-                    .with_super_count(mro_index.0 as usize + 1),
-            )
+        // Protocols can override builtin methods with different signatures
+        if !(instance.class.is_protocol(i_s.db) && original_details.class.is_object(i_s.db)) {
+            while let Some(mro_index) = original_details.mro_index {
+                check_override(
+                    i_s,
+                    from,
+                    original_details,
+                    &override_details,
+                    name,
+                    |c| {
+                        if let TypeOrClass::Class(c) = c
+                            && c.file_index() != from.file_index()
+                        {
+                            return c.qualified_name(i_s.db).into();
+                        }
+                        c.name(i_s.db).into()
+                    },
+                    None,
+                );
+                original_details = instance.lookup(
+                    i_s,
+                    name,
+                    // NamedTuple / Tuple are special, because they insert an additional type of themselves.
+                    InstanceLookupOptions::new(&add_lookup_issue)
+                        .with_super_count(mro_index.0 as usize + 1),
+                );
+                if has_override_decorator && is_special_override {
+                    // For overrides of __init__ we only check the first match, because it can
+                    // change in arbitrary forms without @override.
+                    break;
+                }
+            }
         }
     } else if has_override_decorator {
         let issue = IssueKind::MissingBaseForOverride { name: name.into() };
@@ -2756,7 +2893,7 @@ pub(super) fn check_override(
             node_ref
                 .maybe_function()
                 .map(|_| Function::new(node_ref, None))
-                .filter(|func| func.node().name_def().name_index() == from.node_index)
+                .filter(|func| func.as_node().name_def().name_index() == from.node_index)
         }
         _ => None,
     };
@@ -2928,7 +3065,7 @@ pub(super) fn check_override(
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                 if let Some(func) = maybe_func()
-                                    && let node = func.node()
+                                    && let node = func.as_node()
                                     && let type_ignore_comment =
                                         from.file.tree.type_ignore_comment_for(
                                             node.start(),
@@ -3146,7 +3283,7 @@ fn is_async_iterator_without_async(
     let db = i_s.db;
     match override_ {
         Type::Class(c) if c.link == db.python_state.async_iterator_link() => match original {
-            Type::Class(c) if c.link == db.python_state.coroutine_link() => {
+            Type::Class(c) if db.python_state.is_coroutine(c.link) => {
                 let check = c.class(db).nth_type_argument(db, 2);
                 override_.is_simple_same_type(i_s, &check).bool()
             }
@@ -3240,7 +3377,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                                 GenericItem::TypeArg(if is_upper {
                                     i_s.db.python_state.object_type()
                                 } else {
-                                    Type::Never(NeverCause::Other)
+                                    Type::NEVER
                                 })
                             } else {
                                 tv_like.as_any_generic_item()
@@ -3266,7 +3403,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
             expected_variance = Variance::Contravariant
         }
         if tv_variance != expected_variance {
-            NodeRef::new(class.node_ref.file, class.node().name().index()).add_issue(
+            NodeRef::new(class.node_ref.file, class.as_node().name().index()).add_issue(
                 i_s,
                 IssueKind::ProtocolWrongVariance {
                     type_var_name: tv.name(i_s.db).into(),
@@ -3462,11 +3599,16 @@ fn check_for_missing_annotations(
     return_annotation: Option<ReturnAnnotation>,
 ) {
     let has_param_annotations = function.has_param_annotations(i_s);
-    let has_return_type = return_annotation.is_some()
-        || function.class.is_some() && ["__init__", "__init_subclass__"].contains(&name.as_code());
-    let has_explicit_annotation = has_return_type || has_param_annotations;
-    if flags.disallow_untyped_defs || flags.disallow_incomplete_defs && has_explicit_annotation {
+    if flags.disallow_untyped_defs
+        || flags.disallow_incomplete_defs && {
+            // Check if it has an explicit annotation
+            return_annotation.is_some() || has_param_annotations
+        }
+    {
         let has_args = || function.iter_non_self_args(i_s).next().is_some();
+        let has_return_type = return_annotation.is_some()
+            || function.class.is_some()
+                && ["__init__", "__init_subclass__"].contains(&name.as_code());
         if !has_return_type && !has_param_annotations && has_args() {
             function.add_issue_for_declaration(i_s, IssueKind::FunctionIsUntyped);
         } else {

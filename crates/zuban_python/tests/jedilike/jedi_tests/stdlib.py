@@ -55,8 +55,7 @@ type([])
 def x():
     yield 1
 generator = type(x())
-# zuban-diff: #? generator
-#? typing.Generator
+#? types.GeneratorType
 type(x for x in [])
 #? type(x)
 type(lambda: x)
@@ -79,7 +78,7 @@ Xt = type('Xt', (object,), dict(a=1))
 # Doesn't work yet.
 #?
 Xt.a
-#?
+#? type()
 Xt
 
 if os.path.isfile():
@@ -322,7 +321,7 @@ class F():
         cls.my_variable
         #? ['my_method', 'my_method_without_call']
         cls.my_meth
-        #?
+        #? str()
         return param
 
 #? str()

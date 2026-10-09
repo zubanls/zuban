@@ -1,6 +1,6 @@
 use std::{io::Read, path::Path, sync::Arc};
 
-use crate::{DiagnosticConfig, Mode, ProjectOptions, get_zuban_config_and_apply_mode};
+use crate::{DiagnosticConfig, Mode, ModeChoice, ProjectOptions, get_zuban_config_and_apply_mode};
 use toml_edit::DocumentMut;
 use vfs::{AbsPath, VfsHandler};
 
@@ -18,6 +18,7 @@ const CONFIG_NAMES: [&str; 4] = [
     //"~/.mypy.ini",
 ];
 
+#[derive(Debug)]
 pub struct FoundConfig {
     pub project_options: ProjectOptions,
     pub diagnostic_config: DiagnosticConfig,
@@ -25,27 +26,12 @@ pub struct FoundConfig {
     pub most_probable_base: Arc<AbsPath>,
 }
 
-pub fn find_workspace_config(
-    vfs: &dyn VfsHandler,
-    workspace_dir: Arc<AbsPath>,
-    on_check_path: impl FnMut(&AbsPath),
-) -> anyhow::Result<ProjectOptions> {
-    let config = find_mypy_config_file_in_dir(vfs, workspace_dir, None, on_check_path)?;
-
-    Ok(match config {
-        Some(config) => config.project_options,
-        None => {
-            tracing::info!("No relevant config found");
-            ProjectOptions::default_for_mode(Mode::Default)
-        }
-    })
-}
-
-pub fn find_cli_config(
+pub fn find_config(
     vfs: &dyn VfsHandler,
     current_dir: Arc<AbsPath>,
     config_file: Option<&Path>,
-    mode: Option<Mode>,
+    mut mode: ModeChoice,
+    mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<FoundConfig> {
     if let Some(config_file) = config_file.as_ref() {
         let Some(config_path) = config_file.as_os_str().to_str() else {
@@ -56,8 +42,13 @@ pub fn find_cli_config(
             .map_err(|err| anyhow::anyhow!("Issue while reading {config_path}: {err}"))?;
 
         let most_probable_base = Arc::from(vfs.parent_of_absolute_path(&config_path).unwrap());
+        if matches!(mode, ModeChoice::Auto) && config_path.ends_with(".ini") {
+            mode = ModeChoice::Explicit(Mode::Mypy)
+        }
         let result = initialize_config(vfs, &current_dir, config_path, s, mode)?;
-        let project_options = result.0.unwrap_or_else(ProjectOptions::mypy_default);
+        let project_options = result
+            .0
+            .unwrap_or_else(|| ProjectOptions::default_for_mode(mode.into()));
         Ok(FoundConfig {
             project_options,
             diagnostic_config: result.1,
@@ -67,7 +58,9 @@ pub fn find_cli_config(
     } else {
         let mut current = current_dir.clone();
         loop {
-            if let Some(found) = find_mypy_config_file_in_dir(vfs, current.clone(), mode, |_| ())? {
+            if let Some(found) =
+                find_mypy_config_file_in_dir(vfs, current.clone(), mode, &mut on_check_path)?
+            {
                 return Ok(found);
             }
             if let Some(outer) = vfs.parent_of_absolute_path(&current) {
@@ -86,7 +79,7 @@ fn initialize_config(
     in_dir: &AbsPath,
     config_path: Arc<AbsPath>,
     content: String,
-    mode: Option<Mode>,
+    mode: ModeChoice,
 ) -> anyhow::Result<(Option<ProjectOptions>, DiagnosticConfig, Arc<AbsPath>)> {
     let _p = tracing::info_span!("config_finder").entered();
     let mut diagnostic_config = DiagnosticConfig::default();
@@ -100,7 +93,14 @@ fn initialize_config(
             mode,
         )?
     } else {
-        ProjectOptions::from_mypy_ini(vfs, in_dir, &config_path, &content, &mut diagnostic_config)?
+        ProjectOptions::from_mypy_ini(
+            vfs,
+            in_dir,
+            &config_path,
+            &content,
+            &mut diagnostic_config,
+            mode,
+        )?
     };
     Ok((options, diagnostic_config, config_path))
 }
@@ -108,7 +108,7 @@ fn initialize_config(
 fn find_mypy_config_file_in_dir(
     vfs: &dyn VfsHandler,
     dir: Arc<AbsPath>,
-    mut mode: Option<Mode>,
+    mut mode: ModeChoice,
     mut on_check_path: impl FnMut(&AbsPath),
 ) -> anyhow::Result<Option<FoundConfig>> {
     let mut end_result = None;
@@ -149,12 +149,15 @@ fn find_mypy_config_file_in_dir(
                     break;
                 }
             } else {
+                if matches!(mode, ModeChoice::Auto) {
+                    mode = ModeChoice::Implicit(Mode::Mypy);
+                }
                 let result = initialize_config(vfs, &dir, config_path, content, mode)?;
                 if let Some(project_options) = result.0.or_else(|| {
                     ["mypy.ini", ".mypy.ini"].contains(config_name).then(|| {
                         // Both mypy.ini and .mypy.ini always take precedent, even if there is no [mypy]
                         // section. See also https://mypy.readthedocs.io/en/stable/config_file.html
-                        ProjectOptions::mypy_default()
+                        ProjectOptions::default_for_mode(mode.into())
                     })
                 }) {
                     end_result = Some(FoundConfig {
@@ -195,12 +198,12 @@ fn find_mypy_config_file_in_dir(
 }
 
 fn default_config(
-    mode: Option<Mode>,
+    mode: ModeChoice,
     config_path: Option<Arc<AbsPath>>,
     dir: Arc<AbsPath>,
 ) -> FoundConfig {
     FoundConfig {
-        project_options: ProjectOptions::default_for_mode(mode.unwrap_or_default()),
+        project_options: ProjectOptions::default_for_mode(mode.into()),
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
         most_probable_base: dir,

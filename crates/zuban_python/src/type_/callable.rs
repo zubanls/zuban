@@ -4,14 +4,13 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes,
-    StringSlice, Tuple, Type, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike,
-    TypeVarLikes, TypeVarUsage, TypedDict,
+    AnyCause, DbString, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
+    TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    TypedDict,
 };
 use crate::{
     database::{Database, PointLink},
     format_data::{FormatData, ParamsStyle},
-    inference_state::InferenceState,
     matching::{Generics, maybe_class_usage},
     node_ref::NodeRef,
     params::{
@@ -184,23 +183,9 @@ impl CallableParam {
                     }
                     StarParamType::ParamSpecArgs(_) => unreachable!(),
                     StarParamType::UnpackedTuple(tup) => {
-                        if let Some(matcher) = format_data.matcher {
-                            let tup_t = Type::Tuple(tup.clone());
-                            let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(
-                                format_data.db,
-                                &tup_t,
-                            );
-                            let Type::Tuple(tup) = replaced.as_ref() else {
-                                unreachable!()
-                            };
-                            let result = tup.args.format(&format_data.remove_matcher());
-                            match &tup.args {
-                                TupleArgs::FixedLen(ts) if ts.is_empty() => "".to_owned(),
-                                TupleArgs::FixedLen(_) => result.into(),
-                                _ => format!("VarArg(Unpack[Tuple[{result}]])"),
-                            }
-                        } else {
-                            format!("VarArg({})", tup.format_with_simplified_unpack(format_data))
+                        match format_tuple_unpack(tup, format_data) {
+                            FormatTupleUnpackResult::FixedLen(s) => s,
+                            FormatTupleUnpackResult::Other(s) => format!("VarArg({s})"),
                         }
                     }
                 }
@@ -336,33 +321,9 @@ impl CallableParams {
         }
     }
 
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.has_any_internal(i_s, &mut Vec::new())
-    }
-
-    pub(super) fn has_any_internal(
-        &self,
-        i_s: &InferenceState,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
+    pub fn has_any(&self, db: &Database) -> bool {
         match self {
-            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
-                ParamType::PositionalOnly(t)
-                | ParamType::PositionalOrKeyword(t)
-                | ParamType::KeywordOnly(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                    t.has_any_internal(i_s, already_checked)
-                }
-                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
-                    tup.args.has_any_internal(i_s, already_checked)
-                }
-                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
-                    td.has_any_internal(i_s, already_checked)
-                }
-            }),
+            Self::Simple(params) => any_for_each_type_like(params, |t| t.has_any(db)),
             Self::Any(_) => true,
         }
     }
@@ -407,22 +368,30 @@ impl CallableParams {
 
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
-                ParamType::PositionalOnly(t)
-                | ParamType::PositionalOrKeyword(t)
-                | ParamType::KeywordOnly(t)
-                | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(db, check),
-                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(db, check),
-                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
-                    Type::TypedDict(td.clone()).find_in_type(db, check)
-                }
-            }),
+            Self::Simple(params) => any_for_each_type_like(params, |t| t.find_in_type(db, check)),
             Self::Any(_) => false,
         }
     }
+}
+
+// This probably shouldn't be used too much, it's just a helper function
+fn any_for_each_type_like<'x>(
+    params: &'x Arc<[CallableParam]>,
+    mut callback: impl FnMut(&Type) -> bool,
+) -> bool {
+    params.into_iter().any(|param| match &param.type_ {
+        ParamType::PositionalOnly(t)
+        | ParamType::PositionalOrKeyword(t)
+        | ParamType::KeywordOnly(t)
+        | ParamType::Star(StarParamType::ArbitraryLen(t))
+        | ParamType::StarStar(StarStarParamType::ValueType(t)) => callback(t),
+        ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+        ParamType::Star(StarParamType::UnpackedTuple(u)) => callback(&Type::Tuple(u.clone())),
+        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+        ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
+            callback(&Type::TypedDict(td.clone()))
+        }
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -642,29 +611,10 @@ impl CallableContent {
         if self.type_vars.is_empty() {
             Cow::Borrowed(type_)
         } else {
-            let replaced = type_.replace_type_var_likes(db, &mut |usage| {
-                if usage.in_definition() == self.defined_at {
-                    Some(usage.as_any_generic_item())
-                } else {
-                    None
-                }
-            });
-            replaced
-                .map(Cow::Owned)
-                .unwrap_or_else(|| Cow::Borrowed(type_))
+            type_.replace_type_var_likes(db, &mut |usage| {
+                (usage.in_definition() == self.defined_at).then(|| usage.as_any_generic_item())
+            })
         }
-    }
-
-    pub(super) fn has_any_internal(
-        &self,
-        i_s: &InferenceState,
-        already_checked: &mut Vec<Arc<RecursiveType>>,
-    ) -> bool {
-        self.guard
-            .as_ref()
-            .is_some_and(|guard| guard.type_.has_any_internal(i_s, already_checked))
-            || self.return_type.has_any_internal(i_s, already_checked)
-            || self.params.has_any_internal(i_s, already_checked)
     }
 
     pub fn has_self_type(&self, db: &Database) -> bool {
@@ -683,6 +633,18 @@ impl CallableContent {
         if format_data.style == FormatStyle::MypyRevealType {
             return self.format_pretty(format_data).into();
         }
+        if let CallableParams::Simple(simple) = &self.params
+            && simple.iter().any(|p| match &p.type_ {
+                ParamType::PositionalOnly(_) => p.has_default(),
+                ParamType::PositionalOrKeyword(_) => format_data.verbose,
+                ParamType::Star(StarParamType::ParamSpecArgs(_))
+                | ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                _ => true,
+            })
+        {
+            // Needs more advanced formatting, because the Callable is more complicated
+            return self.format_pretty(format_data).into();
+        }
         let result = if let Some(guard) = self.guard.as_ref() {
             guard.format(format_data).into()
         } else {
@@ -693,26 +655,27 @@ impl CallableContent {
     }
 
     pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
-        let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
-        self.format_pretty_detailed(format_data, avoid_self_annotation, true)
+        self.format_pretty_detailed(format_data, PrettyCallableOptions::default())
     }
 
     pub fn format_pretty_detailed(
         &self,
         format_data: &FormatData,
-        avoid_self_annotation: bool,
-        add_classmethod_param: bool,
+        options: PrettyCallableOptions,
     ) -> Box<str> {
         match &self.params {
             CallableParams::Simple(params) => {
                 let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
                 let mut params = format_callable_params(
                     format_data,
-                    avoid_self_annotation && not_reveal_type,
+                    !options.show_self_annotation
+                        && not_reveal_type
+                        && !self.kind.had_first_self_or_class_annotation(),
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
+                    options.try_to_format_default,
                 );
-                if add_classmethod_param
+                if !options.avoid_classmethod_param
                     && matches!(self.kind, FunctionKind::Classmethod { .. })
                     && not_reveal_type
                 {
@@ -763,14 +726,15 @@ impl CallableContent {
         &self,
         db: &Database,
         temporary_matcher_index: u32,
-    ) -> Self {
+    ) -> Option<Self> {
         self.replace_type_var_likes_and_self(
             db,
             &mut |mut usage| {
-                (usage.in_definition() == self.defined_at).then(|| {
-                    usage.update_temporary_matcher_index(temporary_matcher_index);
-                    usage.into_generic_item()
-                })
+                (usage.in_definition() == self.defined_at && usage.temporary_matcher_id() == 0)
+                    .then(|| {
+                        usage.update_temporary_matcher_index(temporary_matcher_index);
+                        usage.into_generic_item()
+                    })
             },
             &|| None,
         )
@@ -908,7 +872,7 @@ impl CallableContent {
                 None
             }
         };
-        let mut callable = self.replace_type_var_likes_and_self(
+        let Some(mut callable) = self.replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 // The ? can happen for example if the return value is a Callable with its
@@ -919,7 +883,7 @@ impl CallableContent {
                 }
                 Some(
                     result
-                        .replace_type_var_likes_and_self(db, &mut &remap_usage, &|| None)
+                        .maybe_replace_type_var_likes(db, &mut &remap_usage)
                         .unwrap_or(result),
                 )
             },
@@ -931,11 +895,14 @@ impl CallableContent {
                         if !needs_additional_remap {
                             return Some(t);
                         }
-                        t.replace_type_var_likes(db, &mut &remap_usage).unwrap_or(t)
+                        t.maybe_replace_type_var_likes(db, &mut &remap_usage)
+                            .unwrap_or(t)
                     }
                 })
             },
-        );
+        ) else {
+            return self.clone();
+        };
         callable.type_vars = type_vars;
         callable
     }
@@ -976,6 +943,16 @@ impl CallableContent {
     }
 }
 
+type PrettyDefaultFormatter<'func> =
+    Option<&'func dyn for<'db> Fn(&'db Database, /* name: */ &str) -> Option<&'db str>>;
+
+#[derive(Default)]
+pub(crate) struct PrettyCallableOptions<'func> {
+    pub show_self_annotation: bool,
+    pub avoid_classmethod_param: bool,
+    pub try_to_format_default: PrettyDefaultFormatter<'func>,
+}
+
 pub(crate) enum WrongPositionalCount {
     TooMany,
     TooFew,
@@ -986,12 +963,19 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     avoid_self_annotation: bool,
     params: impl Iterator<Item = P>,
     show_additional_information: bool,
+    try_to_format_default: PrettyDefaultFormatter,
 ) -> String {
     let db = format_data.db;
     let mut previous_kind = None;
     let mut had_kwargs_separator = false;
     let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
         let specific = p.specific(db);
+        let current_kind = p.kind(db);
+        let mut stars = match current_kind {
+            ParamKind::Star => "*",
+            ParamKind::StarStar => "**",
+            _ => "",
+        };
         let annotation_str = match &specific {
             WrappedParamType::PositionalOnly(t)
             | WrappedParamType::PositionalOrKeyword(t)
@@ -1004,7 +988,13 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 Some(format!("{}.args", u.param_spec.name(db)).into())
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                Some(tup.format_with_simplified_unpack(format_data))
+                Some(match format_tuple_unpack(tup, format_data) {
+                    FormatTupleUnpackResult::FixedLen(s) => {
+                        stars = "";
+                        s.into_boxed_str()
+                    }
+                    FormatTupleUnpackResult::Other(s) => s.into_boxed_str(),
+                })
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())
@@ -1013,16 +1003,10 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 Some(format!("{}.kwargs", u.param_spec.name(db)).into())
             }
         };
-        let current_kind = p.kind(db);
-        let stars = match current_kind {
-            ParamKind::Star => "*",
-            ParamKind::StarStar => "**",
-            _ => "",
-        };
         let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
             p.name(db).unwrap_or("self").to_owned()
         } else {
-            let mut out = if current_kind == ParamKind::PositionalOnly {
+            if current_kind == ParamKind::PositionalOnly {
                 annotation_str.unwrap_or_else(|| Box::from("Any")).into()
             } else if let Some(name) = p.name(db) {
                 format!(
@@ -1031,22 +1015,27 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 )
             } else {
                 format!("{stars}{}", annotation_str.as_deref().unwrap_or("Any"))
-            };
-            if previous_kind == Some(ParamKind::PositionalOnly)
-                && current_kind != ParamKind::PositionalOnly
-                && show_additional_information
-            {
-                out = format!("/, {out}")
             }
-            out
         };
         if matches!(&specific, WrappedParamType::KeywordOnly(_)) && !had_kwargs_separator {
             had_kwargs_separator = true;
             out = format!("*, {out}");
         }
+        if previous_kind == Some(ParamKind::PositionalOnly)
+            && current_kind != ParamKind::PositionalOnly
+            && show_additional_information
+        {
+            out = format!("/, {out}")
+        }
         had_kwargs_separator |= matches!(specific, WrappedParamType::Star(_));
         if p.has_default() {
-            if show_additional_information {
+            if let Some(try_to_format_default) = try_to_format_default
+                && let Some(name) = p.name(db)
+                && let Some(default) = try_to_format_default(db, name)
+            {
+                out += " = ";
+                out += default;
+            } else if show_additional_information {
                 out += " = ...";
             } else {
                 out += " =";
@@ -1100,4 +1089,188 @@ pub fn add_any_params_to_params(params: &mut Vec<CallableParam>) {
     params.push(CallableParam::new_anonymous(ParamType::StarStar(
         StarStarParamType::ValueType(Type::Any(AnyCause::Todo)),
     )));
+}
+
+enum FormatTupleUnpackResult {
+    FixedLen(String),
+    Other(String),
+}
+
+fn format_tuple_unpack(tup: &Arc<Tuple>, format_data: &FormatData) -> FormatTupleUnpackResult {
+    if let Some(matcher) = format_data.matcher {
+        let tup_t = Type::Tuple(tup.clone());
+        let replaced = matcher.replace_type_var_likes_for_unknown_type_vars(format_data.db, &tup_t);
+        let Type::Tuple(tup) = replaced.as_ref() else {
+            unreachable!()
+        };
+        format_tuple_unpack(tup, &format_data.remove_matcher())
+    } else {
+        FormatTupleUnpackResult::Other(match &tup.args {
+            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => w
+                .unpack
+                .format(format_data)
+                .unwrap_or("Unpack[Never]".into())
+                .into_string(),
+            TupleArgs::WithUnpack(_) => format!("Unpack[{}]", tup.format(format_data)),
+            TupleArgs::FixedLen(ts) => {
+                return FormatTupleUnpackResult::FixedLen(join_with_commas(
+                    ts.iter().map(|t| t.format(&format_data.remove_matcher())),
+                ));
+            }
+            TupleArgs::ArbitraryLen(t) => t.format(format_data).into_string(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum PropertySetterType {
+    SameTypeFromCachedProperty, // This happens when @functools.cached_property is used
+    OtherType(Type),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct PropertySetter {
+    pub type_: PropertySetterType,
+    pub deprecated_reason: Option<Arc<Box<str>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum FunctionKind {
+    Function {
+        had_first_self_or_class_annotation: bool,
+    },
+    Property {
+        had_first_self_or_class_annotation: bool,
+        setter_type: Option<Arc<PropertySetter>>,
+    },
+    Classmethod {
+        had_first_self_or_class_annotation: bool,
+    },
+    Staticmethod,
+}
+
+impl FunctionKind {
+    pub fn is_same_base_kind(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Function { .. }, Self::Function { .. })
+                | (Self::Property { .. }, Self::Property { .. })
+                | (Self::Classmethod { .. }, Self::Classmethod { .. })
+                | (Self::Staticmethod, Self::Staticmethod)
+        )
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation,
+            Self::Staticmethod => true,
+        }
+    }
+
+    pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
+        match self {
+            Self::Function {
+                had_first_self_or_class_annotation,
+            }
+            | Self::Property {
+                had_first_self_or_class_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation = new_value,
+            Self::Staticmethod => (),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub(crate) enum CallableLike {
+    Callable(Arc<CallableContent>),
+    Overload(FunctionOverload),
+}
+
+impl CallableLike {
+    pub fn from_overload_funcs(funcs: Arc<[Arc<CallableContent>]>) -> Option<Self> {
+        Some(match funcs.len() {
+            0 => return None,
+            1 => Self::Callable(funcs.iter().next().unwrap().clone()),
+            _ => Self::Overload(FunctionOverload::new(funcs)),
+        })
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        match self {
+            Self::Callable(c) => c.format(format_data),
+            Self::Overload(overload) => format!(
+                "Overload({})",
+                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
+            ),
+        }
+    }
+
+    pub fn is_typed(&self, skip_first_param: bool) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed(skip_first_param),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed(skip_first_param)),
+        }
+    }
+
+    pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed_and_annotated_result(db),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed_and_annotated_result(db)),
+        }
+    }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Callable(c) => c.kind.had_first_self_or_class_annotation(),
+            Self::Overload(o) => o.kind().had_first_self_or_class_annotation(),
+        }
+    }
+}
+
+impl From<CallableLike> for Type {
+    fn from(callable: CallableLike) -> Self {
+        match callable {
+            CallableLike::Callable(c) => Type::Callable(c),
+            CallableLike::Overload(o) => Type::FunctionOverload(o),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct FunctionOverload(Arc<[Arc<CallableContent>]>);
+
+impl FunctionOverload {
+    pub fn new(functions: Arc<[Arc<CallableContent>]>) -> Self {
+        debug_assert!(!functions.is_empty());
+        Self(functions)
+    }
+
+    pub fn kind(&self) -> &FunctionKind {
+        &self.0[0].kind
+    }
+
+    pub fn is_abstract(&self) -> bool {
+        self.0[0].is_abstract
+    }
+
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Arc<CallableContent>> + Clone {
+        self.0.iter()
+    }
 }

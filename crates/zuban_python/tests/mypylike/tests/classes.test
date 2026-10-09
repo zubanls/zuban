@@ -684,7 +684,7 @@ T = TypeVar("T")
 class A(Generic[T]):
     def __init__(self, x: T):
         self.x = x
-    def __add__(self: A[int], other: object) -> Self: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def __add__(self: A[int], other: object) -> Self: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
 aint = A(1)
 astr = A("")
@@ -936,8 +936,8 @@ class T(TypedDict):
 
 def foo(e: E, d: D, n: N, t: T):
     reveal_type(type(E))  # N: Revealed type is "type[object]"
-    reveal_type(type(e))  # N: Revealed type is "type[__main__.E]"
-    reveal_type(type(E.x))  # N: Revealed type is "type[__main__.E]"
+    reveal_type(type(e))  # N: Revealed type is "def (value: Any) -> __main__.E"
+    reveal_type(type(E.x))  # N: Revealed type is "def (value: Any) -> __main__.E"
 
     reveal_type(type(D))  # N: Revealed type is "type[object]"
     reveal_type(type(d))  # N: Revealed type is "def (x: int) -> __main__.D"
@@ -1437,7 +1437,7 @@ def g(x: type[Foo], y: type[Bar]):
 # flags: --use-joins
 from collections import defaultdict
 m = set([dict, defaultdict])
-reveal_type(m)  # N: Revealed type is "set[type[dict[Any, Any]]]"
+reveal_type(m)  # N: Revealed type is "set[type[dict[Any, Any]] | type[collections.defaultdict]]"
 
 [case class_name_resolving_if_member_has_same_name]
 import m
@@ -1656,19 +1656,19 @@ reveal_type(C.x)  # N: Revealed type is "Any"
 
 [case class_forward_reference_annotated_attribute_with_same_name3]
 class C:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
     def foo(self) -> None:
-        x: "x.D"
+        x: "x.D"  # E: Name "x" is not defined
 
 def foo(self) -> None:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 x: x.D  # E: Name "x" is not defined
 
 [case class_forward_reference_annotated_attribute_with_same_name4]
-x: x.D  # E: Name "x" is not defined
+x: x.D = 1  # E: Cannot resolve name "x" (possible cyclic definition)
 class C:
     x: "x.D"
 
@@ -1691,18 +1691,18 @@ def foo(self) -> None:
     x: "x.D"
 
 reveal_type(C.x)  # N: Revealed type is "Any"
-x: "x.D"  # E: Name "x" is not defined
+x: "x.D" = 1  # E: Cannot resolve name "x" (possible cyclic definition)
 
 [case class_forward_reference_annotated_attribute_with_same_name6]
 x: "x.D"  # E: Name "x" is not defined
 class C:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
     def foo(self) -> None:
-        x: "x.D"
+        x: "x.D"  # E: Name "x" is not defined
 
 def foo(self) -> None:
-    x: "x.D"
+    x: "x.D"  # E: Name "x" is not defined
 
 reveal_type(C.x)  # N: Revealed type is "Any"
 
@@ -2699,3 +2699,274 @@ class B(A):
     def f(  # type: ignore[override]
         self, x: str, y: str
     ): ...
+
+[case multi_inheritance_abstractmethods]
+# From GH #384
+from abc import ABC, abstractmethod
+
+class Base(ABC):
+    @abstractmethod
+    def f(self): ...
+
+    @abstractmethod
+    def g(self): ...
+
+class A(Base):
+    def f(self):
+        return None
+
+class B(Base):
+    def g(self):
+        return None
+
+class C(A, B): ...
+
+C()  # Cannot instantiate abstract class "C" with abstract attribute "g"
+
+[case disjoint_base_conformance_tests1]
+from typing import NamedTuple, Protocol, TypedDict, assert_never
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Left:
+    pass
+
+@disjoint_base
+class Right:
+    pass
+
+@disjoint_base
+class LeftChild(Left):
+    pass
+
+@disjoint_base
+class Record(NamedTuple):
+    value: int
+
+class Plain: pass
+
+class OtherLeftChild(Left): pass
+class LeftAndPlain(Left, Plain): pass
+class LeftChildAndLeft(LeftChild, Left): pass
+class PlainRecord(Plain, Record): pass
+
+class LeftAndRight(Left, Right): pass  # E: Class "LeftAndRight" has incompatible disjoint bases
+class LeftChildAndRight(LeftChild, Right): pass  # E: Class "LeftChildAndRight" has incompatible disjoint bases
+class LeftAndRightViaChild(LeftAndPlain, Right): pass  # E: Class "LeftAndRightViaChild" has incompatible disjoint bases
+class LeftRecord(Left, Record): pass  # E: Class "LeftRecord" has incompatible disjoint bases
+
+[case disjoint_base_conformance_tests2]
+from typing import NamedTuple, Protocol, TypedDict, assert_never
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class Left:
+    pass
+
+@disjoint_base
+class Right:
+    pass
+
+class SlotBase1:
+    __slots__ = ("x",)
+
+class SlotBase2:
+    __slots__ = ("y",)
+
+class EmptySlots:
+    __slots__ = ()
+
+class SlotAndEmptySlots(SlotBase1, EmptySlots):
+    pass
+
+class IncompatibleSlots(SlotBase1, SlotBase2):  # E: Class "IncompatibleSlots" has incompatible disjoint bases
+    pass
+
+@disjoint_base  # E: Value of type variable "_TC" of "disjoint_base" cannot be "Callable[[], None]"
+def func() -> None:
+    pass
+
+
+@disjoint_base  # E: @disjoint_base cannot be used with TypedDict
+class Movie(TypedDict):
+    name: str
+
+
+@disjoint_base  # E: @disjoint_base cannot be used with protocol class
+class SupportsClose(Protocol):
+    def close(self) -> None: ...
+
+[case string_io_initialization]
+# From GH #408
+from io import StringIO
+
+StringIO()
+
+[case no_crash_on_decorated_classmethod]
+# From GH #464
+import model as pa
+
+def validate[T: pa.DataFrameModel](schema: type[T]) -> None:
+    schema.validate()
+
+[file model.py]
+from collections.abc import Callable
+from typing import Self
+
+def docstring_substitution[F]() -> Callable[[F], F]:
+    pass
+
+class DataFrameModel:
+    @classmethod
+    @docstring_substitution()
+    def validate(cls: type[Self]):
+        pass
+
+[case init_subclass_with_override_decorator]
+# From GH #450
+from typing import override
+
+class A:
+    @override
+    def __init_subclass__(cls, /, *, root: bool = False) -> None: ...
+
+class B(A): ...
+
+[case explicit_override_error_code]
+# flags: --show-error-codes --enable-error-code explicit-override
+# From GH #413
+
+class A:
+   def m(self) -> None:
+       pass
+
+class B(A):
+    def m(self) -> None:
+        pass
+
+[out]
+__main__:9: error: Method "m" is not using @override but is overriding a method in class "__main__.A"  [explicit-override]
+
+[case class_override_for_dunder_init_and_new]
+# flags: --mode default
+# From conformance tests classes_override.py
+from typing import override
+
+class ParentC:
+    def __init__(self, x: int) -> None: ...
+
+    def __new__(cls, x: int) -> "ParentC":
+        raise NotImplementedError
+
+class ChildC1(ParentC):
+    @override
+    def __init__(self, x: int) -> None: ...  # OK
+
+    @override
+    def __new__(cls, x: int) -> "ChildC1":  # OK
+        raise NotImplementedError
+
+class ChildC2(ParentC):
+    @override
+    def __init__(self, x: str) -> None: ...  # E: Argument 1 of "__init__" is incompatible with supertype "ParentC"; supertype defines the argument type as "int" \
+                                             # N: This violates the Liskov substitution principle \
+                                             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+    @override
+    def __new__(cls, x: str) -> "ChildC2":  # E: Argument 1 of "__new__" is incompatible with supertype "ParentC"; supertype defines the argument type as "int" \
+                                            # N: This violates the Liskov substitution principle \
+                                            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+        raise NotImplementedError
+
+class ChildC3(ParentC):
+    def __init__(self, x: str) -> None: ...  # OK
+
+    def __new__(cls, x: str) -> "ChildC3":  # OK
+        raise NotImplementedError
+
+[case builtins_symbols_as_annotations_and_definitions]
+# flags: --mode default
+# Inspired by annotations_forward_refs.py
+bytes: "bytes"
+int: int
+str: str = ""  # E: Cannot resolve name "str" (possible cyclic definition)
+
+class C:
+    bytes: "bytes"
+    int: int
+
+[file m.py]
+class C:
+    bytes: "bytes"
+    int: int
+
+    str: str = "" # E: Cannot resolve name "str" (possible cyclic definition)
+    z: float = 0.0  # E: Function "m.C.float" is not valid as a type \
+                    # N: Perhaps you need "Callable[...]" or a callback protocol?
+
+    def float(self) -> None: ...
+
+[case nested_class_type_vars_not_possible0]
+# flags: --mode default
+from collections.abc import ItemsView, MutableMapping
+
+class CaseInsensitiveOrderedMultiDict[K, V](MutableMapping[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __init__(self, mapping):
+                self._mapping = mapping
+
+            def __iter__(self):
+                return iter(self._mapping._real)
+
+[case nested_class_type_vars_not_possible1]
+# flags: --untyped-function-return-mode inferred --check-untyped-defs
+# From GH #585
+from collections.abc import ItemsView, Iterator
+from typing import assert_type
+
+class CaseInsensitiveOrderedMultiDict[K, V](dict[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __init__(self, mapping: dict[K, V]):
+                self._mapping = mapping
+
+            def __iter__(self):
+                return iter(self._mapping)
+
+        assert_type(iter(OrderedItemsView({})), Iterator[K])
+        return OrderedItemsView({})
+
+i1 = CaseInsensitiveOrderedMultiDict().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+i2 = CaseInsensitiveOrderedMultiDict[int, str]().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+
+# TODO it feels like we don't want to leak the type vars here.
+reveal_type(iter(i1))  # N: Revealed type is "typing.Iterator[K]"
+reveal_type(iter(i2))  # N: Revealed type is "typing.Iterator[K]"
+
+[case nested_class_type_vars_not_possible2]
+# flags: --untyped-function-return-mode inferred --check-untyped-defs
+# From GH #585
+from collections.abc import ItemsView, Iterator
+from typing import assert_type
+
+class CaseInsensitiveOrderedMultiDict[K, V](dict[K, V]):
+    def items(self):
+        class OrderedItemsView(ItemsView[K, V]):
+            def __iter__(inner):
+                return iter(self)
+
+        assert_type(iter(OrderedItemsView({})), Iterator[K])
+        return OrderedItemsView({})
+
+i1 = CaseInsensitiveOrderedMultiDict().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+i2 = CaseInsensitiveOrderedMultiDict[int, str]().items()
+reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
+
+# TODO it feels like we don't want to leak the type vars here.
+reveal_type(iter(i1))  # N: Revealed type is "typing.Iterator[K]"
+reveal_type(iter(i2))  # N: Revealed type is "typing.Iterator[K]"

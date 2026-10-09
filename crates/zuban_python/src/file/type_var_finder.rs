@@ -68,7 +68,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
             infos: &mut infos,
         };
 
-        if let Some(arguments) = class.node().arguments() {
+        if let Some(arguments) = class.as_node().arguments() {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
@@ -234,8 +234,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
                     BaseLookup::GenericOrProtocol => {
                         if self.infos.generic_or_protocol_slice.is_some() {
                             self.infos.had_generic_or_protocol_issue = true;
-                            NodeRef::new(self.file, primary.index())
-                                .add_issue(self.i_s, IssueKind::EnsureSingleGenericOrProtocol);
+                            NodeRef::new(self.file, primary.index()).add_type_issue(
+                                self.i_s.db,
+                                IssueKind::EnsureSingleGenericOrProtocol,
+                            );
                         }
                         self.infos.generic_or_protocol_slice =
                             Some(SliceType::new(self.file, primary.index(), slice_type));
@@ -356,7 +358,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
     fn compute_forward_reference(&mut self, start: CodeIndex, string: Cow<str>) {
         let file = self
             .file
-            .ensure_forward_reference_file(self.i_s.db, start, string);
+            .ensure_string_annotation_file(self.i_s.db, start, string);
         let mut inner_finder = TypeVarFinder {
             name_resolution: file.name_resolution_for_types(self.i_s),
             infos: self.infos,
@@ -376,7 +378,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd, 'e> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd, '
         if slice_type.iter().count() < self.infos.type_var_manager.len() {
             slice_type
                 .as_node_ref()
-                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars);
+                .add_type_issue(self.i_s.db, IssueKind::IncompleteGenericOrProtocolTypeVars);
         }
     }
 }
@@ -427,7 +429,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     fn check_name_def(self, node_ref: NodeRef) -> BaseLookup {
         if node_ref.file_index() != self.file.file_index {
-            return self.with_new_file(node_ref.file).check_name_def(node_ref);
+            return self.with_new_file(node_ref.file, |new| new.check_name_def(node_ref));
         }
         let name_def = node_ref.expect_name_def();
         match name_def.expect_type() {

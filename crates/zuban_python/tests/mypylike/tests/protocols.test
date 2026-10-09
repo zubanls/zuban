@@ -539,9 +539,9 @@ def cb1_bad3(*vals: bytes, max_len: str | None) -> list[bytes]:
     return []
 
 cb1: Proto1 = cb1_good1  # OK
-cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(int | None, 'max_items')], list[bytes]]", variable has type "Proto1")
-cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes)], list[bytes]]", variable has type "Proto1")
-cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(bytes), NamedArg(str | None, 'max_len')], list[bytes]]", variable has type "Proto1")
+cb1 = cb1_bad1  # E: Incompatible types in assignment (expression has type "def cb1_bad1(*vals: bytes, max_items: int | None) -> list[bytes]", variable has type "Proto1")
+cb1 = cb1_bad2  # E: Incompatible types in assignment (expression has type "def cb1_bad2(*vals: bytes) -> list[bytes]", variable has type "Proto1")
+cb1 = cb1_bad3  # E: Incompatible types in assignment (expression has type "def cb1_bad3(*vals: bytes, max_len: str | None) -> list[bytes]", variable has type "Proto1")
 
 [case protocol_callable_any_matching]
 # Copied from conformance tests (callables_annotation.py)
@@ -700,3 +700,210 @@ class C:
 def f[S, R](x: Sequence[P[S, R]], y: S) -> R: ...
 
 reveal_type(f([C()], int()))  # N: Revealed type is "int"
+
+[case protocol_self_type_with_inheritance]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T", covariant=True)
+
+class PBase(Protocol[T]):
+    def x(self: PBase[T]) -> T: ...
+
+class P(PBase[T], Protocol[T]): ...
+
+class P2(PBase[tuple[T]], Protocol[T]): ...
+
+class C:
+    def x(self) -> int: ...
+class D:
+    def x(self) -> tuple[int]: ...
+
+def f[U](elements: PBase[U]) -> U: ...
+def g[U](elements: P[U]) -> U: ...
+def h[U](elements: P2[U]) -> U: ...
+
+reveal_type(f(C()))  # N: Revealed type is "int"
+reveal_type(g(C()))  # N: Revealed type is "int"
+reveal_type(h(D()))  # N: Revealed type is "int"
+
+h(C())  # E: Argument 1 to "h" has incompatible type "C"; expected "P2[Never]" \
+        # N: Following member(s) of "C" have conflicts: \
+        # N:     Expected: \
+        # N:         def x(self: PBase[tuple[U]]) -> tuple[U] \
+        # N:     Got: \
+        # N:         def x(self: C) -> int
+
+[case collection_should_be_an_iterator]
+# From GH #370
+from collections.abc import Collection, Iterable, Iterator
+from typing import Protocol, reveal_type
+
+class Color:
+    def __iter__(self) -> Iterator["Color"]:
+        return iter([self])
+    def __contains__(self, x: object, /) -> bool:
+        return True
+    def __len__(self) -> int:
+        return 0
+
+def takes_collection[T](elements: Collection[T]) -> T:
+    return next(iter(elements))
+
+c = Color()
+reveal_type(takes_collection(c))  # N: Revealed type is "__main__.Color"
+
+[case protocol_overload_matching]
+# From GH #373
+from typing import Protocol, Self, overload, Any, assert_type
+
+class PropertyLike(Protocol):
+    @overload
+    def __get__[T](self, instance: None, owner: type[T]) -> Self: ...
+
+    @overload
+    def __get__(self, instance: Any, owner: Any) -> int: ...
+
+    def __get__[T](self, instance, owner: type[T]):
+        return self
+
+class C:
+    p: PropertyLike
+assert_type(C.p, PropertyLike)
+assert_type(C().p, int)
+
+[case callable_protocol_dunder_add_is_callable]
+# From GH #375
+from typing import Any, Protocol, type_check_only
+
+@type_check_only
+class NumOp(Protocol):
+    def __call__(self, other: Any, /) -> Any: ...
+
+class Num:
+    __add__: NumOp
+    __radd__: NumOp
+
+class Repro:
+    def __add__(self, x: Num, /) -> Any: ...
+    def __radd__(self, x: Num, /) -> Any: ...
+
+[case protocol_reused_many_times_should_not_crash]
+# From GH #382
+from collections.abc import Callable
+from typing import ParamSpec, Protocol, overload
+
+class Array(Protocol):
+    def __invert__(self) -> Array: ...
+    def __sub__(self, other: Array) -> Array: ...
+    def __mod__(self, other: Array) -> Array: ...
+    def __pow__(self, other: Array) -> Array: ...
+    def __or__(self, other: Array) -> Array: ...
+    def __lt__(self, other: Array) -> Array: ...
+    def __le__(self, other: Array) -> Array: ...
+    def __gt__(self, other: Array) -> Array: ...
+    def __ge__(self, other: Array) -> Array: ...
+    def __rsub__(self, other: Array) -> Array: ...
+    def __rtruediv__(self, other: Array) -> Array: ...
+    def __rfloordiv__(self, other: Array) -> Array: ...
+    def __rmod__(self, other: Array) -> Array: ...
+    def __rpow__(self, other: Array) -> Array: ...
+    def __ror__(self, other: Array) -> Array: ...
+    def __rxor__(self, other: Array) -> Array: ...
+
+    def __getitem__(self, key: GetIndex, /) -> Array: ...
+
+
+type SetIndex = int | Array | tuple[int | Array]
+type GetIndex = SetIndex | tuple[int | None | Array]
+
+P = ParamSpec("P")
+
+@overload
+def lazy_apply(func: Callable[P, Array]): ...
+@overload
+def lazy_apply(func: Callable[P, Array | int]): ...
+def lazy_apply(func: Callable[P, Array | int]): ...
+
+[case protocol_self_matching_should_not_be_affected_by_cache1]
+from typing import Self, Protocol
+
+class P(Protocol):
+    x: int
+
+class X:
+    x: int
+
+    def check(self: Self):
+        a: P = self
+
+class Y:
+    x: str
+
+    def check(self: Self):
+        a: P = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "P") \
+                     # N: Following member(s) of "Self" have conflicts: \
+                     # N:     x: expected "int", got "str"
+
+[case protocol_self_matching_should_not_be_affected_by_cache2]
+from typing import Self, Protocol
+
+class P(Protocol):
+    x: int
+
+class X:
+    x: str
+
+    def check(self: Self):
+        a: P = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "P") \
+                     # N: Following member(s) of "Self" have conflicts: \
+                     # N:     x: expected "int", got "str"
+
+class Y:
+    x: int
+
+    def check(self: Self):
+        a: P = self
+
+[case protocol_override_of_object_methods]
+# From GH #449
+from typing import runtime_checkable, Protocol, override
+
+@runtime_checkable
+class CanStr(Protocol):
+    @override
+    def __str__(self, /) -> str: ...
+    @override
+    def missing(self, /) -> str: ...  # E: Method "missing" is marked as an override, but no base method was found with this name
+
+class ProtocolBase(Protocol):
+    def bar(self) -> str: ...
+
+class CanStr2(ProtocolBase, Protocol):
+    @override
+    def __str__(self, /) -> str: ...
+    @override
+    def bar(self) -> str: ...
+    @override
+    def missing(self, /) -> str: ...  # E: Method "missing" is marked as an override, but no base method was found with this name
+
+[case protocol_special_class_should_not_crash]
+# From GH #573
+from typing import Protocol
+
+class C(Protocol):
+    def __class__(self) -> C:
+        pass
+
+x: C = int  # type: ignore
+
+[case protocol_get_override_should_not_crash]
+from typing import Protocol, TypeVar, Self, overload, Any
+
+T = TypeVar('T')
+
+class PropertyLike(Protocol):
+    @overload
+    def __get__(self, instance: None, owner: type[T]) -> Self: ...
+    @overload
+    def __get__(self, instance: T, owner: type[T] | None = None) -> Any: ...
+    def __get__(self, instance: T | None, owner: type[T] | None = None) -> Any | Self: ...

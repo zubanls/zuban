@@ -1,7 +1,9 @@
 use clap::{Parser, Subcommand};
 use shlex::Shlex;
 use vfs::NormalizedPath;
-use zuban_python::{GotoGoal, InputPosition, Name, Project, ReferencesGoal};
+use zuban_python::{
+    GotoGoal, InputPosition, Name, NameSymbol, PositionInfos, Project, ReferencesGoal,
+};
 
 use crate::base_path_join;
 
@@ -36,6 +38,7 @@ pub enum Commands {
     CodeActions(CodeActionArgs),
     FoldingRanges(FoldingBlocksArgs),
     InlayHints(InlayHintArgs),
+    Symbols(SymbolsArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -90,6 +93,8 @@ pub struct ReferencesArgs {
     only_check_file: bool,
     #[arg(long)]
     no_include_declarations: bool,
+    #[arg(long)]
+    pub no_positions: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -133,6 +138,9 @@ pub struct InlayHintArgs {
     #[arg(long)]
     pub until_line: Option<usize>,
 }
+
+#[derive(Parser, Debug)]
+pub struct SymbolsArgs {}
 
 impl CommonGotoInferArgs {
     fn goto_goal(&self) -> GotoGoal {
@@ -221,10 +229,9 @@ pub(crate) fn find_and_check_ide_tests(
                     )
                 } else {
                     format!(
-                        "{}:{}:{}:{}",
+                        "{}:{}:{}",
                         clean_path(name.path_relative_to_workspace()),
-                        start.line_one_based(),
-                        start.code_points_column(),
+                        format_pos(start),
                         name.qualified_name(),
                     )
                 }
@@ -275,7 +282,7 @@ pub(crate) fn find_and_check_ide_tests(
                     let goal = infer_args.common_args.goto_goal();
                     (
                         "infer",
-                        document.infer_definition(position, goal, |vn| {
+                        document.infer_definition(position, goal, true, |vn| {
                             check_infer_or_goto(&vn.name, &infer_args.common_args)
                         }),
                     )
@@ -304,18 +311,15 @@ pub(crate) fn find_and_check_ide_tests(
                             !references.no_include_declarations,
                             |name| {
                                 let start = name.name_range().0;
-                                if name.file_path() == base_path {
-                                    format!(
-                                        "{}:{}",
-                                        start.line_one_based(),
-                                        start.code_points_column()
-                                    )
+                                if references.no_positions {
+                                    clean_path(name.path_relative_to_workspace())
+                                } else if name.file_path() == base_path {
+                                    format_pos(start)
                                 } else {
                                     format!(
-                                        "{}:{}:{}",
+                                        "{}:{}",
                                         clean_path(name.path_relative_to_workspace()),
-                                        start.line_one_based(),
-                                        start.code_points_column(),
+                                        format_pos(start)
                                     )
                                 }
                             },
@@ -388,11 +392,9 @@ pub(crate) fn find_and_check_ide_tests(
                                         .chain(
                                             c.ranges.iter().map(|(start, end)| {
                                                 format!(
-                                                    " - ({}, {}) -> ({}, {})",
-                                                    start.line_one_based(),
-                                                    start.code_points_column(),
-                                                    end.line_one_based(),
-                                                    end.code_points_column(),
+                                                    " - {} -> {}",
+                                                    format_pos(*start),
+                                                    format_pos(*end),
                                                 )
                                             }),
                                         )
@@ -429,9 +431,8 @@ pub(crate) fn find_and_check_ide_tests(
                             for token in tokens {
                                 let pos = token.position();
                                 output.push(format!(
-                                    "- {}:{}:{} -> {}:{}",
-                                    pos.line_one_based(),
-                                    pos.code_points_column(),
+                                    "- {}:{} -> {}:{}",
+                                    format_pos(pos),
                                     token.content(),
                                     token.lsp_type.as_str(),
                                     token.pretty_properties(),
@@ -446,13 +447,7 @@ pub(crate) fn find_and_check_ide_tests(
                     Ok(ranges) => {
                         output.push(format!("{path}:{test_on_line_nr}: Selection Ranges:"));
                         for (start, end) in ranges {
-                            output.push(format!(
-                                "- {}:{} - {}:{}",
-                                start.line_one_based(),
-                                start.code_points_column(),
-                                end.line_one_based(),
-                                end.code_points_column(),
-                            ));
+                            output.push(format!("- {} - {}", format_pos(start), format_pos(end)));
                         }
                         continue;
                     }
@@ -472,12 +467,10 @@ pub(crate) fn find_and_check_ide_tests(
                             output.push(format!("{path}:{test_on_line_nr}: Code Actions:{end}"));
                             for action in actions {
                                 output.push(format!(
-                                    "- {}: {}:{}-{}:{} replaced with: {:?}",
+                                    "- {}: {}-{} replaced with: {:?}",
                                     action.title,
-                                    action.start_of_change.line_one_based(),
-                                    action.start_of_change.code_points_column(),
-                                    action.end_of_change.line_one_based(),
-                                    action.end_of_change.code_points_column(),
+                                    format_pos(action.start_of_change),
+                                    format_pos(action.end_of_change),
                                     action.replacement,
                                 ));
                             }
@@ -490,11 +483,9 @@ pub(crate) fn find_and_check_ide_tests(
                     output.push(format!("{path}:{test_on_line_nr}: Folding Ranges:"));
                     for range in document.folding_ranges() {
                         output.push(format!(
-                            "- {}:{}-{}:{} {:?}",
-                            range.start.line_one_based(),
-                            range.start.code_points_column(),
-                            range.end.line_one_based(),
-                            range.end.code_points_column(),
+                            "- {}-{} {:?}",
+                            format_pos(range.start),
+                            format_pos(range.end),
                             range.kind,
                         ));
                     }
@@ -510,9 +501,8 @@ pub(crate) fn find_and_check_ide_tests(
                             output.push(format!("{path}:{test_on_line_nr}: Inlay Hints:"));
                             for hint in hints {
                                 output.push(format!(
-                                    "- {}:{}: {:?}",
-                                    hint.position.line_one_based(),
-                                    hint.position.code_points_column(),
+                                    "- {}: {:?}",
+                                    format_pos(hint.position),
                                     hint.label(),
                                 ));
                             }
@@ -520,6 +510,11 @@ pub(crate) fn find_and_check_ide_tests(
                         }
                         Err(err) => ("inlay-hints", Err(err)),
                     }
+                }
+                Commands::Symbols(_) => {
+                    output.push(format!("{path}:{test_on_line_nr}: Symbols:"));
+                    format_symbols(output, document.symbols(), "- ");
+                    continue;
                 }
             };
             output.push(match out {
@@ -549,4 +544,32 @@ fn clean_path(p: String) -> String {
 
 fn cleanup_rename_uri(u: String) -> String {
     u.replace("C://mypylike", "mypylike")
+}
+
+fn format_pos(pos: PositionInfos) -> String {
+    format!("{}:{}", pos.line_one_based(), pos.code_points_column())
+}
+
+fn format_symbols<'x>(
+    out: &mut Vec<String>,
+    symbols: impl Iterator<Item = NameSymbol<'x>>,
+    indent: &str,
+) {
+    for symbol in symbols {
+        let name = symbol.as_name();
+        let kind = name.lsp_kind();
+        let (target_start, target_end) = name.target_range();
+        out.push(format!(
+            "{}{kind:?} {} (parent: {}) (target-range: {}-{})",
+            indent,
+            symbol.symbol,
+            name.simple_qualified_name_of_parent_without_file()
+                .unwrap_or_else(|| "None".into()),
+            format_pos(target_start),
+            format_pos(target_end),
+        ));
+        if let Some(class_symbols) = name.class_symbols(kind) {
+            format_symbols(out, class_symbols, &format!("{indent}  "))
+        }
+    }
 }

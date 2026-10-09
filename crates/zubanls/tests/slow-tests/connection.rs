@@ -3,8 +3,8 @@ use std::{cell::Cell, path::Path, str::FromStr, time::Duration};
 use crossbeam_channel::RecvTimeoutError;
 use lsp_server::Message;
 use lsp_types::{
-    DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, InitializeResult,
-    ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
+    DiagnosticClientCapabilities, DocumentSymbolClientCapabilities, GotoCapability,
+    InitializeResult, ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -37,8 +37,13 @@ impl Connection {
 
         let server_thread = Some(std::thread::spawn(move || {
             let typeshed_path = Some(test_utils::typeshed_path());
-            zubanls::run_server_with_custom_connection(connection1, typeshed_path, || Ok(()))
-                .expect("Should not error");
+            zubanls::run_server_with_custom_connection(
+                Default::default(),
+                connection1,
+                typeshed_path,
+                || Ok(()),
+            )
+            .expect("Should not error");
         }));
 
         Self {
@@ -53,9 +58,17 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        hierarchical_document_symbol_support: bool,
+        initialization_options: Option<Value>,
     ) -> Self {
         let mut slf = Self::new();
-        let response = slf.initialize(roots, position_encodings, pull_diagnostics);
+        let response = slf.initialize(
+            roots,
+            position_encodings,
+            pull_diagnostics,
+            hierarchical_document_symbol_support,
+            initialization_options,
+        );
         slf.server_capabilities = Some(response.capabilities);
         slf
     }
@@ -65,6 +78,8 @@ impl Connection {
         roots: &[&str],
         position_encodings: Option<Vec<lsp_types::PositionEncodingKind>>,
         pull_diagnostics: bool,
+        hierarchical_document_symbol_support: bool,
+        initialization_options: Option<Value>,
     ) -> InitializeResult {
         let capabilities = lsp_types::ClientCapabilities {
             workspace: Some(lsp_types::WorkspaceClientCapabilities {
@@ -91,7 +106,13 @@ impl Connection {
             text_document: Some(TextDocumentClientCapabilities {
                 diagnostic: pull_diagnostics.then(DiagnosticClientCapabilities::default),
                 document_symbol: Some(DocumentSymbolClientCapabilities {
-                    hierarchical_document_symbol_support: Some(true),
+                    hierarchical_document_symbol_support: Some(
+                        hierarchical_document_symbol_support,
+                    ),
+                    ..Default::default()
+                }),
+                definition: Some(GotoCapability {
+                    link_support: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -114,6 +135,7 @@ impl Connection {
                     .collect(),
             ),
             capabilities,
+            initialization_options,
             ..Default::default()
         };
         let response = self.request::<lsp_types::request::Initialize>(initialize_params);

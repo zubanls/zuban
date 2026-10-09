@@ -3,7 +3,7 @@ use std::{borrow::Cow, iter::Peekable, sync::Arc};
 use parsa_python_cst::ParamKind;
 
 use crate::{
-    arguments::{Arg, ArgKind},
+    arguments::{Arg, ArgKind, TypedDictExtraItemsOrigin},
     database::Database,
     debug,
     format_data::{FormatData, ParamsStyle},
@@ -12,8 +12,8 @@ use crate::{
     matching::Matcher,
     type_::{
         AnyCause, CallableParam, CallableParams, DbString, MaybeUnpackGatherer, ParamSpecUsage,
-        ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack,
-        Type, TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
+        ParamType, StarParamType, StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type,
+        TypedDict, TypedDictMember, Variance, WithUnpack, empty_types,
         match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
     },
 };
@@ -199,20 +199,18 @@ fn matches_simple_params_part2<
                 );
                 return matches;
             }
-            if param1.has_default()
-                && !(param2.has_default()
-                    || matches!(
-                        specific2,
-                        WrappedParamType::Star(_) | WrappedParamType::StarStar(_)
-                    ))
-            {
-                debug!(
-                    "Mismatch callable, because {:?} has default and {:?} hasn't",
-                    param1.name(i_s.db),
-                    param2.name(i_s.db)
-                );
-                return Match::new_false();
-            }
+            let mismatches_defaults = |param1: &P1, param2: &P2| {
+                let has_issue = param1.has_default() && !(param2.has_default());
+                if cfg!(debug_assertions) && !has_issue {
+                    debug!(
+                        "Mismatch callable, because {:?} has default and {:?} hasn't",
+                        param1.name(i_s.db),
+                        param2.name(i_s.db)
+                    );
+                }
+                has_issue
+            };
+
             let specific1 = param1.specific(i_s.db);
 
             if let Some(m) =
@@ -231,6 +229,9 @@ fn matches_simple_params_part2<
                 WrappedParamType::PositionalOnly(t1) => match &specific2 {
                     WrappedParamType::PositionalOnly(t2)
                     | WrappedParamType::PositionalOrKeyword(t2) => {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamType::Star(WrappedStar::ArbitraryLen(t2)) => {
@@ -248,6 +249,9 @@ fn matches_simple_params_part2<
                 },
                 WrappedParamType::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamType::PositionalOrKeyword(t2) => {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         let name1 = param1.name(i_s.db);
                         let name2 = param2.name(i_s.db);
                         if name1 != name2 {
@@ -334,6 +338,9 @@ fn matches_simple_params_part2<
                     WrappedParamType::PositionalOnly(t2)
                         if matcher.ignore_positional_param_names() =>
                     {
+                        if mismatches_defaults(&param1, &param2) {
+                            return Match::new_false();
+                        }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     _ => {
@@ -369,6 +376,9 @@ fn matches_simple_params_part2<
                         _ => {
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
                                 if param1.name(i_s.db) == p2.name(i_s.db) {
+                                    if mismatches_defaults(&param1, &p2) {
+                                        return Match::new_false();
+                                    }
                                     match unused_keyword_params.remove(i).specific(i_s.db) {
                                         WrappedParamType::KeywordOnly(t2)
                                         | WrappedParamType::PositionalOrKeyword(t2) => {
@@ -383,6 +393,9 @@ fn matches_simple_params_part2<
                             while params2.peek().is_some() {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    if mismatches_defaults(&param1, &param2) {
+                                        return Match::new_false();
+                                    }
                                     match &param2.specific(i_s.db) {
                                         WrappedParamType::PositionalOrKeyword(t2)
                                         | WrappedParamType::KeywordOnly(t2) => {
@@ -533,65 +546,26 @@ fn matches_simple_params_part2<
                         }
                     },
                 },
-                WrappedParamType::StarStar(d1) => match specific2 {
-                    WrappedParamType::StarStar(d2) => match (d1, d2) {
-                        (WrappedStarStar::UnpackTypedDict(td1), _) => {
-                            return matches
-                                & matches_simple_params_part2(
-                                    i_s,
-                                    matcher,
-                                    typed_dict_to_params(i_s.db, td1),
-                                    params2,
-                                    variance,
-                                );
-                        }
-                        (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
-                            matches &= match_(i_s, matcher, t1, &t2)
-                        }
-                        (_, WrappedStarStar::ParamSpecKwargs(_))
-                        | (WrappedStarStar::ParamSpecKwargs(_), _)
-                        | (_, WrappedStarStar::UnpackTypedDict(_)) => {
-                            unreachable!()
-                        }
-                    },
-                    ref specific2 @ (WrappedParamType::PositionalOrKeyword(ref t2)
-                    | WrappedParamType::KeywordOnly(ref t2)) => match d1 {
-                        WrappedStarStar::UnpackTypedDict(td1) => {
-                            return matches
-                                & matches_simple_params_part2(
-                                    i_s,
-                                    matcher,
-                                    typed_dict_to_params(i_s.db, td1),
-                                    params2,
-                                    variance,
-                                );
-                        }
-                        WrappedStarStar::ValueType(t1)
-                            if param2.has_default()
-                                && matches!(specific2, WrappedParamType::KeywordOnly(_)) =>
+                WrappedParamType::StarStar(d1) => match d1 {
+                    WrappedStarStar::ValueType(t1) => {
+                        if let Some(error) =
+                            match_star_star(i_s.db, param1, params2.by_ref(), |t2| {
+                                matches &= match_(i_s, matcher, t1, &t2)
+                            })
                         {
-                            matches &= match_(i_s, matcher, t1, t2);
-                            continue;
+                            return error;
                         }
-                        _ => {
-                            debug!(
-                                "Params mismatch (#{}), because had {:?} vs {:?}",
-                                line!(),
-                                param1.kind(i_s.db),
-                                param2.kind(i_s.db),
+                    }
+                    WrappedStarStar::ParamSpecKwargs(_) => unreachable!(),
+                    WrappedStarStar::UnpackTypedDict(td1) => {
+                        return matches
+                            & matches_simple_params_part2(
+                                i_s,
+                                matcher,
+                                typed_dict_to_params(i_s.db, td1),
+                                params2,
+                                variance,
                             );
-                            return Match::new_false();
-                        }
-                    },
-                    WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => continue,
-                    _ => {
-                        debug!(
-                            "Params mismatch (#{}), because had {:?} vs {:?}",
-                            line!(),
-                            param1.kind(i_s.db),
-                            param2.kind(i_s.db)
-                        );
-                        return Match::new_false();
                     }
                 },
             };
@@ -614,7 +588,6 @@ fn matches_simple_params_part2<
                     matches &= matcher.match_or_add_param_spec(i_s, u1, params2, variance);
                     return matches;
                 }
-                //WrappedParamType::StarStar(WrappedStarStar::ValueType(_)) => {}
                 specific1 => {
                     if !matcher.precise_matching
                         && is_trivial_suffix(
@@ -667,6 +640,59 @@ fn matches_simple_params_part2<
         }
     }
     matches
+}
+
+fn match_star_star<'db: 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
+    db: &'db Database,
+    param1: P1,
+    params2: impl Iterator<Item = P2>,
+    mut ensure_matching_type: impl FnMut(Option<Cow<'_, Type>>),
+) -> Option<Match> {
+    let mut missing_kwargs = true;
+    for param2 in params2 {
+        match param2.specific(db) {
+            WrappedParamType::StarStar(d2) => match d2 {
+                WrappedStarStar::ValueType(t2) => {
+                    missing_kwargs = false;
+                    ensure_matching_type(t2)
+                }
+                WrappedStarStar::ParamSpecKwargs(_) | WrappedStarStar::UnpackTypedDict(_) => {
+                    // ParamSpecs are handled earlier together with the args case, they only appear
+                    // together.
+                    // Unpacked TypedDicts are unpacked and flattened in the first part of
+                    // matches_simple_params.
+                    unreachable!()
+                }
+            },
+            WrappedParamType::PositionalOrKeyword(t2) | WrappedParamType::KeywordOnly(t2) => {
+                if param2.has_default() {
+                    ensure_matching_type(t2);
+                } else {
+                    debug!(
+                        "Params mismatch (#{}), because had {:?} vs {:?}",
+                        line!(),
+                        param1.kind(db),
+                        param2.kind(db),
+                    );
+                    return Some(Match::new_false());
+                }
+            }
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => (),
+            WrappedParamType::Star(_) => {}
+            WrappedParamType::PositionalOnly(_) => {
+                if !param2.has_default() {
+                    debug!(
+                        "Params mismatch (#{}), because had {:?} vs {:?}",
+                        line!(),
+                        param1.kind(db),
+                        param2.kind(db)
+                    );
+                    return Some(Match::new_false());
+                }
+            }
+        }
+    }
+    missing_kwargs.then_some(Match::new_false())
 }
 
 fn is_trivial_suffix<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
@@ -752,21 +778,21 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
 }
 
 fn typed_dict_to_params<'x>(
-    db: &Database,
+    db: &'x Database,
     td1: &'x TypedDict,
 ) -> impl Iterator<Item = impl Param<'x>> {
     let members = td1.members(db);
+    // The extra type is Any if there are no extra types, but
+    let extra_t = if let Some(extra) = members.extra_items.as_ref() {
+        (!extra.t.is_never()).then_some(&extra.t)
+    } else {
+        Some(db.python_state.object_type_ref())
+    };
     members
         .named
         .iter()
         .map(TypedDictMemberParam::Member)
-        .chain(
-            members
-                .extra_items
-                .as_ref()
-                .map(|t| TypedDictMemberParam::ExtraItems(&t.t))
-                .into_iter(),
-        )
+        .chain(extra_t.map(TypedDictMemberParam::ExtraItems).into_iter())
 }
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
@@ -1069,6 +1095,17 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     pub fn has_unused_arguments(&mut self) -> bool {
         while let Some(arg) = self.next_arg() {
             if arg.in_args_or_kwargs_and_arbitrary_len() {
+                if matches!(
+                    arg.kind,
+                    ArgKind::Inferred {
+                        typed_dict_extra_items_origin: Some(TypedDictExtraItemsOrigin::ExtraItems),
+                        ..
+                    }
+                ) {
+                    // Extra items should always be handled
+                    self.current_arg = Some(arg);
+                    return true;
+                }
                 self.current_arg = None;
             } else {
                 // Should not modify arguments that are uncalled-for, because we use them later for
@@ -1085,11 +1122,22 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     }
 
     pub fn next_arg(&mut self) -> Option<Arg<'db, 'a>> {
+        self.next_arg_part2(true)
+    }
+
+    pub fn next_arg_part2(
+        &mut self,
+        disallow_unknown_typed_dict_extra_items: bool,
+    ) -> Option<Arg<'db, 'a>> {
         let arg = self.current_arg.take().or_else(|| self.arguments.next())?;
         if arg.in_args_or_kwargs_and_arbitrary_len() {
             self.arbitrary_length_handled = false;
             self.current_arg = Some(arg.clone());
-            if arg.is_arbitrary_kwargs() {
+            if disallow_unknown_typed_dict_extra_items && arg.is_arbitrary_kwargs() {
+                if arg.has_unknown_typed_dict_extra_items() {
+                    self.current_arg = None;
+                    return self.next_arg_part2(disallow_unknown_typed_dict_extra_items);
+                }
                 // A **kwargs
                 for next_arg in self.arguments.by_ref() {
                     if next_arg.is_from_star_star_args() {
@@ -1106,7 +1154,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
     }
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Arg<'db, 'a>> {
-        self.next_arg().and_then(|arg| {
+        self.next_arg_part2(false).and_then(|arg| {
             if arg.is_keyword_argument() == is_keyword_arg
                 || is_keyword_arg && matches!(&arg.kind, ArgKind::ParamSpec { .. })
             {
@@ -1184,7 +1232,7 @@ where
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument: self.unused_keyword_arguments.remove(i),
                                     type_: entry.type_.clone(),
-                                    name: entry.name,
+                                    name: entry.name.cloned(),
                                 },
                             });
                         }
@@ -1199,7 +1247,7 @@ where
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument,
                                     type_: entry.type_.clone(),
-                                    name: entry.name,
+                                    name: entry.name.cloned(),
                                 },
                             });
                         } else {
@@ -1299,28 +1347,22 @@ where
             }
             ParamKind::PositionalOnly => {
                 if let Some(arg) = self.next_arg() {
-                    match arg.kind {
-                        ArgKind::Positional { .. }
-                        | ArgKind::Inferred {
-                            is_keyword: None, ..
-                        }
-                        | ArgKind::InferredWithCustomAddIssue { .. }
-                        | ArgKind::Comprehension { .. } => argument_with_index = Some(arg),
-                        _ => {
-                            if arg.keyword_name(self.db).is_some() {
-                                self.unused_keyword_arguments.push(arg);
-                            }
-                        }
+                    if arg.can_be_used_to_match_positional_param() {
+                        argument_with_index = Some(arg)
+                    } else if arg.keyword_name(self.db).is_some() {
+                        self.unused_keyword_arguments.push(arg);
                     }
                 }
             }
             ParamKind::Star => match param.specific(self.db) {
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
                     let next = self.params.next();
-                    if !matches!(
-                        next.unwrap().specific(self.db),
-                        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)),
-                    ) {
+                    if next.is_none_or(|next| {
+                        !matches!(
+                            next.specific(self.db),
+                            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)),
+                        )
+                    }) {
                         // In case we have not a ParamSpecKwargs after Args, we have an invalid
                         // definition, so we just skip everything and are done.
                         self.arguments.by_ref().count(); // This consumes the iterator
@@ -1423,7 +1465,7 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
         match self {
             Self::Member(m) => CallableParam {
                 type_: ParamType::KeywordOnly(m.type_.clone()),
-                name: Some(DbString::StringSlice(m.name)),
+                name: Some(m.name.clone()),
                 has_default: self.has_default(),
                 might_have_type_vars: true,
             },
@@ -1452,7 +1494,7 @@ pub(crate) enum ParamArgument<'db, 'a> {
     MatchedUnpackedTypedDictMember {
         argument: Arg<'db, 'a>,
         type_: Type,
-        name: Option<StringSlice>,
+        name: Option<DbString>,
     },
     ParamSpecArgs(ParamSpecUsage, Box<[Arg<'db, 'a>]>),
 }

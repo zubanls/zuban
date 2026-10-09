@@ -1,0 +1,46 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 57
+expression: tree_to_string(& tree)
+---
+file: 0-27
+ Error(stmt): 0-17
+  Error(simple_stmts): 0-17
+   Error(simple_stmt): 0-17
+    Error(star_expressions): 0-17
+     Error(expression): 0-17
+      Error(primary): 0-17
+       atom: 0-5
+        Name: 0-5 "tuple"
+       Keyword: 5-6 "["
+       Error(slices): 6-17
+        named_expression: 6-7
+         expression: 6-7
+          atom: 6-7
+           Number: 6-7 "1"
+        Keyword: 7-8 ","
+        named_expression: 8-9
+         expression: 8-9
+          atom: 8-9
+           Number: 8-9 "2"
+        Keyword: 9-10 ","
+        named_expression: 10-11
+         expression: 10-11
+          atom: 10-11
+           Number: 10-11 "3"
+        Keyword: 11-12 ","
+        named_expression: 12-13
+         expression: 12-13
+          atom: 12-13
+           Number: 12-13 "4"
+        Keyword: 13-14 ","
+        named_expression: 14-15
+         expression: 14-15
+          atom: 14-15
+           Number: 14-15 "5"
+        Keyword: 15-16 ","
+        Error(named_expression): 16-17
+         Error(expression): 16-17
+          Error(atom): 16-17
+           Keyword: 16-17 "("
+ Endmarker: 27-27 ""

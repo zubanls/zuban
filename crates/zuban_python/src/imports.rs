@@ -1,10 +1,10 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 use utils::match_case;
-use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Workspace, WorkspaceKind};
+use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent, Workspace, WorkspaceKind};
 
 use crate::{
-    database::Database,
+    database::{ComplexPoint, Database, PyTypedMissing},
     file::PythonFile,
     inferred::Inferred,
     type_::{Namespace, Type},
@@ -18,12 +18,13 @@ const INIT_PYI: &str = "__init__.pyi";
 pub(crate) enum ImportResult {
     File(FileIndex),
     Namespace(Arc<Namespace>), // A Python Namespace package, i.e. a directory
-    PyTypedMissing,            // Files exist, but the py.typed marker is missing.
+    PyTypedMissing(FileIndex), // Files exist, but the py.typed marker is missing.
+    BinaryExtension,
 }
 
 impl ImportResult {
     pub fn ensured_loaded_file(self, db: &Database) -> Option<LoadedImportResult> {
-        if let Self::File(file_index) = self {
+        if let Self::File(file_index) | Self::PyTypedMissing(file_index) = self {
             db.ensure_file_for_file_index(file_index).ok()?;
         }
         Some(LoadedImportResult(self))
@@ -35,11 +36,12 @@ impl ImportResult {
             return Inferred::new_module_not_found();
         };
         match result.0 {
-            ImportResult::File(file_index) => Inferred::new_file_reference(file_index),
-            ImportResult::Namespace(namespace) => {
-                Inferred::from_type(Type::Namespace(namespace.clone()))
-            }
-            Self::PyTypedMissing => Inferred::new_any_from_error(),
+            Self::File(file_index) => Inferred::new_file_reference(file_index),
+            Self::Namespace(namespace) => Inferred::from_type(Type::Namespace(namespace.clone())),
+            Self::PyTypedMissing(file) => Inferred::new_unsaved_complex(
+                ComplexPoint::PyTypedMissing(PyTypedMissing::File(file)),
+            ),
+            Self::BinaryExtension => Inferred::new_any_from_error(),
         }
     }
 
@@ -63,7 +65,7 @@ impl ImportResult {
                     .map(|d| Directory::entries(&db.vfs, d)),
                 name,
             ),
-            Self::PyTypedMissing => unreachable!(),
+            Self::PyTypedMissing(_) | Self::BinaryExtension => unreachable!(),
         }
     }
 
@@ -129,7 +131,8 @@ impl ImportResult {
             Self::Namespace(namespace) => {
                 format!("namespace {}", namespace.debug_path(db))
             }
-            Self::PyTypedMissing => "<py.typed missing>".into(),
+            Self::PyTypedMissing(_) => "<py.typed missing>".into(),
+            Self::BinaryExtension => "<binary extension>".into(),
         }
     }
 }
@@ -142,14 +145,38 @@ impl std::ops::Deref for LoadedImportResult {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct LoadedImportResult(ImportResult);
 
 impl LoadedImportResult {
     pub fn qualified_name(&self, db: &Database) -> String {
         match &self.0 {
-            ImportResult::File(file_index) => db.loaded_python_file(*file_index).qualified_name(db),
+            ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index) => {
+                db.loaded_python_file(*file_index).qualified_name(db)
+            }
             ImportResult::Namespace(ns) => ns.qualified_name(),
-            ImportResult::PyTypedMissing => unreachable!(),
+            // This should proably never be reachable
+            ImportResult::BinaryExtension => "<Binary extension>".into(),
+        }
+    }
+
+    pub fn has_binary_extension_submodule(&self, db: &Database, name: &str) -> bool {
+        match &self.0 {
+            ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index) => {
+                let file = db.loaded_python_file(*file_index);
+                has_binary_extension_submodule(db, file, name)
+            }
+            ImportResult::Namespace(namespace) => {
+                namespace_has_binary_extension_submodule(db, namespace, name)
+            }
+            ImportResult::BinaryExtension => false,
+        }
+    }
+
+    pub fn into_file(self, db: &Database) -> Option<&PythonFile> {
+        match self.0 {
+            ImportResult::File(file_index) => Some(db.loaded_python_file(file_index)),
+            _ => None,
         }
     }
 
@@ -204,6 +231,20 @@ pub fn global_import<'a>(
             }
             None
         })
+}
+
+pub fn import_module_by_strings<'a>(
+    db: &'a Database,
+    from_file: &PythonFile,
+    names: impl IntoIterator<Item = &'a str>,
+) -> Option<ImportResult> {
+    let mut name_iterator = names.into_iter();
+    let first = name_iterator.next()?;
+    let mut result = global_import(db, from_file, first)?;
+    for name in name_iterator {
+        result = result.import(db, from_file, name)?;
+    }
+    Some(result)
 }
 
 fn global_import_of_stubs_folders<'a>(
@@ -266,9 +307,10 @@ pub fn namespace_import_with_unloaded_file(
         loop {
             match parent.maybe_dir() {
                 Ok(dir) => {
-                    if Directory::entries(&db.vfs, &dir)
-                        .search("py.typed")
-                        .is_some()
+                    if from_file.flags(db).follow_untyped_imports
+                        || Directory::entries(&db.vfs, &dir)
+                            .search("py.typed")
+                            .is_some()
                         || dir.name.ends_with(STUBS_SUFFIX)
                     {
                         return result;
@@ -280,7 +322,7 @@ pub fn namespace_import_with_unloaded_file(
                         if workspace.root_path() == parent_workspace.upgrade().unwrap().root_path()
                         {
                             if workspace.part_of_site_packages() {
-                                return Some(ImportResult::PyTypedMissing);
+                                return Some(ImportResult::PyTypedMissing(file_index));
                             } else {
                                 return result;
                             }
@@ -341,7 +383,7 @@ pub fn python_import_with_needs_exact_case<'x>(
                         .search("py.typed")
                         .is_none()
                 {
-                    return Some(ImportResult::PyTypedMissing);
+                    return Some(ImportResult::PyTypedMissing(file_index));
                 }
                 return Some(ImportResult::File(file_index));
             }
@@ -350,10 +392,10 @@ pub fn python_import_with_needs_exact_case<'x>(
             None
         };
         let mut file_imports = |file, is_py_file: bool| {
-            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
-                return Some(ImportResult::PyTypedMissing);
-            }
             let file_index = db.vfs.ensure_file_index(file);
+            if needs_py_typed && !from_file.flags(db).follow_untyped_imports {
+                return Some(ImportResult::PyTypedMissing(file_index));
+            }
             if is_py_file {
                 python_file_index = Some((file.clone(), file_index));
             } else {
@@ -537,37 +579,95 @@ pub enum ImportAncestor {
 
 pub fn find_import_ancestor(db: &Database, file: &PythonFile, level: usize) -> ImportAncestor {
     debug_assert!(level > 0);
-    let invalid = |workspace: &Weak<Workspace>, current_level| match level - current_level {
-        0 => {
-            if !db.project.settings.explicit_package_bases {
-                // While technically the sys path says that this is a workspace, we probably just
-                // have the wrong sys path and since this is annoying for most users, just allow
-                // the user to access the workspace as a relative directory.
-                let workspace = workspace.upgrade().unwrap();
-                if let Some(index) =
-                    load_init_file_from_entries(db, &workspace.entries, file.file_index)
-                {
-                    return ImportAncestor::Found(ImportResult::File(index));
+
+    fn check_parent(
+        db: &Database,
+        parent: &Parent,
+        file: &PythonFile,
+        level: usize,
+    ) -> ImportAncestor {
+        let parent_dir = match parent {
+            Parent::Directory(dir) => {
+                let Some(dir) = dir.upgrade() else {
+                    return ImportAncestor::NoParentModule;
+                };
+                match level {
+                    1 => dir,
+                    _ => return check_parent(db, &dir.parent, file, level - 1),
                 }
             }
-            ImportAncestor::Workspace
-        }
-        _ => ImportAncestor::NoParentModule,
-    };
-    let mut parent = match file.file_entry(db).parent.maybe_dir() {
-        Ok(dir) => dir,
-        Err(workspace) => return invalid(workspace, 1),
-    };
-    for i in 1..level {
-        parent = match parent.parent.maybe_dir() {
-            Ok(dir) => dir,
-            Err(workspace) => return invalid(workspace, i + 1),
+            Parent::Workspace(workspace) => {
+                let workspace = workspace.upgrade().unwrap();
+                if let Some(parent) = workspace.parent.lock().as_ref() {
+                    // Check the parent of the workspace first
+                    return check_parent(db, parent, file, level);
+                }
+                match level {
+                    1 => {
+                        if !db.project.settings.explicit_package_bases {
+                            // While technically the sys path says that this is a workspace, we probably just
+                            // have the wrong sys path and since this is annoying for most users, just allow
+                            // the user to access the workspace as a relative directory.
+                            if let Some(index) =
+                                load_init_file_from_entries(db, &workspace.entries, file.file_index)
+                            {
+                                return ImportAncestor::Found(ImportResult::File(index));
+                            }
+                        }
+                        return ImportAncestor::Workspace;
+                    }
+                    _ => return ImportAncestor::NoParentModule,
+                }
+            }
         };
+        ImportAncestor::Found(match load_init_file(db, &parent_dir, file.file_index) {
+            Some(index) => ImportResult::File(index),
+            None => ImportResult::Namespace(Arc::new(Namespace {
+                directories: [parent_dir].into(),
+            })),
+        })
     }
-    ImportAncestor::Found(match load_init_file(db, &parent, file.file_index) {
-        Some(index) => ImportResult::File(index),
-        None => ImportResult::Namespace(Arc::new(Namespace {
-            directories: [parent].into(),
-        })),
+
+    check_parent(db, &file.file_entry(db).parent, file, level)
+}
+
+pub(crate) fn is_binary_extension<'x>(
+    mut entries: impl Iterator<Item = &'x Entries>,
+    name: &str,
+) -> bool {
+    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "windows")))]
+    const BINARY_EXTENSIONS: [&str; 1] = [".so"];
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    const BINARY_EXTENSIONS: [&str; 2] = [".so", ".dylib"];
+    #[cfg(target_os = "windows")]
+    const BINARY_EXTENSIONS: [&str; 1] = [".pyd"];
+    entries.any(|entries| {
+        entries.borrow().iter().any(|(key, _)| {
+            key.strip_prefix(name).is_some_and(|rest| {
+                rest.starts_with('.') && BINARY_EXTENSIONS.iter().any(|ext| rest.ends_with(ext))
+            })
+        })
     })
+}
+
+pub(crate) fn has_binary_extension_submodule(db: &Database, file: &PythonFile, name: &str) -> bool {
+    let (entry, is_package) = file.file_entry_and_is_package(db);
+    is_package
+        && entry.parent.maybe_dir().is_ok_and(|dir| {
+            is_binary_extension(std::iter::once(Directory::entries(&db.vfs, &dir)), name)
+        })
+}
+
+pub(crate) fn namespace_has_binary_extension_submodule(
+    db: &Database,
+    namespace: &Namespace,
+    name: &str,
+) -> bool {
+    is_binary_extension(
+        namespace
+            .directories
+            .iter()
+            .map(|dir| Directory::entries(&db.vfs, dir)),
+        name,
+    )
 }

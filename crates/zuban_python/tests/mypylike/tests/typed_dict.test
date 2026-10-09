@@ -77,7 +77,7 @@ def foo(x: type[TD[int]], y: type[TD[str]]) -> None:
     if bool():
         w = x
     if bool():
-        w = y  # E: Incompatible types in assignment (expression has type "type[__main__.TD[str]]", variable has type "Callable[[NamedArg(int, 'x')], __main__.TD[Any]]")
+        w = y  # E: Incompatible types in assignment (expression has type "type[__main__.TD[str]]", variable has type "def wanted(*, x: int) -> __main__.TD[Any]")
     w = TD
 
 [case invalid_typed_dict]
@@ -261,13 +261,18 @@ def func3() -> None:
 
 [case typed_dict_in_callable_unpack_protocol_matching]
 # Copied in parts from conformance tests (callables_kwargs.py)
-from typing import TypedDict, Required, NotRequired, Unpack, Protocol
+from typing import TypedDict, Required, NotRequired, Unpack, Protocol, Never, TypeVar
 class TD1(TypedDict):
     v1: Required[int]
     v2: NotRequired[str]
 
-
 class TD2(TD1):
+    v3: Required[str]
+
+class TD3(TD1, closed=True):
+    v3: Required[str]
+
+class TD4(TD1, extra_items=Never):
     v3: Required[str]
 
 def func1(**kwargs: Unpack[TD2]) -> None: ...
@@ -285,13 +290,107 @@ class TDProtocol5(Protocol):
     def __call__(self, v1: int, v3: str) -> None: ...
 class TDProtocol6(Protocol):
     def __call__(self, **kwargs: Unpack[TD2]) -> None: ...
+class TDProtocol7(Protocol):
+    def __call__(self, **kwargs: Unpack[TD3]) -> None: ...
+class TDProtocol8(Protocol):
+    def __call__(self, **kwargs: Unpack[TD4]) -> None: ...
 
 v1: TDProtocol1 = func1  # OK
 v2: TDProtocol2 = func1  # OK
-v3: TDProtocol3 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol3")
-v4: TDProtocol4 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol4")
-v5: TDProtocol5 = func1  # E: Incompatible types in assignment (expression has type "Callable[[**Unpack[TD2]], None]", variable has type "TDProtocol5")
+v3: TDProtocol3 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol3")
+v4: TDProtocol4 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol4")
+v5: TDProtocol5 = func1  # E: Incompatible types in assignment (expression has type "def func1(**kwargs: Unpack[TD2]) -> None", variable has type "TDProtocol5")
 v6: TDProtocol6 = func1  # OK
+
+def func4(v1: int, /, **kwargs: Unpack[TD2]) -> None: ...
+def func5(v1: int, **kwargs: Unpack[TD2]) -> None:  ...  # E: Overlap between parameter names and ** TypedDict items: "v1"
+
+T = TypeVar("T", bound=TD2)
+
+def func6(**kwargs: Unpack[T]) -> None: ...  # E: Unpack item in ** parameter must be a TypedDict
+def func7(*, v1: int, v3: str, v2: str = "") -> None: ...
+
+v7: TDProtocol6 = func7  # E: Incompatible types in assignment (expression has type "def func7(*, v1: int, v3: str, v2: str = ...) -> None", variable has type "TDProtocol6")
+v8: TDProtocol7 = func7  # OK, unpacked TypedDict has closed=True
+v9: TDProtocol8 = func7  # OK, unpacked TypedDict has extra_items=Never
+
+[case typed_dict_in_callable_unpack_matching]
+# Copied in parts from conformance tests (callables_kwargs.py)
+from typing import TypedDict, Unpack, Never
+
+class TDOpenImplicit(TypedDict):
+    name: str
+
+class TDOpenExplicit(TypedDict, closed=False):
+    name: str
+
+class TDClosed(TypedDict, closed=True):
+    name: str
+
+class TDExtraItems(TypedDict, extra_items=int):
+    name: str
+
+class TDExtraItemsNever(TypedDict, extra_items=Never):
+    name: str
+
+def takes_name(name: str) -> None: ...
+def takes_name_kwargs(name: str, **kwargs) -> None: ...
+def takes_name_str_kwargs(name: str, **kwargs: str) -> None: ...
+def takes_name_int_kwargs(name: str, **kwargs: int) -> None: ...
+def takes_optional_label_int_kwargs(name: str, *, label: str = "", **kwargs: int) -> None: ...
+def takes_closed(**kwargs: Unpack[TDClosed]) -> None: ...
+
+def open_implicit(value: TDOpenImplicit, **kwargs: Unpack[TDOpenImplicit]) -> None:
+    takes_name(**value)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenImplicit"; expected "str"
+    takes_name(**kwargs)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenImplicit"; expected "str"
+    takes_closed(**value)  # E?: a subtype may contain unknown keys
+    takes_closed(**kwargs)  # E?: a subtype may contain unknown keys
+
+def open_explicit(value:TDOpenExplicit, **kwargs: Unpack[TDOpenExplicit]) -> None:
+    takes_name(**value)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenExplicit"; expected "str"
+    takes_name(**kwargs)  # E?: a subtype may contain unknown keys
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs) # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDOpenExplicit"; expected "str"
+    takes_closed(**value)  # E?: a subtype may contain unknown keys
+    takes_closed(**kwargs)  # E?: a subtype may contain unknown keys
+
+def kwargs_closed(value: TDClosed, **kwargs: Unpack[TDClosed]) -> None:
+    takes_name(**value)
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value)
+    takes_name(**kwargs)
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs)
+    takes_closed(**value)
+    takes_closed(**kwargs)
+
+def kwargs_extra_items(value: TDExtraItems, **kwargs: Unpack[TDExtraItems]) -> None:
+    takes_name(**value)  # E: Too many arguments for "takes_name"
+    takes_name_str_kwargs(**value)  # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_name_int_kwargs(**value)
+    takes_name(**kwargs)  # E: Too many arguments for "takes_name"
+    takes_name_str_kwargs(**kwargs)  # E: Argument 1 to "takes_name_str_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_name_int_kwargs(**kwargs)
+    takes_closed(**value) # E: Argument 1 to "takes_closed" has incompatible type "**TDExtraItems"; expected "Never"
+    takes_closed(**kwargs) # E: Argument 1 to "takes_closed" has incompatible type "**TDExtraItems"; expected "Never"
+    takes_optional_label_int_kwargs(**value)  # E: Argument 1 to "takes_optional_label_int_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+    takes_optional_label_int_kwargs(**kwargs)  # E: Argument 1 to "takes_optional_label_int_kwargs" has incompatible type "**TDExtraItems"; expected "str"
+
+def kwargs_extra_items_never(value: TDExtraItemsNever, **kwargs: Unpack[TDExtraItemsNever]) -> None:
+    takes_name(**value)
+    takes_name_kwargs(**value)
+    takes_name_str_kwargs(**value)
+    takes_name(**kwargs)
+    takes_name_kwargs(**kwargs)
+    takes_name_str_kwargs(**kwargs)
+    takes_closed(**value)
+    takes_closed(**kwargs)
 
 [case invalid_typed_dict_definitions_in_class_args]
 # Copied from conformance tests (typeddicts_class_syntax.py)
@@ -316,9 +415,12 @@ b3: B3 = {"x": 0, "y": 0}
 
 # > A TypedDict isn’t consistent with any Dict[...] type.
 
-d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]")
-d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]")
-d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]")
+d1: dict[str, int] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, int]") \
+                         # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+d2: dict[str, object] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[str, object]") \
+                            # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+d3: dict[Any, Any] = b3  # E: Incompatible types in assignment (expression has type "B3", variable has type "dict[Any, Any]") \
+                         # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
 
 # > A TypedDict with all int values is not consistent with Mapping[str, int].
 
@@ -655,7 +757,7 @@ class ClosedMovie(TypedDict, closed=True):
     name: str
 
 ClosedMovie(name="No Country for Old Men")  # OK
-ClosedMovie(name="No Country for Old Men", year=2007)  # E: Incompatible types (expression has type "int", TypedDict item "year" has type "Never")
+ClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra key "year" for TypedDict "ClosedMovie"
 
 [case typed_dict_extra_items_assignable_to_mapping]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -694,16 +796,20 @@ class OnlyStrNonRequired(TypedDict, extra_items=str):
     name: NotRequired[str]
 
 def f(x: OnlyStr, y: OnlyStrNonRequired):
-    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]")
+    a: MutableMapping[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "MutableMapping[str, str]") \
+                                     # N: TypedDicts cannot be assigned to MutableMapping, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
     a = y
     b: Mapping[str, str] = x
     b = y
-    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]")
+    c: dict[str, str] = x  # E: Incompatible types in assignment (expression has type "OnlyStr", variable has type "dict[str, str]") \
+                           # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
     c = y
 
-    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]")
+    d: dict[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "dict[str, int]") \
+                           # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
     e: Mapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "Mapping[str, int]")
-    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]")
+    f: MutableMapping[str, int] = y  # E: Incompatible types in assignment (expression has type "OnlyStrNonRequired", variable has type "MutableMapping[str, int]") \
+                                     # N: TypedDicts cannot be assigned to MutableMapping, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
 
 [case typed_dict_extra_items_methods]
 # Copied from conformance tests (typeddicts_extra_items.py)
@@ -774,8 +880,8 @@ def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
     e.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
               # N: Possible overload variants: \
               # N:     def get(self, str, /) -> object \
-              # N:     def get(self, str, /, default: object) -> object \
-              # N:     def [_T] get(self, str, /, default: _T) -> object
+              # N:     def get(self, str, object, /) -> object \
+              # N:     def [_T] get(self, str, _T, /) -> object
     reveal_type(e.popitem())  # N: Revealed type is "tuple[str, str | int]"
     del e[s]
     e[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
@@ -787,8 +893,8 @@ def f(e: CanBeEmpty, n: CannotBeEmpty, s: str, i: int, int_only: IntOnly):
     n.get(i)  # E: No overload variant of "get" of "Mapping" matches argument type "int" \
               # N: Possible overload variants: \
               # N:     def get(self, str, /) -> object \
-              # N:     def get(self, str, /, default: object) -> object \
-              # N:     def [_T] get(self, str, /, default: _T) -> object
+              # N:     def get(self, str, object, /) -> object \
+              # N:     def [_T] get(self, str, _T, /) -> object
     n.popitem()  # E: "CannotBeEmpty" has no attribute "popitem"
     del n[s]  # E: Expected TypedDict key to be string literal
     n[s] = 1  # E: TypedDict key must be a string literal; expected one of ("other")
@@ -889,11 +995,11 @@ def e(x: str, **kwargs: int) -> None: ...
 
 def f(x: X):
     a(**x)  # E: Extra argument "x" from **args for "a"  # E: Too many arguments for "a"
-    b(**x)
+    b(**x)  # E: Too many arguments for "b"
     c(**x)  # E: Argument "x" to "c" has incompatible type "str"; expected "int"
     d(**x)  # E: Argument 1 to "d" has incompatible type "**X"; expected "str"
     e(**x)
-    e(**x, **x)  # TODO this should also raise an error, because a param is used twice
+    e(**x, **x)  # E: Argument "x" to "e" has incompatible type "str"; expected "int"
 
 [case additional_extra_items_inheritance]
 from typing import TypedDict, ReadOnly
@@ -1206,3 +1312,94 @@ class Nested2(TypedDict, Generic[T]):
 def f(w: Work[int]) -> None:
     w1: Work[int] = w
     w2: Work[str] = w  # E: Incompatible types in assignment (expression has type "__main__.Work[int]", variable has type "__main__.Work[str]")
+
+[case typed_dict_expected_inferring_multi_dict_with_type_vars]
+# From GH #389
+from typing import TypedDict
+
+class A(TypedDict):
+    x: str
+
+class B(TypedDict):
+    x: int
+
+ys: list[A | B] = []
+ys.append({"x": 1})  # This should not error
+ys.append({"x": ''})
+ys.append({"x": b''})  # E: Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly \
+                       # E: Argument 1 to "append" of "list" has incompatible type "dict[str, bytes]"; expected "A | B"
+
+[case dict_vs_typed_dict_note]
+from typing import TypedDict, Any, Never, NotRequired
+
+class D(TypedDict):
+    a: int
+
+def f(my_dict: D):
+    a: dict = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[Any, Any]") \
+                       # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+    c: dict[str, Any] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, Any]") \
+                                 # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+    d: dict[str, int] = my_dict  # E: Incompatible types in assignment (expression has type "D", variable has type "dict[str, int]") \
+                                 # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+
+class E(TypedDict, extra_items=int):
+    a: NotRequired[int]
+    b: NotRequired[int]
+
+def g(my_dict: E):
+    a: dict = my_dict
+    b: dict[Any, Any] = my_dict
+    c: dict[str, Any] = my_dict
+    d: dict[Any, int] = my_dict
+
+    x: dict[Any, int | str] = my_dict  # E: Incompatible types in assignment (expression has type "E", variable has type "dict[Any, int | str]") \
+                                       # N: TypedDicts cannot be assigned to dict, callers could delete or change keys to violate their type contract. Use Mapping[...] for read-only access or make all TypedDict keys NotRequired, with identical types, combined with a compatible `extra_items` class parameter.
+
+[case conditional_typed_dict_fields1]
+# Copied from conformance tests (typeddicts_class_syntax.py)
+from typing import TypedDict
+
+class ConditionalField(TypedDict):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: int
+    if sys.version_info < (3, 0):
+        z: int
+
+ConditionalField(x=1, y=2)
+ConditionalField(x=1, y=2, z=3)  # E: Extra key "z" for TypedDict "ConditionalField"
+
+[case conditional_typed_dict_fields2]
+from typing import TypedDict
+
+class ConditionalField(TypedDict):
+    x: int
+
+    if bool():  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        y: int
+    else:
+        z: int
+
+ConditionalField(x=1, y=2)  # E: Missing key "z" for TypedDict "ConditionalField"
+ConditionalField(x=1, y=2, z=3)
+
+[case closed_typed_dict_deletion]
+# From GH #439
+from typing_extensions import TypedDict
+
+class TD(TypedDict, closed=True):
+    a: int
+
+def f(x: TD):
+    del x["b"]  # E: TypedDict "TD" has no key "b"
+
+[case typed_dict_closed_and_extra_items]
+# From GH #592
+from typing import TypedDict
+
+class TD(TypedDict, extra_items=int, closed=True):  # E: Cannot combine closed=True and extra_items
+    example: int
+
+td: TD = {"example": 1, "blah": 10}

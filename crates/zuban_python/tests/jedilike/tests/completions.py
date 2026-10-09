@@ -186,7 +186,7 @@ def typed_dict():
         _dict[""]
         #? 14 ['some_field_foo', 'some_field_bar', 'nested_dict']
         _dict[""]
-        #? ['some_field_foo'', 'some_field_bar'']
+        #? ["some_field_foo'", "some_field_bar'"]
         _dict['some
-        #? --contains-subset [""some_field_foo"", ""some_field_bar"", ""nested_dict"", "ArithmeticError", "AssertionError", "AttributeError"]
+        #? --contains-subset ["\"some_field_foo\"", "\"some_field_bar\"", "\"nested_dict\"", "ArithmeticError", "AssertionError", "AttributeError"]
         _dict[

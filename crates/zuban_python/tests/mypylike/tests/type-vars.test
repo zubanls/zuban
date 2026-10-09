@@ -472,3 +472,89 @@ reveal_type(D().f(1))  # N: Revealed type is "Any"
 
 reveal_type(D[int].f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
 reveal_type(D[int]().f(""))  # E: Argument 1 to "f" of "D" has incompatible type "str"; expected "int"  # N: Revealed type is "int"
+
+[case avoid_crash_around_type_var_bound_with_callable]
+from typing import Callable, TypeVar
+
+T = TypeVar("T", bound=Callable)
+
+def f() -> Callable[[T], T]:
+    def decorator(cls: T):
+        original_init = cls.__init__
+        cls.__init__ = lambda: None
+        return cls
+
+    return decorator
+
+[case recursive_default]
+# From GH #323 and #469
+from typing import assert_type, Any
+
+class C[T=C]: pass
+
+type T[U = T] = int
+
+def f(c: C, t: T):
+    assert_type(c, C[C[Any]])
+    assert_type(t, int)
+
+[case type_var_syntax_with_string_references]
+# From conformance tests annotations_forward_refs.py
+from typing import assert_type
+
+class T:
+    ...
+
+class ClassE[T]:
+    def identity1(self, value: T) -> T:
+        return value
+
+    def identity2(self, value: "T") -> "T":
+        return value
+
+assert_type(ClassE[int]().identity1(1), int)
+assert_type(ClassE[int]().identity2(1), int)
+
+[case type_var_definition_overwrites_star_import_type_var_no_crash]
+# flags: --allow-redefinition
+# From GH #579
+from typing import *
+
+AnyStr = TypeVar('AnyStr')
+
+class C(list[AnyStr]):  # E: Type expected within [...]
+    pass
+
+class D(C):
+    pass
+
+[file b.py]
+from typing import *
+
+AnyStr = int
+
+def f(x: AnyStr) -> None:
+    # TODO this might be wrong and should be Any?! But at least it doesn't crash
+    assert_type(x, int)
+
+class C(list[AnyStr]):
+    pass
+
+class D(C):
+    pass
+
+[file c.py]
+from typing import *
+
+AnyStr = list[AnyStr]  # E: Invalid type comment or annotation
+
+def f(x: AnyStr) -> None:
+    assert_type(x, list[Any])
+
+[case list_addition_with_context]
+# From GH #437
+def func(total: int, start: int) -> list[str | None]:
+    if bool():
+        return [None] * start + ["a"] * (total - start)
+    else:
+        return [None] * start + ["a"] * (total + start)

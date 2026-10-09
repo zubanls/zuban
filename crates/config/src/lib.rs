@@ -1,16 +1,17 @@
 mod searcher;
 mod venv;
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, env::VarError, sync::Arc};
 
 use anyhow::{anyhow, bail};
 use clap::ValueEnum as _;
 use ini::{Ini, ParseOption};
 use regex::Regex;
 use toml_edit::{DocumentMut, Item, Table, Value};
+use utils::FastHashMap;
 use vfs::{AbsPath, Directory, GlobAbsPath, LocalFS, NormalizedPath, VfsHandler};
 
-pub use searcher::{find_cli_config, find_workspace_config};
+pub use searcher::find_config;
 
 type ConfigResult = anyhow::Result<()>;
 
@@ -21,6 +22,7 @@ const OPTIONS_STARTING_WITH_ALLOW: [&str; 4] = [
     "allow_empty_bodies",
 ];
 
+#[derive(Debug)]
 pub struct DiagnosticConfig {
     pub show_error_codes: bool,
     pub show_error_end: bool,
@@ -57,6 +59,40 @@ pub enum Mode {
 impl Default for Mode {
     fn default() -> Self {
         Self::Default
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ModeChoice {
+    Explicit(Mode),
+    Implicit(Mode),
+    Auto,
+}
+
+// This is used in the pyproject.toml tool.zuban section and for the explicit mode in the CLI
+#[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum ModeChoiceArg {
+    Default,
+    Mypy,
+    Auto,
+}
+
+impl From<ModeChoiceArg> for ModeChoice {
+    fn from(value: ModeChoiceArg) -> Self {
+        match value {
+            ModeChoiceArg::Default => ModeChoice::Explicit(Mode::Default),
+            ModeChoiceArg::Mypy => ModeChoice::Explicit(Mode::Mypy),
+            ModeChoiceArg::Auto => ModeChoice::Auto,
+        }
+    }
+}
+
+impl From<ModeChoice> for Mode {
+    fn from(value: ModeChoice) -> Self {
+        match value {
+            ModeChoice::Explicit(mode) | ModeChoice::Implicit(mode) => mode,
+            ModeChoice::Auto => Default::default(),
+        }
     }
 }
 
@@ -206,17 +242,34 @@ fn to_normalized_path(
 }
 
 fn replace_env_vars<'x>(config_file_path: Option<&AbsPath>, s: &'x str) -> Cow<'x, str> {
-    // Replace only $MYPY_CONFIG_FILE_DIR for now.
-    if s.contains('$')
-        && let Some(config_file_path) = config_file_path
-        && let Some(mypy_config_file_dir) = config_file_path.as_ref().parent()
-    {
-        return Cow::Owned(s.replace(
-            "$MYPY_CONFIG_FILE_DIR",
-            mypy_config_file_dir.to_str().unwrap(),
-        ));
-    }
-    Cow::Borrowed(s)
+    shellexpand::full_with_context_no_errors(
+        s,
+        || std::env::home_dir()?.into_os_string().into_string().ok(),
+        |name| {
+            if name == "MYPY_CONFIG_FILE_DIR" {
+                if let Some(config_file_path) = config_file_path
+                    && let Some(mypy_config_file_dir) = config_file_path.as_ref().parent()
+                {
+                    return Some(mypy_config_file_dir.to_str().unwrap().to_string());
+                } else {
+                    tracing::error!(
+                        "Could not resolve $MYPY_CONFIG_FILE_DIR, because \
+                         there is no valid config file path"
+                    )
+                }
+            }
+            match std::env::var(name) {
+                Ok(result) => Some(result),
+                Err(VarError::NotPresent) => None,
+                Err(err) => {
+                    tracing::error!(
+                        "Wanted to expand the shell variables in {s:?}, but got: {err:?}"
+                    );
+                    None
+                }
+            }
+        },
+    )
 }
 
 impl ProjectOptions {
@@ -255,14 +308,20 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
+        mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         let ini = parse_python_ini(code)?;
-        let mut result = Self::mypy_default();
+        let mut result = Self::default_for_mode(mode.into());
         let mut had_relevant_section = false;
         for (name, section) in ini.iter() {
             let Some(name) = name else { continue };
             if name == "mypy" {
                 had_relevant_section = true;
+                if let Some(strict) = section.get("strict")
+                    && IniOrTomlValue::Ini(strict).as_bool(false)?
+                {
+                    result.flags.enable_all_strict_flags()
+                }
                 for (key, value) in section.iter() {
                     apply_from_base_config(
                         vfs,
@@ -299,7 +358,7 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         code: &str,
         diagnostic_config: &mut DiagnosticConfig,
-        mut mode: Option<Mode>,
+        mut mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         let document: DocumentMut = code.parse()?;
         let zuban_config = get_zuban_config_and_apply_mode(&document, &mut mode)?;
@@ -312,8 +371,7 @@ impl ProjectOptions {
             mode,
         )?;
         Ok(if let Some(config) = zuban_config {
-            let mut result =
-                result.unwrap_or_else(|| Self::default_for_mode(mode.unwrap_or_default()));
+            let mut result = result.unwrap_or_else(|| Self::default_for_mode(mode.into()));
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -334,12 +392,12 @@ impl ProjectOptions {
         config_file_path: &AbsPath,
         document: &DocumentMut,
         diagnostic_config: &mut DiagnosticConfig,
-        mode: Option<Mode>,
+        mode: ModeChoice,
     ) -> anyhow::Result<Option<Self>> {
         if let Some(config) = document.get("tool").and_then(|item| item.get("mypy")) {
             // If an explicit mode is provided, use that, otherwise since we have an explicit Mypy
             // configuration we default to that.
-            let mut result = ProjectOptions::default_for_mode(mode.unwrap_or_default());
+            let mut result = ProjectOptions::default_for_mode(mode.into());
             result.apply_pyproject_table(
                 vfs,
                 project_dir,
@@ -372,6 +430,22 @@ impl ProjectOptions {
                 }
             );
         };
+
+        if let Some(value) = table.get("strict") {
+            if let Item::Value(value) = value {
+                if IniOrTomlValue::Toml(value).as_bool(false)? {
+                    self.flags.enable_all_strict_flags()
+                }
+            } else {
+                bail!(
+                    "Expected strict in tool.{} to be a value in pyproject.toml",
+                    match from_zuban {
+                        true => "zuban",
+                        false => "mypy",
+                    }
+                );
+            }
+        }
 
         for (key, item) in table.iter() {
             match item {
@@ -411,7 +485,7 @@ impl ProjectOptions {
                 }
                 Item::None | Item::Table(_) | Item::ArrayOfTables(_) => {
                     bail!(
-                        "Expected tool.{} to be a simple table in pyproject.toml",
+                        "Expected tool.{} to only have values in pyproject.toml",
                         match from_zuban {
                             true => "zuban",
                             false => "mypy",
@@ -425,19 +499,32 @@ impl ProjectOptions {
     }
 }
 
-pub(crate) fn get_zuban_config_and_apply_mode<'document>(
+fn get_zuban_config_and_apply_mode<'document>(
     pyright_toml: &'document DocumentMut,
-    mode: &mut Option<Mode>,
+    mode: &mut ModeChoice,
 ) -> anyhow::Result<Option<&'document Item>> {
     let zuban_config = pyright_toml.get("tool").and_then(|item| item.get("zuban"));
-    if let Some(Item::Table(table)) = zuban_config
+    // Explicit modes provided from outside always take preference, for example if the user calls
+    // zuban check --mode default
+    if !matches!(mode, ModeChoice::Explicit(_))
+        && let Some(Item::Table(table)) = zuban_config
         && let Some(item) = table.get("mode")
         && let Some(value) = item.as_value()
     {
-        *mode = Some(
+        *mode = ModeChoice::Explicit(
             Mode::from_str(IniOrTomlValue::Toml(value).as_str()?, false)
                 .map_err(|err| map_clap_error("mode", err))?,
         );
+    } else if matches!(mode, ModeChoice::Auto) {
+        if zuban_config.is_some() {
+            *mode = ModeChoice::Implicit(Mode::Default);
+        } else if pyright_toml
+            .get("tool")
+            .and_then(|item| item.get("mypy"))
+            .is_some()
+        {
+            *mode = ModeChoice::Implicit(Mode::Mypy);
+        }
     }
     Ok(zuban_config)
 }
@@ -456,9 +543,16 @@ fn order_overrides_for_priority(overrides: &mut [OverrideConfig]) {
     overrides.sort_by_key(|o| o.module.kind);
 }
 
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum IgnoreFileReason {
+    IgnoreErrorsInConfigFile,
+    TypeIgnoreAtTopOfFile,
+    IgnoreErrorsAtTopOfFile,
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
-    pub ignore_errors: bool,
+    pub ignore_errors: Option<IgnoreFileReason>,
     pub strict_optional: bool,
     pub strict_equality: bool,
     pub implicit_optional: bool,
@@ -508,7 +602,7 @@ pub struct TypeCheckerFlags {
 impl Default for TypeCheckerFlags {
     fn default() -> Self {
         Self {
-            ignore_errors: false,
+            ignore_errors: None,
             strict_optional: true,
             strict_equality: false,
             implicit_optional: false,
@@ -670,7 +764,7 @@ impl std::hash::Hash for ExcludeRegex {
 enum OverrideKind {
     WellStructured, // e.g. foo.bar.*
     Unstructured,   // e.g. foo.*.baz
-    ModuleName,     // e.g. foo.bar (has the highest priority
+    ModuleName,     // e.g. foo.bar (has the highest priority)
 }
 
 #[derive(Clone, Debug)]
@@ -762,12 +856,111 @@ impl OverridePath {
         }
         matches_file_path(self.path.iter().rev(), name, parent_dir)
     }
+
+    fn has_path_after_wildcard(&self) -> bool {
+        let mut had_wildcard = false;
+        for part in &self.path {
+            match part {
+                OverridePathPart::Part(_) => {
+                    if had_wildcard {
+                        return true;
+                    }
+                }
+                OverridePathPart::Wildcard => had_wildcard = true,
+            }
+        }
+        false
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct IgnoredImports(FastHashMap<Box<str>, IgnoredImport>);
+
+impl IgnoredImports {
+    pub fn lookup(&self, name: &str) -> Option<&IgnoredImport> {
+        self.0.get(name)
+    }
+
+    pub fn ignores_exact_import(&self, key: &str) -> bool {
+        self.0
+            .get(key)
+            .is_some_and(|imp| matches!(imp, IgnoredImport::FullyIgnored))
+    }
+
+    pub fn ignores_qualified_name(&self, qualified: &str) -> bool {
+        let mut ignored = self;
+        for name in qualified.split('.') {
+            match ignored.lookup(name) {
+                Some(IgnoredImport::FullyIgnored) => return true,
+                Some(IgnoredImport::Nested(ignored_imports)) => ignored = ignored_imports,
+                None => return false,
+            }
+        }
+        false
+    }
+
+    pub fn from_override_config(overrides: &[OverrideConfig]) -> Self {
+        let mut imports = IgnoredImports::default();
+        for override_ in overrides {
+            if override_.has_ignore_missing_imports() {
+                // TODO For now we simply ignore ignored imports in something like foo.*.bar
+                if override_.module.has_path_after_wildcard() {
+                    continue;
+                }
+
+                let mut current = &mut imports.0;
+                let mut iterator = override_
+                    .module
+                    .path
+                    .iter()
+                    .filter_map(|part| match part {
+                        OverridePathPart::Part(name) => Some(name),
+                        OverridePathPart::Wildcard => None,
+                    })
+                    .peekable();
+                while let Some(name) = iterator.next() {
+                    if !current.contains_key(name) {
+                        current.insert(name.clone(), IgnoredImport::Nested(Default::default()));
+                    }
+
+                    let value = current.get_mut(name).unwrap();
+                    if iterator.peek().is_some() {
+                        match value {
+                            // If the value is already ignored we don't have to override it
+                            // anymore.
+                            IgnoredImport::FullyIgnored => break,
+                            IgnoredImport::Nested(map) => current = &mut map.0,
+                        }
+                    } else {
+                        *value = IgnoredImport::FullyIgnored;
+                        break;
+                    }
+                }
+            }
+        }
+        imports
+    }
+}
+
+#[derive(Debug)]
+pub enum IgnoredImport {
+    FullyIgnored,
+    Nested(Box<IgnoredImports>),
 }
 
 #[derive(Clone, Debug)]
 enum OverrideIniOrTomlValue {
     Toml(Value),
     Ini(Box<str>),
+}
+
+impl OverrideIniOrTomlValue {
+    fn to_value(&self) -> IniOrTomlValue<'_> {
+        match self {
+            OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
+            OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -778,19 +971,23 @@ pub struct OverrideConfig {
 }
 
 impl OverrideConfig {
-    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) -> ConfigResult {
+    pub fn apply_to_flags<'slf>(&'slf self, flags: &mut TypeCheckerFlags) -> ConfigResult {
         for (key, value) in self.config.iter() {
-            apply_from_config_part(
-                flags,
-                key,
-                match value {
-                    OverrideIniOrTomlValue::Toml(v) => IniOrTomlValue::Toml(v),
-                    OverrideIniOrTomlValue::Ini(v) => IniOrTomlValue::Ini(v),
-                },
-                false,
-            )?;
+            if **key == *"strict" && value.to_value().as_bool(false)? {
+                flags.enable_all_strict_flags();
+            }
+        }
+        for (key, value) in self.config.iter() {
+            set_flag(flags, key, value.to_value(), false)?;
         }
         Ok(())
+    }
+
+    pub fn has_ignore_missing_imports(&self) -> bool {
+        self.config.iter().any(|(name, value)| {
+            name.as_ref() == "ignore_missing_imports"
+                && value.to_value().as_bool(false).unwrap_or(false)
+        })
     }
 }
 
@@ -1012,7 +1209,9 @@ fn set_bool_init_flags(
         // Will always be irrelevant
         "cache_fine_grained" => (),
         "ignore_errors" => {
-            flags.ignore_errors = value.as_bool(invert)?;
+            flags.ignore_errors = value
+                .as_bool(invert)?
+                .then_some(IgnoreFileReason::IgnoreErrorsInConfigFile);
         }
         "python_version" => bail!("python_version not supported in inline configuration"),
 
@@ -1112,31 +1311,16 @@ fn apply_from_base_config(
         }
         "platform" => settings.platform = Some(value.as_str()?.to_string()),
         // Our own
-        "mode" => (), // Already checked earlier
+        "mode" | "strict" => (), // Already checked earlier
         "untyped_function_return_mode" => {
             settings.untyped_function_return_mode =
                 UntypedFunctionReturnMode::from_str(value.as_str()?, false)
                     .map_err(|err| map_clap_error("untyped_function_return_mode", err))?;
         }
-        _ => return apply_from_config_part(flags, key, value, from_zuban),
+
+        _ => return set_flag(flags, key, value, from_zuban),
     };
     Ok(())
-}
-
-fn apply_from_config_part(
-    flags: &mut TypeCheckerFlags,
-    key: &str,
-    value: IniOrTomlValue,
-    from_zuban: bool,
-) -> ConfigResult {
-    if key == "strict" {
-        if value.as_bool(false)? {
-            flags.enable_all_strict_flags();
-        }
-        Ok(())
-    } else {
-        set_flag(flags, key, value, from_zuban)
-    }
 }
 
 fn add_excludes(excludes: &mut Vec<ExcludeRegex>, value: IniOrTomlValue) -> ConfigResult {
@@ -1201,6 +1385,7 @@ mod tests {
                 &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
+                ModeChoice::Auto,
             )
         } else {
             ProjectOptions::from_pyproject_toml_only(
@@ -1209,7 +1394,7 @@ mod tests {
                 &project_dir,
                 code,
                 &mut DiagnosticConfig::default(),
-                None,
+                ModeChoice::Auto,
             )
         }
     }
@@ -1249,7 +1434,7 @@ mod tests {
         let err = project_options_err(code, false);
         assert_eq!(
             err.to_string(),
-            "Expected tool.mypy to be a simple table in pyproject.toml"
+            "Expected tool.mypy to only have values in pyproject.toml"
         );
     }
 

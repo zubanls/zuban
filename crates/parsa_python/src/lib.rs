@@ -303,7 +303,9 @@ create_grammar!(
         | primary "(" [arguments | comprehension] ")"
         | primary "[" slices "]"
         | atom
-    slices:? ",".(named_expression !":" | slice | starred_expression)+ [","]
+    slices:? ",".(slice_like | starred_expression)+ [","]
+    // To avoid multiple alternative nodes we create a simple separate node
+    slice_like:? named_expression !":" | slice
     slice: expression? ":" expression? [":" expression?]
     atom:
           "(" [tuple_content | yield_expr | named_expression | comprehension] ")"

@@ -493,3 +493,53 @@ def examine() -> None:
             print('Not for current tenant')
             return None
     reveal_type(email)  # N: Revealed type is "str"
+
+[case class_pattern_does_not_handle_all_child_patterns]
+# flags: --warn-unreachable
+# From GH #491
+from typing import assert_type
+class Int:
+    __match_args__ = ("x",)
+    x: int
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def fn1(x: Int) -> None:
+    match x:
+        case Int(0):
+            pass
+        case Int(i):
+            assert_type(i, int)
+
+[case new_type_match_equality]
+# flags: --warn-unreachable
+# From GH #522
+import typing
+
+Id = typing.NewType("Id", int)
+
+x = Id(1)
+match x:
+    case 1: reveal_type(x)  # N: Revealed type is "__main__.Id"
+    case "": reveal_type(x)  # E: Statement is unreachable
+
+if x == 1: reveal_type(x)  # N: Revealed type is "__main__.Id"
+if x == "": reveal_type(x)  # N: Revealed type is "__main__.Id"
+
+[case narrowing_match_case_classes]
+# flags: --warn-unreachable
+# From GH #546
+from typing import assert_never
+
+def f(x: int | tuple[int, int] | None) -> float | None:
+    match x:
+        case None:
+            return None
+        case int(0):
+            return 0.0
+        case int(bits):
+            return bits / 8.0
+        case int(bits), int(seconds):
+            return bits / 8.0 / seconds
+        case _:
+            assert_never(x)

@@ -16,8 +16,8 @@ use crate::{
     node_ref::NodeRef,
     recoverable_error,
     type_::{
-        ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict, TypedDictGenerics,
-        TypedDictMember, TypedDictMembers,
+        DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict,
+        TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
 };
 
@@ -41,7 +41,7 @@ impl<'db: 'file, 'file, 'i_s, 'c> TypeComputation<'db, 'file, 'i_s, 'c> {
     ) -> TypedDictMember {
         let tt = self.compute_typed_dict_type(expr);
         TypedDictMember {
-            name,
+            name: DbString::StringSlice(name),
             type_: tt.type_,
             required: tt
                 .required
@@ -196,7 +196,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> TypedDictMember {
         let t = self.compute_class_typed_dict_type(annotation.expression());
         TypedDictMember {
-            name,
+            name: DbString::StringSlice(name),
             type_: t.type_,
             required: t
                 .required
@@ -318,7 +318,7 @@ pub(super) fn new_typed_dict_with_execution_syntax<'db>(
             );
         }
     } else {
-        recoverable_error!("Shouldn only ever get a normal TypedDict initialization for aliases");
+        recoverable_error!("Should only ever get a normal TypedDict initialization for aliases");
         return None;
     }
 
@@ -424,6 +424,9 @@ pub(super) fn check_typed_dict_arguments<'file>(
                 add_issue(IssueKind::UnexpectedArgumentsToTypedDict);
             }
         }
+    }
+    if result.closed.is_some() && result.extra_items.is_some() {
+        add_issue(IssueKind::TypedDictCannotCombineClosedAndExtraItems);
     }
     result
 }

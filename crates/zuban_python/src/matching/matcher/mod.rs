@@ -3,7 +3,11 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet};
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+};
 use utils::AlreadySeen;
 
 use type_var_matcher::TypeVarMatcher;
@@ -27,7 +31,7 @@ use crate::{
     format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::{Match, SignatureMatch},
-    matching::Generic,
+    matching::{Generic, matcher::bound::BoundOrigin},
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -36,18 +40,37 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
-        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceTypeVarLikes, StarParamType,
+        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf, ReplaceTypeVarLikes, StarParamType,
         StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack, add_param_spec_to_params,
         match_tuple_type_arguments,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;
 pub type CheckedTypeRecursion<'a> = AlreadySeen<'a, (&'a Type, &'a Type)>;
+
+thread_local! {
+    static MATCHING_CACHE: MatchingCache = MatchingCache::default();
+}
+
+type MatchingTypesCacheType = HashMap<(Type, Type, Variance), Match>;
+
+#[derive(Default)]
+struct MatchingCache {
+    avoid_recursions: RefCell<Vec<(Type, Type)>>,
+    cached: RefCell<MatchingTypesCacheType>,
+}
+
+pub fn invalidate_matching_cache() {
+    MATCHING_CACHE.with(|cache| {
+        debug_assert!(cache.avoid_recursions.borrow().is_empty());
+        cache.cached.borrow_mut().clear()
+    })
+}
 
 #[derive(Default, Clone)]
 pub(crate) struct Matcher<'a> {
@@ -56,10 +79,12 @@ pub(crate) struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     func_like: Option<&'a dyn FuncLike>,
     ignore_promotions: bool,
+    pub is_matching_context: bool,
     pub precise_matching: bool, // This is what Mypy does with proper_subtype=True
     pub replace_self: Option<ReplaceSelfInMatcher<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
+    type_var_specific_matching_cache: MatchingTypesCacheType,
 }
 
 impl<'a> Matcher<'a> {
@@ -158,21 +183,67 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    pub fn set_all_type_vars_uncalculated(&mut self) {
+        for tvm in &mut self.type_var_matchers {
+            for ta in &mut tvm.calculating_type_args {
+                *ta = Default::default();
+            }
+        }
+    }
+
+    pub fn mark_mismatching_type_vars_uninferrable(&mut self, i_s: &InferenceState, other: Self) {
+        for (self_tvm, other_tvm) in self
+            .type_var_matchers
+            .iter_mut()
+            .zip(other.type_var_matchers.iter())
+        {
+            for (self_ta, other_ta) in self_tvm
+                .calculating_type_args
+                .iter_mut()
+                .zip(other_tvm.calculating_type_args.iter())
+            {
+                if other_ta.uninferrable {
+                    self_ta.uninferrable = true;
+                    continue;
+                }
+                if let Some(self_kind) = self_ta.maybe_calculated()
+                    && let Some(other_kind) = other_ta.maybe_calculated()
+                {
+                    if !self_kind.is_simple_same_type(i_s, other_kind).bool() {
+                        self_ta.uninferrable = true;
+                    }
+                }
+            }
+        }
+    }
+
     pub fn matches_callable(
         &mut self,
         i_s: &InferenceState,
         c1: &CallableContent,
-        c2_ref: &CallableContent,
+        c2: &CallableContent,
     ) -> Match {
-        let mut c2 = Cow::Borrowed(c2_ref);
+        debug!(
+            "Matching callable {} against {}",
+            c1.format(&FormatData::new_short(i_s.db)),
+            c2.format(&FormatData::new_short(i_s.db)),
+        );
+        let indent = debug_indent();
+        let mut c2 = Cow::Borrowed(c2);
         let type_var_matchers_len = self.type_var_matchers.len() as u32;
         if !c2.type_vars.is_empty() {
             if self
                 .type_var_matchers
                 .iter()
                 .any(|tvm| tvm.match_in_definition == c2.defined_at)
+                && let Some(new) = c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len)
             {
-                c2 = Cow::Owned(c2.change_temporary_matcher_index(i_s.db, type_var_matchers_len));
+                debug!(
+                    "Changed type {} to use temporary matcher id {}",
+                    new.format(&FormatData::new_short(i_s.db)),
+                    type_var_matchers_len
+                );
+                c2 = Cow::Owned(new);
             }
             self.type_var_matchers
                 .push(TypeVarMatcher::new(c2.defined_at, c2.type_vars.clone()))
@@ -197,6 +268,7 @@ impl<'a> Matcher<'a> {
             }
         }
 
+        drop(indent);
         if cfg!(feature = "zuban_debug") && !c2.type_vars.is_empty() {
             let i = self
                 .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
@@ -253,6 +325,12 @@ impl<'a> Matcher<'a> {
     }
 
     #[inline]
+    pub fn has_responsible_type_var_matcher(&self, tv2: &TypeVarUsage) -> bool {
+        self.find_responsible_type_var_matcher_index(tv2.in_definition, tv2.temporary_matcher_id)
+            .is_some()
+    }
+
+    #[inline]
     pub fn has_responsible_type_var_tuple_matcher(&self, tvt2: &TypeVarTupleUsage) -> bool {
         self.find_responsible_type_var_matcher_index(tvt2.in_definition, tvt2.temporary_matcher_id)
             .is_some()
@@ -260,6 +338,14 @@ impl<'a> Matcher<'a> {
 
     pub fn is_matching_reverse(&self) -> bool {
         self.match_reverse
+    }
+
+    pub fn has_calculated_type_args(&self) -> bool {
+        self.type_var_matchers.iter().any(|tvm| {
+            tvm.calculating_type_args
+                .iter()
+                .any(|type_arg| type_arg.calculated())
+        })
     }
 
     pub fn match_reverse<T, C: FnOnce(&mut Self) -> T>(&mut self, callable: C) -> T {
@@ -293,6 +379,11 @@ impl<'a> Matcher<'a> {
                     && let Some(other_class) = i_s.current_class()
                     && !other_class.class_link_in_mro(i_s.db, class.node_ref.as_link())
                 {
+                    debug!(
+                        "Mismatched Self, because the func class {:?} is different from the i_s class {:?}",
+                        class.qualified_name(i_s.db),
+                        other_class.qualified_name(i_s.db),
+                    );
                     return Match::new_false();
                 }
                 Match::new_true()
@@ -359,12 +450,25 @@ impl<'a> Matcher<'a> {
                     type_var_index: t1.index.as_usize(),
                 },
                 |found_type_var| value_type.search_type_vars(found_type_var),
-                || Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
+                || Bound::new(BoundKind::TypeVar(value_type.clone()).into(), variance),
             ) {
+                debug!(
+                    "Saved unresolved transitive constraint for {:?} for value_type {:?}",
+                    t1.type_var.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 return Some(Match::new_true());
             }
+            let replaced = if self.type_var_matchers.len() > 1 {
+                value_type.replace_type_var_likes(i_s.db, &mut |usage| {
+                    self.replace_implicit_type_var_likes(i_s.db, &usage)
+                })
+            } else {
+                // TODO I'm not sure why we cannot/shouldn't remap for multiple type var matchers.
+                Cow::Borrowed(value_type)
+            };
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return Some(tv_matcher.match_or_add_type_var(i_s, t1, value_type, variance));
+            return Some(tv_matcher.match_or_add_type_var(i_s, t1, &replaced, variance));
         }
         if !self.match_reverse {
             if let Some(class) = self.class
@@ -374,6 +478,11 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
+                debug!(
+                    "Use class type argument {:?} to match {:?}",
+                    g.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 self.class = None;
                 let m = g.matches(i_s, self, value_type, variance);
                 self.class = Some(class);
@@ -387,6 +496,11 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                     .expect_type_argument();
+                debug!(
+                    "Use func type argument {:?} to match {:?}",
+                    g.format_short(i_s.db),
+                    value_type.format_short(i_s.db),
+                );
                 // Avoid matching the function again to avoid recursions
                 let taken_func_like = self.func_like.take();
                 let result = Some(g.matches(i_s, self, value_type, variance));
@@ -452,9 +566,17 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
+        debug!(
+            "Match TypeVar {:?} against {:?}",
+            tv1.type_var.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
+        let _indent = debug_indent();
         let other_side = match other {
             Type::TypeVar(tv2) => self
                 .match_reverse(|matcher| {
+                    debug!("Since both sides are TypeVars also match TypeVar against other side");
+                    let _indent = debug_indent();
                     matcher.match_or_add_type_var_if_responsible(
                         i_s,
                         tv2,
@@ -537,8 +659,16 @@ impl<'a> Matcher<'a> {
                 return Match::new_true();
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return tv_matcher.calculating_type_args[tvt.index.as_usize()]
+            let m = tv_matcher.calculating_type_args[tvt.index.as_usize()]
                 .merge(i_s, Bound::new_type_args(args2, variance));
+            debug!(
+                "Generics after changing {:?} (#{}/{}) are now: [{}]",
+                tvt.type_var_tuple.format(&FormatData::new_short(i_s.db)),
+                tvt.temporary_matcher_id,
+                tvt.index.as_usize(),
+                tv_matcher.debug_format(i_s.db),
+            );
+            return m;
         }
 
         if !self.match_reverse {
@@ -579,7 +709,9 @@ impl<'a> Matcher<'a> {
                     && u.after.is_empty()
                     && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
             }
-            TupleArgs::ArbitraryLen(t) => t.is_any(),
+            TupleArgs::ArbitraryLen(t) => {
+                t.is_any() || t.is_object(i_s.db) && variance == Variance::Contravariant
+            }
             TupleArgs::FixedLen(_) => false,
         }
         .into()
@@ -663,7 +795,9 @@ impl<'a> Matcher<'a> {
                     return Match::new_false();
                 }
             };
-            star_count += !t.is_some_and(|t| !matches!(t.as_ref(), Type::Any(_))) as usize;
+            star_count += t.is_none_or(|t| {
+                t.is_any() || variance == Variance::Covariant && t.is_object(i_s.db)
+            }) as usize;
         }
         (star_count == 2).into()
     }
@@ -712,11 +846,9 @@ impl<'a> Matcher<'a> {
         ) {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let t = &mut tv_matcher.calculating_type_args[usage.index.as_usize()].type_;
-            match t {
+            let bound = match t {
                 // TODO fix variance for matching
-                Bound::Invariant(BoundKind::ParamSpec(p))
-                | Bound::Upper(BoundKind::ParamSpec(p))
-                | Bound::Lower(BoundKind::ParamSpec(p)) => p,
+                Bound::Invariant(bound) | Bound::Upper(bound) | Bound::Lower(bound) => bound,
                 Bound::Uncalculated { .. } => {
                     // TODO fix variance
                     *t = Bound::new_param_spec(
@@ -725,10 +857,13 @@ impl<'a> Matcher<'a> {
                     );
                     return SignatureMatch::new_true();
                 }
-                Bound::UpperAndLower(BoundKind::ParamSpec(upper), BoundKind::ParamSpec(_lower)) => {
+                Bound::UpperAndLower(upper, _lower) => {
                     // TODO also match with lower
                     upper
                 }
+            };
+            match &bound.kind {
+                BoundKind::ParamSpec(p) => p,
                 _ => unreachable!(),
             }
         } else if let Some(fc) =
@@ -933,20 +1068,30 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, true, |usage| {
-            Some(
-                if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
+        self.replace_type_var_likes(
+            db,
+            t,
+            true,
+            |usage| {
+                Some(
+                    if let TypeVarLikeUsage::TypeVar(tv_usage) = &usage
                     // Self names for TypeVars are a bit special, the context is probably wanted
                     // unlike other TypeVars.
                     && tv_usage.type_var.is_self_name()
                     && let TypeVarKind::Bound(bound) = tv_usage.type_var.kind(db)
-                {
-                    GenericItem::TypeArg(bound.clone())
-                } else {
-                    usage.as_any_generic_item()
-                },
-            )
-        })
+                    {
+                        GenericItem::TypeArg(bound.clone())
+                    } else {
+                        usage.as_any_generic_item()
+                    },
+                )
+            },
+            &|| {
+                let func_like = self.func_like?;
+                let class = func_like.class()?;
+                Some(class.as_type(db))
+            },
+        )
     }
 
     pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
@@ -954,7 +1099,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         ts: TupleArgs,
     ) -> TupleArgs {
-        ts.replace_type_var_likes(
+        ts.maybe_replace_type_var_likes(
             db,
             &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
         )
@@ -967,7 +1112,7 @@ impl<'a> Matcher<'a> {
         p: ParamSpecArg,
     ) -> ParamSpecArg {
         p.params
-            .replace_type_var_likes_and_self(
+            .maybe_replace_type_var_likes_and_self(
                 db,
                 &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
                 &|| None,
@@ -981,9 +1126,13 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
     ) -> Cow<'x, Type> {
-        self.replace_type_var_likes(db, t, false, |usage| {
-            Some(usage.as_type_var_like().as_never_generic_item(db))
-        })
+        self.replace_type_var_likes(
+            db,
+            t,
+            false,
+            |usage| Some(usage.as_type_var_like().as_never_generic_item(db)),
+            &|| None,
+        )
     }
 
     fn replace_type_var_likes<'x>(
@@ -992,8 +1141,9 @@ impl<'a> Matcher<'a> {
         t: &'x Type,
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
+        replace_self: ReplaceSelf,
     ) -> Cow<'x, Type> {
-        t.replace_type_var_likes(
+        t.replace_type_var_likes_and_self(
             db,
             &mut self.as_usage_closure(
                 db,
@@ -1003,9 +1153,8 @@ impl<'a> Matcher<'a> {
                 for_context && !t.find_in_type(db, &mut |t| matches!(t, Type::Callable(_))),
                 on_uncalculated,
             ),
+            replace_self,
         )
-        .map(Cow::Owned)
-        .unwrap_or_else(|| Cow::Borrowed(t))
     }
 
     pub fn replace_usage_if_calculated(
@@ -1037,40 +1186,48 @@ impl<'a> Matcher<'a> {
                     .clone()
                     .into_maybe_generic_item(db, true, |_| on_uncalculated(usage));
             }
-            if let Some(c) = self.class
-                && c.node_ref.as_link() == usage.in_definition()
-            {
-                return Some(c.generics().nth_usage(db, &usage).into_generic_item());
-            }
-            if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
-                let g = func_class
-                    .generics()
-                    .nth_usage(db, &usage)
-                    .into_generic_item();
-                // We want to make sure that we don't remap the func_class again (otherwise we
-                // cause infinite recursions)
-                let without_func_class = Self {
-                    type_var_matchers: self.type_var_matchers.clone(),
-                    ..Self::default()
-                };
-                return Some(match g {
-                    GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context(db, &t)
-                            .into_owned(),
-                    ),
-                    GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
-                    )),
-                    GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
-                        without_func_class
-                            .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
-                    ),
-                });
-            }
-            None
+            self.replace_implicit_type_var_likes(db, &usage)
         }
+    }
+
+    fn replace_implicit_type_var_likes(
+        &self,
+        db: &Database,
+        usage: &TypeVarLikeUsage,
+    ) -> Option<GenericItem> {
+        if let Some(c) = self.class
+            && c.node_ref.as_link() == usage.in_definition()
+        {
+            return Some(c.generics().nth_usage(db, &usage).into_generic_item());
+        }
+        if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
+            let g = func_class
+                .generics()
+                .nth_usage(db, usage)
+                .into_generic_item();
+            // We want to make sure that we don't remap the func_class again (otherwise we
+            // cause infinite recursions)
+            let without_func_class = Self {
+                type_var_matchers: self.type_var_matchers.clone(),
+                ..Self::default()
+            };
+            return Some(match g {
+                GenericItem::TypeArg(t) => GenericItem::TypeArg(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context(db, &t)
+                        .into_owned(),
+                ),
+                GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
+                )),
+                GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
+                    without_func_class
+                        .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
+                ),
+            });
+        }
+        None
     }
 
     fn maybe_func_class_for_usage(&self, usage: &TypeVarLikeUsage) -> Option<Class<'a>> {
@@ -1130,10 +1287,16 @@ impl<'a> Matcher<'a> {
             ignore_positional_param_names: self.ignore_positional_param_names,
             replace_self: self.replace_self,
             match_reverse: self.match_reverse,
+            type_var_specific_matching_cache: std::mem::take(
+                &mut self.type_var_specific_matching_cache,
+            ),
+            is_matching_context: self.is_matching_context,
         };
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.
         self.type_var_matchers = std::mem::take(&mut inner_matcher.type_var_matchers);
+        self.type_var_specific_matching_cache =
+            std::mem::take(&mut inner_matcher.type_var_specific_matching_cache);
         result
     }
 
@@ -1152,8 +1315,13 @@ impl<'a> Matcher<'a> {
         &self.type_var_matchers[tv.matcher_index].calculating_type_args[tv.type_var_index]
     }
 
-    fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
+    fn find_secondary_transitive_constraints(
+        &mut self,
+        db: &Database,
+        cycles: &TypeVarCycles,
+    ) -> Match {
         debug!("Start calculating secondary transitive constraints");
+        let _indent = debug_indent();
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
@@ -1210,6 +1378,9 @@ impl<'a> Matcher<'a> {
                             Bound::Uncalculated { .. } => unreachable!(),
                         };
                         let m = t1.matches(i_s, self, &t2, variance);
+                        if !m.bool() {
+                            return m;
+                        }
                         debug!(
                             "Secondary constraint match {variance:?} for {} against {}: {m:?}",
                             t1.format_short(db),
@@ -1221,6 +1392,7 @@ impl<'a> Matcher<'a> {
 
             // TODO check unresolved against each other
         }
+        Match::new_true()
     }
 
     fn finish_matcher(
@@ -1246,7 +1418,11 @@ impl<'a> Matcher<'a> {
         // Some cases need to propagate type vars across ParamSpec and TypeVarTuple. In that case
         // we need to match constraints against each other, see for example
         // testInferenceAgainstGenericParamSpecSecondary.
-        self.find_secondary_transitive_constraints(i_s.db, &cycles);
+        let m = self.find_secondary_transitive_constraints(i_s.db, &cycles);
+        if !m.bool() {
+            debug!("Secondary transitive constraint mismatch -> abort");
+            return (self, Err(m));
+        }
         // If constraints were added, that we rescan for cycles, because the information is out of
         // date.
         if before < self.constraint_count() {
@@ -1268,24 +1444,17 @@ impl<'a> Matcher<'a> {
                     ),
                     None => "has bounds".into(),
                 };
-                debug!(
-                    " - {} {}",
-                    join_with_commas(cycle.set.iter().map(|tv| {
-                        format!(
-                            "({}, {}, {})",
-                            tv.matcher_index,
-                            tv.type_var_index,
-                            self.type_var_matchers[tv.matcher_index].type_var_likes
-                                [tv.type_var_index]
-                                .name(i_s.db)
-                        )
-                    })),
-                    bound
-                );
+                debug!(" - {} {}", cycle.format(&self, i_s.db), bound);
             }
         }
         for cycle in &cycles.cycles {
+            debug!(
+                "Try to resolve the following transitive constraint cycle: {}",
+                cycle.format(&self, i_s.db)
+            );
+            let _indent = debug_indent();
             if let Err(e) = self.resolve_cycle(i_s, &cycles, cycle) {
+                // Set the type vars to Any if the cycle is impossible
                 for type_var_matcher in &mut self.type_var_matchers {
                     for (i, c) in type_var_matcher
                         .calculating_type_args
@@ -1347,7 +1516,8 @@ impl<'a> Matcher<'a> {
                         };
                         BoundKind::ParamSpec(CallableParams::new_param_spec(usage))
                     }
-                },
+                }
+                .into(),
             )
         } else {
             Bound::default()
@@ -1367,6 +1537,7 @@ impl<'a> Matcher<'a> {
 
             let m = current.merge_full(i_s, std::mem::take(used));
             if !m.bool() {
+                debug!("Wasn't able to merge cycle");
                 return Err(m);
             }
 
@@ -1390,8 +1561,14 @@ impl<'a> Matcher<'a> {
                         let c = self.calculating_arg(tv);
                         let depending_on = cycles.find_cycle(tv).unwrap();
                         if !c.unresolved_transitive_constraints.is_empty() {
+                            debug!(
+                                "Resolve nested transitive cycle: {}",
+                                depending_on.format(&self, i_s.db)
+                            );
+                            let _indent = debug_indent();
                             let m = self.resolve_cycle(i_s, cycles, depending_on);
                             if let Err(err) = m {
+                                debug!("Wasn't able to resolve nested cycle");
                                 had_error = Some(err);
                                 return None;
                             }
@@ -1454,12 +1631,22 @@ impl<'a> Matcher<'a> {
                     None
                 });
                 if let Some(err) = had_error {
+                    debug!("Had mismatch while trying to resolve a nested cycle");
                     return Err(err);
                 }
                 if !is_in_cycle {
                     // This means we hit a cycle and are now just trying to merge.
-                    let m = current.merge(i_s, replaced_unresolved.unwrap_or(unresolved));
+                    let to_be_merged = replaced_unresolved.unwrap_or(unresolved);
+                    debug!(
+                        "Trying to merge {:?} with {:?} for cycle",
+                        current.type_.debug_format(i_s.db),
+                        to_be_merged.debug_format(i_s.db),
+                    );
+                    let indent = debug_indent();
+                    let m = current.merge(i_s, to_be_merged);
                     if !m.bool() {
+                        drop(indent);
+                        debug!("Wasn't able to merge cycle");
                         return Err(m);
                     }
                 }
@@ -1500,8 +1687,17 @@ impl<'a> Matcher<'a> {
         let mut lst = Vec::from_iter(cycle.set.iter().cloned());
         lst.sort();
         let mut preferred_bound: Option<&_> = None;
+        let mut kind = None;
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
+            if let Some(should_be_kind) = kind {
+                if should_be_kind != type_var_like.kind() {
+                    debug!("Unable to create higher order free type variable");
+                    return Err(Match::new_false());
+                }
+            } else {
+                kind = Some(type_var_like.kind());
+            }
             if let TypeVarLike::TypeVar(new) = type_var_like
                 && !new.is_unrestricted()
             {
@@ -1609,7 +1805,7 @@ impl<'a> Matcher<'a> {
         has_bound
     }
 
-    pub fn reset_invalid_bounds_of_context(&mut self, i_s: &InferenceState) {
+    pub fn reset_invalid_bounds_of_context(&mut self, db: &Database) {
         for tv_matcher in &mut self.type_var_matchers {
             for calc in tv_matcher.calculating_type_args.iter_mut() {
                 // Make sure that the fallback is never used from a context.
@@ -1617,11 +1813,125 @@ impl<'a> Matcher<'a> {
                 if calc.type_.is_none() || !calc.calculated() || calc.uninferrable {
                     *calc = Default::default();
                 } else {
-                    calc.defined_by_result_context = true;
-                    calc.has_any_in_context = calc.type_.has_any(i_s);
+                    calc.type_.set_origin_if_inference(BoundOrigin::Context);
+                    calc.has_any_in_context = calc.type_.has_any(db);
                 }
             }
         }
+    }
+
+    pub(crate) fn cache_match_result(
+        &mut self,
+        db: &Database,
+        t1: &Type,
+        t2: &Type,
+        variance: Variance,
+        callable: impl FnOnce(&mut Matcher) -> Match,
+    ) -> Match {
+        MATCHING_CACHE.with(|cache| {
+            let had_type_var_matcher = self.has_type_var_matcher();
+            let key = (t1.clone(), t2.clone(), variance);
+            let can_be_cached = (!had_type_var_matcher
+                || !t1.has_type_vars() && !t2.has_type_vars())
+                && !t1.has_self_type(db)
+                && !t2.has_self_type(db);
+            if !can_be_cached {
+                // We cache the results locally in the matcher if we cannot cache them in a more
+                // general way. This is necessary to avoid problems with recursive types or protocols
+                // if type vars are involved.
+                if let Some(already_known) = self.type_var_specific_matching_cache.get(&key) {
+                    debug!(
+                        r#"Used matching cache "{}" against "{}": {:?}"#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                        already_known,
+                    );
+                    return already_known.clone();
+                }
+                let result = callable(self);
+                self.type_var_specific_matching_cache
+                    .insert(key, result.clone());
+                return result;
+            }
+            if let Some(already_known) = cache.cached.borrow().get(&key) {
+                debug!(
+                    r#"Used matching cache "{}" against "{}": {:?}"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                    already_known,
+                );
+                return already_known.clone();
+            }
+            let result = callable(self);
+            cache.cached.borrow_mut().insert(key, result.clone());
+            result
+        })
+    }
+
+    // For both Protocols and TypedDict
+    pub(crate) fn avoid_structural_matching_recursion(
+        &mut self,
+        db: &Database,
+        t1: &Type,
+        t2: &Type,
+        callable: impl FnOnce(&mut Matcher) -> Match,
+    ) -> Match {
+        MATCHING_CACHE.with(|cache| {
+            let current = cache.avoid_recursions.borrow_mut();
+            if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
+                debug!(
+                    r#"Avoided recursion for structural matching "{}" against "{}" -> return true"#,
+                    t1.format_short(db),
+                    t2.format_short(db),
+                );
+                Match::new_true()
+            } else {
+                let is_empty = current.is_empty();
+                // This needs to be dropped before replacing type vars since that potentially
+                // recurses.
+                drop(current);
+                if !is_empty {
+                    let replace = move |t: &Type| {
+                        let mut had_temporary_matcher_id = false;
+                        t.search_type_vars(&mut |usage| {
+                            if usage.temporary_matcher_id() > 0 {
+                                had_temporary_matcher_id = true;
+                            }
+                        });
+                        if !had_temporary_matcher_id {
+                            return None;
+                        }
+                        t.maybe_replace_type_var_likes(db, &mut |mut usage| {
+                            usage.update_temporary_matcher_index(0);
+                            Some(usage.into_generic_item())
+                        })
+                    };
+                    if let Some(new_t1) = replace(t1) {
+                        // This case arose in
+                        // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
+                        // where it replace function type vars repeatedly with new generated type vars.
+                        // I'm not 100% sure this holds for all cases, but it feels like this is fine.
+                        return self.avoid_structural_matching_recursion(db, &new_t1, t2, callable);
+                    }
+                    if let Some(new_t2) = replace(t2) {
+                        return self.avoid_structural_matching_recursion(db, t1, &new_t2, callable);
+                    }
+                }
+                self.cache_match_result(db, t1, t2, Variance::Covariant, |matcher| {
+                    let new_t = (t1.clone(), t2.clone());
+                    cache.avoid_recursions.borrow_mut().push(new_t);
+                    debug!(
+                        r#"Match protocol/TypedDict "{}" against "{}""#,
+                        t1.format_short(db),
+                        t2.format_short(db),
+                    );
+                    let _indent = debug_indent();
+                    let result = callable(matcher);
+                    cache.avoid_recursions.borrow_mut().pop();
+                    result
+                })
+            }
+        })
     }
 
     pub fn into_type_arg_iterator_or_any(self, db: &Database) -> impl Iterator<Item = Type> + '_ {
@@ -1802,6 +2112,18 @@ impl TypeVarCycle {
             has_bound: false,
             free_type_var_index: None,
         }
+    }
+
+    fn format(&self, matcher: &Matcher, db: &Database) -> String {
+        join_with_commas(self.set.iter().map(|tv| {
+            format!(
+                "({}, {}, {})",
+                tv.matcher_index,
+                tv.type_var_index,
+                matcher.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index]
+                    .name(db)
+            )
+        }))
     }
 }
 

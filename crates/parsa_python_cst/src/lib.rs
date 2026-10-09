@@ -576,11 +576,38 @@ macro_rules! create_interesting_node_searcher {
     };
 }
 
+pub trait CstNode<'db> {
+    fn by_index(tree: &'db Tree, index: NodeIndex) -> Self;
+    fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn index(&self) -> NodeIndex;
+}
+
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'db> {
             node: PyNode<'db>,
+        }
+
+        impl<'db> CstNode<'db> for $name<'db> {
+            #[inline]
+            fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
+                Self::new(tree.0.node_by_index(index))
+            }
+
+            #[inline]
+            fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
+                let node = tree.0.node_by_index(node_index);
+                node.is_type($type).then(|| Self::new(node))
+            }
+
+            #[inline]
+            fn index(&self) -> NodeIndex {
+                self.node.index
+            }
         }
 
         impl<'db> $name<'db> {
@@ -897,6 +924,17 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn maybe_left_of_primary(&self) -> Option<Primary<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) || parent.is_type(Nonterminal(primary)) {
+            let par_par = parent.parent().unwrap();
+            if par_par.is_type(Nonterminal(primary)) {
+                return Some(Primary::new(par_par));
+            }
+        }
+        None
+    }
+
     pub fn maybe_assignment_definition_name(&self) -> Option<Assignment<'db>> {
         self.name_def()?.maybe_assignment_definition()
     }
@@ -938,7 +976,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_as_param_of_function(&self) -> FunctionDef<'db> {
-        let params = self
+        let mut params = self
             .node
             .parent()
             .unwrap()
@@ -946,6 +984,9 @@ impl<'db> Name<'db> {
             .unwrap()
             .parent()
             .unwrap();
+        if params.is_type(Nonterminal(star_etc)) {
+            params = params.parent().unwrap();
+        }
         debug_assert_eq!(params.type_(), Nonterminal(parameters));
         let func_node = params.parent().unwrap().parent().unwrap();
         FunctionDef::new(func_node)
@@ -1770,6 +1811,7 @@ impl<'db> IfStmt<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum IfBlockType<'db> {
     If(NamedExpression<'db>, Block<'db>),
     Else(ElseBlock<'db>),
@@ -2386,6 +2428,10 @@ impl<'db> ClassDef<'db> {
         let closing_paren = iterator.skip(1).next().unwrap();
         Some(opening_paren.start()..closing_paren.end())
     }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
+    }
 }
 
 pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);
@@ -2970,6 +3016,10 @@ impl<'db> Assignment<'db> {
         Some((first, annot, expr))
     }
 
+    pub fn is_annotated_without_assignment(&self) -> bool {
+        matches!(self.unpack(), AssignmentContent::WithAnnotation(_, _, None))
+    }
+
     fn maybe_simple_targets_expression_assignment(
         &self,
     ) -> Option<(
@@ -3180,23 +3230,41 @@ impl<'db> Iterator for AssignmentTargetIterator<'db> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct LevelWithDottedName<'db> {
+    pub level: usize,
+    pub names: Option<DottedImportName<'db>>,
+    pub last_dot_element_node_index: Option<NodeIndex>,
+}
+
 impl<'db> ImportFrom<'db> {
-    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedImportName<'db>>) {
+    pub fn level_with_dotted_name(&self) -> LevelWithDottedName<'db> {
         // | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
+        let mut last_dot_element_node_index = None;
         for node in self.node.iter_children().skip(1) {
             if node.is_type(Nonterminal(dotted_import_name)) {
-                return (level, Some(DottedImportName::new(node)));
+                return LevelWithDottedName {
+                    level,
+                    names: Some(DottedImportName::new(node)),
+                    last_dot_element_node_index,
+                };
             } else if node.as_code() == "." {
+                last_dot_element_node_index = Some(node.index);
                 level += 1;
             } else if node.as_code() == "..." {
+                last_dot_element_node_index = Some(node.index);
                 level += 3;
             } else if node.as_code() == "import" {
                 break;
             }
         }
-        (level, None)
+        LevelWithDottedName {
+            level,
+            names: None,
+            last_dot_element_node_index,
+        }
     }
 
     pub fn unpack_targets(&self) -> ImportFromTargets<'db> {
@@ -3317,6 +3385,19 @@ impl<'db> ImportFromAsName<'db> {
 }
 
 impl<'db> DottedImportName<'db> {
+    pub fn maybe_part_of_import_name(&self) -> Option<NameDef<'db>> {
+        let prev = self.node.previous_leaf()?;
+        if prev.as_code() != "." {
+            return None;
+        }
+        let prev_prev = prev.previous_leaf()?;
+        if prev_prev.is_type(Terminal(TerminalType::Name)) {
+            Name::new(prev_prev).name_def()
+        } else {
+            None
+        }
+    }
+
     pub fn unpack(&self) -> DottedImportNameContent<'db> {
         let mut children = self.node.iter_children();
         let first = children.next().unwrap();
@@ -3562,6 +3643,10 @@ impl<'db> Primary<'db> {
         let last = self.node.iter_children().last().unwrap();
         debug_assert_eq!(last.as_code(), ")");
         last.index
+    }
+
+    pub fn parent_scope(&self) -> Scope<'db> {
+        scope_for_node(self.node)
     }
 }
 
@@ -4680,6 +4765,7 @@ fn expect_func_parent_including_error_recovery(node: PyNode) -> (NameDef, Option
     (NameDef::new(par.iter_children().nth(1).unwrap()), dec)
 }
 
+#[derive(Debug)]
 pub enum NameDefParent {
     Primary,
     GlobalStmt,
@@ -4979,7 +5065,11 @@ impl<'db> Iterator for StringIterator<'db> {
             if n.is_type(Nonterminal(fstring)) {
                 StringType::FString(FString::new(n))
             } else {
-                StringType::String(StringLiteral::new(n))
+                if n.as_code().starts_with(['t', 'T']) {
+                    StringType::TemplateString(StringLiteral::new(n))
+                } else {
+                    StringType::String(StringLiteral::new(n))
+                }
             }
         })
     }
@@ -4987,6 +5077,7 @@ impl<'db> Iterator for StringIterator<'db> {
 
 pub enum StringType<'db> {
     String(StringLiteral<'db>),
+    TemplateString(StringLiteral<'db>),
     FString(FString<'db>),
 }
 

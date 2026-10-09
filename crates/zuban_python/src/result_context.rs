@@ -1,12 +1,15 @@
 use core::fmt;
 
+use parsa_python_cst::Assignment;
+
 use crate::{
-    InferenceState,
-    database::PointLink,
+    InferenceState, debug,
     file::ClassNodeRef,
     matching::Matcher,
-    type_::{AnyCause, TupleArgs, Type, UniqueInUnpackedUnionError},
+    node_ref::KnownPointLink,
+    type_::{AnyCause, ReplaceTypeVarLikes as _, TupleArgs, Type, UniqueInUnpackedUnionError},
     type_helpers::Class,
+    utils::debug_indent,
 };
 
 pub(crate) enum ResultContext<'a, 'b> {
@@ -20,7 +23,7 @@ pub(crate) enum ResultContext<'a, 'b> {
         type_: &'a Type,
     },
     AssignmentNewDefinition {
-        assignment_definition: PointLink,
+        assignment_definition: KnownPointLink<Assignment<'a>>,
     },
     ValueExpected,
     Unknown,
@@ -33,6 +36,7 @@ pub(crate) enum ResultContext<'a, 'b> {
 pub(crate) enum ResultContextOrigin {
     AssignmentAnnotation,
     NormalAssignment,
+    OtherSideOfTernary,
     Other,
 }
 
@@ -44,12 +48,20 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn with_type_if_exists_and_replace_type_var_likes<T>(
+    pub fn with_type_if_exists_and_replace_type_var_likes_for_context<T>(
         &self,
         i_s: &InferenceState<'_, '_>,
         callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
+            Self::Known {
+                origin: ResultContextOrigin::OtherSideOfTernary,
+                ..
+            } => {
+                // The ternary context is not something we want to pass on when something wants the
+                // actual context, because it is more of a "this list could look like this".
+                None
+            }
             Self::Known { type_, .. } | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
@@ -96,14 +108,7 @@ impl<'a> ResultContext<'a, '_> {
                     if matches!(t, Type::Any(_)) {
                         return None;
                     }
-                    let c = Class::from_non_generic_node_ref(class);
-                    let mut matcher = Matcher::new_class_matcher(i_s, c);
-                    let self_class = Class::with_self_generics(i_s.db, class);
-                    self_class
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, t)
-                        .bool()
-                        .then_some(matcher)
+                    try_to_match_generics_of_class(i_s, class, t)
                 },
                 on_unique_found,
             )
@@ -120,8 +125,11 @@ impl<'a> ResultContext<'a, '_> {
         {
             return CouldBeALiteral::No;
         }
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, Type::could_be_a_literal)
-            .unwrap_or(CouldBeALiteral::Yes { implicit: true })
+        self.with_type_if_exists_and_replace_type_var_likes_for_context(
+            i_s,
+            Type::could_be_a_literal,
+        )
+        .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
     pub fn expect_not_none(&mut self) -> bool {
@@ -141,7 +149,7 @@ impl<'a> ResultContext<'a, '_> {
         i_s: &InferenceState,
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, |t| {
+        self.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |t| {
             t.on_unique_type_in_unpacked_union(
                 i_s.db,
                 &mut Matcher::default(),
@@ -167,9 +175,18 @@ impl<'a> ResultContext<'a, '_> {
                             });
                         }
                         // Case x: Iterable[int] = (1, 1)
-                        Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
-                            let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
-                            return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
+                        other
+                            if let Some(matcher) = try_to_match_generics_of_class(
+                                i_s,
+                                i_s.db.python_state.tuple_node_ref(),
+                                &other,
+                            ) =>
+                        {
+                            let generic_t = matcher
+                                .into_type_arg_iterator_or_any(i_s.db)
+                                .next()
+                                .unwrap();
+                            return Some(callable(TupleContextIterator::ArbitraryLen(&generic_t)));
                         }
                         _ => (),
                     }
@@ -190,6 +207,13 @@ impl<'a> ResultContext<'a, '_> {
                 origin: ResultContextOrigin::AssignmentAnnotation,
                 ..
             }
+        )
+    }
+
+    pub fn is_unused(&self) -> bool {
+        matches!(
+            self,
+            ResultContext::ExpectUnused | ResultContext::RevealType
         )
     }
 
@@ -225,6 +249,38 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::Await => write!(f, "Await"),
         }
     }
+}
+
+fn try_to_match_generics_of_class(
+    i_s: &InferenceState,
+    class_node_ref: ClassNodeRef,
+    t: &Type,
+) -> Option<Matcher<'static>> {
+    debug!(
+        "Try to find matching generic for {} against {}",
+        class_node_ref.name(),
+        t.format_short(i_s.db)
+    );
+    let _indent = debug_indent();
+    let self_class = Class::with_self_generics(i_s.db, class_node_ref);
+    let mut matcher = Matcher::new_class_matcher(i_s, self_class);
+    let mut had_same_class_type_var = false;
+
+    // In case of nested container inference we have to remove the previous
+    // type vars to avoid leaking type vars.
+    t.replace_type_var_likes(i_s.db, &mut |usage| {
+        had_same_class_type_var |= usage.in_definition() == self_class.as_link();
+        None
+    });
+    if had_same_class_type_var {
+        return None;
+    }
+
+    self_class
+        .as_type(i_s.db)
+        .is_sub_type_of(i_s, &mut matcher, &t)
+        .bool()
+        .then_some(matcher)
 }
 
 pub(crate) enum TupleContextIterator<'a> {

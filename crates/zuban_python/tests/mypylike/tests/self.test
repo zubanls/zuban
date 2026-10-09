@@ -390,19 +390,19 @@ class B(A):
     def foo(self, other: Self) -> Self: ...
     @overload
     def foo(self, other: int) -> None: ...
-    def foo(self, other: Self) -> Self | None: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    def foo(self, other: Self) -> Self | None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 
     @overload
     def bar(self, other: Self) -> Self: ...
     @overload
     def bar(self, other: None) -> int: ...
-    def bar(self, other: Self) -> Self | int: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    def bar(self, other: Self) -> Self | int: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 
     @overload
     def baz(self, other: C) -> int: ...
     @overload
     def baz(self, other: A) -> int: ...
-    def baz(self, other: Self) -> int: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+    def baz(self, other: Self) -> int: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 
     @overload
     def blub(self, other: int) -> A: ...
@@ -418,8 +418,8 @@ class B(A):
     def bla(self, other: C, x: bytes) -> C: ...
     @overload
     def bla(self, other: A, x: float) -> A: ...
-    def bla(self, other: Self, x: Any) -> Self: ...  # E: Overloaded function implementation does not accept all possible arguments of signature 2 \
-                                                     # E: Overloaded function implementation does not accept all possible arguments of signature 4 \
+    def bla(self, other: Self, x: Any) -> Self: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2 \
+                                                     # E: Overloaded function implementation does not accept all possible parameters of signature 4 \
                                                      # E: Overloaded function implementation cannot produce return type of signature 1 \
                                                      # E: Overloaded function implementation cannot produce return type of signature 4
 
@@ -623,7 +623,7 @@ from typing import TypeVar, Self
 TFoo2 = TypeVar("TFoo2", bound="Foo2")
 class Foo2:
     # Rejected (Self is treated as unknown).
-    def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+    def has_existing_self_annotation(self: TFoo2) -> Self: ... # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
 [case self_return_of_overload_no_crash]
 # From GH #251
@@ -634,7 +634,7 @@ x |= (_ async for _ in _)
 [out]
 __main__:2: error: Name "y" is not defined
 __main__:3: error: Name "_" is not defined
-__main__:4: error: No overload variant of "__ior__" of "dict" matches argument type "AsyncGenerator[Any, None]"
+__main__:4: error: No overload variant of "__ior__" of "dict" matches argument type "AsyncGeneratorType[Any, None]"
 __main__:4: note: Possible overload variants:
 __main__:4: note:     def __ior__(self, SupportsKeysAndGetItem[Any, type[int]], /) -> Self
 __main__:4: note:     def __ior__(self, Iterable[tuple[Any, type[int]]], /) -> Self
@@ -753,3 +753,27 @@ class C(Generic[T]):
     @overload
     def f(self: C[tuple[int]]) -> int: ...
     def f(self): ...
+
+[case self_should_not_mismatch]
+# From GH #515
+from typing import Callable, Self
+
+class Bar:
+    def add_cb(self, cb: Callable[[Self], object]) -> object: ...
+    def add_cb2(self, cb: Callable[[Self], Self]) -> object: ...
+
+class Foo:
+    def foo(self) -> None:
+        Bar().add_cb(lambda _: object())
+
+    def foo2(self) -> None:
+        Bar().add_cb2(lambda x: x)
+
+[case self_should_not_expand]
+from itertools import islice
+from typing import Iterable, Self
+
+class C:
+    def list(cls) -> None:
+        iter_dirs: Iterable[Self] = []
+        iter_dirs = islice(iter_dirs, 1)

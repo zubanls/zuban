@@ -12,8 +12,13 @@ use lsp_types::{
 };
 use zuban_python::InputPosition;
 
-pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> ServerCapabilities {
-    ServerCapabilities {
+use crate::client_config::{ClientConfig, DiagnosticMode, InlayHintMode};
+
+pub(crate) fn server_capabilities(
+    client_capabilities: &ClientCapabilities,
+    config: &ClientConfig,
+) -> ServerCapabilities {
+    let mut capabilities = ServerCapabilities {
         position_encoding: Some(client_capabilities.negotiated_encoding().into()),
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
@@ -103,23 +108,55 @@ pub(crate) fn server_capabilities(client_capabilities: &ClientCapabilities) -> S
             },
         )),
         moniker_provider: None,
-        inlay_hint_provider: Some(OneOf::Left(true)),
+        inlay_hint_provider: (config.inlay_hint_mode != InlayHintMode::Off)
+            .then_some(OneOf::Left(true)),
         inline_value_provider: None,
         experimental: None,
-        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
-            lsp_types::DiagnosticOptions {
+        diagnostic_provider: config.type_checking_mode.is_enabled().then(|| {
+            lsp_types::DiagnosticServerCapabilities::Options(lsp_types::DiagnosticOptions {
                 identifier: None,
                 inter_file_dependencies: true,
                 // It seems like while workspace diagnostics are implemented, VSCode will trigger
                 // this endpint without user interaction. At the moment this is simply to expensive
-                // for large projects, so we avoid doing that.
-                workspace_diagnostics: false,
+                // for large projects, so we avoid doing that by default.
+                workspace_diagnostics: matches!(config.diagnostic_mode, DiagnosticMode::Workspace),
                 work_done_progress_options: Default::default(),
-            },
-        )),
+            })
+        }),
         inline_completion_provider: None,
         type_hierarchy_provider: None,
+    };
+    if config.disable_language_services {
+        capabilities.completion_provider = None;
+        capabilities.hover_provider = None;
+        capabilities.completion_provider = None;
+        capabilities.signature_help_provider = None;
+        capabilities.declaration_provider = None;
+        capabilities.definition_provider = None;
+        capabilities.type_definition_provider = None;
+        capabilities.implementation_provider = None;
+        capabilities.references_provider = None;
+        capabilities.document_highlight_provider = None;
+        capabilities.document_symbol_provider = None;
+        capabilities.workspace_symbol_provider = None;
+        capabilities.code_action_provider = None;
+        capabilities.code_lens_provider = None;
+        capabilities.document_formatting_provider = None;
+        capabilities.document_range_formatting_provider = None;
+        capabilities.document_on_type_formatting_provider = None;
+        capabilities.selection_range_provider = None;
+        capabilities.folding_range_provider = None;
+        capabilities.rename_provider = None;
+        capabilities.linked_editing_range_provider = None;
+        capabilities.document_link_provider = None;
+        capabilities.color_provider = None;
+        capabilities.execute_command_provider = None;
+        capabilities.call_hierarchy_provider = None;
+        capabilities.semantic_tokens_provider = None;
+        capabilities.moniker_provider = None;
+        capabilities.inlay_hint_provider = None;
     }
+    capabilities
 }
 
 #[derive(Debug, PartialEq, Clone)]

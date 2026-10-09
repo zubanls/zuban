@@ -16,7 +16,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch},
-    matching::{ErrorTypes, GotType, maybe_class_usage},
+    matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin, maybe_class_usage},
     node_ref::NodeRef,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
@@ -25,12 +25,13 @@ use crate::{
     recoverable_error,
     result_context::ResultContext,
     type_::{
-        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics,
+        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics, DbString,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
-        ReplaceTypeVarLikes, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
+        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
+        Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
+    utils::debug_indent,
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(
@@ -75,7 +76,8 @@ pub(crate) fn calc_class_dunder_init_type_vars<'db: 'a, 'a>(
         c.set_correct_generics_if_necessary_for_init_in_superclass()
     }
     calc_dunder_init_type_vars(i_s, class, &function, |matcher, class_type_vars| {
-        if class_type_vars.has_from_untyped_params() {
+        if class_type_vars.has_from_untyped_params() && i_s.db.project.should_infer_untyped_params()
+        {
             let mut result = calc_untyped_func_type_vars_with_matcher(
                 matcher,
                 i_s,
@@ -267,7 +269,7 @@ impl CalculatedTypeArgs {
                 },
                 replace_self_type,
             )
-            .unwrap_or_else(|| return_type.clone());
+            .into_owned();
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
                 db: &Database,
@@ -322,7 +324,7 @@ impl CalculatedTypeArgs {
             }
             if !unused_type_vars.is_empty() {
                 type_ = type_
-                    .replace_type_var_likes(i_s.db, &mut |usage| {
+                    .maybe_replace_type_var_likes(i_s.db, &mut |usage| {
                         (usage.in_definition() == self.in_definition)
                             .then(|| usage.as_type_var_like().as_never_generic_item(i_s.db))
                     })
@@ -476,19 +478,22 @@ fn get_matcher<'a>(
     Matcher::new(None, func_like, matcher, replace_self)
 }
 
-fn apply_result_context(
+fn apply_result_context_and_return_valid(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     result_context: &mut ResultContext,
     return_class: Option<&Class>,
     func_like: &dyn FuncLike,
     on_reset_class_type_vars: impl FnOnce(&mut Matcher, &Class),
-) {
+) -> bool {
+    let mut result = true;
     if result_context.can_be_redefined(i_s) {
-        return;
+        return result;
     }
-    result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |expected| {
+    result_context.with_type_if_exists_and_replace_type_var_likes_for_context(i_s, |expected| {
         if let Some(return_class) = return_class {
+            debug!("Apply return class {:?} context", return_class.name());
+            let indent = debug_indent();
             // This is kind of a special case. Since __init__ has no return annotation, we simply
             // check if the classes match and then push the generics there.
             let type_var_likes = return_class.type_vars(i_s);
@@ -497,12 +502,19 @@ fn apply_result_context(
                 && !expected.is_any()
                 && matches!(return_class.generics, Generics::NotDefinedYet { .. })
             {
-                if Class::with_self_generics(i_s.db, return_class.node_ref)
+                let r = Class::with_self_generics(i_s.db, return_class.node_ref)
                     .as_type(i_s.db)
                     .is_sub_type_of(i_s, matcher, expected)
-                    .bool()
-                {
-                    matcher.reset_invalid_bounds_of_context(i_s)
+                    .bool();
+                result &= r || {
+                    // Check if any type vars were set, if they were not there is no invalid context that
+                    // matters, it will be type-checked later.
+                    !matcher.has_calculated_type_args()
+                    // One of the union items can be a valid context even if they don't all match
+                    || expected.is_union_like(i_s.db)
+                };
+                if r {
+                    matcher.reset_invalid_bounds_of_context(i_s.db)
                 } else {
                     // Here we reset all bounds, because it did not match.
                     for tv_matcher in &mut matcher.type_var_matchers {
@@ -513,17 +525,26 @@ fn apply_result_context(
                     on_reset_class_type_vars(matcher, return_class)
                 }
             }
+            drop(indent);
+            debug!(
+                "Finished trying to infer class context type arguments: [{}]",
+                matcher.type_var_matchers[0].debug_format(i_s.db)
+            );
         } else if !expected.has_untyped_type_params(i_s.db) {
+            debug!("Apply function return type context");
+            let indent = debug_indent();
             let return_type = func_like.inferred_return_type(i_s);
             // Fill the type var arguments from context
             return_type.is_sub_type_of(i_s, matcher, expected);
-            matcher.reset_invalid_bounds_of_context(i_s)
+            matcher.reset_invalid_bounds_of_context(i_s.db);
+            drop(indent);
+            debug!(
+                "Finished trying to infer func context type arguments: [{}]",
+                matcher.type_var_matchers[0].debug_format(i_s.db)
+            );
         }
-        debug!(
-            "Finished trying to infer context type arguments: [{}]",
-            matcher.type_var_matchers[0].debug_format(i_s.db)
-        );
     });
+    result
 }
 
 fn calc_type_vars_for_func_internal<'db: 'a, 'a>(
@@ -612,6 +633,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
 ) -> CalculatedTypeArgs {
     const INVALID_SELF_TYPE_IN_INIT: &str = "Invalid self type in __init__";
     let mut had_wrong_init_type_var = false;
+    let mut valid_context = true;
     if matcher.has_type_var_matcher() {
         let mut add_init_generics = |matcher: &mut Matcher, return_class: &Class| {
             if let Some(t) = func_like.first_self_or_class_annotation(i_s)
@@ -638,6 +660,14 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
                         add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
                     }
                 }
+                for tv_matcher in &mut matcher.type_var_matchers {
+                    for calc in tv_matcher.calculating_type_args.iter_mut() {
+                        if calc.calculated() {
+                            calc.type_
+                                .set_origin_if_inference(BoundOrigin::InitGenerics);
+                        }
+                    }
+                }
                 if cfg!(debug_assertions) {
                     let args = &matcher
                         .type_var_matchers
@@ -651,14 +681,16 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         if let Some(return_class) = return_class {
             add_init_generics(&mut matcher, return_class)
         }
-        apply_result_context(
+        matcher.is_matching_context = true;
+        valid_context &= apply_result_context_and_return_valid(
             i_s,
             &mut matcher,
             result_context,
             return_class,
             func_like,
             add_init_generics,
-        )
+        );
+        matcher.is_matching_context = false;
     // If there are no TypeVar matchers, we still have to check that the generics for __init__
     // match.
     } else if let Some(return_class) = return_class
@@ -676,7 +708,7 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             add_issue(IssueKind::ArgumentIssue(INVALID_SELF_TYPE_IN_INIT.into()));
         }
     }
-    let matches = check_params(&mut matcher);
+    let mut matches = check_params(&mut matcher);
     let mut result = matcher.into_type_arguments(
         i_s,
         match_in_definition,
@@ -694,6 +726,21 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
         }
         result.matches = SignatureMatch::False { similar: false };
     } else {
+        if !valid_context && matches.bool() {
+            if on_type_error.is_some() {
+                add_issue(IssueKind::ArgumentIssue(
+                    format!(
+                        "The return type for function {} does not match the return context",
+                        func_like
+                            .diagnostic_string(i_s.db)
+                            .as_deref()
+                            .unwrap_or("<unknown>")
+                    )
+                    .into_boxed_str(),
+                ));
+            }
+            matches = SignatureMatch::False { similar: false };
+        }
         result.matches = matches;
     }
     if had_wrong_init_type_var {
@@ -739,7 +786,7 @@ pub(crate) fn match_arguments_against_params<
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
-    let mut missing_unpacked_typed_dict_names: Option<Vec<(StringSlice, bool)>> = None;
+    let mut missing_unpacked_typed_dict_names: Option<Vec<(DbString, bool)>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     // lambdas are analyzed at the end to improve type inference.
@@ -882,7 +929,7 @@ pub(crate) fn match_arguments_against_params<
                     "Mismatch between {:?} and {:?} -> {:?}",
                     value_t.format_short(i_s.db),
                     expected.format_short(i_s.db),
-                    &matches
+                    &m
                 );
                 if let Some(on_type_error) = on_type_error {
                     match reason {
@@ -1131,7 +1178,7 @@ pub(crate) fn match_arguments_against_params<
                                 .named
                                 .iter()
                                 .filter(|m| &m.name != name)
-                                .map(|m| (m.name, m.required))
+                                .map(|m| (m.name.clone(), m.required))
                                 .collect(),
                         );
                     }
@@ -1141,7 +1188,7 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_missing_kw_issue = |param_name| {
+    let add_missing_kw_issue = |param_name: &str| {
         let mut s = format!("Missing named argument {:?}", param_name);
         s += diagnostic_string(" for ").as_deref().unwrap_or("");
         add_issue(IssueKind::ArgumentIssue(s.into()));

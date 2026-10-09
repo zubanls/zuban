@@ -14,7 +14,10 @@ use crate::{
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::SliceType,
-    imports::{ImportResult, namespace_import},
+    imports::{
+        ImportResult, has_binary_extension_submodule, namespace_has_binary_extension_submodule,
+        namespace_import,
+    },
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     match_::Match,
@@ -34,6 +37,73 @@ use crate::{
         LookupDetails, OverloadedFunction,
     },
 };
+
+// This could be Copy, but we want to be aware when it's copied, since the content might cause
+// issues otherwise.
+#[derive(Clone)]
+pub(crate) struct LookupArgs<'db, 'a> {
+    i_s: &'a InferenceState<'db, 'a>,
+    from_file: &'a PythonFile,
+    name: &'a str,
+    kind: LookupKind,
+    add_issue: &'a dyn Fn(IssueKind) -> bool,
+    as_self_instance: Option<&'a dyn Fn() -> Type>,
+}
+
+impl<'db, 'a> LookupArgs<'db, 'a> {
+    pub(crate) fn new(
+        i_s: &'a InferenceState<'db, 'a>,
+        from_file: &'a PythonFile,
+        name: &'a str,
+    ) -> Self {
+        Self {
+            i_s,
+            from_file,
+            name,
+            kind: LookupKind::Normal,
+            add_issue: &|_| false,
+            as_self_instance: None,
+        }
+    }
+
+    fn full(
+        i_s: &'a InferenceState<'db, 'a>,
+        from_file: &'a PythonFile,
+        name: &'a str,
+        lookup_kind: LookupKind,
+        add_issue: &'a dyn Fn(IssueKind) -> bool,
+    ) -> Self {
+        Self {
+            i_s,
+            from_file,
+            name,
+            kind: lookup_kind,
+            add_issue,
+            as_self_instance: None,
+        }
+    }
+
+    pub fn with_add_issue(mut self, add_issue: &'a dyn Fn(IssueKind) -> bool) -> Self {
+        self.add_issue = add_issue;
+        self
+    }
+
+    pub fn with_as_self_instance(mut self, as_self_instance: &'a dyn Fn() -> Type) -> Self {
+        self.as_self_instance = Some(as_self_instance);
+        self
+    }
+
+    pub fn with_kind(mut self, kind: LookupKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    pub fn clone_for_arithmetic(&self) -> Self {
+        let mut new = self.clone();
+        new.as_self_instance = None;
+        new
+    }
+}
 
 impl Type {
     pub(crate) fn lookup(
@@ -70,13 +140,9 @@ impl Type {
     ) -> (LookupResult, AttributeKind) {
         let mut result: Option<(LookupResult, AttributeKind)> = None;
         self.run_after_lookup_on_each_union_member(
-            i_s,
             None,
-            from_file,
-            name,
-            lookup_kind,
+            LookupArgs::full(i_s, from_file, name, lookup_kind, add_issue),
             result_context,
-            add_issue,
             &mut |t, lookup_result| {
                 if matches!(lookup_result.lookup, LookupResult::None) {
                     on_lookup_error(t);
@@ -123,13 +189,9 @@ impl Type {
     #[inline]
     pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
-        i_s: &InferenceState,
         from_inferred: Option<&Inferred>,
-        from_file: &PythonFile,
-        name: &str,
-        kind: LookupKind,
+        args: LookupArgs,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueKind) -> bool,
         callable: &mut dyn FnMut(&Type, LookupDetails),
     ) {
         let options = || {
@@ -138,8 +200,14 @@ impl Type {
                 options = options.with_avoid_inferring_return_types();
             }
             */
-            InstanceLookupOptions::new(add_issue).with_kind(kind)
+            let options = InstanceLookupOptions::new(args.add_issue).with_kind(args.kind);
+            if let Some(as_self_instance) = args.as_self_instance {
+                return options.with_as_self_instance(as_self_instance);
+            }
+            options
         };
+        let i_s = args.i_s;
+        let name = args.name;
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
@@ -174,25 +242,21 @@ impl Type {
 
                 callable(self, l)
             }
-            t @ Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
+            Type::TypeVar(usage) => match usage.type_var.kind(i_s.db) {
                 TypeVarKind::Bound(bound) => {
-                    if let Type::Class(c) = bound {
-                        let inst = Instance::new(c.class(i_s.db), None);
-                        let l =
-                            inst.lookup(i_s, name, options().with_as_self_instance(&|| t.clone()));
-                        callable(self, l)
-                    } else {
-                        bound.run_after_lookup_on_each_union_member(
-                            i_s,
-                            None,
-                            from_file,
-                            name,
-                            kind,
-                            result_context,
-                            add_issue,
-                            callable,
-                        );
-                    }
+                    bound.run_after_lookup_on_each_union_member(
+                        None,
+                        args.with_as_self_instance(&|| self.clone()),
+                        result_context,
+                        &mut |t, lookup| {
+                            if bound.is_union_like(i_s.db) {
+                                // Pass t for better error messages
+                                callable(t, lookup)
+                            } else {
+                                callable(self, lookup)
+                            }
+                        },
+                    );
                 }
                 TypeVarKind::Constraints(_constraints) => {
                     debug!("TODO type var values");
@@ -221,7 +285,7 @@ impl Type {
                     )
                 }
             },
-            Type::Tuple(tup) => callable(self, lookup_on_tuple(tup, i_s, add_issue, name)),
+            Type::Tuple(tup) => callable(self, lookup_on_tuple(tup, i_s, args.add_issue, name)),
             Type::Union(union) => {
                 let ignore_attr_errors = i_s.in_try_that_ignores_attribute_errors();
                 let mut need_recheck = ignore_attr_errors;
@@ -230,13 +294,9 @@ impl Type {
                         continue;
                     }
                     t.run_after_lookup_on_each_union_member(
-                        i_s,
                         None,
-                        from_file,
-                        name,
-                        kind,
+                        args.clone_for_arithmetic(),
                         result_context,
-                        add_issue,
                         &mut |t, lookup| {
                             if ignore_attr_errors {
                                 if lookup.lookup.is_some() {
@@ -257,13 +317,9 @@ impl Type {
                             continue;
                         }
                         t.run_after_lookup_on_each_union_member(
-                            i_s,
                             None,
-                            from_file,
-                            name,
-                            kind,
+                            args.clone_for_arithmetic(),
                             result_context,
-                            add_issue,
                             callable,
                         )
                     }
@@ -271,9 +327,9 @@ impl Type {
             }
             Type::Type(t) => attribute_access_of_type(
                 i_s,
-                &add_issue,
+                &args.add_issue,
                 name,
-                kind,
+                args.kind,
                 result_context,
                 callable,
                 t.clone(),
@@ -288,10 +344,11 @@ impl Type {
                 ),
             ),
             Type::Module(file_index) => {
-                let lookup = i_s
-                    .db
-                    .loaded_python_file(*file_index)
-                    .lookup(i_s.db, add_issue, name);
+                let file = i_s.db.loaded_python_file(*file_index);
+                let mut lookup = file.lookup(i_s.db, args.add_issue, name);
+                if !lookup.is_some() && has_binary_extension_submodule(i_s.db, file, name) {
+                    lookup = LookupResult::any(AnyCause::ModuleNotFound);
+                }
                 let mut attr_kind = AttributeKind::Attribute;
                 if let Some(inf) = lookup.maybe_inferred()
                     && inf.maybe_saved_specific(i_s.db)
@@ -305,7 +362,7 @@ impl Type {
                 self,
                 LookupDetails::new(
                     self.clone(),
-                    lookup_in_namespace(i_s.db, from_file, namespace, name),
+                    lookup_in_namespace(i_s.db, args.from_file, namespace, name),
                     AttributeKind::Attribute,
                 ),
             ),
@@ -329,13 +386,9 @@ impl Type {
                     && matches!(t.as_ref(), Type::Enum(_))
                 {
                     t.run_after_lookup_on_each_union_member(
-                        i_s,
                         None,
-                        from_file,
-                        name,
-                        kind,
+                        args.with_as_self_instance(&|| self.clone()),
                         result_context,
-                        add_issue,
                         callable,
                     );
                     return;
@@ -360,7 +413,7 @@ impl Type {
                     class.lookup(
                         i_s,
                         name,
-                        ClassLookupOptions::new(add_issue)
+                        ClassLookupOptions::new(args.add_issue)
                             .with_super_count(*mro_index)
                             .with_as_type_type(&|| (**bound_to).clone()),
                     )
@@ -369,15 +422,14 @@ impl Type {
                     instance.lookup(
                         i_s,
                         name,
-                        InstanceLookupOptions::new(add_issue)
+                        InstanceLookupOptions::new(args.add_issue)
                             .with_kind(LookupKind::OnlyType)
                             .with_super_count(*mro_index)
-                            .with_disallow_lazy_bound_method()
                             .with_as_self_instance(&|| (**bound_to).clone()),
                     )
                 };
                 if matches!(&l.lookup, LookupResult::None) {
-                    add_issue(IssueKind::UndefinedInSuperclass { name: name.into() });
+                    (args.add_issue)(IssueKind::UndefinedInSuperclass { name: name.into() });
                     callable(self, LookupDetails::any(AnyCause::FromError));
                     return;
                 }
@@ -385,14 +437,14 @@ impl Type {
                 set_is_abstract_from_super(i_s, &mut l);
                 callable(self, l)
             }
-            Type::Dataclass(d) => callable(self, lookup_on_dataclass(d, i_s, add_issue, name)),
+            Type::Dataclass(d) => callable(self, lookup_on_dataclass(d, i_s, args.add_issue, name)),
             Type::TypedDict(td) => callable(
                 self,
-                lookup_on_typed_dict(td.clone(), i_s, add_issue, name, kind),
+                lookup_on_typed_dict(td.clone(), i_s, args.add_issue, name, args.kind),
             ),
             Type::NamedTuple(nt) => callable(
                 self,
-                nt.lookup(i_s, add_issue, name, Some(&|| self.clone())),
+                nt.lookup(i_s, args.add_issue, name, Some(&|| self.clone())),
             ),
             Type::Never(_) => callable(
                 self,
@@ -402,108 +454,53 @@ impl Type {
                     AttributeKind::Attribute,
                 ),
             ),
-            Type::NewType(new_type) => {
-                if let Type::Class(c) = &new_type.type_ {
-                    let l = Instance::new(c.class(i_s.db), None).lookup(
-                        i_s,
-                        name,
-                        options().with_as_self_instance(&|| self.clone()),
-                    );
-                    callable(self, l)
-                } else {
-                    new_type.type_.run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from_file,
-                        name,
-                        kind,
-                        result_context,
-                        add_issue,
-                        callable,
-                    )
-                }
-            }
-            Type::Enum(e) => callable(self, lookup_on_enum_instance(i_s, add_issue, e, name)),
+            Type::NewType(new_type) => new_type.type_.run_after_lookup_on_each_union_member(
+                None,
+                args.with_as_self_instance(&|| self.clone()),
+                result_context,
+                &mut |_, lookup| callable(self, lookup),
+            ),
+            Type::Enum(e) => callable(self, lookup_on_enum_instance(i_s, args.add_issue, e, name)),
             Type::EnumMember(member) => callable(
                 self,
-                lookup_on_enum_member_instance(i_s, add_issue, member, name),
+                lookup_on_enum_member_instance(i_s, args.add_issue, member, name),
             ),
             Type::RecursiveType(r) => r
                 .calculated_type(i_s.db)
-                .run_after_lookup_on_each_union_member(
-                    i_s,
-                    None,
-                    from_file,
-                    name,
-                    kind,
-                    result_context,
-                    add_issue,
-                    callable,
-                ),
+                .run_after_lookup_on_each_union_member(None, args, result_context, callable),
             Type::ParamSpecArgs(_) => i_s
                 .db
                 .python_state
                 .tuple_of_obj
-                .run_after_lookup_on_each_union_member(
-                    i_s,
-                    None,
-                    from_file,
-                    name,
-                    kind,
-                    result_context,
-                    add_issue,
-                    callable,
-                ),
+                .run_after_lookup_on_each_union_member(None, args, result_context, callable),
             Type::ParamSpecKwargs(_) => i_s
                 .db
                 .python_state
                 .dict_of_str_and_obj
-                .run_after_lookup_on_each_union_member(
-                    i_s,
-                    None,
-                    from_file,
-                    name,
-                    kind,
-                    result_context,
-                    add_issue,
-                    callable,
-                ),
+                .run_after_lookup_on_each_union_member(None, args, result_context, callable),
             Type::CustomBehavior(_) => {
                 Type::Callable(i_s.db.python_state.any_callable_from_error.clone())
-                    .run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from_file,
-                        name,
-                        kind,
-                        result_context,
-                        add_issue,
-                        callable,
-                    )
+                    .run_after_lookup_on_each_union_member(None, args, result_context, callable)
             }
             Self::Intersection(i) => {
                 // We need to wrap this in a function, because otherwise the Rust compiler recurses
                 // while trying to create the impls.
                 fn on_intersection(
+                    intersection_t: &Type,
                     i: &Intersection,
-                    i_s: &InferenceState,
-                    from_file: &PythonFile,
-                    add_issue: &dyn Fn(IssueKind) -> bool,
-                    name: &str,
-                    kind: LookupKind,
+                    args: LookupArgs,
                     result_context: &mut ResultContext,
                     callable: &mut dyn FnMut(&Type, LookupDetails),
                 ) {
+                    let add_issue = args.add_issue;
                     i.run_after_lookup_on_each_union_member(
                         &mut |t, add_issue, on_lookup_result| {
                             t.run_after_lookup_on_each_union_member(
-                                i_s,
                                 None,
-                                from_file,
-                                name,
-                                kind,
+                                args.clone_for_arithmetic()
+                                    .with_add_issue(add_issue)
+                                    .with_as_self_instance(&|| intersection_t.clone()),
                                 result_context,
-                                add_issue,
                                 &mut |t, lookup| on_lookup_result(t, lookup),
                             );
                         },
@@ -511,16 +508,7 @@ impl Type {
                         callable,
                     )
                 }
-                on_intersection(
-                    i,
-                    i_s,
-                    from_file,
-                    add_issue,
-                    name,
-                    kind,
-                    result_context,
-                    callable,
-                );
+                on_intersection(self, i, args, result_context, callable);
             }
             Type::DataclassTransformObj(_) => callable(self, LookupDetails::none()),
             Type::LiteralString { .. } => {
@@ -531,7 +519,7 @@ impl Type {
                 );
                 callable(self, l)
             }
-            Type::TypeForm(_) => {
+            Type::TypeForm(_) | Type::Sentinel(_) => {
                 let inst = i_s.db.python_state.object_class().instance();
                 callable(self, inst.lookup(i_s, name, options()))
             }
@@ -663,6 +651,13 @@ impl Type {
             ),
             Type::TypedDict(d) => d.get_item(i_s, slice_type, add_issue),
             Type::Literal(l) => l.fallback_type(i_s.db).get_item_internal(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+                add_issue,
+            ),
+            Type::LiteralString { .. } => i_s.db.python_state.str_type().get_item_internal(
                 i_s,
                 None,
                 slice_type,
@@ -805,6 +800,10 @@ impl Type {
             Type::DataclassTransformObj(d) => {
                 Inferred::from_type(Type::DataclassTransformObj(d.clone()))
             }
+            Type::RecursiveType(t) => {
+                t.calculated_type(i_s.db)
+                    .execute(i_s, None, args, result_context, on_type_error)
+            }
             Type::Self_ => {
                 if let Some(current_type) = i_s.current_type() {
                     current_type.execute(i_s, None, args, result_context, on_type_error)
@@ -895,28 +894,29 @@ impl Type {
         }
     }
 
-    pub fn is_literal_string_only_argument_for_string_percent_formatting(&self) -> bool {
-        fn check(t: &Type, allow_tuples: bool) -> bool {
-            let check_tup_items = |items: &Arc<[Type]>| items.iter().all(|t| check(t, false));
-            match t {
+    pub fn is_literal_string_only_argument_for_string_percent_formatting(
+        &self,
+        db: &Database,
+    ) -> bool {
+        fn check(db: &Database, t: &Type, allow_tuples: bool) -> bool {
+            let check_tup_items = |items: &Arc<[Type]>| items.iter().all(|t| check(db, t, false));
+            t.for_all_in_union(db, &|t| match t {
                 Type::Tuple(tup) if allow_tuples => match &tup.args {
                     TupleArgs::WithUnpack(w) => match &w.unpack {
                         TupleUnpack::TypeVarTuple(_) => false,
                         TupleUnpack::ArbitraryLen(t) => {
-                            check(t, false)
+                            check(db, t, false)
                                 && check_tup_items(&w.before)
                                 && check_tup_items(&w.after)
                         }
                     },
                     TupleArgs::FixedLen(items) => check_tup_items(items),
-                    TupleArgs::ArbitraryLen(t) => check(t, false),
+                    TupleArgs::ArbitraryLen(t) => check(db, t, false),
                 },
-                Type::Union(u) => u.iter().all(|t| check(t, allow_tuples)),
-                Type::Intersection(i) => i.iter_entries().any(|t| check(t, allow_tuples)),
                 _ => t.is_allowed_as_literal_string(true),
-            }
+            })
         }
-        check(self, true)
+        check(db, self, true)
     }
 
     pub fn try_operation_against_literal_string(&self, operand: &str) -> Option<Type> {
@@ -1606,6 +1606,9 @@ fn lookup_in_namespace(
     name: &str,
 ) -> LookupResult {
     let Some(import) = namespace_import(db, from_file, namespace, name) else {
+        if namespace_has_binary_extension_submodule(db, namespace, name) {
+            return LookupResult::any(AnyCause::FromError);
+        }
         return LookupResult::None;
     };
     match import.into_import_result() {
@@ -1613,6 +1616,8 @@ fn lookup_in_namespace(
         ImportResult::Namespace(namespace) => {
             LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
-        ImportResult::PyTypedMissing => LookupResult::any(AnyCause::FromError),
+        ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
+            LookupResult::any(AnyCause::FromError)
+        }
     }
 }

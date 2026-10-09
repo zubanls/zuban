@@ -84,9 +84,9 @@ __main__.py:21: Code Actions:
 1()  # type: ignore [ undefined ]  
 [out]
 __main__:2: error: "int" not callable
-__main__:2: note: Error code "operator" not covered by "type: ignore" comment
+__main__:2: note: Error code "operator" not covered by "type: ignore[undefined]" comment
 __main__:4: error: "int" not callable
-__main__:4: note: Error code "operator" not covered by "type: ignore" comment
+__main__:4: note: Error code "operator" not covered by "type: ignore[undefined]" comment
 __main__.py:2: Code Actions:
 - Add "# type: ignore[operator]": 2:31-2:31 replaced with: ", operator"
 __main__.py:4: Code Actions:
@@ -156,7 +156,7 @@ def goto_or_help_or_infer(request, Script):
     return do
 
 [out]
-__main__:7: error: "Callable[[Any, VarArg(Any), KwArg(Any)], Any]" has no attribute "type"
+__main__:7: error: "def do(code: Any, *args: Any, **kwargs: Any) -> Any" has no attribute "type"
 __main__.py:7: Code Actions:
 - Add "# type: ignore[attr-defined]": 7:27-7:27 replaced with: "  # type: ignore[attr-defined]"
 - Add "# zuban: ignore[attr-defined]": 7:27-7:27 replaced with: "  # zuban: ignore[attr-defined]"

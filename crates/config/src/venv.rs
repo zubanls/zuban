@@ -25,7 +25,7 @@ impl Settings {
         self.try_to_find_environment_if_not_defined(vfs_handler, base_directory, lookup_env_var);
     }
 
-    pub fn try_to_find_environment_if_not_defined(
+    fn try_to_find_environment_if_not_defined(
         &mut self,
         vfs_handler: &dyn VfsHandler,
         base_directory: &AbsPath,

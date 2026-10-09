@@ -5,13 +5,13 @@ use parsa_python_cst::Name;
 
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
+use crate::recoverable_error;
 use crate::{
     database::{Specific, TypeAlias},
     diagnostics::IssueKind,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    node_ref::NodeRef,
     result_context::ResultContext,
     type_::{Dataclass, NamedTuple, Type, TypeVarLike, TypedDict},
     type_helpers::Class,
@@ -23,8 +23,7 @@ macro_rules! maybe_compute_new_type_alias_definition {
             ResultContext::AssignmentNewDefinition {
                 assignment_definition,
             } => {
-                let node_ref = NodeRef::from_link($self.i_s.db, *assignment_definition);
-                let assignment = node_ref.expect_assignment();
+                let assignment = assignment_definition.as_node($self.i_s.db);
                 return $self.compute_explicit_type_assignment(assignment);
             }
             _ => (),
@@ -248,7 +247,10 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     compute_get_item_on_flexible_alias(slice_type)
                 )
             }
-            _ => unreachable!("{:?}", specific),
+            _ => {
+                recoverable_error!("Got unexpected type application: {specific:?}");
+                Inferred::new_any_from_error()
+            }
         };
         Inferred::from_type(self.i_s.db.python_state.typing_special_form_type())
     }

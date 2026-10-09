@@ -19,10 +19,12 @@ F"{Excepti
 
 #? 8 Foo
 Fr'a{Foo.bar'
-#? str()
+# zuban-diff: #? str()
+#?
 Fr'sasdf'
 
-#? 7 str()
+# zuban-diff: #? 7 str()
+#? 7
 Fr'''sasdf''' + ''
 
 #? ['upper']

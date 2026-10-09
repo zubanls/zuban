@@ -1,0 +1,23 @@
+[case protocol_matching_star_import_should_not_crash]
+# flags: --mode default
+# From GH #584
+from typing import *
+from abc import ABCMeta, abstractmethod
+
+
+def f() -> tuple[SupportsFloat] | tuple[int]:
+    pass
+
+Tuple, *_ = f()
+
+[case nested_classes_with_star_import]
+# From GH #586
+import os
+from typing import *
+
+def norm_sep(path: os.PathLike):
+    return os.fspath(path)
+
+class C:
+    class D(AnyStr):  # E: Invalid base class "AnyStr"
+        pass

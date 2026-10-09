@@ -242,7 +242,7 @@ for i in range(1):
     i
 
 for key, value in [(1,2)]:
-    #! ['for ke", "alue in [(", ")]: key']
+    #! ["for key, value in [(1,2)]:"]
     key
 
 #! 4 ['for y in [1]:']

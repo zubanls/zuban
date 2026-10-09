@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, FunctionKind,
@@ -6,13 +6,12 @@ use super::{
     ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType, PropertySetter, RecursiveType,
     StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypedDict,
-    TypedDictGenerics, UnionEntry, UnionType, callable::add_param_spec_to_params,
-    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId,
+    TypedDictGenerics, UnionType, callable::add_param_spec_to_params, type_var_likes::CallableId,
 };
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::{AnyCause, PropertySetterType, TupleUnpack, WithUnpack},
+    type_::{AnyCause, PropertySetterType, TupleUnpack, TypeGatherer, WithUnpack},
     utils::arc_slice_into_vec,
 };
 
@@ -50,19 +49,49 @@ where
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
+    ) -> Cow<'_, Self>
+    where
+        Self: Clone,
+    {
+        if let Some(r) = self.maybe_replace_type_var_likes_and_self(db, callable, replace_self) {
+            Cow::Owned(r)
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
+    fn maybe_replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
     ) -> Option<Self>;
 
     fn replace_type_var_likes(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
-    ) -> Option<Self> {
-        self.replace_type_var_likes_and_self(db, callable, &|| None)
+    ) -> Cow<'_, Self>
+    where
+        Self: Clone,
+    {
+        if let Some(r) = self.maybe_replace_type_var_likes_and_self(db, callable, &|| None) {
+            Cow::Owned(r)
+        } else {
+            Cow::Borrowed(self)
+        }
     }
 
-    fn replace_self_if_necessary(self, db: &Database, replace_self: ReplaceSelf) -> Self {
-        self.replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
-            .unwrap_or(self)
+    fn maybe_replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+    ) -> Option<Self> {
+        self.maybe_replace_type_var_likes_and_self(db, callable, &|| None)
+    }
+
+    fn maybe_replace_self(&self, db: &Database, replace_self: ReplaceSelf) -> Option<Self> {
+        self.maybe_replace_type_var_likes_and_self(db, &mut |_| None, replace_self)
     }
 }
 
@@ -77,7 +106,7 @@ impl Type {
     }
 
     pub fn replace_unknown_type_params_with_any(&self, db: &Database) -> Option<Self> {
-        self.replace_type_var_likes(db, &mut |usage| {
+        self.maybe_replace_type_var_likes(db, &mut |usage| {
             usage
                 .as_type_var_like()
                 .is_untyped()
@@ -195,11 +224,8 @@ impl Type {
                 })?),
             )),
             Type::Union(u) => Some(Type::Union(UnionType::new(
-                maybe_replace_iterable(u.entries.iter(), |union_entry| {
-                    Some(UnionEntry {
-                        type_: union_entry.type_.replace_internal(replacer)?,
-                        format_index: union_entry.format_index,
-                    })
+                maybe_replace_iterable(u.iter(), |union_entry| {
+                    union_entry.replace_internal(replacer)
                 })?,
                 u.might_have_type_vars,
             ))),
@@ -270,13 +296,32 @@ impl Type {
             | Type::DataclassTransformObj(_)
             | Type::ParamSpecArgs(_)
             | Type::ParamSpecKwargs(_)
+            | Type::Sentinel(_)
             | Type::LiteralString { .. } => None,
         }
+    }
+
+    pub fn maybe_erase_type_var_likes(
+        &self,
+        db: &Database,
+        replace_self: ReplaceSelf,
+    ) -> Option<Self> {
+        self.maybe_replace_type_var_likes_and_self(
+            db,
+            &mut |u| Some(u.as_any_generic_item()),
+            replace_self,
+        )
+    }
+
+    pub fn erase_type_var_likes(&self, db: &Database, replace_self: ReplaceSelf) -> Cow<'_, Self> {
+        self.maybe_erase_type_var_likes(db, replace_self)
+            .map(Cow::Owned)
+            .unwrap_or(Cow::Borrowed(self))
     }
 }
 
 impl ReplaceTypeVarLikes for Type {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -350,7 +395,7 @@ impl GenericItem {
     }
 
     pub fn resolve_recursive_defaults_or_set_any(self, db: &Database) -> Self {
-        self.replace_type_var_likes_and_self(
+        self.maybe_replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
@@ -366,7 +411,7 @@ impl GenericItem {
     }
 
     pub fn resolve_recursive_defaults_or_set_never(self, db: &Database) -> Self {
-        self.replace_type_var_likes_and_self(
+        self.maybe_replace_type_var_likes_and_self(
             db,
             &mut |usage| {
                 let tvl_found = usage.as_type_var_like();
@@ -383,7 +428,7 @@ impl GenericItem {
 }
 
 impl ReplaceTypeVarLikes for GenericItem {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -415,10 +460,10 @@ impl CallableContent {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         let new_param_data = self.params.replace_internal(replacer, &mut None, None);
         let new_return_type = self.return_type.replace_internal(replacer);
-        let new_guard = match &self.guard {
-            None => Some(None),
-            Some(g) => g.replace_internal(replacer).map(Some),
-        };
+        let new_guard = self
+            .guard
+            .as_ref()
+            .and_then(|g| g.replace_internal(replacer));
         if new_guard.is_none() && new_param_data.is_none() && new_return_type.is_none() {
             return None;
         }
@@ -429,7 +474,7 @@ impl CallableContent {
             defined_at: self.defined_at,
             kind: self.kind.clone(),
             type_vars: self.type_vars.clone(),
-            guard: new_guard.unwrap_or_else(|| self.guard.clone()),
+            guard: new_guard.or_else(|| self.guard.clone()),
             is_abstract: self.is_abstract,
             is_abstract_from_super: self.is_abstract_from_super,
             is_final: self.is_final,
@@ -457,13 +502,11 @@ impl CallableContent {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> CallableContent {
+    ) -> Option<CallableContent> {
         let replacer = &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self);
-        if let Some(c) = replacer.replace_callable_without_rc(self) {
-            return c;
-        }
-        self.replace_internal(replacer)
-            .unwrap_or_else(|| self.clone())
+        replacer
+            .replace_callable_without_rc(self)
+            .or_else(|| self.replace_internal(replacer))
     }
 }
 
@@ -649,7 +692,7 @@ impl CallableParams {
 }
 
 impl ReplaceTypeVarLikes for CallableParams {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -691,23 +734,25 @@ fn replace_param_spec_internal(
         if let Some(in_definition) = in_definition {
             let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
             *replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
-            let new_params = new.params.replace_type_var_likes_and_self(
-                db,
-                &mut |usage| {
-                    replace_param_spec_inner_type_var_likes(
-                        usage,
-                        in_definition,
-                        replace_data.unwrap(),
-                    )
-                },
-                replace_self,
-            );
+            new.params = new
+                .params
+                .replace_type_var_likes_and_self(
+                    db,
+                    &mut |usage| {
+                        replace_param_spec_inner_type_var_likes(
+                            usage,
+                            in_definition,
+                            replace_data.unwrap(),
+                        )
+                    },
+                    replace_self,
+                )
+                .into_owned();
             if let Some(type_vars) = type_vars.as_mut() {
                 type_vars.extend(new_spec_type_vars.type_vars.as_vec());
             } else {
                 *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
             }
-            new.params = new_params.unwrap_or_else(|| new.params.clone());
         } else {
             debug_assert!(type_vars.is_none());
         }
@@ -780,7 +825,7 @@ impl TupleArgs {
 }
 
 impl ReplaceTypeVarLikes for TupleArgs {
-    fn replace_type_var_likes_and_self(
+    fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: ReplaceTypeVarLike,
@@ -854,10 +899,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
             .params
             .replace_internal(self, &mut type_vars, Some(c.defined_at));
         let new_return_type = c.return_type.replace_internal(self);
-        let new_guard = match &c.guard {
-            None => Some(None),
-            Some(g) => g.replace_internal(self).map(Some),
-        };
+        let new_guard = c.guard.as_ref().and_then(|g| g.replace_internal(self));
         let new_kind = c.kind.replace_internal(self);
         if new_param_data.is_none()
             && new_return_type.is_none()
@@ -877,7 +919,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
                     },
                     self.replace_self,
                 )
-                .unwrap_or_else(|| return_type.clone());
+                .into_owned()
         }
         Some(CallableContent {
             name: c.name.clone(),
@@ -887,7 +929,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
             type_vars: type_vars
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| self.db.python_state.empty_type_var_likes.clone()),
-            guard: new_guard.unwrap_or_else(|| c.guard.clone()),
+            guard: new_guard.or_else(|| c.guard.clone()),
             is_abstract: c.is_abstract,
             is_abstract_from_super: c.is_abstract_from_super,
             is_final: c.is_final,
@@ -906,35 +948,13 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 if !u.might_have_type_vars {
                     return Some(None);
                 }
-                let mut new_entries: Vec<_> = maybe_replace_iterable(u.entries.iter(), |u| {
-                    Some(UnionEntry {
-                        // Performance: It is a bit questionable that this always clones.
-                        // The problem is that if it doesn't, we won't use simplified union
-                        // logic in all cases.
-                        // Perhaps we should find a way to check whether this we are in a
-                        // simplified union case. But this is generally tricky. And might
-                        // also intensify workloads.
-                        type_: u.type_.replace_internal(self)?,
-                        format_index: u.format_index,
-                    })
-                })?;
+                let new_entries: TypeGatherer =
+                    maybe_replace_iterable(u.entries.iter(), |u| Some(u.replace_internal(self)?))?;
                 Some(Some(if self.simplify_unions {
                     let i_s = InferenceState::new_in_unknown_file(self.db);
-                    let highest_union_format_index = new_entries
-                        .iter()
-                        .map(|e| e.type_.highest_union_format_index())
-                        .max()
-                        .unwrap();
-                    simplified_union_from_iterators_with_format_index(
-                        &i_s,
-                        new_entries.iter().map(|e| (e.format_index, &e.type_)),
-                        highest_union_format_index,
-                    )
+                    Type::simplified_union_from_iterators(&i_s, new_entries.iter())
                 } else {
-                    let mut seen = HashSet::new();
-                    // Try to remove duplicates
-                    new_entries.retain(|entry| seen.insert(entry.type_.clone()));
-                    Type::from_union_entries(new_entries, true)
+                    new_entries.into_type_without_simple_duplicates()
                 }))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
@@ -948,7 +968,10 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 GenericItem::TypeArgs(_) => unreachable!(),
                 GenericItem::ParamSpecArg(_) => unreachable!(),
             },
-            Type::Self_ => Some((self.replace_self)()),
+            Type::Self_ => {
+                let replaced = (self.replace_self)()?;
+                (replaced != Type::Self_).then_some(Some(replaced))
+            }
             _ => None,
         }
     }

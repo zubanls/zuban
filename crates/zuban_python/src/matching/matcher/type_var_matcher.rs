@@ -5,23 +5,21 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     debug,
-    format_data::{FormatData, ParamsStyle},
     inference_state::InferenceState,
     match_::Match,
-    matching::MatcherFormatResult,
+    matching::matcher::bound::{BoundInfo, BoundOrigin},
     recoverable_error,
     type_::{
         AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarUsage, Variance,
     },
-    utils::join_with_commas,
+    utils::{debug_indent, join_with_commas},
 };
 
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatingTypeArg {
     pub(super) type_: Bound,
     pub(super) unresolved_transitive_constraints: Vec<Bound>,
-    pub(super) defined_by_result_context: bool,
     pub(super) uninferrable: bool,
     pub(super) has_any_in_context: bool,
 }
@@ -32,7 +30,6 @@ impl CalculatingTypeArg {
     }
 
     pub fn merge_full(&mut self, i_s: &InferenceState, other: Self) -> Match {
-        self.defined_by_result_context |= other.defined_by_result_context;
         self.merge(i_s, other.type_)
     }
 
@@ -40,7 +37,6 @@ impl CalculatingTypeArg {
         if self.type_ == other {
             return Match::new_true();
         }
-        let mut m = Match::new_true();
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
                 let any = other.maybe_any();
@@ -54,27 +50,26 @@ impl CalculatingTypeArg {
             }
             return Match::new_true();
         }
+
         let (t, variance) = match other {
             Bound::Upper(t) => (t, Variance::Contravariant),
             Bound::Lower(t) => (t, Variance::Covariant),
             Bound::Invariant(t) => (t, Variance::Invariant),
-            Bound::UpperAndLower(upper, t) => {
-                m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
-                (t, Variance::Covariant)
+            Bound::UpperAndLower(upper, lower) => {
+                debug!("Trying to merge the upper bound first, because there's upper and lower");
+                let _indent = debug_indent();
+                let m = self.merge_or_mismatch(i_s, upper, Variance::Contravariant);
+                return m & self.merge_or_mismatch(i_s, lower, Variance::Covariant);
             }
             Bound::Uncalculated { .. } => return Match::new_true(),
         };
-        let m = m & self.merge_or_mismatch(i_s, t, variance);
-        if !m.bool() && !self.defined_by_result_context {
-            self.uninferrable = true;
-        }
-        m
+        self.merge_or_mismatch(i_s, t, variance)
     }
 
     fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
-        other: BoundKind,
+        other: BoundInfo,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
@@ -109,61 +104,76 @@ impl CalculatingTypeArg {
         } else {
             // If we are not between the lower and upper bound, but the value is co or
             // contravariant, it can still be valid.
-            match variance {
+            let m = match variance {
                 Variance::Invariant => matches,
                 Variance::Covariant => match &mut self.type_ {
                     Bound::Lower(t) => {
-                        let m = t.is_simple_super_type_of(i_s, &other);
-                        if let Some(new) = t.common_base_type(i_s, &other) {
+                        if let Some(new) = t.common_base_type(i_s, &other, i_s.flags().use_joins) {
                             *t = new;
                             Match::new_true()
                         } else {
-                            m
+                            t.is_simple_super_type_of(i_s, &other)
                         }
                     }
                     Bound::Invariant(t) => t.is_simple_super_type_of(i_s, &other),
                     Bound::Upper(_) => matches,
                     Bound::UpperAndLower(upper, lower) => {
-                        let m = lower.is_simple_super_type_of(i_s, &other);
-                        if let Some(new) = lower.common_base_type(i_s, &other)
+                        if let Some(new) = lower.common_base_type(i_s, &other, false)
                             && upper.is_simple_super_type_of(i_s, &new).bool()
                         {
                             *lower = new;
                             return Match::new_true();
                         }
-                        m
+                        matches
                     }
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
                 Variance::Contravariant => match &mut self.type_ {
                     Bound::Upper(t) => {
-                        let m = t.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = t.common_sub_type(i_s, &other) {
                             *t = new;
                             Match::new_true()
                         } else {
-                            m
+                            t.is_simple_sub_type_of(i_s, &other)
                         }
                     }
                     Bound::Invariant(t) => t.is_simple_sub_type_of(i_s, &other),
                     Bound::UpperAndLower(upper, lower) => {
-                        let m = upper.is_simple_sub_type_of(i_s, &other);
                         if let Some(new) = upper.common_sub_type(i_s, &other)
                             && lower.is_simple_sub_type_of(i_s, &new).bool()
                         {
                             *upper = new;
                             return Match::new_true();
                         }
-                        m
+                        matches
                     }
                     Bound::Lower(_) => matches,
                     Bound::Uncalculated { .. } => unreachable!(),
                 },
+            };
+            if !m.bool() {
+                let origin = match &self.type_ {
+                    Bound::Invariant(b) | Bound::Upper(b) | Bound::Lower(b) => b.origin,
+                    Bound::UpperAndLower(upper, lower) => {
+                        // TODO Here we have two potential origins so we should pick one in a
+                        // better way.
+                        if upper.origin == lower.origin {
+                            upper.origin
+                        } else {
+                            BoundOrigin::Inference
+                        }
+                    }
+                    Bound::Uncalculated { .. } => unreachable!(),
+                };
+                if !matches!(origin, BoundOrigin::Context) {
+                    self.uninferrable = true;
+                }
             }
+            m
         }
     }
 
-    fn update_upper_bound(&mut self, upper: BoundKind) {
+    fn update_upper_bound(&mut self, upper: BoundInfo) {
         self.type_ = match &self.type_ {
             Bound::Upper(_) => Bound::Upper(upper),
             Bound::Lower(lower) => {
@@ -184,14 +194,15 @@ impl CalculatingTypeArg {
         };
     }
 
-    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundKind) {
-        let common = |b: &BoundKind, lower: BoundKind| {
-            b.common_base_type(i_s, &lower).unwrap_or_else(|| {
-                recoverable_error!(
-                    "Why is there no common base type when matching happened before?"
-                );
-                lower
-            })
+    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: BoundInfo) {
+        let common = |b: &BoundInfo, lower: BoundInfo| {
+            b.common_base_type(i_s, &lower, i_s.flags().use_joins)
+                .unwrap_or_else(|| {
+                    recoverable_error!(
+                        "Why is there no common base type when matching happened before?"
+                    );
+                    lower
+                })
         };
         self.type_ = match &self.type_ {
             Bound::Lower(old) => Bound::Lower(common(old, lower)),
@@ -232,6 +243,17 @@ impl CalculatingTypeArg {
                 }
             })
     }
+
+    pub fn maybe_calculated(&self) -> Option<&BoundInfo> {
+        match &self.type_ {
+            Bound::Uncalculated { .. } => None,
+            Bound::Invariant(t)
+            | Bound::Upper(t)
+            // TODO we're not using the lower bound here
+            | Bound::UpperAndLower(t, _)
+            | Bound::Lower(t) => Some(t),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -268,7 +290,14 @@ impl TypeVarMatcher {
             if usage.in_definition() == self.match_in_definition {
                 let temporary_matcher_id = usage.temporary_matcher_id();
                 if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {
-                    let current = &mut self.calculating_type_args[usage.index().as_usize()];
+                    let Some(current) =
+                        self.calculating_type_args.get_mut(usage.index().as_usize())
+                    else {
+                        recoverable_error!(
+                            "Wanted to set a TypeVar to Any that does not exist, matcher={matcher_index}"
+                        );
+                        return;
+                    };
                     if current.calculated() {
                         if let Bound::Upper(upper) = &current.type_ {
                             // This is a bit of a special case, but happens typically when the
@@ -277,7 +306,7 @@ impl TypeVarMatcher {
                             // upper bound instead of the correct Any lower bound.
                             current.type_ = Bound::UpperAndLower(
                                 upper.clone(),
-                                BoundKind::new_any(&usage.as_type_var_like(), cause),
+                                BoundKind::new_any(&usage.as_type_var_like(), cause).into(),
                             )
                         }
                     } else {
@@ -296,6 +325,14 @@ impl TypeVarMatcher {
         variance: Variance,
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
+        debug!(
+            "Try to add TypeVar #{}/{} for {:?}: {:?}",
+            type_var_usage.temporary_matcher_id,
+            type_var_usage.index.as_usize(),
+            type_var_usage.type_var.format_short(i_s.db),
+            value_type.format_short(i_s.db)
+        );
+        let indent = debug_indent();
         let Some(current) = self
             .calculating_type_args
             .get_mut(type_var_usage.index.as_usize())
@@ -362,24 +399,27 @@ impl TypeVarMatcher {
                 }
             }
         }
-        current.merge(
+        let m = current.merge(
             i_s,
-            Bound::new(BoundKind::TypeVar(value_type.clone()), variance),
-        )
+            Bound::new(BoundKind::TypeVar(value_type.clone()).into(), variance),
+        );
+        drop(indent);
+        debug!(
+            "TypeVars after changing {:?} (#{}/{}) are now: [{}]",
+            type_var_usage.type_var.format_short(i_s.db),
+            type_var_usage.temporary_matcher_id,
+            type_var_usage.index.as_usize(),
+            self.debug_format(i_s.db),
+        );
+        m
     }
 
     pub fn debug_format(&self, db: &Database) -> String {
-        join_with_commas(self.calculating_type_args.iter().map(|arg| {
-            let formatted = arg.type_.format_with_fallback(
-                &FormatData::new_short(db),
-                ParamsStyle::CallableParams,
-                |_| MatcherFormatResult::Str("?".into()),
-            );
-            let MatcherFormatResult::Str(s) = formatted else {
-                unreachable!()
-            };
-            s
-        }))
+        join_with_commas(
+            self.calculating_type_args
+                .iter()
+                .map(|arg| arg.type_.debug_format(db)),
+        )
     }
 
     pub fn into_generics_list(self, db: &Database, avoid_implicit_literals: bool) -> GenericsList {
@@ -415,7 +455,9 @@ fn check_constraints<'x>(
                 .clone()
                 .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
         }) {
-            return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
+            return Ok(Bound::Invariant(
+                BoundKind::TypeVar(value_type.clone()).into(),
+            ));
         } else {
             return Err(());
         }
@@ -427,19 +469,23 @@ fn check_constraints<'x>(
             if matched_constraint.is_some() {
                 // This means that any is involved and multiple constraints
                 // are matching. Therefore just return Any.
-                return Ok(Bound::Invariant(BoundKind::TypeVar(Type::Any(
-                    AnyCause::Todo,
-                ))));
+                return Ok(Bound::Invariant(
+                    BoundKind::TypeVar(Type::Any(AnyCause::Todo)).into(),
+                ));
             }
-            if value_type.has_any(i_s) {
+            if value_type.has_any(i_s.db) {
                 matched_constraint = Some(constraint);
             } else {
-                return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+                return Ok(Bound::Invariant(
+                    BoundKind::TypeVar(constraint.clone()).into(),
+                ));
             }
         }
     }
     if let Some(constraint) = matched_constraint {
-        return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
+        return Ok(Bound::Invariant(
+            BoundKind::TypeVar(constraint.clone()).into(),
+        ));
     }
     Err(())
 }

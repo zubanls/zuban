@@ -46,13 +46,26 @@ impl Type {
         // In mypy this is called `is_overlapping_types` and it basically ignores variance and a
         // lot of other concepts to tell use whether two types have any relationship at all.
         // e.g. list[A | B] and list[B | C] overlap.
-        if let Type::Union(union) = self {
-            return union.iter().any(|t| t.overlaps(i_s, matcher, other));
+        match self {
+            Type::Union(union) => {
+                return union.iter().any(|t| t.overlaps(i_s, matcher, other));
+            }
+            Type::Intersection(intersection1) => {
+                return intersection1
+                    .iter_entries()
+                    .any(|t| t.overlaps(i_s, matcher, other));
+            }
+            _ => (),
         }
 
         match other {
             Type::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t));
+            }
+            Type::Intersection(intersection2) => {
+                return intersection2
+                    .iter_entries()
+                    .any(|t| self.overlaps(i_s, matcher, t));
             }
             Type::Any(_) => return true, // This is a fallback
             Type::TypedDict(td) if td.overlaps(i_s, matcher, other, self) => return true,

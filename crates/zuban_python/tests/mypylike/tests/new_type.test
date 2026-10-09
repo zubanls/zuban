@@ -112,3 +112,26 @@ _: type = UserId  # E: Incompatible types in assignment (expression has type "ty
 
 a: Type[Any] = UserId  # E: Incompatible types in assignment (expression has type "type[UserId]", variable has type "type[Any]")
 b: Type[UserId] = UserId  # E: Incompatible types in assignment (expression has type "type[UserId]", variable has type "type[UserId]")
+
+[case new_type_as_callable]
+# From GH #386
+from typing import Callable, NewType, TypeVar, assert_type
+
+T = TypeVar("T")
+
+class Other:
+    def __init__(self, s: str): ...
+
+BillingInvoiceItemId = NewType("BillingInvoiceItemId", str)
+SimpleOther = NewType("SimpleOther", Other)
+NoString = NewType("NoString", object)
+
+def accepts_callable(factory: Callable[[str], T]) -> T:
+    return factory("value")
+
+result = accepts_callable(BillingInvoiceItemId)
+assert_type(result, BillingInvoiceItemId)
+result2 = accepts_callable(SimpleOther)
+assert_type(result2, SimpleOther)
+result3 = accepts_callable(NoString)  # E: Argument 1 to "accepts_callable" has incompatible type "type[NoString]"; expected "Callable[[str], NoString]"
+assert_type(result3, NoString)

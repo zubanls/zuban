@@ -10,11 +10,11 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
     InputPosition,
-    database::{ClassKind, Database, ParentScope, PointKind},
+    database::{ClassKind, ComplexPoint, Database, ParentScope, PointKind, PyTypedMissing},
     debug,
     file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile, is_reexport_issue},
     goto::{
-        FollowImportResult, PositionalDocument, try_to_follow_imports, unpack_union_types,
+        FollowImportResultKind, PositionalDocument, try_to_follow_imports, unpack_union_types,
         with_i_s_non_self,
     },
     imports::{ImportResult, global_import},
@@ -32,6 +32,7 @@ use crate::{
         FunctionKind, Namespace, ParamType, Type, TypedDict,
     },
     type_helpers::{Class, Function, TypeOrClass, is_private},
+    utils::{debug_indent, is_magic_method},
 };
 
 struct CompletionInfo<'db> {
@@ -57,14 +58,8 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
     ) -> anyhow::Result<Self> {
         let cursor_position = file.line_column_to_byte(pos)?;
         let (scope, node, rest) = file.tree.completion_node(cursor_position.byte);
-        let result = file.ensure_calculated_diagnostics(db);
-        debug!(
-            "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
-            file.file_path(db),
-            rest.as_code()
-        );
-        debug_assert!(result.is_ok());
-        Ok(Self {
+
+        let doc = Self {
             db,
             file,
             scope,
@@ -74,7 +69,14 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
                 cursor_position,
             }
             .fix_for_invalid_columns(),
-        })
+        };
+        doc.ensure_scope_diagnostics();
+        debug!(
+            "Complete on position {}->{pos:?} on leaf {node:?} with rest {:?}",
+            file.file_path(db),
+            rest.as_code()
+        );
+        Ok(doc)
     }
 }
 
@@ -87,7 +89,7 @@ pub(crate) struct CompletionResolver<'db, C, T> {
     replace_range: Range<'db>,
 }
 
-impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db, C, T> {
+impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db, C, T> {
     pub fn complete(
         db: &'db Database,
         file: &'db PythonFile,
@@ -99,6 +101,20 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             "completions for {} position {position:?}",
             file.file_path(db)
         ));
+        let _indent = debug_indent();
+        let mut slf =
+            Self::complete_inner(db, file, position, filter_with_name_under_cursor, on_result)?;
+        slf.items.sort_by_key(|item| item.0);
+        Ok(slf.items.into_iter().map(|(_, item)| item).collect())
+    }
+
+    fn complete_inner(
+        db: &'db Database,
+        file: &'db PythonFile,
+        position: InputPosition,
+        filter_with_name_under_cursor: bool,
+        on_result: C,
+    ) -> anyhow::Result<Self> {
         let infos = PositionalDocument::for_completion(db, file, position)?;
         let replace_range = (
             file.byte_to_position_infos(db, infos.node.rest.start()),
@@ -116,8 +132,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             slf.should_start_with_lowercase = Some(slf.infos.node.rest.as_code().to_lowercase());
         }
         slf.fill_items();
-        slf.items.sort_by_key(|item| item.0);
-        Ok(slf.items.into_iter().map(|(_, item)| item).collect())
+        Ok(slf)
     }
 
     fn fill_items(&mut self) {
@@ -125,25 +140,25 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         let db = self.infos.db;
         match &self.infos.node.node {
             CompletionNode::Attribute { base } => {
-                let inf = self.infos.infer_primary_or_atom(*base);
+                let inf = self.infos.infer_primary_or_atom_with_heuristics(*base);
                 self.add_attribute_completions(inf)
             }
             CompletionNode::Global { context } => {
                 match context {
                     Some(CompletionContext::PrimaryCall { base, args }) => {
                         self.add_keyword_param_completions(
-                            self.infos.infer_primary_or_atom(*base),
+                            self.infos.infer_primary_or_atom_with_heuristics(*base),
                             *args,
                         );
                     }
                     Some(CompletionContext::PrimaryTargetCall { base, args }) => {
-                        if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
-                            self.add_keyword_param_completions(inf, *args);
-                        }
+                        let inf = self.infos.infer_primary_target_or_atom(*base);
+                        self.add_keyword_param_completions(inf, *args);
                     }
                     None => (),
                 }
-                self.add_scope_completions()
+                self.add_scope_completions();
+                self.add_simple_name_completions()
             }
             CompletionNode::ImportName { path: None } => self.add_global_import_completions(),
             CompletionNode::ImportName {
@@ -168,15 +183,14 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                                 i_s.db,
                                 *dots,
                                 *base,
-                                |_| false,
+                                || (),
                             )
                     }))
                 }
             }
             CompletionNode::PrimaryTarget { base } => {
-                if let Some(inf) = self.infos.infer_primary_target_or_atom(*base) {
-                    self.add_attribute_completions(inf)
-                }
+                let inf = self.infos.infer_primary_target_or_atom(*base);
+                self.add_attribute_completions(inf)
             }
             CompletionNode::ImportFromTarget { base, dots } => {
                 let inf = self.infos.infer_dotted_import_name(*dots, *base);
@@ -221,18 +235,37 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             }
             CompletionNode::AfterDefKeyword => (),
             CompletionNode::AfterClassKeyword => (),
+            CompletionNode::InsideComment {
+                comment_start,
+                comment,
+            } => {
+                let comment_start = *comment_start + 1; // Don't include the hashtag
+                let subfile = file.ensure_sub_file(db, comment_start, Cow::Borrowed(comment), true);
+                match CompletionResolver::complete_inner(
+                    db,
+                    subfile,
+                    InputPosition::NthUTF8Byte(
+                        (self.infos.node.cursor_position.byte - comment_start) as usize,
+                    ),
+                    self.should_start_with_lowercase.is_some(),
+                    &self.on_result as &dyn Fn(Range, &dyn Completion) -> Option<T>,
+                ) {
+                    Ok(slf) => self.items.extend(slf.items),
+                    Err(err) => debug!("Error for completions inside comment: {err}"),
+                }
+            }
             CompletionNode::InsideString => (),
             CompletionNode::InsideSquareBraces {
                 maybe_dict_node,
                 quote_state,
             } => {
                 let qs = quote_state.to_owned();
-                let inf = self.infos.infer_primary_or_atom(*maybe_dict_node);
+                let inf = self.infos.infer_primary_or_atom_with_heuristics(*maybe_dict_node);
                 with_i_s_non_self(db, file, self.infos.scope, |i_s| {
                     let t: &Type = &inf.as_cow_type(i_s);
                     match t {
                         Type::TypedDict(type_dict) => {
-                            self.add_typed_dict_completions(type_dict, &qs);
+                            self.add_typed_dict_completions(&type_dict, &qs);
                         }
                         _ => (),
                     }
@@ -253,7 +286,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
             match scope {
                 Scope::Module => self.add_global_module_completions(file),
                 Scope::Class(cls) => {
-                    let storage = ClassNodeRef::new(file, cls.index()).class_storage();
+                    let storage = ClassNodeRef::new(file, cls).class_storage();
                     for (_, node_index) in storage.class_symbol_table.iter() {
                         self.maybe_add_tree_name(
                             file,
@@ -327,6 +360,44 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         if is_without_quotes {
             self.add_scope_completions();
         }
+    }
+
+    fn add_simple_name_completions(&mut self) {
+        let file = self.infos.file;
+        let reachable_scopes = &mut ScopesIterator {
+            file,
+            only_reachable: true,
+            current: Some(self.infos.scope),
+        };
+        for scope in reachable_scopes {
+            match scope {
+                Scope::Module => self.add_global_module_completions(file),
+                Scope::Class(cls) => {
+                    let storage = ClassNodeRef::new(file, cls).class_storage();
+                    for (_, node_index) in storage.class_symbol_table.iter() {
+                        self.maybe_add_tree_name(
+                            file,
+                            scope,
+                            NameDef::by_index(&file.tree, node_index - NAME_DEF_TO_NAME_DIFFERENCE),
+                            true,
+                        )
+                    }
+                    self.add_star_imports_completions(file, cls.index(), &mut Default::default())
+                }
+                Scope::Function(func) => {
+                    func.on_name_def_in_scope(&mut |name_def| {
+                        self.maybe_add_tree_name(file, scope, name_def, false)
+                    });
+                    self.add_star_imports_completions(file, func.index(), &mut Default::default())
+                }
+                Scope::Lambda(lambda) => {
+                    for param in lambda.params() {
+                        self.maybe_add_tree_name(file, scope, param.name_def(), false)
+                    }
+                }
+            };
+        }
+        self.add_module_completions(self.infos.db.python_state.builtins())
     }
 
     fn add_keyword_param_completions(&mut self, inf: Inferred, args: Option<CallArgs>) {
@@ -423,13 +494,13 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
 
     fn add_import_result_completions(&mut self, import_result: Option<ImportResult>) {
         match import_result {
-            Some(ImportResult::File(file_index)) => {
+            Some(ImportResult::File(file_index) | ImportResult::PyTypedMissing(file_index)) => {
                 if let Ok(file) = self.infos.db.ensure_file_for_file_index(file_index) {
                     self.add_submodule_completions(file)
                 }
             }
             Some(ImportResult::Namespace(namespace)) => self.add_namespace_completions(&namespace),
-            None | Some(ImportResult::PyTypedMissing) => (),
+            None | Some(ImportResult::BinaryExtension) => (),
         }
     }
 
@@ -505,7 +576,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     ) {
         for star_import in file.star_imports.iter() {
             if star_import.scope == scope
-                && let Some(f) = file.star_import_file(self.infos.db, star_import)
+                && let Ok(f) = file.star_import_file(self.infos.db, star_import)
             {
                 self.add_specific_module_completions(f, true, true, already_visited)
             }
@@ -571,7 +642,14 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
         let db = self.infos.db;
         let file = self.infos.file;
         with_i_s_non_self(db, file, self.infos.scope, |i_s| {
-            self.add_attribute_completions_for_type(i_s, &inf.as_cow_type(i_s))
+            let t = if let Some(ComplexPoint::PyTypedMissing(PyTypedMissing::File(file))) =
+                inf.maybe_complex_point(db)
+            {
+                Cow::Owned(Type::Module(*file))
+            } else {
+                inf.as_cow_type(i_s)
+            };
+            self.add_attribute_completions_for_type(i_s, &t)
         })
     }
 
@@ -662,6 +740,17 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
                     let tup_cls = db.python_state.tuple_class_with_generics_to_be_defined();
                     self.add_class_symbols(tup_cls, is_instance)
                 }
+                Type::Callable(_) => {
+                    const CALL: &str = "__call__";
+                    if self.maybe_add(CALL) {
+                        if let Some(result) =
+                            (self.on_result)(self.replace_range, &FixedStringField(CALL.into()))
+                        {
+                            self.items
+                                .push((CompletionSortPriority::Dunder(CALL), result))
+                        }
+                    }
+                }
                 _ => {
                     debug!("TODO ignored completions for type {t:?}");
                 }
@@ -682,7 +771,7 @@ impl<'db, C: for<'a> Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResol
     ) {
         let file = c.node_ref.to_db_lifetime(self.infos.db).file;
         let storage = c.node_ref.to_db_lifetime(self.infos.db).class_storage();
-        let class_node = c.node();
+        let class_node = c.as_node();
         let is_django_base = c.has_django_stubs_base_class(self.infos.db);
         for (symbol, node_index) in storage.class_symbol_table.iter() {
             if is_private(symbol) || should_ignore(symbol) {
@@ -864,8 +953,7 @@ fn find_kind_for_name_def(
         }
     } else if let Some(class) = name_def.maybe_name_of_class() {
         kind = CompletionItemKind::CLASS;
-        if let Some(class_infos) =
-            ClassNodeRef::new(file, class.index()).maybe_cached_class_infos(db)
+        if let Some(class_infos) = ClassNodeRef::new(file, class).maybe_cached_class_infos(db)
             && matches!(class_infos.kind, ClassKind::Enum)
         {
             kind = CompletionItemKind::ENUM
@@ -887,10 +975,8 @@ impl<'db> Iterator for ScopesIterator<'db> {
         let result = self.current.take()?;
         let mut parent_scope = |scope| match scope {
             Scope::Module => Ok(()),
-            Scope::Class(c) => Err(ClassNodeRef::new(self.file, c.index())
-                .class_storage()
-                .parent_scope),
-            Scope::Function(f) => Err(FuncNodeRef::new(self.file, f.index()).parent_scope()),
+            Scope::Class(c) => Err(ClassNodeRef::new(self.file, c).class_storage().parent_scope),
+            Scope::Function(f) => Err(FuncNodeRef::new(self.file, f).parent_scope()),
             Scope::Lambda(l) => {
                 self.current = Some(l.parent_scope());
                 Ok(())
@@ -963,12 +1049,12 @@ impl<'db> Completion for CompletionTreeName<'db> {
         if doc.is_empty()
             && let Some(r) = try_to_follow_imports(self.db, self.file, self.name)
         {
-            return Some(match r {
-                FollowImportResult::File(file_index) => {
-                    let file = self.db.loaded_python_file(file_index);
+            return Some(match r.kind {
+                FollowImportResultKind::File(file) => {
+                    let file = self.db.loaded_python_file(file);
                     ModuleName { db: self.db, file }.documentation()
                 }
-                FollowImportResult::TreeName(tree_name) => tree_name.documentation(),
+                FollowImportResultKind::TreeName(tree_name) => tree_name.documentation(),
             });
         }
         Some(process_docstring(self.file, doc, || {
@@ -1148,7 +1234,7 @@ enum CompletionSortPriority<'db> {
 
 impl<'db> CompletionSortPriority<'db> {
     fn new_symbol(symbol: &'db str) -> Self {
-        if symbol.starts_with("__") && symbol.ends_with("__") {
+        if is_magic_method(symbol) {
             Self::Dunder(symbol)
         } else {
             Self::Default(symbol)

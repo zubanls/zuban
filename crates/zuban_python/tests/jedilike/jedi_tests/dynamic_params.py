@@ -16,21 +16,21 @@ func
 int(1) + (int(2))+ func('')
 
 # Again the same function, but with another call.
-def func(a):
+def func2(a):
     #? float()
     return a
 
-func(1.0)
+func2(1.0)
 
-# Again the same function, but with no call.
-def func(a):
+# Again a function, but with no call.
+def without_call(a):
     #? 
     return a
 
-def func(a):
+def func3(a):
     #? float()
     return a
-str(func(1.0))
+str(func3(1.0))
 
 # -----------------
 # *args, **args
@@ -51,19 +51,20 @@ def def_func(f):
     return wrapper
 
 @def_func
-def func(c):
+def func4(c):
     #? str()
     return c
 
 #? str()
-func("something")
+func4("something")
 
 @def_func
-def func(c=1):
-    #? float()
+def func5(c=1):
+    # zuban-diff #? float()
+    #? float() int()
     return c
 
-func(1.0)
+func5(1.0)
 
 def tricky_decorator(func):
     def wrapper(*args):
@@ -73,13 +74,13 @@ def tricky_decorator(func):
 
 
 @tricky_decorator
-def func(a, b):
+def func6(a, b):
     #? int()
     a
     #? float()
     b
 
-func(1.0)
+func6(1.0)
 
 # Needs to be here, because in this case func is an import -> shouldn't lead to
 # exceptions.
@@ -90,14 +91,14 @@ func.sys
 # classes
 # -----------------
 
-class A():
+class A1():
     def __init__(self, a):
         #? str()
         a
 
-A("s")
+A1("s")
 
-class A():
+class A2():
     def __init__(self, a):
         #? int()
         a
@@ -106,7 +107,10 @@ class A():
     def test(self, a):
         #? float()
         a
+        #? int()
         self.c = self.test2()
+        #? int()
+        self.c
 
     def test2(self):
         #? int()
@@ -118,17 +122,22 @@ class A():
         #? int()
         self.c
 
-A(3).test(2.0)
-A(3).test2()
+A2(3).test(2.0)
+A2(3).test2()
 
 
-def from_class(x):
+def from_class1(x):
+    #? int()
+    x
+from UNDEFINED import from_class1
+class Foo(from_class1(1),):
+    pass
+
+from UNDEFINED import from_class2
+def from_class2(x):
     #?
     x
-
-from UNDEFINED import from_class
-
-class Foo(from_class(1),):
+class Foo(from_class2(1),):
     pass
 
 # -----------------
@@ -157,3 +166,13 @@ class X():
 
 
 X().x_method('')
+
+# -----------------
+# Non-Jedi tests
+# -----------------
+
+def new(x):
+    #? int()
+    x
+
+new (1)

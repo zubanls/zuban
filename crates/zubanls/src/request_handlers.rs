@@ -16,11 +16,12 @@ use lsp_types::{
     RelatedFullDocumentDiagnosticReport, RenameFile, RenameParams, ResourceOp,
     ResourceOperationKind, SelectionRange, SelectionRangeParams, SemanticTokens,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation, SymbolKind,
-    TextDocumentEdit, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Url,
-    WorkspaceDiagnosticParams, WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult,
-    WorkspaceDocumentDiagnosticReport, WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport,
-    WorkspaceSymbol, WorkspaceSymbolParams, WorkspaceSymbolResponse,
+    SemanticTokensResult, SignatureHelp, SignatureHelpParams, SignatureInformation,
+    SymbolInformation, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentPositionParams, TextEdit, Url, WorkspaceDiagnosticParams,
+    WorkspaceDiagnosticReport, WorkspaceDiagnosticReportResult, WorkspaceDocumentDiagnosticReport,
+    WorkspaceEdit, WorkspaceFullDocumentDiagnosticReport, WorkspaceSymbol, WorkspaceSymbolParams,
+    WorkspaceSymbolResponse,
     request::{
         GotoDeclarationParams, GotoDeclarationResponse, GotoImplementationParams,
         GotoImplementationResponse, GotoTypeDefinitionParams, GotoTypeDefinitionResponse,
@@ -137,7 +138,10 @@ impl GlobalState<'_> {
             .collect()
     }
 
-    fn document(&mut self, text_document: &TextDocumentIdentifier) -> anyhow::Result<Document<'_>> {
+    pub fn document(
+        &mut self,
+        text_document: &TextDocumentIdentifier,
+    ) -> anyhow::Result<Document<'_>> {
         let project = self.project();
         let path = Self::uri_to_path(project, &text_document.uri)?;
         let Some(document) = project.document(&path) else {
@@ -187,13 +191,11 @@ impl GlobalState<'_> {
         if let Some(last) = &self.last_completion_position {
             let (document, pos) = self.document_with_pos(&last.clone())?;
             let docs = document.complete(pos, false, |_, completion| {
-                (completion.label() == &item.label)
-                    .then(|| {
-                        completion
-                            .documentation()
-                            .and_then(|doc| (!doc.is_empty()).then(|| doc.into_owned()))
-                    })
-                    .flatten()
+                if completion.label() != &item.label {
+                    return None;
+                }
+                let doc = completion.documentation()?;
+                (!doc.is_empty()).then(|| doc.into_owned())
             })?;
             if let Some(first_doc) = docs.into_iter().next() {
                 item.documentation = Some(Documentation::MarkupContent(MarkupContent {
@@ -305,10 +307,12 @@ impl GlobalState<'_> {
         self.run_goto_like(
             params,
             |document, pos, on_result| {
-                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+                document
+                    .infer_definition(pos, GotoGoal::PreferNonStubs, true, |vn| on_result(vn.name))
             },
             |document, pos, on_result| {
-                document.infer_definition(pos, GotoGoal::PreferNonStubs, |vn| on_result(vn.name))
+                document
+                    .infer_definition(pos, GotoGoal::PreferNonStubs, true, |vn| on_result(vn.name))
             },
         )
     }
@@ -343,18 +347,18 @@ impl GlobalState<'_> {
         let has_location_link_support = self.client_capabilities.location_link();
         let (document, pos) = self.document_with_pos(&params.text_document_position_params)?;
         let response = if has_location_link_support {
-            let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
-            if result.is_empty() {
-                return Ok(None);
-            }
-            result.into()
-        } else {
             let result = run_for_location_link(document, pos, &|name| LocationLink {
                 target_uri: to_uri(name.file_uri()),
                 target_range: Self::to_range(encoding, name.target_range()),
                 origin_selection_range: None,
                 target_selection_range: Self::to_range(encoding, name.name_range()),
             })?;
+            if result.is_empty() {
+                return Ok(None);
+            }
+            result.into()
+        } else {
+            let result = run_for_location(document, pos, &|name| lsp_location(encoding, name))?;
             if result.is_empty() {
                 return Ok(None);
             }
@@ -535,16 +539,21 @@ impl GlobalState<'_> {
         );
         let encoding = self.client_capabilities.negotiated_encoding();
         let hierarchical_symbols = self.client_capabilities.hierarchical_symbols();
-        if !hierarchical_symbols {
-            // This is not supported for now, VSCode supports doesn't do it that way and until I
-            // find a client that does I won't implement it.
-            return Ok(None);
-        }
-
         let document = self.document(&params.text_document)?;
-        Ok(Some(DocumentSymbolResponse::Nested(
-            Self::nested_doc_symbols(encoding, document.symbols()),
-        )))
+
+        if hierarchical_symbols {
+            Ok(Some(DocumentSymbolResponse::Nested(
+                Self::nested_doc_symbols(encoding, document.symbols()),
+            )))
+        } else {
+            let symbols = Self::flat_doc_symbols(
+                encoding,
+                &params.text_document.uri,
+                document.symbols(),
+                None,
+            );
+            Ok(Some(DocumentSymbolResponse::Flat(symbols)))
+        }
     }
 
     fn nested_doc_symbols<'x>(
@@ -555,12 +564,9 @@ impl GlobalState<'_> {
             .map(|symbol| {
                 let name = symbol.as_name();
                 let kind = name.lsp_kind();
-                let children = if kind == SymbolKind::CLASS {
-                    name.class_symbols()
-                        .map(|sym| Self::nested_doc_symbols(encoding, sym))
-                } else {
-                    None
-                };
+                let children = name
+                    .class_symbols(kind)
+                    .map(|sym| Self::nested_doc_symbols(encoding, sym));
                 #[expect(deprecated)]
                 DocumentSymbol {
                     name: symbol.symbol.into(),
@@ -576,6 +582,38 @@ impl GlobalState<'_> {
             .collect()
     }
 
+    fn flat_doc_symbols<'x>(
+        encoding: NegotiatedEncoding,
+        uri: &Url,
+        symbols: impl Iterator<Item = NameSymbol<'x>>,
+        container_name: Option<&str>,
+    ) -> Vec<SymbolInformation> {
+        symbols
+            .flat_map(|symbol| {
+                let name = symbol.as_name();
+                let kind = name.lsp_kind();
+                let mut result = vec![SymbolInformation {
+                    name: symbol.symbol.into(),
+                    kind,
+                    tags: None,
+                    #[expect(deprecated)]
+                    deprecated: None,
+                    location: Location {
+                        uri: uri.clone(),
+                        range: Self::to_range(encoding, name.target_range()),
+                    },
+                    container_name: container_name.map(|s| s.to_string()),
+                }];
+                if let Some(child_symbols) = name.class_symbols(kind) {
+                    let mut children =
+                        Self::flat_doc_symbols(encoding, uri, child_symbols, Some(symbol.symbol));
+                    result.append(&mut children);
+                }
+                result
+            })
+            .collect()
+    }
+
     fn nested_workspace_doc_symbols<'x>(
         encoding: NegotiatedEncoding,
         symbols: impl Iterator<Item = NameSymbol<'x>>,
@@ -587,7 +625,7 @@ impl GlobalState<'_> {
                 let name = symbol.as_name();
                 let kind = name.lsp_kind();
                 if kind == SymbolKind::CLASS
-                    && let Some(child_symbols) = name.class_symbols()
+                    && let Some(child_symbols) = name.class_symbols(kind)
                 {
                     Self::nested_workspace_doc_symbols(encoding, child_symbols, query, add);
                 }

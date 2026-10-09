@@ -264,7 +264,7 @@ def oof(fn: int) -> int: ...
 @overload
 def oof(fn2: bytes) -> bytes: ...
 
-def oof(fn: int | bytes | None = None, fn2: bytes | None = None) -> bytes | int: raise NotImplementedError # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def oof(fn: int | bytes | None = None, fn2: bytes | None = None) -> bytes | int: raise NotImplementedError # E: Overloaded function implementation does not accept all possible parameters of signature 2
 
 [case overload_check_defaults_for_implementation_only]
 from typing import overload
@@ -273,7 +273,7 @@ from typing import overload
 def foo(x: int) -> int: ...
 @overload
 def foo(x: str = ...) -> str: ...
-def foo(x: int | str = b"") -> str | int: ... # E: Incompatible default for argument "x" (default has type "bytes", argument has type "int | str")
+def foo(x: int | str = b"") -> str | int: ... # E: Incompatible default for parameter "x" (default has type "bytes", parameter has type "int | str")
 
 [case overload_with_self_types_fallback]
 # Inspired by testOverloadAndSelfTypesGenericNoOverlap
@@ -425,7 +425,7 @@ class MyClass(Generic[T1, T2]):
     @overload
     def __init__(self: MyClass[T1, T3], t: T1, u: T2) -> None: ...
 
-    def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 3
+    def __init__(self, t: T1, u: T2) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 3
         pass
 
 [case function_overlapping_kwonly_vs_normal]
@@ -600,7 +600,7 @@ def foo(x: int) -> int: ...
 def foo(x: str) -> str: ...
 def foo(x): ...
 
-foo(a for a in [1])  # E: No overload variant of "foo" matches argument type "Generator[int, None, None]" \
+foo(a for a in [1])  # E: No overload variant of "foo" matches argument type "GeneratorType[int, None, None]" \
                      # N: Possible overload variants: \
                      # N:     def foo(x: int) -> int \
                      # N:     def foo(x: str) -> str
@@ -1088,8 +1088,30 @@ def check_expand_tuple(v: int | str) -> None:
     ret1 = expand_tuple((1, v))
     assert_type(ret1, int | str)
 
+[case overload_union_math_twice]
+# From GH #591
+from typing import Any, Generic, TypeVar, overload
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T_co = TypeVar("_T_co", covariant=True)
+
+class H(Generic[_T_co]):
+    pass
+
+@overload
+def plot_burst(h: H[_T1], compare: None = ..., *, mid: bool = ...) -> None: ...
+@overload
+def plot_burst(h: H[_T1], compare: H[_T2], *, mid: bool = ...) -> None: ...
+def plot_burst(
+    h: H[Any], compare: H[Any] | None = None, *, mid: bool = True
+) -> None:
+    return None
+
+def call(inner: H[int], outer: H[int] | None, mid: bool) -> None:
+    plot_burst(inner, outer, mid=mid)
+
 [case any_exclusion_of_some_funcs]
-# flags: --mode default
 # Copied from conformance tests (overloads_evaluation.py)
 from typing import overload, assert_type, Any
 @overload
@@ -1106,7 +1128,9 @@ def check_example4(v1: list[Any], v2: Any) -> None:
     assert_type(ret1, list[int])
 
     ret2 = example4(v2, 1)
-    assert_type(ret2, Any)
+    int_list: list[int] = ret2
+    str_list: list[str] = ret2
+
 
 [case copied_testOverloadWithStarAnyFallback]
 # We want to ensure this does not fail for no-mypy-compatible mode, because
@@ -1158,8 +1182,8 @@ a: Any
 b: List[Any]
 c: List[str]
 d: List[int]
-reveal_type(f(a)) # N: Revealed type is "Any"
-reveal_type(f(b))  # N: Revealed type is "Any"
+reveal_type(f(a)) # N: Revealed type is "list[Any]"
+reveal_type(f(b))  # N: Revealed type is "list[Any]"
 reveal_type(f(c))  # N: Revealed type is "list[Any]"
 reveal_type(f(d))  # N: Revealed type is "list[int]"
 
@@ -1300,3 +1324,209 @@ class C[T]:
     @overload
     def m(): ...  # E: Method must have at least one argument. Did you forget the "self" argument? \
                   # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+[case overload_implementation_accepts_all]
+# From GH #424
+from typing import overload
+
+@overload
+def f1() -> str: ...
+@overload
+def f1(a: int, /) -> str: ...
+@overload
+def f1(**kwargs: str) -> str: ...
+def f1(a: int = 1, /, **kwargs: str) -> str: ...
+
+@overload
+def f2(a: str, /) -> str: ...
+@overload
+def f2(**kwargs: str) -> str: ...
+def f2(a: str = "", b: str = '', **kwargs: str) -> str: ...
+
+@overload
+def f3(a: int, /) -> str: ...
+@overload
+def f3(**kwargs: str) -> str: ...
+def f3(a: int, /, **kwargs: str) -> str: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f4(a: int, /) -> str: ...
+@overload
+def f4(**kwargs: str) -> str: ...
+def f4(a: int = 1, /, **kwargs: bytes) -> str: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f5(a: int, /) -> str: ...
+@overload
+def f5(**kwargs: str) -> str: ...
+def f5(*args: int, **kwargs: str) -> str: ...
+
+@overload
+def f6(a: int, /) -> str: ...
+@overload
+def f6(**kwargs: str) -> str: ...
+def f6(*args: int, **kwargs: bytes) -> str: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+[case overload_implementation_with_unpack]
+from typing import overload, TypedDict, Unpack, NotRequired
+
+class TDstrRequired(TypedDict):
+    x: str
+
+class TDstr(TypedDict):
+    x: NotRequired[str]
+    y: NotRequired[str]
+
+class TDstrExtra(TypedDict, extra_items=str):
+    x: NotRequired[str]
+
+class TDmixed1Extra(TypedDict, extra_items=int):
+    x: NotRequired[str]
+
+class TDmixed2Extra(TypedDict, extra_items=str):
+    x: NotRequired[int]
+
+@overload
+def f1(a: int, /, *, x: str) -> None: ...
+@overload
+def f1(**kwargs: str) -> None: ...
+def f1(a: int = 1, /, **kwargs: Unpack[TDstrRequired]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f2(a: str, /) -> None: ...
+@overload
+def f2(**kwargs: str) -> None: ...
+def f2(a: str = "", **kwargs: Unpack[TDstr]) -> None: ...
+
+@overload
+def f3(a: str, /) -> None: ...
+@overload
+def f3(**kwargs: str) -> None: ...
+def f3(a: str = "", b: str = "") -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f4(a: str, /) -> None: ...
+@overload
+def f4(**kwargs: str) -> None: ...
+def f4(a: str = "", **kwargs: Unpack[TDstrExtra]) -> None: ...
+
+@overload
+def f5(a: str, /) -> None: ...
+@overload
+def f5(**kwargs: str) -> None: ...
+def f5(a: str = "", **kwargs: Unpack[TDmixed1Extra]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+@overload
+def f6(a: str, /) -> None: ...
+@overload
+def f6(**kwargs: str) -> None: ...
+def f6(a: str = "", **kwargs: Unpack[TDmixed2Extra]) -> None: ...  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+
+[case overload_call_positional_only]
+# From GH #456
+from typing import overload
+
+@overload
+def posonly(x: int, /) -> int: ...
+@overload
+def posonly(x: str, /) -> str: ...
+def posonly(x: int | str, /) -> int | str: return x
+
+def test_posonly_narrow(x: int | str) -> int | str: # typechecks
+    if isinstance(x, int): return posonly(x)
+    else: return posonly(x)
+
+def test_posonly(x: int | str) -> int | str: return posonly(x) # doesnt
+
+[case override_on_overload_in_protocol]
+# From GH #451
+from typing import Protocol, overload, override
+
+class CanA(Protocol):
+    def a(self, x: str) -> str: ...
+
+class CanA2(CanA, Protocol):
+    @override  # error: @override should be applied only to overload implementation  [misc]
+    @overload
+    def a(self, x: str) -> str: ...
+    @overload
+    def a(self, x: bytes) -> bytes: ...
+
+[case abstract_overload_can_miss_return]
+# flags: --disallow-empty-bodies
+# From GH #511
+from abc import abstractmethod, ABCMeta
+from typing import overload
+
+class Foo(metaclass=ABCMeta):
+    @overload
+    async def abstract(self, x: str) -> str:
+        pass
+
+    @overload
+    async def abstract(self, x: int) -> int:
+        pass
+
+    @abstractmethod
+    async def abstract(self, x: int | str) -> str | int:
+        pass
+
+[case sum_overload]
+# From GH #520
+sum((1, 2, 3), ())
+
+[case array_overload]
+# From GH #519
+import array
+from typing import assert_type
+
+arr = array.array("i")
+assert_type(arr, array.array[int])
+
+class X[T]:
+    @classmethod
+    def x(cls: type[X[int]], y: int) -> X[int]: ...
+
+X.x(1)
+
+[case overload_match_union_special_case]
+# From GH #426
+from collections.abc import Iterable, Mapping
+
+def xx() -> Iterable[tuple[str, str]] | Mapping[str, str]:
+    return [("a", "b")]
+
+a = dict(xx())
+
+[case overload_decorator_that_does_not_exist]
+# flags: --mode default
+# From GH #429
+from typing import overload
+
+@overload
+@foo  # E: Name "foo" is not defined
+def f(): ...  # E: An overloaded function outside a stub file must have an implementation
+
+@overload
+def f() -> int: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+[case overload_with_union_fallbacks]
+from typing import overload, assert_type, Any
+
+class Pattern[T: (str, bytes)]:
+    @overload
+    def match(self: Pattern[str], string: str) -> list[str] | None: ...
+    @overload
+    def match(self: Pattern[bytes], string: bytes) -> list[bytes] | None: ...
+    @overload
+    def match(self, string: T) -> list[T] | None: ...
+    def match(self, string): ...
+
+def check(pat1: Pattern[str]) -> None:
+    ret1 = pat1.match()  # type: ignore
+    assert_type(ret1, list[str] | None)
+
+    import re
+    pat2 = re.compile("x")
+    ret2 = pat2.match()  # type: ignore
+    assert_type(ret1, list[str] | None)

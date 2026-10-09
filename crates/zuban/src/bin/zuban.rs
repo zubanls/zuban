@@ -18,7 +18,7 @@ enum Commands {
     /// Type checks files like you would do when calling `mypy`
     Mypy(#[command(flatten)] cli_args::MypyCli),
     /// Starts an LSP server
-    Server {},
+    Server(#[command(flatten)] zubanls::Cli),
 }
 
 fn main() -> ExitCode {
@@ -31,7 +31,7 @@ fn main() -> ExitCode {
     match Cli::parse().command {
         Commands::Mypy(mypy_options) => run_check(cli_args::Cli::new_mypy_compatible(mypy_options)),
         Commands::Check(zmypy_config) => run_check(zmypy_config),
-        Commands::Server {} => match run_server() {
+        Commands::Server(server_config) => match run_server(server_config) {
             Ok(()) => ExitCode::from(0),
             Err(err) => {
                 eprintln!("{err}");
@@ -41,14 +41,14 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_server() -> anyhow::Result<()> {
+fn run_server(server_config: zubanls::Cli) -> anyhow::Result<()> {
     logging_config::setup_logging(None)?;
 
     // Logging to stderr.
     tracing::info!("Starting the Zuban Language Server");
 
     event_loop_thread(move || {
-        zubanls::run_server()?;
+        zubanls::run_server(server_config)?;
         Ok(())
     })?;
 

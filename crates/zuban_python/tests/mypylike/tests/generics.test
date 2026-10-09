@@ -211,6 +211,33 @@ d: Foo[str] | Any = Foo("")
 e: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
 f: Any | Foo[str] = Foo("")
 
+[case conflicting_constructor_result_context]
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Eq(Generic[T, U]): ...
+class Refl(Eq[T, T], Generic[T]): ...
+class ValueRefl(Eq[T, T], Generic[T]):
+    def __init__(self, value: T) -> None: ...
+
+bad: Eq[int, str] = Refl()  # E: The return type for function "__init__" of "object" does not match the return context
+good: Eq[int, int] = Refl()
+reveal_type(Refl())  # N: Revealed type is "__main__.Refl[Any]"
+with_any: Eq[Any, Any] = Refl()
+bad_with_argument: Eq[int, str] = ValueRefl("")  # E: Incompatible types in assignment (expression has type "ValueRefl[str]", variable has type "Eq[int, str]") \
+                                                 # E: The return type for function "__init__" of "ValueRefl" does not match the return context
+
+def consume(value: Eq[int, str]) -> None: ...
+consume(Refl())  # E: The return type for function "__init__" of "object" does not match the return context
+
+def make_refl(value: T | None = None) -> Eq[T, T]: ...
+bad_from_function: Eq[int, str] = make_refl(1)  # E: Incompatible types in assignment (expression has type "Eq[int, int]", variable has type "Eq[int, str]")
+good_from_function1: Eq[int, int] = make_refl(1)
+good_from_function2: Eq[int, str] = make_refl()
+good_from_function3: Eq[int, int] = make_refl()
+
 [case union_context_class_matching_with_overload]
 # flags: --mode mypy
 from typing import TypeVar, Generic, overload
@@ -1493,7 +1520,7 @@ def mapmap(m: Callable[[], C], p: list[tuple[()]]) -> list[C]: ...
 def mapmap(m: Callable[[C], D], p: list[tuple[C]]) -> list[D]: ...
 
 # The implementation is weird and just tries to reproduce a bug
-@curry  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+@curry  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 def mapmap(m: Callable[[], D], p: list[A]) -> list[D]: ...
 
 [case generics_resolving_for_method_access_on_subclass]
@@ -1699,6 +1726,36 @@ def func_error2(
     reveal_type(a)  # N: Revealed type is "__main__.C[list[Any], str]"
     reveal_type(b)  # N: Revealed type is "__main__.C[int, str]"
     reveal_type(c)  # N: Revealed type is "__main__.C[int, float]"
+
+[case type_var_default_valid_param_defaults]
+# From GH #538
+from typing import Literal
+
+type _T = Literal[True]
+type _F = Literal[False]
+type _E = Literal[""]
+
+class C[
+    B: (bool, _T, _F) = _F,
+    S: (str, _E) = _E,
+]:
+    def __init__(self,
+        b: B = False,
+        s: S = "",
+        b2: S = True,  # E: Incompatible default for parameter "b2" (default has type "Literal[True]", parameter has type "Literal['']")
+        ) -> None:
+        pass
+
+    def f(self,
+          b: B = False,  # E: Incompatible default for parameter "b" (default has type "bool", parameter has type "B = Literal[False]")
+          s: S = "") -> None:  # E: Incompatible default for parameter "s" (default has type "str", parameter has type "S = Literal['']")
+        pass
+
+def f[
+    B: (bool, _T, _F) = _F,
+    S: (str, _E) = _E,
+](self, b: B = False, s: S = "") -> None:
+        pass
 
 [case no_crash_on_self_access_for_class_with_type_var_values]
 import typing
@@ -2034,3 +2091,128 @@ b = 20
 c = -20
 
 clamped = max(b, min(c, a))
+
+[case higher_order_generics_for_callable1]
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+@dataclass
+class Box[A]:
+    x: A
+class Const[A](Protocol):
+    def __call__[R](self, f: Callable[[A], R], /) -> R: ...
+
+def box_const2[A](c: Const[A]) -> Box[str]:
+    return c(Box)  # E: Incompatible callable argument with type vars
+
+[case higher_order_generics_for_callable2]
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+class ChurchResult[E, O](Protocol):
+    def __call__[R](self, err: Callable[[E], R], ok: Callable[[O], R], /) -> R: ...
+type UnionResult[E, O] = Error[E] | Ok[O]
+@dataclass
+class Error[E]:
+    err: E
+@dataclass
+class Ok[O]:
+    ok: O
+def mk_error[E](err: E) -> UnionResult[E, Any]: return Error(err)
+def false_positive_2_2[E, O](r: ChurchResult[E, O]):
+    reveal_type(r(mk_error, Ok))  # N: Revealed type is "__main__.Error[E] | __main__.Ok[Any] | __main__.Ok[O]"
+
+[case higher_order_generics_for_callable3]
+# From GH #493
+from typing import Protocol, Any, Callable
+from dataclasses import dataclass
+
+class ChurchResult[E1, O](Protocol):
+    def __call__[R](self, err: Callable[[E1], R], ok: Callable[[O], R], /) -> R: ...
+type UnionResult[E2, O2] = Error[E2] | Ok[O2]
+@dataclass
+class Error[E3]:
+    err: E3
+@dataclass
+class Ok[O3]:
+    ok: O3
+def mk_error[E4](err: E4) -> UnionResult[E4, Any]: return Error(err)
+def mk_ok[O4](ok: O4) -> UnionResult[Any, O4]: return Ok(ok)
+
+def false_negative_1[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(Error, Ok)
+def true_positive_1[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(lambda e: Error(e), lambda o: Ok(o))
+def true_positive_2[E, O](r: ChurchResult[E, O]) -> UnionResult[E, O]:
+    return r(mk_error, mk_ok)
+
+def false_positive_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(mk_error, mk_ok) # E: Incompatible callable argument with type vars
+def union_any_assignability[E](u: UnionResult[E, Any]) -> UnionResult[int, str]:
+    return u # E: Incompatible return value type (got "Error[E] | Ok[Any]", expected "Error[int] | Ok[str]")
+
+def false_positive_2_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(Error, mk_ok) # E: Incompatible callable argument with type vars
+def false_positive_2_2[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(mk_error, Ok) # E: Incompatible callable argument with type vars
+def true_negative_1[E, O](r: ChurchResult[E, O]) -> UnionResult[int, str]:
+    return r(Error, Ok) # E: Incompatible callable argument with type vars
+
+[case conformance_tests_self_variance]
+# Copied from conformance tests (generics_variance_inference.py)
+class ShouldBeCovariant7[T]:
+    def get(self) -> T:
+        raise NotImplementedError
+
+    def add[S](self: "ShouldBeCovariant7[S]", other: list[S]) -> "ShouldBeCovariant7[S]":
+        raise NotImplementedError
+
+d1: ShouldBeCovariant7[object] = ShouldBeCovariant7[int]()
+d2: ShouldBeCovariant7[int] = ShouldBeCovariant7[object]()  # E: Incompatible types in assignment (expression has type "ShouldBeCovariant7[object]", variable has type "ShouldBeCovariant7[int]")
+
+[case generic_context_with_multi_lists]
+# From GH #407
+x: dict[str, int] = {"a": 1}
+
+def f(x: list[int] | list[str]) -> None: ...
+def g(x: list[str] | list[int]) -> None: ...
+
+f(list(x))
+g(list(x))
+
+[case avoid_dict_recursion_inference_crash]
+# From GH #409
+from collections import OrderedDict
+from typing import assert_type
+
+d = OrderedDict({"a": {}})  # E: Need type annotation for "d"
+d["a"]["b"] = 1
+
+e = dict({"a": {}})  # E: Need type annotation for "e"
+e["a"]["b"] = 1
+
+f = list([1])
+assert_type(f, list[int])
+
+[case generics_nested_context_with_self_types_and_overload]
+# From GH #560
+from typing import Any, Generic, TypeVar, overload, assert_type
+
+T = TypeVar("T", covariant=True)
+
+class Source(Generic[T]):
+    @overload
+    def __init__(self: "Source[int]", value: int) -> None: ...
+    @overload
+    def __init__(self: "Source[str]", value: str) -> None: ...
+    def __init__(self, value: Any) -> None:
+        pass
+
+class Wrapper(Generic[T]):
+    def __init__(self, source: Source[T]) -> None:
+        pass
+
+assert_type(Wrapper(Source[int](1)), Wrapper[int])
+assert_type(Wrapper(Source(1)), Wrapper[int])

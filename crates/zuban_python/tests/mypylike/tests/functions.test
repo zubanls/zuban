@@ -7,7 +7,7 @@ def i(x: int, y: int = 3) -> None: pass
 def j(y: str, x: int = 3) -> None: pass
 f = g
 f = h
-f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(str, 'y')], None]")
+f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "def f(*, x: int, y: str) -> None")
 f = j
 
 [case subtyping_of_kwargs_with_defaults]
@@ -149,7 +149,7 @@ def foo(x: Callable[P, int], *args: P.args, **kwargs: P.kwargs) -> None:
     args["x"]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
                # N: Possible overload variants: \
                # N:     def __getitem__(self, SupportsIndex, /) -> object \
-               # N:     def __getitem__(self, slice[Any, Any, Any], /) -> tuple[object, ...]
+               # N:     def __getitem__(self, slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> tuple[object, ...]
     args[1]
     kwargs["x"]
     kwargs[1]  # E: Invalid index type "int" for "dict[str, object]"; expected type "str"
@@ -240,8 +240,8 @@ def b2(*args: *tuple[*tuple[str, ...], int]) -> None: ...
 def b3(*args: *tuple[*tuple[int, ...], str]) -> None: ...
 
 f = b1
-f = b2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[str, ...]], int]])], None]", variable has type "Callable[[VarArg(int)], None]")
-f = b3  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Tuple[int, ...]], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
+f = b2  # E: Incompatible types in assignment (expression has type "def b2(*args: Unpack[tuple[Unpack[Tuple[str, ...]], int]]) -> None", variable has type "def f(*args: int) -> None")
+f = b3  # E: Incompatible types in assignment (expression has type "def b3(*args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None", variable has type "def f(*args: int) -> None")
 
 [case func_unpack_with_type_var_tuple_vs_arbitrary_len]
 from typing import TypeVarTuple, Callable
@@ -252,14 +252,14 @@ def a2(*args: *tuple[*Ts, str]) -> None: ...
 def b(*args: int) -> None: ...
 
 if bool():
-    b = a1
-    b = a2  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(Unpack[tuple[Unpack[Ts], str]])], None]", variable has type "Callable[[VarArg(int)], None]")
-a1 = b  # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int)], None]", variable has type "Callable[[VarArg(Unpack[Tuple[Unpack[Ts], int]])], None]")
+    b = a1  # E: Incompatible types in assignment (expression has type "def [Ts] a1(*args: Unpack[tuple[Unpack[Ts], int]]) -> None", variable has type "def b(*args: int) -> None")
+    b = a2  # E: Incompatible types in assignment (expression has type "def [Ts] a2(*args: Unpack[tuple[Unpack[Ts], str]]) -> None", variable has type "def b(*args: int) -> None")
+a1 = b  # E: Incompatible types in assignment (expression has type "def b(*args: int) -> None", variable has type "def [Ts] a1(*args: Unpack[tuple[Unpack[Ts], int]]) -> None")
 
 def foo1(x: Callable[[*tuple[*Ts, int]], None]) -> tuple[*Ts]: ...
 def foo2(x: Callable[[*tuple[*Ts, str]], None]) -> tuple[*Ts]: ...
 reveal_type(foo1(b))  # N: Revealed type is "tuple[int, ...]"
-reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "Callable[[VarArg(int)], None]"; expected "Callable[[VarArg(Unpack[Tuple[Unpack[Tuple[int, ...]], str]])], None]" \
+reveal_type(foo2(b))  # E: Argument 1 to "foo2" has incompatible type "def b(*args: int) -> None"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None" \
                       # N: Revealed type is "tuple[int, ...]"
 
 [case any_call_with_invalid_args_kwargs_mypy_compatible]
@@ -349,7 +349,7 @@ from collections import defaultdict
 w: Final = defaultdict(lambda: len(w))
 x: dict[str, int] = defaultdict(lambda: len(x))
 y = defaultdict(lambda: len(y))
-z: list[z] = [] # E: Name "z" is not defined \
+z: list[z] = [] # E: Cannot resolve name "z" (possible cyclic definition) \
                 # E: Variable "__main__.z" is not valid as a type \
                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -445,7 +445,7 @@ def get(fn: Callable[[], None] | Callable[[], str]) -> None:
 def get2(fn: Callable[[float], None] | Callable[[int], None]) -> None:
     ret = fn(1)  # E: Function does not return a value (it only ever returns None) \
                  # E: Function does not return a value (it only ever returns None)
-    reveal_type(ret)  # N: Revealed type is "Any"
+    reveal_type(ret)  # N: Revealed type is "None"
 
 [case function_does_not_return_value_no_mypy_compatible]
 # flags: --mode default
@@ -507,3 +507,28 @@ def f(x: int | None = None, **kwargs): ...
 def check(*args) -> None:
     f(*args, scope='file')
     f(scope='file', *args)
+
+[case function_assignability_keyword_params_different_order]
+def f(*, x: str, y: int = 1) -> None: ...
+def g(*, y: int = 2, x: str) -> None: ...
+
+if bool():
+    g = f
+else:
+    f = g
+
+def n(*, x: str, y: int = 1) -> None: ...
+def m(*, y: int, x: str) -> None: ...
+
+if bool():
+    n = m  # E: Incompatible types in assignment (expression has type "def m(*, y: int, x: str) -> None", variable has type "def n(*, x: str, y: int = ...) -> None")
+else:
+    m = n
+
+def p(*, x: str, y: int) -> None: ...
+def q(*, y: int = 1, x: str) -> None: ...
+
+if bool():
+    p = q
+else:
+    q = p  # E: Incompatible types in assignment (expression has type "def p(*, x: str, y: int) -> None", variable has type "def q(*, y: int = ..., x: str) -> None")

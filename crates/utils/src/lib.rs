@@ -337,15 +337,18 @@ impl<'a, T: ?Sized, U: ?Sized> DerefMut for MappedWriteGuard<'a, T, U> {
     }
 }
 
-pub struct OwnedMappedReadGuard<'a, T: ?Sized, U> {
-    _guard: RwLockReadGuard<'a, T>,
+pub struct OwnedMappedReadGuard<'guard, 'a, T: ?Sized, U> {
+    _guard: &'guard RwLockReadGuard<'a, T>,
     value: U,
 }
 
-impl<'a, T: ?Sized, U> OwnedMappedReadGuard<'a, T, U> {
-    pub fn map_owned(guard: RwLockReadGuard<'a, T>, f: impl FnOnce(&'a T) -> U) -> Self {
+impl<'guard, 'a, T: ?Sized, U> OwnedMappedReadGuard<'guard, 'a, T, U> {
+    pub fn map_owned(
+        guard: &'guard RwLockReadGuard<'a, T>,
+        f: impl FnOnce(&'guard T) -> U,
+    ) -> Self {
         let before: &T = guard.deref();
-        let t: &'a T = unsafe { std::mem::transmute(before) };
+        let t: &'guard T = unsafe { std::mem::transmute(before) };
         let value = f(t);
         Self {
             _guard: guard,
@@ -354,14 +357,14 @@ impl<'a, T: ?Sized, U> OwnedMappedReadGuard<'a, T, U> {
     }
 }
 
-impl<'a, T: ?Sized, U: Borrow<U>> Deref for OwnedMappedReadGuard<'a, T, U> {
+impl<'a, T: ?Sized, U: Borrow<U>> Deref for OwnedMappedReadGuard<'_, 'a, T, U> {
     type Target = U;
     fn deref(&self) -> &U {
         self.value.borrow()
     }
 }
 
-impl<'a, T: ?Sized, U: Iterator<Item = I>, I> Iterator for OwnedMappedReadGuard<'a, T, U> {
+impl<'a, T: ?Sized, U: Iterator<Item = I>, I> Iterator for OwnedMappedReadGuard<'_, 'a, T, U> {
     type Item = I;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -369,7 +372,7 @@ impl<'a, T: ?Sized, U: Iterator<Item = I>, I> Iterator for OwnedMappedReadGuard<
     }
 }
 impl<'a, T: ?Sized, U: DoubleEndedIterator<Item = I>, I> DoubleEndedIterator
-    for OwnedMappedReadGuard<'a, T, U>
+    for OwnedMappedReadGuard<'_, 'a, T, U>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.value.next_back()

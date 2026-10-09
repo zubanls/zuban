@@ -199,6 +199,10 @@ impl DirectoryEntry {
             }
         }
     }
+
+    pub fn is_missing(&self) -> bool {
+        matches!(self, Self::MissingEntry { .. })
+    }
 }
 
 #[derive(Debug, Default)]

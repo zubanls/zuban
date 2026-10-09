@@ -5,12 +5,13 @@ build-backend = "maturin"
 [project]
 name = "zuban"
 # The version is dynamically upgraded and never committed.
-version = "0.6.2"
+version = "0.10.0"
 description = "Zuban - The Zuban Language Server"
 authors = [{ name = "Dave Halter", email = "info@zubanls.com" }]
 readme = "README.rst"
 requires-python = ">=3.7"
-license = { file = "licenses.html" }
+license = "AGPL-3.0-only"
+license-files = ["licenses.html"]
 keywords = [
   "typechecking",
   "mypy",
@@ -32,6 +33,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3",
   "Programming Language :: Rust",

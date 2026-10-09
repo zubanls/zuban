@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 pub use config::DiagnosticConfig;
 
 use config::{
-    ExcludeRegex, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
+    ExcludeRegex, Mode, ModeChoiceArg, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags,
     UntypedFunctionReturnMode,
 };
 use vfs::{AbsPath, SimpleLocalFS, VfsHandler};
@@ -13,10 +13,9 @@ use clap::Parser;
 #[derive(Parser, Default, Debug)]
 pub struct Cli {
     // Additional options that are not present in zmypy
-    /// Choosing a mode sets the basic preset of flags. The default mode is typed, which is not
-    /// mypy-compatible.
+    /// Choosing a mode sets the basic preset of flags. The default mode is not mypy-compatible.
     #[arg(long)]
-    mode: Option<Mode>,
+    pub mode: Option<ModeChoiceArg>,
 
     /// Can be either "any" to infer untyped function returns like Mypy, "inferred" to infer return
     /// types or "advanced" to infer return types in a more sophisticated way that includes
@@ -26,23 +25,27 @@ pub struct Cli {
 
     #[command(flatten)]
     pub mypy_options: MypyCli,
+
+    // Additional non-mypy options
+    /// Additional paths to be used as additional "sys.path" module-resolution bases.
+    /// Using this option typically means your environment is not setup correctly. In some rare
+    /// cases this can be useful to find Python packages that were not installed normally.
+    #[arg(long)]
+    extra_search_path: Vec<String>,
 }
 
 impl Cli {
     pub fn new_mypy_compatible(mypy_options: MypyCli) -> Self {
         Self {
-            mode: Some(Mode::Mypy),
+            mode: Some(ModeChoiceArg::Mypy),
             untyped_function_return_mode: None,
             mypy_options,
+            extra_search_path: Default::default(),
         }
     }
 
     pub fn mypy_compatible(&self) -> Option<bool> {
-        Some(matches!(self.mode?, Mode::Mypy))
-    }
-
-    pub fn mode(&self) -> Option<Mode> {
-        Some(self.mode?.into())
+        Some(matches!(self.mode?, ModeChoiceArg::Mypy))
     }
 }
 
@@ -210,7 +213,7 @@ pub struct MypyCli {
     disallow_untyped_globals: bool,
     /// Allow unconditional variable redefinition with a new type (inverse: --disallow-redefinition)
     #[arg(long)]
-    allow_redefinition: bool,
+    pub allow_redefinition: bool,
     #[arg(long)]
     disallow_redefinition: bool,
     /// For now --allow-redefinition and --allow-redefinition-new are the same (inverse: --disallow-redefinition-new)
@@ -284,6 +287,13 @@ pub struct MypyCli {
     explicit_package_bases: bool,
     #[arg(long, hide = true)]
     no_explicit_package_bases: bool,
+
+    // Hidden in Mypy
+    /// Specifies the directory where zuban looks for standard library typeshed stubs, instead of
+    /// the typeshed that ships with zuban.
+    #[arg(long)]
+    custom_typeshed_dir: Option<String>,
+
     // Non-Mypy options
     #[arg(long, hide = true)]
     allow_incomplete_generics: bool,
@@ -327,11 +337,21 @@ pub fn apply_flags_detailed(
     config_path: Option<&AbsPath>,
 ) {
     if let Some(mode) = cli.mode {
-        settings.mode = mode.into();
+        match mode {
+            ModeChoiceArg::Default => settings.mode = Mode::Default,
+            ModeChoiceArg::Mypy => settings.mode = Mode::Mypy,
+            ModeChoiceArg::Auto => (),
+        }
     }
     if let Some(untyped_function_return_mode) = cli.untyped_function_return_mode {
         settings.untyped_function_return_mode = untyped_function_return_mode
     }
+
+    settings.prepended_site_packages.extend(
+        cli.extra_search_path
+            .into_iter()
+            .map(|path| vfs_handler.normalized_path_from_current_dir(&path)),
+    );
 
     apply_mypy_flags(
         vfs_handler,
@@ -451,6 +471,10 @@ fn apply_mypy_flags(
     flags.disabled_error_codes.extend(cli.disable_error_code);
     flags.always_true_symbols.extend(cli.always_true);
     flags.always_false_symbols.extend(cli.always_false);
+
+    if let Some(typeshed_dir) = cli.custom_typeshed_dir {
+        settings.typeshed_path = Some(vfs_handler.normalized_path_from_current_dir(&typeshed_dir))
+    }
 
     if cli.ignore_excludes_from_config {
         // This is for testing, so we can test all files

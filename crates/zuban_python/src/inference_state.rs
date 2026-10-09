@@ -87,30 +87,39 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn from_func(db: &'db Database, func: &'a Function<'a, 'a>) -> Self {
+        Self {
+            db,
+            context: Context::Function(func),
+            mode: Mode::Normal,
+        }
+    }
+
     pub fn run_with_parent_scope<T>(
         db: &'db Database,
         file: &PythonFile,
         parent_scope: ParentScope,
         callback: impl FnOnce(InferenceState<'db, '_>) -> T,
     ) -> T {
-        let class;
-        let func;
-        let context = match parent_scope {
-            ParentScope::Module => Context::File(file),
+        let run = |context| {
+            callback(InferenceState {
+                db,
+                context,
+                mode: Mode::Normal,
+            })
+        };
+        match parent_scope {
+            ParentScope::Module => run(Context::File(file)),
             ParentScope::Function(func_index) => {
-                func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
-                Context::Function(&func)
+                let func = Function::new_with_unknown_parent(db, NodeRef::new(file, func_index));
+                run(Context::Function(&func))
             }
             ParentScope::Class(class_index) => {
-                class = Class::with_self_generics(db, ClassNodeRef::new(file, class_index));
-                Context::Class(&class)
+                let class =
+                    Class::with_self_generics(db, ClassNodeRef::from_node_index(file, class_index));
+                run(Context::Class(&class))
             }
-        };
-        callback(InferenceState {
-            db,
-            context,
-            mode: Mode::Normal,
-        })
+        }
     }
 
     pub(crate) fn with_func_context(&self, func: &'a Function<'a, 'a>) -> Self {
@@ -157,7 +166,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub(crate) fn avoid_errors_within<T>(
         &self,
-        mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
         let had_error = &Cell::new(false);
         let i_s = &InferenceState {
@@ -256,7 +265,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn in_untyped_context(&self) -> bool {
         self.current_function()
-            .is_some_and(|f| !f.node().is_typed())
+            .is_some_and(|f| !f.as_node().is_typed())
     }
 
     pub fn should_ignore_none_in_untyped_context(&self) -> bool {
@@ -264,11 +273,15 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             || !self.flags().strict_optional
     }
 
+    pub fn current_file(&self) -> Option<&'a PythonFile> {
+        self.context.current_file()
+    }
+
     pub fn flags(&self) -> &'a TypeCheckerFlags
     where
         'db: 'a,
     {
-        if let Some(file) = self.context.current_file() {
+        if let Some(file) = self.current_file() {
             file.flags(self.db)
         } else {
             &self.db.project.flags

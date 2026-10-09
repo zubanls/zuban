@@ -4,7 +4,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.6.2"
+version = "0.10.0"
 edition = "2024"
 rust-version = "1.92"
 homepage = "https://zubanls.com"
@@ -47,6 +47,7 @@ regex = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 shellexpand = "*"
+smallvec = "*"
 toml_edit = "*"
 tracing = "*"
 tracing-subscriber = { version = "*", features = ["time", "local-time"] }

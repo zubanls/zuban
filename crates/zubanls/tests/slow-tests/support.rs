@@ -39,6 +39,8 @@ pub(crate) struct Project<'a> {
     roots: Vec<String>,
     root_dir_contains_symlink: bool,
     push_diagnostics: bool,
+    hierarchical_document_symbol_support: bool,
+    initialization_options: Option<Value>,
 }
 
 impl<'a> Project<'a> {
@@ -49,6 +51,8 @@ impl<'a> Project<'a> {
             roots: vec![],
             root_dir_contains_symlink: false,
             push_diagnostics: false,
+            hierarchical_document_symbol_support: true,
+            initialization_options: None,
         }
     }
 
@@ -64,6 +68,16 @@ impl<'a> Project<'a> {
 
     pub(crate) fn with_push_diagnostics(mut self) -> Self {
         self.push_diagnostics = true;
+        self
+    }
+
+    pub(crate) fn with_initialization_options(mut self, initialization_options: Value) -> Self {
+        self.initialization_options = Some(initialization_options);
+        self
+    }
+
+    pub(crate) fn without_hierarchical_document_symbol_support(mut self) -> Self {
+        self.hierarchical_document_symbol_support = false;
         self
     }
 
@@ -99,6 +113,8 @@ impl<'a> Project<'a> {
                 &roots.iter().map(|root| root.as_str()).collect::<Vec<_>>(),
                 client_encodings,
                 !self.push_diagnostics,
+                self.hierarchical_document_symbol_support,
+                self.initialization_options,
             ),
             version_incrementor: Default::default(),
         }
@@ -290,7 +306,9 @@ impl Server {
         assert!(message.contains("Test Panic"), "{message}");
         // Check for traceback occurrence
         assert!(
-            message.contains("zubanls::server::GlobalState::event_loop"),
+            // The first is Rust 1.97.0+, while the other appears before
+            message.contains("<zubanls::server::GlobalState>::event_loop")
+                || message.contains("zubanls::server::GlobalState::event_loop"),
             "{message}"
         );
         assert!(

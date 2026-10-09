@@ -12,6 +12,7 @@ mod file;
 mod format_data;
 mod getitem;
 mod goto;
+mod heuristic_infer;
 mod imports;
 mod inference_state;
 mod inferred;
@@ -51,7 +52,7 @@ pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
 pub use code_actions::CodeAction;
-use config::{ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{IgnoreFileReason, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 use database::Database;
 pub use database::RunCause;
 pub use diagnostics::Severity;
@@ -60,11 +61,11 @@ use file::File;
 use inference_state::InferenceState;
 use inferred::Inferred;
 pub use lines::PositionInfos;
-use matching::invalidate_structural_matching_cache;
+use matching::invalidate_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::{node_ref::NodeRef, select_files::all_typechecked_files};
+use crate::{goto::HeuristicDetail, node_ref::NodeRef, select_files::all_typechecked_files};
 
 pub struct Project {
     db: Database,
@@ -77,6 +78,7 @@ impl Project {
     }
 
     fn new_internal(db: Database) -> Self {
+        tracing::debug!("Project run cause: {:#?}", &db.run_cause);
         tracing::debug!("Project settings: {:#?}", &db.project);
         Self { db }
     }
@@ -107,14 +109,20 @@ impl Project {
     }
 
     pub fn workspace_documents(&self) -> impl ParallelIterator<Item = Document<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         let (known_file_indexes, files_to_be_loaded) = all_typechecked_files(&self.db);
         known_file_indexes
             .into_par_iter()
+            .map(|(file_index, _)| file_index)
+            // Make sure the file can be loaded, because this is not guaranteed when retrieving a
+            // FileIndex.
+            .filter(|file_index| self.db.ensure_file_for_file_index(*file_index).is_ok())
             .chain(
                 files_to_be_loaded
                     .into_par_iter()
-                    .filter_map(|(entry, _)| self.db.load_file_index_from_workspace(&entry, false)),
+                    .filter_map(|(_, entry, _)| {
+                        self.db.load_file_index_from_workspace(&entry, false)
+                    }),
             )
             .map(|file_index| Document {
                 project: self,
@@ -181,7 +189,7 @@ impl Project {
     }
 
     pub fn diagnostics(&mut self) -> anyhow::Result<Diagnostics<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         if self.db.project.settings.mypy_path.len() > 1 {
             debug!(
                 "Has complex mypy path: {:?}",
@@ -229,7 +237,7 @@ impl Project {
     }
 
     pub fn document(&mut self, path: &PathWithScheme) -> Option<Document<'_>> {
-        invalidate_structural_matching_cache();
+        invalidate_matching_cache();
         let file_index = self.db.file_by_file_path(path)?;
         tracing::debug!("Looking at document #{file_index} for {}", path.as_uri());
         Some(Document {
@@ -240,6 +248,10 @@ impl Project {
 
     pub fn vfs_handler(&self) -> &dyn VfsHandler {
         self.db.vfs.handler.as_ref()
+    }
+
+    pub fn mode(&self) -> config::Mode {
+        self.db.project.settings.mode
     }
 }
 
@@ -292,11 +304,12 @@ impl<'project> Document<'project> {
         &self,
         position: InputPosition,
         goal: GotoGoal,
+        use_heuristics: bool,
         on_name: impl for<'a> FnMut(ValueName) -> T,
     ) -> anyhow::Result<Vec<T>> {
         Ok(
             GotoResolver::new(self.positional_document(position)?, goal, on_name)
-                .infer_definition()
+                .infer_definition(use_heuristics.then_some(HeuristicDetail::Shallow))
                 .1,
         )
     }
@@ -453,6 +466,13 @@ impl<'project> Document<'project> {
             Scope::Module,
             &python_file.symbol_table,
         )
+    }
+
+    pub fn ignored_errors_reason(&self) -> Option<IgnoreFileReason> {
+        self.project
+            .db
+            .loaded_python_file(self.file_index)
+            .ignore_type_errors
     }
 }
 

@@ -10,8 +10,7 @@ mod typed_dict;
 
 pub(crate) use alias::{TypeDocs, assignment_type_node_ref};
 pub(crate) use class::{
-    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS,
-    linearize_mro_and_return_linearizable,
+    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS, linearize_mro,
 };
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
@@ -26,7 +25,7 @@ use super::{
     utils::func_of_self_symbol,
 };
 use crate::{
-    arguments::{Args, SimpleArgs},
+    arguments::{ArgKind, Args, SimpleArgs},
     database::{
         ComplexPoint, Database, Locality, ParentScope, Point, PointKind, PointLink, Specific,
         TypeAlias,
@@ -52,12 +51,12 @@ use crate::{
         ClassGenerics, Dataclass, DbBytes, DbString, Enum, EnumMember, GenericClass, GenericItem,
         GenericsList, Literal, LiteralKind, MaybeUnpackGatherer, NamedTuple, Namespace, NeverCause,
         ParamSpec, ParamSpecArg, ParamSpecUsage, ParamType, RecursiveType, RecursiveTypeOrigin,
-        ReplaceTypeVarLikes, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeLikeInTypeVar, TypeVar, TypeVarKind,
-        TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, TypeVarVariance, TypedDict,
-        TypedDictGenerics, UnionEntry, UnionType, WithUnpack, add_any_params_to_params,
-        add_param_spec_to_params,
+        ReplaceTypeVarLikes, Sentinel, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, TypeArgs, TypeGatherer, TypeGuardInfo, TypeLikeInTypeVar,
+        TypeVar, TypeVarKind, TypeVarKindInfos, TypeVarLike, TypeVarLikeName, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarManager, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage,
+        TypeVarVariance, TypedDict, TypedDictGenerics, UnionType, WithUnpack,
+        add_any_params_to_params, add_param_spec_to_params,
     },
     type_helpers::{Class, Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
@@ -116,7 +115,7 @@ pub(super) enum InvalidVariableType<'a> {
     Other,
     Slice,
     InlineTypedDict,
-    NameError { name: &'a str },
+    CyclicDefinition { name: &'a str },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -132,6 +131,7 @@ enum TypeComputationOrigin {
     TypeApplication,
     TypeAlias,
     CastTarget,
+    AssertType,
     NamedTupleMember,
     BaseClass,
     Other,
@@ -158,9 +158,8 @@ impl InvalidVariableType<'_> {
                     ),
                 }
             }
-            Self::NameError { name } => IssueKind::NameError {
+            Self::CyclicDefinition { name } => IssueKind::CyclicDefinition {
                 name: (*name).into(),
-                note: None,
             },
             Self::Function { node_ref } => IssueKind::InvalidType {
                 message: format!(
@@ -388,14 +387,63 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn compute_forward_reference(
+    fn compute_string_annotation(
         &mut self,
         start: CodeIndex,
         code: Cow<str>,
     ) -> TypeContent<'db, 'db> {
         let f = self
             .file
-            .ensure_forward_reference_file(self.i_s.db, start, code);
+            .ensure_string_annotation_file(self.i_s.db, start, code);
+
+        // Does some light name binding to avoid cases where we cannot find names otherwise.
+        {
+            fn check(origin_node_ref: NodeRef, annotation_file: &PythonFile) {
+                let redirect_type_params = |type_params: Option<TypeParams>| {
+                    if let Some(type_params) = type_params {
+                        for name in annotation_file.tree.filter_all_names(None) {
+                            let name_str = name.as_code();
+                            if let Some(matched) = type_params
+                                .iter()
+                                .find(|type_param| type_param.name_def().as_code() == name_str)
+                            {
+                                annotation_file.points.set(
+                                    name.index(),
+                                    Point::new_redirect(
+                                        origin_node_ref.file_index(),
+                                        matched.name_def().name_index(),
+                                        Locality::NameBinder,
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                };
+                let parent = if let Some(func) = origin_node_ref.maybe_function() {
+                    redirect_type_params(func.type_params());
+                    FuncNodeRef::new(origin_node_ref.file, func).parent_scope()
+                } else if let Some(class) = origin_node_ref.maybe_class() {
+                    redirect_type_params(class.type_params());
+                    ClassNodeRef::new(origin_node_ref.file, class)
+                        .class_storage()
+                        .parent_scope
+                } else {
+                    return;
+                };
+                match parent {
+                    ParentScope::Function(f) => {
+                        check(NodeRef::new(origin_node_ref.file, f), annotation_file)
+                    }
+                    ParentScope::Class(c) => {
+                        check(NodeRef::new(origin_node_ref.file, c), annotation_file)
+                    }
+                    ParentScope::Module => (),
+                }
+            }
+            let node_ref = NodeRef::from_link(self.name_resolution.i_s.db, self.for_definition);
+            check(node_ref, f)
+        }
+
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
@@ -1004,7 +1052,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 {
                     self.add_issue(
                         node_ref,
-                        IssueKind::MissingTypeParameters {
+                        IssueKind::MissingTypeArguments {
                             name: cls.name().into(),
                         },
                     );
@@ -1036,7 +1084,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Some(Type::NamedTuple(nt))
                     } else {
                         let defined_at = nt.__new__.defined_at;
-                        Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
+                        Type::NamedTuple(nt).maybe_replace_type_var_likes(db, &mut |usage| {
                             (usage.in_definition() == defined_at)
                                 .then(|| usage.as_default_or_any_generic_item(db))
                         })
@@ -1050,7 +1098,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if self.flags().disallow_any_generics {
                             self.add_issue(
                                 node_ref,
-                                IssueKind::MissingTypeParameters {
+                                IssueKind::MissingTypeArguments {
                                     name: td.name.unwrap().as_str(db).into(),
                                 },
                             );
@@ -1070,7 +1118,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if self.flags().disallow_any_generics && a.type_vars.contains_non_default() {
                     self.add_issue(
                         node_ref,
-                        IssueKind::MissingTypeParameters {
+                        IssueKind::MissingTypeArguments {
                             name: a.name(db).into(),
                         },
                     );
@@ -1086,7 +1134,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Tuple".into(),
                             },
                         );
@@ -1097,7 +1145,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Callable".into(),
                             },
                         );
@@ -1112,7 +1160,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "Type".into(),
                             },
                         );
@@ -1220,7 +1268,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.flags().disallow_any_generics {
                         self.add_issue(
                             node_ref,
-                            IssueKind::MissingTypeParameters {
+                            IssueKind::MissingTypeArguments {
                                 name: "TypeForm".into(),
                             },
                         );
@@ -1713,7 +1761,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::Module(file)
                         }
                         ImportResult::Namespace(ns) => TypeContent::Namespace(ns),
-                        ImportResult::PyTypedMissing => TypeContent::UNKNOWN_REPORTED,
+                        ImportResult::PyTypedMissing(_) | ImportResult::BinaryExtension => {
+                            TypeContent::UNKNOWN_REPORTED
+                        }
                     }
                 } else {
                     self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
@@ -2071,10 +2121,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut is_single_param_spec = false;
         let db = self.i_s.db;
         let resolve_default = |generics: &[GenericItem], g: GenericItem| {
-            g.replace_type_var_likes_and_self(
+            g.maybe_replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
                     let tvl_found = usage.as_type_var_like();
+                    // Use the previously defined generic as a type var
                     for (given_item, tvl) in generics.iter().zip(type_var_likes.iter()) {
                         if tvl == &tvl_found {
                             return Some(given_item.clone());
@@ -2158,8 +2209,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     break;
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
-                    given += 1;
                     if expected == 1 && slice_type.iter().count() != 1 {
+                        given += 1;
                         // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
                         // because "for aesthetic purposes we allow these to be omitted".
                         let params =
@@ -2167,6 +2218,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         is_single_param_spec = true;
                         GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
+                        given += 1;
                         GenericItem::ParamSpecArg(spec)
                     } else if let Some(default) = param_spec.default(db) {
                         resolve_default(
@@ -2424,7 +2476,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.add_issue_for_index(
                                 index,
                                 IssueKind::new_invalid_type(format!(
-                                    "Duplicate argument \"{param_name}\" in Callable",
+                                    "Duplicate param \"{param_name}\" in Callable",
                                 )),
                             );
                             return;
@@ -2602,32 +2654,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
     ) -> TypeContent<'static, 'static> {
-        let mut entries = vec![];
-        let mut format_index = 0;
+        let mut gatherer = TypeGatherer::default();
         for slice_or_simple in slice_type.iter() {
             let t = self.compute_slice_type_content(slice_or_simple);
             let type_ = self.as_type(t, slice_or_simple.as_node_ref());
-            match type_ {
-                Type::Never(_) => continue,
-                Type::Union(u) => {
-                    let length = u.entries.len();
-                    for mut new_entry in u.entries.into_vec() {
-                        new_entry.format_index += format_index;
-                        entries.push(new_entry);
-                    }
-                    format_index += length;
-                }
-                _ => {
-                    entries.push(UnionEntry {
-                        type_,
-                        format_index,
-                    });
-                    format_index += 1;
-                }
-            }
+            gatherer.add_all_union_entries(type_);
         }
         let might_have_type_vars = self.has_type_vars_or_self;
-        TypeContent::Type(Type::from_union_entries(entries, might_have_type_vars))
+        TypeContent::Type(gatherer.into_type_with_might_have_type_vars(might_have_type_vars))
     }
 
     fn compute_type_get_item_on_optional(
@@ -2645,11 +2679,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
         }
         let t = self.compute_slice_type(first);
-        let mut t = t.union(Type::None);
-        if let Type::Union(union_type) = &mut t {
-            union_type.sort_for_priority();
-        };
-        TypeContent::Type(t)
+        TypeContent::Type(t.union(Type::None))
     }
 
     fn compute_type_get_item_on_type(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -2814,37 +2844,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            let format_index = &Cell::new(0);
-            TypeContent::Type(Type::Union(UnionType::new(
-                slice_type
-                    .iter()
-                    .flat_map(|s| {
-                        let t = self.compute_get_item_on_literal_item(s, format_index.get() + 1);
-                        let type_ = self.as_type(t, s.as_node_ref());
-                        match type_ {
-                            Type::Union(u) => {
-                                let mut highest = 0;
-                                let start_format_index = format_index.get();
-                                EitherIterator::Left(u.entries.into_vec().into_iter().map(
-                                    move |mut e| {
-                                        highest = highest.max(e.format_index);
-                                        format_index.set(start_format_index + highest + 1);
-                                        e.format_index += start_format_index;
-                                        e
-                                    },
-                                ))
-                            }
-                            _ => {
-                                let e = UnionEntry {
-                                    type_,
-                                    format_index: format_index.get(),
-                                };
-                                format_index.set(format_index.get() + 1);
-                                EitherIterator::Right(std::iter::once(e))
-                            }
-                        }
-                    })
-                    .collect(),
+            TypeContent::Type(Type::Union(UnionType::from_types(
+                slice_type.iter().enumerate().flat_map(|(i, s)| {
+                    let t = self.compute_get_item_on_literal_item(s, i + 1);
+                    let type_ = self.as_type(t, s.as_node_ref());
+                    match type_ {
+                        Type::Union(u) => EitherIterator::Left(u.entries.to_vec().into_iter()),
+                        _ => EitherIterator::Right(std::iter::once(type_)),
+                    }
+                }),
                 false,
             )))
         } else {
@@ -3127,8 +3135,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match atom.unpack() {
             AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.into()),
-                PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
+                PythonString::Ref(start, s) => self.compute_string_annotation(start, s.into()),
+                PythonString::String(start, s) => self.compute_string_annotation(start, s.into()),
                 PythonString::FString => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
             AtomContent::NoneLiteral => TypeContent::Type(Type::None),
@@ -3169,7 +3177,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'x> {
         match lookup {
             Lookup::T(c @ TypeContent::SpecialCase(Specific::TypingAny))
-                if self.flags().disallow_any_explicit =>
+                if self.flags().disallow_any_explicit
+                    && self.origin != TypeComputationOrigin::AssertType =>
             {
                 self.add_issue_for_index(name.index(), IssueKind::DisallowedAnyExplicit);
                 c
@@ -3414,12 +3423,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         let pr = match base {
             Lookup::T(TypeContent::Module(file)) => {
                 let had_issue = Cell::new(false);
-                let (pr, _) =
-                    self.with_new_file(file)
-                        .resolve_module_access(name.as_code(), |_| {
-                            had_issue.set(true);
-                            false
-                        })?;
+                let (pr, _) = self.with_new_file(file, |new| {
+                    new.resolve_module_access(name.as_code(), |_| {
+                        had_issue.set(true);
+                        false
+                    })
+                })?;
                 if had_issue.get() {
                     return None;
                 }
@@ -3442,12 +3451,14 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     .class_storage
                     .class_symbol_table
                     .lookup_symbol(name.as_str())?;
-                self.with_new_file(node_ref.file)
-                    .resolve_point_without_narrowing(node_index)
-                    .unwrap_or_else(|| PointResolution::NameDef {
-                        node_ref: NodeRef::new(node_ref.file, node_index).name_def_ref_of_name(),
-                        global_redirect: false,
-                    })
+                self.with_new_file(node_ref.file, |new| {
+                    new.resolve_point_without_narrowing(node_index)
+                        .unwrap_or_else(|| PointResolution::NameDef {
+                            node_ref: NodeRef::new(node_ref.file, node_index)
+                                .name_def_ref_of_name(),
+                            global_redirect: false,
+                        })
+                })
             }
             _ => return None,
         };
@@ -3496,7 +3507,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         if let Some(specific) = node_ref
             .file
             .points
-            .get(func.node().name_def().index())
+            .get(func.as_node().name_def().index())
             .maybe_calculated_and_specific()
             && let Some(tc) = check_special_case(specific)
         {
@@ -3565,10 +3576,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 if let Some(file) = inferred.maybe_file(i_s.db) {
                     return Lookup::T(TypeContent::Module(i_s.db.loaded_python_file(file)));
                 }
-                if let Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) =
-                    inferred.maybe_complex_point(i_s.db)
-                {
-                    return Lookup::T(TypeContent::Namespace(ns.clone()));
+                match inferred.maybe_complex_point(i_s.db) {
+                    Some(ComplexPoint::TypeInstance(Type::Namespace(ns))) => {
+                        return Lookup::T(TypeContent::Namespace(ns.clone()));
+                    }
+                    Some(ComplexPoint::PyTypedMissing(_)) => return Lookup::UNKNOWN_REPORTED,
+                    _ => (),
                 }
                 if inferred.maybe_specific(i_s.db) == Some(Specific::ModuleNotFound) {
                     return Lookup::T(TypeContent::Unknown(UnknownCause::UnknownName(
@@ -3580,7 +3593,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 // If a module contains a __getattr__, the type can be part of that
                 // (which is typically just an Any that propagates).
                 if let Some(func) = name_node_ref.maybe_name_of_function() {
-                    let func_node_ref = FuncNodeRef::new(name_node_ref.file, func.index());
+                    let func_node_ref = FuncNodeRef::new(name_node_ref.file, func);
                     // The inference state context is new, because we are in a new module.
                     let i_s = &InferenceState::new(self.i_s.db, name_node_ref.file);
                     func_node_ref.ensure_cached_type_vars(i_s, None);
@@ -3601,7 +3614,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         match name_def.expect_type() {
             TypeLike::ClassDef(c) => {
                 cache_class_name(node_ref, c);
-                Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c.index()))
+                Self::ensure_cached_class(i_s, ClassNodeRef::new(node_ref.file, c))
             }
             TypeLike::Assignment(assignment) => node_ref
                 .file
@@ -3693,9 +3706,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 PrimaryContent::Attribute(name) => {
                     match self.lookup_special_primary_or_atom_type(primary.first())? {
                         Lookup::T(TypeContent::Module(f)) => {
-                            let (pr, _) = self
-                                .with_new_file(f)
-                                .resolve_module_access(name.as_str(), |_| false)?;
+                            let (pr, _) = self.with_new_file(f, |new| {
+                                new.resolve_module_access(name.as_str(), |_| false)
+                            })?;
                             Some(self.point_resolution_to_type_name_lookup(pr))
                         }
                         _ => None,
@@ -3730,6 +3743,32 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             return Inferred::new_any_from_error();
         };
         Inferred::from_type(Type::TypeForm(Arc::new(t)))
+    }
+
+    pub fn compute_sentinel_assignment(&self, args: &dyn Args) -> Inferred {
+        let mut iterator = args.iter(self.i_s.mode);
+        if let Some(first_arg) = iterator.next()
+            && iterator.next().is_none()
+            && let ArgKind::Positional(pos) = &first_arg.kind
+            && let Some(string_literal) = pos
+                .node_ref
+                .expect_named_expression()
+                .maybe_single_string_literal()
+        {
+            return Inferred::from_type(Type::Sentinel(Sentinel {
+                name: PointLink {
+                    file: self.file.file_index,
+                    node_index: string_literal.index(),
+                },
+            }));
+        }
+        args.add_issue(
+            self.i_s,
+            IssueKind::new_invalid_type(
+                "Sentinel expects a single positional argument that is a string literal",
+            ),
+        );
+        Inferred::new_any_from_error()
     }
 
     fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
@@ -3775,7 +3814,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 point
                     .maybe_calculated_and_specific()
                     .is_some_and(|s| s.is_annotation_or_type_comment()),
-                "Annotation {annotation:?} has unexpected point: {point:?}"
+                "Annotation {annotation:?} has unexpected point: {point:?}, tree node {annotation:?}",
             );
         }
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
@@ -3806,6 +3845,20 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             );
         }
         Inferred::from_saved_link(PointLink::new(self.file.file_index, annotation.index()))
+    }
+
+    pub fn has_complete_annotation_type(&self, annotation: Annotation) -> bool {
+        // The annotation might be incomplete in e.g. an uncalculated y for `x: Final = y`
+        let p = self.file.points.get(annotation.index());
+        debug_assert!(p.calculated());
+        match p.specific() {
+            Specific::AnnotationOrTypeCommentSimpleClassInstance => true,
+            _ => self
+                .file
+                .points
+                .get(annotation.expression().index())
+                .calculated(),
+        }
     }
 
     pub(crate) fn use_cached_return_annotation_type(
@@ -3933,7 +3986,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             start,
             s.trim_end_matches('\\').into(),
         );
-        let name_resolution = self.with_new_file(f);
+        let name_resolution = NameResolution {
+            file: f,
+            i_s: self.i_s,
+            stop_on_assignments: self.stop_on_assignments,
+        };
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {
                 StarExpressionContent::Expression(expr) => {
@@ -4127,12 +4184,24 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
         None
     }
-    pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+
+    fn compute_target_like(
+        &self,
+        node_ref: NodeRef,
+        origin: TypeComputationOrigin,
+    ) -> Result<Inferred, ()> {
         assert_eq!(node_ref.file.file_index, self.file.file_index);
         let named_expr = node_ref.expect_named_expression();
-        let t =
-            self.compute_type_for_expr(named_expr.expression(), TypeComputationOrigin::CastTarget)?;
+        let t = self.compute_type_for_expr(named_expr.expression(), origin)?;
         Ok(Inferred::from_type(t))
+    }
+
+    pub(crate) fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+        self.compute_target_like(node_ref, TypeComputationOrigin::CastTarget)
+    }
+
+    pub(crate) fn compute_assert_type(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
+        self.compute_target_like(node_ref, TypeComputationOrigin::AssertType)
     }
 
     fn compute_type_for_expr(
@@ -4163,6 +4232,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     fn within_type_var_like_definition<T>(
         &self,
+        name: TypeVarLikeName,
         node_ref: NodeRef,
         check_invalid_outer_type_vars: bool,
         from_bound: bool,
@@ -4179,12 +4249,17 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
             if check_invalid_outer_type_vars {
                 found = check_for_invalid_outer_type_vars(i_s.db, node_ref, found)
             }
-            found.unwrap_or_else(
-                || TypeVarCallbackReturn::NotFound {
-                    allow_late_bound_callables: true,
-                }, // TODO it should probably something like this for recursive TypeVar defaults
-                   // || TypeVarCallbackReturn::TypeVarLike(type_var_like.as_type_var_like_usage(?, in_definition))
-            )
+            found.unwrap_or_else(|| {
+                if !from_bound && type_var_like.type_var_like_name() == Some(name) {
+                    TypeVarCallbackReturn::AddIssue(IssueKind::TypeVarDefaultTypeVarOutOfScope {
+                        type_var: type_var_like.name(self.i_s.db).into(),
+                    })
+                } else {
+                    TypeVarCallbackReturn::NotFound {
+                        allow_late_bound_callables: true,
+                    }
+                }
+            })
         };
         let comp = TypeComputation::new(
             self.i_s,
@@ -4198,20 +4273,27 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
 
     pub(crate) fn compute_type_var_bound(
         &self,
+        name: TypeVarLikeName,
         expr: Expression,
         from_type_var_syntax: bool,
     ) -> Type {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, from_type_var_syntax, true, |mut comp| {
-            match comp.compute_type(expr) {
-                TypeContent::InvalidVariable(_) if !from_type_var_syntax => {
-                    // TODO this is a bit weird and should probably generate other errors
-                    node_ref.add_issue(comp.i_s, IssueKind::TypeVarBoundMustBeType);
-                    Type::ERROR
+        self.within_type_var_like_definition(
+            name,
+            node_ref,
+            from_type_var_syntax,
+            true,
+            |mut comp| {
+                match comp.compute_type(expr) {
+                    TypeContent::InvalidVariable(_) if !from_type_var_syntax => {
+                        // TODO this is a bit weird and should probably generate other errors
+                        node_ref.add_issue(comp.i_s, IssueKind::TypeVarBoundMustBeType);
+                        Type::ERROR
+                    }
+                    t => comp.as_type(t, node_ref),
                 }
-                t => comp.as_type(t, node_ref),
-            }
-        })
+            },
+        )
     }
 
     pub(crate) fn compute_type_var_value(
@@ -4257,23 +4339,32 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         }
     }
 
-    pub(crate) fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
+    pub(crate) fn compute_type_var_default(
+        &self,
+        name: TypeVarLikeName,
+        expr: Expression,
+    ) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
+        self.within_type_var_like_definition(name, node_ref, false, false, |mut comp| {
             let tc = comp.compute_type(expr);
             Some(comp.as_type(tc, node_ref))
         })
     }
 
-    pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
+    pub fn compute_param_spec_default(
+        &self,
+        name: TypeVarLikeName,
+        expr: Expression,
+    ) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
-        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
+        self.within_type_var_like_definition(name, node_ref, false, false, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
 
     pub fn compute_type_var_tuple_default(
         &self,
+        name: TypeVarLikeName,
         origin: TypeVarTupleDefaultOrigin,
     ) -> Option<TypeArgs> {
         let node_ref = NodeRef::new(
@@ -4283,7 +4374,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 TypeVarTupleDefaultOrigin::TypeParam(star_expr) => star_expr.index(),
             },
         );
-        self.within_type_var_like_definition(node_ref, false, false, |mut comp| {
+        self.within_type_var_like_definition(name, node_ref, false, false, |mut comp| {
             let unpacked = match origin {
                 TypeVarTupleDefaultOrigin::OldSchool(expr) => match comp.compute_type(expr) {
                     TypeContent::Unpacked(unpacked) => unpacked,
@@ -4311,12 +4402,13 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
         type_params: TypeParams,
         allow_multi_type_var_tuples: bool,
     ) -> TypeVarLikes {
-        let mut type_var_likes: Vec<TypeVarLike> = vec![];
+        let mut type_var_likes: Vec<(TypeParam, TypeVarLike)> = vec![];
+        let mut type_var_tuple_count = 0;
         for type_param in type_params.iter() {
             let (name_def, kind) = type_param.unpack();
             let name_def_ref = NodeRef::new(self.file, name_def.index());
             let name = TypeVarLikeName::SyntaxNode(name_def_ref.as_link());
-            let type_var_like = match kind {
+            let mut type_var_like = match kind {
                 TypeParamKind::TypeVar(bound, default) => {
                     let kind = match bound {
                         Some(bound) => {
@@ -4368,29 +4460,32 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 }
                 TypeParamKind::TypeVarTuple(default) => {
                     let default = default.map(|d| d.unpack().index());
-                    TypeVarLike::TypeVarTuple(Arc::new(TypeVarTuple::new(name, scope, default)))
+                    TypeVarLike::TypeVarTuple(Arc::new(TypeVarTuple::new(
+                        name,
+                        scope,
+                        default,
+                        TypeVarVariance::Inferred,
+                    )))
                 }
                 TypeParamKind::ParamSpec(default) => {
                     let default = default.map(|d| d.expression().index());
-                    TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(name, scope, default)))
+                    TypeVarLike::ParamSpec(Arc::new(ParamSpec::new(
+                        name,
+                        scope,
+                        default,
+                        TypeVarVariance::Inferred,
+                    )))
                 }
             };
             // It might feel a bit weird, that we insert the TypeVars and also return them
             // as a list. This is because the list is needed for class/alias/func
             // definitions and the individual TypeVar is used whenever a type accesses it.
-            name_def_ref.insert_complex(ComplexPoint::TypeVarLike(type_var_like), Locality::Todo);
-        }
+            name_def_ref.insert_complex(
+                ComplexPoint::TypeVarLike(type_var_like.clone()),
+                Locality::Todo,
+            );
 
-        // We do a separate pass here, since using the defaults might need access to the above
-        // initialized type vars.
-        let mut type_var_tuple_count = 0;
-        for type_param in type_params.iter() {
-            let (name_def, _) = type_param.unpack();
-            let name_def_ref = NodeRef::new(self.file, name_def.index());
-            let Some(ComplexPoint::TypeVarLike(type_var_like)) = name_def_ref.maybe_complex()
-            else {
-                unreachable!()
-            };
+            let mut add_to_list = true;
             if let TypeVarLike::TypeVarTuple(_) = type_var_like {
                 type_var_tuple_count += 1;
                 if !allow_multi_type_var_tuples && type_var_tuple_count >= 2 {
@@ -4400,12 +4495,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                             in_type_alias_type: false,
                         },
                     );
-                    continue;
+                    add_to_list = false;
                 }
             }
-            let mut type_var_like = type_var_like.clone();
             if !type_var_like.has_default()
-                && let Some(previous) = type_var_likes.last()
+                && let Some((_, previous)) = type_var_likes.last()
                 && previous.has_default()
             {
                 type_var_like = type_var_like.set_any_default();
@@ -4417,24 +4511,11 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                     },
                 );
             }
-            let type_var_like = if let Some(replaced) = type_var_like
-                .replace_type_var_like_defaults_that_are_out_of_scope(
-                    self.i_s.db,
-                    type_var_likes.iter(),
-                    |issue| {
-                        NodeRef::new(self.file, name_def.index()).add_type_issue(self.i_s.db, issue)
-                    },
-                ) {
-                // Need to overwrite the old definition
-                name_def_ref
-                    .insert_complex(ComplexPoint::TypeVarLike(replaced.clone()), Locality::Todo);
-                replaced
-            } else {
-                type_var_like
-            };
-            type_var_likes.push(type_var_like)
+            if add_to_list {
+                type_var_likes.push((type_param, type_var_like.clone()));
+            }
         }
-        TypeVarLikes::from_vec(type_var_likes)
+        TypeVarLikes::new(type_var_likes.into_iter().map(|(_, tvl)| tvl).collect())
     }
 
     fn lookup_decorator_if_only_names(&self, decorator: Decorator) -> Option<Lookup<'db, 'db>> {
@@ -4456,16 +4537,16 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
     ) -> Option<DecoratorState<'db>> {
         match self.lookup_decorator_if_only_names(decorator)? {
             Lookup::T(TypeContent::InvalidVariable(InvalidVariableType::Function { node_ref })) => {
-                let name_ref = NodeRef::new(node_ref.file, node_ref.node().name_def().index());
+                let name_ref = NodeRef::new(node_ref.file, node_ref.as_node().name_def().index());
                 if name_ref.point().calculating() {
                     return Some(DecoratorState::Calculating);
                 }
-                Function::new(node_ref.into(), None).cache_func_with_name_def(
+                Function::new(*node_ref, None).cache_func_with_name_def(
                     &InferenceState::new(self.i_s.db, node_ref.file),
                     name_ref,
                     false,
                 );
-                Some(DecoratorState::NodeRef(node_ref.into()))
+                Some(DecoratorState::NodeRef(*node_ref))
             }
             Lookup::T(TypeContent::Class { node_ref, .. }) => {
                 node_ref
@@ -4954,7 +5035,7 @@ fn check_special_case(specific: Specific) -> Option<TypeContent<'static, 'static
         Specific::AnyDueToError
         | Specific::Function
         | Specific::ModuleNotFound
-        | Specific::PyTypedMissing
+        | Specific::BinaryExtension
         | Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithTypeVars
         | Specific::AnnotationOrTypeCommentWithoutTypeVars => return None,

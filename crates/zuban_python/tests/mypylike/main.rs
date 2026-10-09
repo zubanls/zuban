@@ -1,7 +1,8 @@
 mod ide;
 
 use std::{
-    collections::HashMap,
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap},
     env,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
@@ -12,7 +13,10 @@ use std::{
 
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
 
-use config::{DiagnosticConfig, Mode, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
+use config::{
+    DiagnosticConfig, Mode, ModeChoice, ModeChoiceArg, ProjectOptions, PythonVersion, Settings,
+    TypeCheckerFlags,
+};
 use ide::find_and_check_ide_tests;
 use regex::{Captures, Regex, Replacer};
 use test_utils::{Step, calculate_steps};
@@ -20,7 +24,7 @@ use utils::FastHashSet;
 use vfs::{NormalizedPath, PathWithScheme, SimpleLocalFS, VfsHandler};
 use zuban_python::{Project, RunCause};
 
-const SKIP_MYPY_TEST_FILES: [&str; 27] = [
+const SKIP_MYPY_TEST_FILES: [&str; 31] = [
     // --allow-redefinition tests
     "check-redefine.test",
     // Python special features
@@ -34,6 +38,7 @@ const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     "reports.test",
     // Unfortunately probably not possible
     "check-custom-plugin.test",
+    "check-plugin-error-codes.test",
     // Probably not relevant, because additional almost unrelated mypy features
     "stubgen.test",
     "typexport-basic.test",
@@ -43,6 +48,8 @@ const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     // Inspect feature, see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
     "fine-grained-inspect.test",
     // Won't do, because they test mypy internals
+    "native-parser.test",
+    "native-parser-imports.test",
     "check-incomplete-fixture.test",
     "check-native-int.test",
     "semanal-symtable.test",
@@ -55,6 +62,7 @@ const SKIP_MYPY_TEST_FILES: [&str; 27] = [
     "deps-types.test",
     "diff.test",
     "outputjson.test",
+    "exportjson.test",
     "errorstream.test",
     "merge.test",
     "ref-info.test",
@@ -111,6 +119,9 @@ struct CliArgs {
 
     #[arg(short = 'x')]
     stop_after_first_error: bool,
+
+    #[arg(long)]
+    slowest: Option<usize>,
 }
 
 #[derive(Parser, Default)]
@@ -161,6 +172,14 @@ struct PerTestFlags {
     verbose: bool,
     #[arg(short)]
     package: Option<String>,
+    #[arg(long)]
+    debug_serialize: bool,
+
+    // Not public
+    #[arg(long)]
+    allow_redefinition_old: bool,
+    #[arg(long)]
+    disallow_redefinition_old: bool,
 
     // Our own
     #[arg(long)]
@@ -175,8 +194,6 @@ struct PerTestFlags {
     no_use_joins: bool,
     #[arg(long)]
     disallow_empty_bodies: bool,
-    #[arg(long)]
-    auto_mode: bool,
 }
 
 #[derive(Debug)]
@@ -192,15 +209,15 @@ impl TestCase<'_, '_> {
         &self,
         projects: &'p mut ProjectsCache,
         local_fs: &SimpleLocalFS,
-        mode: Option<Mode>,
-        flags: PerTestFlags,
+        mode: ModeChoice,
+        mut flags: PerTestFlags,
         steps: &[Step],
     ) -> (OwnedOrMut<'p, Project>, DiagnosticConfig) {
         let mut diagnostic_config = DiagnosticConfig {
             show_error_codes: false,
             ..Default::default()
         };
-        let po = ProjectOptions::default_for_mode(mode.unwrap_or_else(|| Mode::Default));
+        let po = ProjectOptions::default_for_mode(mode.into());
         let mut config = po.flags;
         // TODO This appears to cause issues, because Mypy uses a custom typing.pyi that has
         // different argument types.
@@ -215,9 +232,10 @@ impl TestCase<'_, '_> {
                 ProjectOptions::from_mypy_ini(
                     local_fs,
                     base_path,
-                    base_path,
+                    &local_fs.join(&base_path, "mypy.ini"),
                     &ini,
                     &mut diagnostic_config,
+                    mode,
                 )
                 .expect("Expected there to be no errors in the mypy.ini")
                 .unwrap_or_else(ProjectOptions::mypy_default)
@@ -236,7 +254,7 @@ impl TestCase<'_, '_> {
                 ProjectOptions::from_pyproject_toml_only(
                     local_fs,
                     base_path,
-                    base_path,
+                    &local_fs.join(&base_path, "pyproject.toml"),
                     &ini,
                     &mut diagnostic_config,
                     mode,
@@ -291,6 +309,9 @@ impl TestCase<'_, '_> {
         // This is simply for testing and mirrors how mypy does it.
         config.allow_empty_bodies =
             !self.name.ends_with("_no_empty") && self.file_name != "check-abstract";
+
+        flags.cli.mypy_options.allow_redefinition |= flags.allow_redefinition_old;
+        flags.cli.mypy_options.allow_redefinition |= flags.allow_redefinition_old;
 
         BASE_PATH.with(|base_path| {
             let current_dir = NormalizedPath::arc_to_abs_path(base_path.clone());
@@ -352,10 +373,18 @@ impl TestCase<'_, '_> {
             PerTestFlags::from_arg_matches(&matches)?
         };
         let steps = steps.steps;
-        if flags.cli.mode().is_some_and(|m| m != mode)
-            || flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
+        if flags.only_language_server && !matches!(projects.run_cause, RunCause::LanguageServer)
             || flags.no_windows && cfg!(windows)
-            || flags.auto_mode && mode == Mode::Mypy
+            || match flags.cli.mode {
+                Some(ModeChoiceArg::Default) => mode != Mode::Default,
+                Some(ModeChoiceArg::Mypy) => mode != Mode::Mypy,
+                Some(ModeChoiceArg::Auto) => {
+                    // We skip these, because we only want to run these tests once and that's
+                    // already done in default mode.
+                    mode == Mode::Mypy
+                }
+                None => false,
+            }
         {
             return Ok(false);
         }
@@ -364,7 +393,10 @@ impl TestCase<'_, '_> {
         let (mut project, diagnostic_config) = self.initialize_flags(
             projects,
             &local_fs,
-            (!flags.auto_mode).then_some(mode),
+            match flags.cli.mode {
+                Some(mode) => mode.into(),
+                None => ModeChoice::Explicit(mode),
+            },
             flags,
             &steps,
         );
@@ -427,7 +459,7 @@ impl TestCase<'_, '_> {
                 default_panic(info);
             }));
 
-            let diagnostics: Vec<_> = if no_typecheck {
+            let mut diagnostics: Vec<_> = if no_typecheck {
                 vec![]
             } else {
                 project
@@ -463,6 +495,10 @@ impl TestCase<'_, '_> {
                     })
                     .collect()
             };
+            if self.from_mypy_test_suite {
+                // Remove notes that only exist in Zuban
+                diagnostics.retain(|x| !x.contains("note: TypedDicts can only be assigned to"))
+            }
 
             let _ = std::panic::take_hook();
 
@@ -514,9 +550,14 @@ impl TestCase<'_, '_> {
                 actual.push_str(r);
                 actual.push('\n');
             }
+            // Generally we should not sort any of the tests we wrote ourselves, but this might be
+            // tricky for now due to determinism, so get closer slowly.
+            let should_sort = !ide_test_results.iter().any(|s| s.contains("Symbols:"));
             actual_lines.extend(ide_test_results);
 
-            actual_lines.sort();
+            if should_sort {
+                actual_lines.sort();
+            }
 
             let mut wanted_cleaned_up: Vec<_> = wanted
                 .iter()
@@ -531,11 +572,15 @@ impl TestCase<'_, '_> {
                 })
                 .filter_map(temporarily_skip)
                 .collect();
-            wanted_cleaned_up.sort();
+            if should_sort {
+                wanted_cleaned_up.sort();
+            }
 
             if wanted_cleaned_up != actual_lines {
-                // To check output only sort by filenames, which should be enough.
-                wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+                if should_sort {
+                    // To check output only sort by filenames, which should be enough.
+                    wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
+                }
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
                 result = Err(anyhow::anyhow!(
@@ -817,7 +862,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                         Some(_) => "error",
                         None => "note",
                     },
-                    rest[1..].to_string(),
+                    rest.get(1..).unwrap_or(rest).to_string(),
                 ));
             }
         }
@@ -829,7 +874,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
         return None;
     }
-    if s.contains("\" defined here")
+    if s.contains("\" defined in ") && s.trim_end().ends_with('"')
         || s.contains("Flipping the order of overloads will fix this error")
         || s.contains("Maybe you forgot to use \"await\"?")
     {
@@ -1005,6 +1050,7 @@ fn run(
     let file_count = files.len();
     let mut error_summary = String::new();
     let mut allowed_to_run_when_start_at = false;
+    let mut timings = Timings::new(cli_args.slowest.unwrap_or_default());
     for (from_mypy_test_suite, file) in files {
         let code = read_to_string(file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
@@ -1050,10 +1096,14 @@ fn run(
                 }
             };
             if !from_mypy_test_suite {
-                // Run our own tests both with mypy-compatible and without it.
-                check(case.run(&mut projects, Mode::Default), Mode::Default)
+                timings.run(case.file_name, &case.name, || {
+                    // Run our own tests both with mypy-compatible and without it.
+                    check(case.run(&mut projects, Mode::Default), Mode::Default)
+                })
             }
-            check(case.run(&mut projects, Mode::Mypy), Mode::Mypy);
+            timings.run(case.file_name, &case.name, || {
+                check(case.run(&mut projects, Mode::Mypy), Mode::Mypy)
+            })
         }
     }
     if error_count > 0 {
@@ -1073,6 +1123,7 @@ fn run(
             RunCause::LanguageServer => "language-server",
         }
     );
+    timings.print_slowest_if_wanted();
     error_count
 }
 
@@ -1223,4 +1274,80 @@ fn skipped() -> Box<[Skipped]> {
             }
         })
         .collect()
+}
+
+struct Timings {
+    limit_count: usize,
+    slowest: BinaryHeap<Timing>,
+}
+
+struct Timing {
+    duration: f64,
+    file_name: String,
+    test_name: String,
+}
+
+impl Eq for Timing {}
+
+impl PartialEq for Timing {
+    fn eq(&self, other: &Self) -> bool {
+        self.duration == other.duration
+    }
+}
+
+impl Ord for Timing {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Reverse comparison -> min-heap.
+        other.duration.total_cmp(&self.duration)
+    }
+}
+
+impl PartialOrd for Timing {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Timings {
+    fn new(limit_count: usize) -> Self {
+        Self {
+            limit_count,
+            slowest: Default::default(),
+        }
+    }
+
+    fn run(&mut self, file_name: &str, test_name: &str, callback: impl FnOnce()) {
+        let start = Instant::now();
+        callback();
+
+        let duration = start.elapsed().as_secs_f64();
+        let create_timing = || Timing {
+            duration,
+            file_name: file_name.into(),
+            test_name: test_name.into(),
+        };
+
+        if self.limit_count == 0 {
+            return;
+        }
+
+        if self.slowest.len() < self.limit_count {
+            self.slowest.push(create_timing());
+        } else if duration > self.slowest.peek().unwrap().duration {
+            self.slowest.pop();
+            self.slowest.push(create_timing());
+        }
+    }
+
+    fn print_slowest_if_wanted(self) {
+        if self.limit_count > 0 {
+            println!("\nSlowest tests:");
+            for timing in self.slowest.into_sorted_vec() {
+                println!(
+                    "{:.3}s\t{} ({})",
+                    timing.duration, timing.test_name, timing.file_name
+                )
+            }
+        }
+    }
 }

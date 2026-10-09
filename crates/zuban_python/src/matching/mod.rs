@@ -3,14 +3,14 @@ mod generics;
 mod matcher;
 mod utils;
 
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 pub(crate) use generic::Generic;
 pub(crate) use generics::Generics;
 pub(crate) use matcher::{
     CalculatedTypeArgs, CheckedTypeRecursion, Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
-    calc_func_type_vars, calc_untyped_func_type_vars,
+    calc_func_type_vars, calc_untyped_func_type_vars, invalidate_matching_cache,
 };
 pub(crate) use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
@@ -26,116 +26,11 @@ use crate::{
     format_data::{FormatData, find_similar_types},
     inference_state::InferenceState,
     inferred::Inferred,
-    match_::{Match, MismatchReason},
+    match_::MismatchReason,
     recoverable_error,
-    type_::{AnyCause, NeverCause, ReplaceTypeVarLikes, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, InferredTypeGatherer, Tuple, TupleUnpack, Type, WithUnpack},
     type_helpers::FuncLike,
-    utils::debug_indent,
 };
-
-thread_local! {
-    static STRUCTURAL_MATCHING_CACHE: StructuralMatchingCache = StructuralMatchingCache::default();
-}
-
-#[derive(Default)]
-struct StructuralMatchingCache {
-    avoid_recursions: RefCell<Vec<(Type, Type)>>,
-    cached: RefCell<HashMap<(Type, Type), Match>>,
-}
-
-pub fn invalidate_structural_matching_cache() {
-    STRUCTURAL_MATCHING_CACHE.with(|cache| {
-        debug_assert!(cache.avoid_recursions.borrow().is_empty());
-        cache.cached.borrow_mut().clear()
-    })
-}
-
-// For both Protocols and TypedDict
-pub fn avoid_structural_matching_recursion(
-    db: &Database,
-    t1: &Type,
-    t2: &Type,
-    had_type_var_matcher: bool,
-    callable: impl FnOnce() -> Match,
-) -> Match {
-    STRUCTURAL_MATCHING_CACHE.with(|cache| {
-        let mut current = cache.avoid_recursions.borrow_mut();
-        if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
-            Match::new_true()
-        } else {
-            if !current.is_empty() {
-                let replace = move |t: &Type| {
-                    let mut had_temporary_matcher_id = false;
-                    t.search_type_vars(&mut |usage| {
-                        if usage.temporary_matcher_id() > 0 {
-                            had_temporary_matcher_id = true;
-                        }
-                    });
-                    if !had_temporary_matcher_id {
-                        return None;
-                    }
-                    t.replace_type_var_likes(db, &mut |mut usage| {
-                        usage.update_temporary_matcher_index(0);
-                        Some(usage.into_generic_item())
-                    })
-                };
-                if let Some(new_t1) = replace(t1) {
-                    // This case arose in
-                    // testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
-                    // where it replace function type vars repeatedly with new generated type vars.
-                    // I'm not 100% sure this holds for all cases, but it feels like this is fine.
-                    drop(current);
-                    return avoid_structural_matching_recursion(
-                        db,
-                        &new_t1,
-                        t2,
-                        had_type_var_matcher,
-                        callable,
-                    );
-                }
-                if let Some(new_t2) = replace(t2) {
-                    drop(current);
-                    return avoid_structural_matching_recursion(
-                        db,
-                        t1,
-                        &new_t2,
-                        had_type_var_matcher,
-                        callable,
-                    );
-                }
-            }
-            let new_t = (t1.clone(), t2.clone());
-            if !had_type_var_matcher && let Some(already_known) = cache.cached.borrow().get(&new_t)
-            {
-                debug!(
-                    r#"Used structural matching cache "{}" against "{}": {:?}"#,
-                    t1.format_short(db),
-                    t2.format_short(db),
-                    already_known,
-                );
-                return already_known.clone();
-            }
-            current.push(new_t);
-            drop(current);
-            debug!(
-                r#"Match protocol/TypedDict "{}" against "{}" (TypeVarMatcher: {:?})"#,
-                t1.format_short(db),
-                t2.format_short(db),
-                had_type_var_matcher,
-            );
-            let _indent = debug_indent();
-            let result = callable();
-            if !had_type_var_matcher {
-                cache
-                    .cached
-                    .borrow_mut()
-                    .insert((t1.clone(), t2.clone()), result.clone());
-            }
-            cache.avoid_recursions.borrow_mut().pop();
-            result
-        }
-    })
-}
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn()>;
 type GenerateDiagnosticString<'a> = &'a dyn Fn(&dyn FuncLike, &Database) -> Option<String>;
@@ -298,6 +193,18 @@ impl ErrorTypes<'_> {
                     add_issue(IssueKind::Note(note.clone()));
                 }
             }
+            MismatchReason::TypedDictAgainstDictMatching { from } => {
+                add_issue(IssueKind::Note(
+                    format!(
+                        "TypedDicts cannot be assigned to {from}, callers could \
+                             delete or change keys to violate their type contract. \
+                             Use Mapping[...] for read-only access or make all \
+                             TypedDict keys NotRequired, with identical types, \
+                             combined with a compatible `extra_items` class parameter."
+                    )
+                    .into(),
+                ));
+            }
             _ => (),
         }
     }
@@ -385,28 +292,32 @@ impl IteratorContent {
                 inferred: inf,
                 arbitrary_len: false,
             }),
-            Self::Union(iterators) => iterators
-                .iter_mut()
-                .map(|i| i.next_as_argument(i_s))
-                .reduce(|x, y| match (x?, y?) {
-                    (
+            Self::Union(iterators) => {
+                let mut gatherer = InferredTypeGatherer::default();
+                let mut arbitrary_len = true;
+                for iterator in iterators {
+                    let i = iterator.next_as_argument(i_s)?;
+                    match i {
                         UnpackedArgument::Normal {
-                            inferred: inf1,
-                            arbitrary_len: a1,
-                        },
-                        UnpackedArgument::Normal {
-                            inferred: inf2,
-                            arbitrary_len: a2,
-                        },
-                    ) => Some(UnpackedArgument::Normal {
-                        inferred: inf1.simplified_union(i_s, inf2),
-                        arbitrary_len: a1 & a2,
-                    }),
-                    _ => {
-                        debug!("Unpacking a union with incompatible results");
-                        None
+                            inferred,
+                            arbitrary_len: a,
+                        } => {
+                            arbitrary_len &= a;
+                            gatherer.add(inferred);
+                        }
+                        UnpackedArgument::WithUnpack(_) => {
+                            debug!("Unpacking a union with incompatible results");
+                            return None;
+                        }
                     }
-                })?,
+                }
+                gatherer
+                    .into_inferred_if_not_never(i_s)
+                    .map(|inferred| UnpackedArgument::Normal {
+                        inferred,
+                        arbitrary_len,
+                    })
+            }
             Self::WithUnpack {
                 unpack,
                 before_index,
@@ -495,7 +406,7 @@ impl IteratorContent {
                         match &unpack.unpack {
                             TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
                             TupleUnpack::ArbitraryLen(t) => {
-                                let mut result = Type::Never(NeverCause::Other);
+                                let mut result = Type::NEVER;
                                 for entry in unpack.before.iter().skip(*before_index) {
                                     result =
                                         result.gather_types_maybe_with_joins(i_s, entry, use_joins);

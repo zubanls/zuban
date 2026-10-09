@@ -7,12 +7,15 @@ use parsa_python_cst::{
 use utils::FastHashSet;
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, ParentScope, Point, PointLink, Specific},
+    database::{
+        ComplexPoint, Database, Locality, OverloadDefinition, ParentScope, Point, PointLink,
+        Specific,
+    },
     diagnostics::{Issue, IssueKind},
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
     inference_state::InferenceState,
     new_class,
-    node_ref::NodeRef,
+    node_ref::{KnownNodeRef, NodeRef},
     recoverable_error,
     type_::{
         AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
@@ -26,47 +29,11 @@ use super::{
     use_cached_param_annotation_type,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct FuncNodeRef<'file>(NodeRef<'file>);
-
-impl<'a> std::ops::Deref for FuncNodeRef<'a> {
-    type Target = NodeRef<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::cmp::PartialEq<NodeRef<'_>> for FuncNodeRef<'_> {
-    fn eq(&self, other: &NodeRef) -> bool {
-        self.0 == *other
-    }
-}
-
-impl<'a> From<FuncNodeRef<'a>> for NodeRef<'a> {
-    fn from(value: FuncNodeRef<'a>) -> Self {
-        value.0
-    }
-}
+pub type FuncNodeRef<'x> = KnownNodeRef<'x, FunctionDef<'x>>;
 
 impl<'db: 'file, 'file> FuncNodeRef<'file> {
-    #[inline]
-    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
-        Self::from_node_ref(NodeRef::new(file, node_index))
-    }
-
-    #[inline]
-    pub fn from_node_ref(node_ref: NodeRef<'file>) -> Self {
-        debug_assert!(node_ref.maybe_function().is_some(), "{node_ref:?}");
-        Self(node_ref)
-    }
-
-    pub fn node(&self) -> FunctionDef<'file> {
-        FunctionDef::by_index(&self.file.tree, self.node_index)
-    }
-
     pub fn return_annotation(&self) -> Option<ReturnAnnotation<'_>> {
-        self.node().return_annotation()
+        self.as_node().return_annotation()
     }
 
     pub fn expect_return_annotation_node_ref(&self) -> NodeRef<'_> {
@@ -77,7 +44,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn is_typed(&self) -> bool {
-        self.node().is_typed()
+        self.as_node().is_typed()
     }
 
     pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'file> {
@@ -103,7 +70,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
 
     pub fn is_async(&self) -> bool {
         matches!(
-            self.node().parent(),
+            self.as_node().parent(),
             FunctionParent::Async | FunctionParent::DecoratedAsync(_)
         )
     }
@@ -123,11 +90,11 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn unannotated_return_reference(&self) -> NodeRef<'file> {
-        NodeRef::new(self.file, self.node().colon_index())
+        NodeRef::new(self.file, self.as_node().colon_index())
     }
 
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) -> bool {
-        let node = self.node();
+        let node = self.as_node();
         self.file.add_issue(
             i_s,
             Issue::from_start_stop(node.start(), node.end_position_of_colon(), kind, false),
@@ -139,7 +106,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         i_s: &InferenceState,
         kind: IssueKind,
     ) -> bool {
-        let node = self.node();
+        let node = self.as_node();
         if let Some(decorated) = node.maybe_decorated() {
             self.file.add_issue(
                 i_s,
@@ -156,7 +123,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
     }
 
     pub fn name_string_slice(&self) -> StringSlice {
-        let name = self.node().name();
+        let name = self.as_node().name();
         StringSlice::new(self.file_index(), name.start(), name.end())
     }
 
@@ -181,7 +148,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         match self.parent_scope() {
             ParentScope::Module => FuncParent::Module,
             ParentScope::Class(class_index) => {
-                let n = ClassNodeRef::new(self.file, class_index).to_db_lifetime(db);
+                let n = ClassNodeRef::from_node_index(self.file, class_index).to_db_lifetime(db);
                 FuncParent::Class(Class::with_self_generics(db, n))
             }
             ParentScope::Function(func_index) => {
@@ -200,7 +167,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let node = self.node();
+        let node = self.as_node();
         let is_staticmethod = class.is_some()
             && node.maybe_decorated().is_some_and(|decorated| {
                 decorated.decorators().iter().any(|decorator| {
@@ -223,8 +190,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         match type_vars.is_empty() {
             true => type_var_reference
                 .set_point(Point::new_specific(Specific::Analyzed, Locality::Todo)),
-            false => type_var_reference
-                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
+            false => type_var_reference.insert_type_var_likes(i_s.db, type_vars),
         }
         debug_assert!(type_var_reference.point().calculated());
         Some((type_guard, star_annotation))
@@ -240,7 +206,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         Option<TypeGuardInfo>,
         Option<ParamAnnotation<'_>>,
     ) {
-        let func_node = self.node();
+        let func_node = self.as_node();
         let type_params = func_node.type_params();
         let mut known_type_vars = None;
         if let Some(type_params) = type_params {
@@ -371,7 +337,7 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
                     .has_self_type(i_s.db)
             {
                 self.expect_return_annotation_node_ref()
-                    .add_type_issue(i_s.db, IssueKind::SelfArgumentMissing);
+                    .add_type_issue(i_s.db, IssueKind::SelfParameterMissing);
             }
             result
         });
@@ -384,11 +350,6 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         // This is part of the conformance tests and behaves there like normal late bound callables
         // do.
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
-            for param in func_node.params().iter() {
-                if let Some(annotation) = param.annotation() {
-                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
-                }
-            }
             if let Some(return_annot) = func_node.return_annotation() {
                 inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
             }
@@ -423,6 +384,14 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         (type_vars, type_guard, star_annotation)
     }
 
+    pub fn maybe_overload(&self) -> Option<&'file OverloadDefinition> {
+        if let ComplexPoint::FunctionOverload(overload) = self.maybe_complex()? {
+            Some(overload)
+        } else {
+            None
+        }
+    }
+
     pub fn return_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'file, Type> {
         self.return_annotation()
             .map(|a| {
@@ -437,13 +406,21 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
         let t = self.return_annotation_type(i_s);
         if self.is_async() && !self.is_generator() {
             Cow::Owned(new_class!(
-                i_s.db.python_state.coroutine_link(),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
+                Self::coroutine_link_depending_on_mypy_compatibility(i_s.db),
+                Type::Any(AnyCause::AsyncCoroutine),
+                Type::Any(AnyCause::AsyncCoroutine),
                 t.into_owned(),
             ))
         } else {
             t
+        }
+    }
+
+    pub fn coroutine_link_depending_on_mypy_compatibility(db: &Database) -> PointLink {
+        if db.mypy_compatible() {
+            db.python_state.coroutine_link()
+        } else {
+            db.python_state.coroutine_type_link()
         }
     }
 }

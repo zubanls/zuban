@@ -9,7 +9,8 @@ use utils::{FastHashMap, FastHashSet};
 
 use crate::{
     AbsPath, Directory, DirectoryEntry, Entries, FileEntry, GitignoreFile, NormalizedPath,
-    NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace, tree::DirEntries,
+    NotifyEvent, Parent, PathWithScheme, VfsHandler, Workspace,
+    workspaces::add_nested_workspace_if_necessary,
 };
 
 const GLOBALLY_IGNORED_FOLDERS: [&str; 3] = ["site-packages", "node_modules", "__pycache__"];
@@ -111,7 +112,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
                                 continue;
                             }
                             if let Some(entry) =
-                                new.into_dir_entry(workspaces, self, parent.clone(), n.clone())
+                                new.into_dir_entry(self, workspaces, parent.clone(), n.clone())
                             {
                                 entries.insert(n, entry);
                             }
@@ -160,7 +161,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> VfsHandler for LocalFS<T> {
             self.watch(path);
             ResolvedFileType::File
         };
-        resolved.into_dir_entry(workspaces, self, parent, replace_name.into())
+        resolved.into_dir_entry(self, workspaces, parent, replace_name.into())
     }
 
     fn notify_receiver(&self) -> Option<&Receiver<NotifyEvent>> {
@@ -292,7 +293,7 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
                         }
                     }
                     Err(err) => {
-                        tracing::error!(
+                        tracing::warn!(
                             "Failed to canonicalize path {path:?} and did therefore not watch, because: {err}"
                         );
                     }
@@ -349,6 +350,9 @@ impl<T: Fn(PathWithScheme) + Sync + Send> LocalFS<T> {
             }
             Ok(ResolvedFileType::Directory)
         } else if file_type.is_symlink() {
+            tracing::debug!(
+                "Following symlink repeatedly: Coming from {path:?} link to {target_path:?} (originally from {origin_path:?})"
+            );
             self.follow_symlink_internal(origin_path, &target_path)
         } else {
             debug_assert!(file_type.is_file());
@@ -377,8 +381,8 @@ enum ResolvedFileType {
 impl ResolvedFileType {
     fn into_dir_entry(
         self,
-        workspaces: &[Arc<Workspace>],
         vfs: &dyn VfsHandler,
+        workspaces: &[Arc<Workspace>],
         parent: Parent,
         name: Arc<str>,
     ) -> Option<DirectoryEntry> {
@@ -393,19 +397,7 @@ impl ResolvedFileType {
             ResolvedFileType::File => DirectoryEntry::File(FileEntry::new(parent, name)),
             ResolvedFileType::Directory => {
                 let dir = Directory::new(parent, name);
-                if let Some(workspace) = workspaces.iter().find(|workspace| {
-                    // Checking ends_with first is a performance optimization to avoid creating a
-                    // lot of paths.
-                    workspace.root_path.ends_with(&*dir.name) && {
-                        let absolute = dir.absolute_path(vfs);
-                        absolute.path == workspace.root_path && absolute.scheme == workspace.scheme
-                    }
-                }) {
-                    let result = dir
-                        .entries
-                        .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));
-                    debug_assert!(result.is_ok());
-                }
+                add_nested_workspace_if_necessary(vfs, workspaces, &dir);
                 DirectoryEntry::Directory(dir)
             }
         })

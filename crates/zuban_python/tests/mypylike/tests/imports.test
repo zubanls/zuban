@@ -279,6 +279,10 @@ reveal_type(b)  # N: Revealed type is "Any"
 reveal_type(c)  # N: Revealed type is "Any"
 reveal_type(d)  # N: Revealed type is "Any"
 
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
 [case namespace_attributes]
 # pkgs: modulefinder-site-packages
 
@@ -295,8 +299,13 @@ reveal_type(untyped)  # N: Revealed type is "Any"
 reveal_type(typed)  # N: Revealed type is "types.ModuleType"
 reveal_type(typed_inline)  # N: Revealed type is "types.ModuleType"
 
-[case namespace_star_attributes_should_not_error]
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[case namespace_star_attributes_should_not_error_mypy_compatible]
 # pkgs: modulefinder-site-packages
+# flags: --mode mypy
 
 def untyped() -> None:
     from ns_pkg_w_stubs.untyped import *
@@ -312,6 +321,33 @@ def typed_inline() -> None:
     from ns_pkg_w_stubs.typed_inline import *
     ZubanCls
     z: ZubanCls
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
+
+[case namespace_star_attributes_should_not_error_no_mypy_compatible]
+# pkgs: modulefinder-site-packages
+# flags: --mode default
+
+def untyped() -> None:
+    from ns_pkg_w_stubs.untyped import *
+    ZubanCls
+    z: ZubanCls
+
+def typed() -> None:
+    from ns_pkg_w_stubs.typed import *
+    ZubanCls
+    z: ZubanCls
+
+def typed_inline() -> None:
+    from ns_pkg_w_stubs.typed_inline import *
+    ZubanCls
+    z: ZubanCls
+
+[file pyproject.toml]
+[tool.zuban]
+follow_untyped_imports = false
 
 [case invalidation_of_relative_paths1]
 from foo import bar
@@ -858,3 +894,93 @@ from other import C
 from other import __all__  # E: Module "other" has no attribute "__all__"
 [file other.pyi]
 class C: ...
+
+[case namespace_packages_with_inner_py_typed]
+# pkgs: namespace-without-pytyped
+# flags: --strict --follow-untyped-imports
+# From GH #366
+from ns.pkg.v1.client import Client
+
+def get_name(client: Client) -> str:
+    return client.name
+
+[case star_import_not_found]
+# flags: --mode default
+from star1 import not_defined_symbol1  # This should not cause an issue
+from dir.star2 import not_defined_symbol2
+from namespace.star3 import not_defined_symbol3
+
+[file star1.py]
+from not_defined import *  # E: Cannot find implementation or library stub for module named "not_defined"
+[file dir/__init__.py]
+[file dir/star2.py]
+from dir.not_defined import *  # E: Cannot find implementation or library stub for module named "dir.not_defined"
+[file namespace/star3.py]
+from namespace.not_defined import *  # E: Cannot find implementation or library stub for module named "namespace.not_defined"
+
+[case imports_with_ignore_missing_imports_in_mypy_ini]
+# From GH #419
+import undefined1
+import undefined2
+import undefined3  # E: Cannot find implementation or library stub for module named "undefined3"
+
+from undefined1 import foo1
+from undefined2 import foo2
+from undefined3 import foo3  # E: Cannot find implementation or library stub for module named "undefined3"
+
+[file mypy.ini]
+[mypy-undefined1.*]
+ignore_missing_imports = True
+[mypy-undefined2]
+ignore_missing_imports = True
+[mypy-undefined3]
+ignore_missing_imports = False
+[mypy-something_else.*]
+ignore_missing_imports = True
+
+[case relative_import_avoid_duplicate_issues]
+from foo import bar
+[file foo.py]
+from . import bar  # E: No parent module -- cannot perform relative import
+
+[case dunder_builtins_pyi_to_extend_builtins]
+# From GH #495
+foo("")
+bar
+
+[file __builtins__.pyi]
+def foo(value: str) -> None: ...
+
+[delete __builtins__.pyi.2]
+
+[file __builtins__.pyi.3]
+def foo(value: int) -> None: ...
+
+[out]
+__main__:3: error: Name "bar" is not defined
+==
+__main__:2: error: Name "foo" is not defined
+__main__:3: error: Name "bar" is not defined
+==
+__main__:2: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+__main__:3: error: Name "bar" is not defined
+
+[case typing_with_star_import_should_not_crash1]
+# From GH #572
+from m import *
+
+class C:
+    TX: str
+
+[file m.py]
+from typing import TypeVar
+TX = TypeVar('TX', int, str)
+
+[case typing_with_star_import_should_not_crash2]
+def x() -> None:
+    from m import *
+    TX: str = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "TypeVar")
+
+[file m.py]
+from typing import TypeVar
+TX = TypeVar('TX', int, str)

@@ -32,7 +32,9 @@ use lsp_types::{
 };
 
 mod connection;
+mod custom;
 mod support;
+mod test_initialization_options;
 
 use connection::Connection;
 use serde::Deserialize as _;
@@ -49,7 +51,7 @@ use support::Project;
 #[parallel]
 fn basic_server_setup() {
     let con = Connection::new();
-    let response = con.initialize(&["/foo/bar"], None, true);
+    let response = con.initialize(&["/foo/bar"], None, true, false, None);
 
     // Check diagnostic capabilities
     {
@@ -76,7 +78,7 @@ fn basic_server_setup() {
 #[test]
 #[parallel]
 fn request_after_shutdown_is_invalid() {
-    let con = Connection::initialized(&["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
     con.request::<lsp_types::request::Shutdown>(());
 
     let expect_shutdown_already_requested = |response: Response| {
@@ -110,7 +112,7 @@ fn request_after_shutdown_is_invalid() {
 #[test]
 #[parallel]
 fn exit_without_shutdown() {
-    let con = Connection::initialized(&["/foo/bar"], None, true);
+    let con = Connection::initialized(&["/foo/bar"], None, true, false, None);
     con.notify::<lsp_types::notification::Exit>(());
 }
 
@@ -477,6 +479,43 @@ fn in_memory_file_changes() {
 }
 
 #[test]
+#[parallel]
+fn test_relative_namespace_import() {
+    // From GH #486
+    let server = Project::with_fixture(
+        r#"
+        [file main.py]
+        from namespace import x
+        x.func
+        [file namespace/x.py]
+        from .y import func
+        [file namespace/y.py]
+        def func(): ...
+
+        [file pyproject.toml]
+        [tool.zuban]
+        mypy_path = [".", "namespace"]
+        "#,
+    )
+    .into_server();
+    assert!(server.diagnostics_for_file("namespace/x.py").is_empty());
+    assert!(server.diagnostics_for_file("main.py").is_empty());
+
+    let pos =
+        TextDocumentPositionParams::new(server.doc_id("namespace/x.py"), Position::new(0, 19));
+    let actual = server.request_with_expected_response::<Completion>(CompletionParams {
+        text_document_position: pos,
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: None,
+    });
+    let obj = actual.as_array().expect("array")[0]
+        .as_object()
+        .expect("object");
+    assert_eq!(obj["label"].as_str().expect("label"), "func");
+}
+
+#[test]
 #[serial]
 fn change_config_file() {
     let server = Project::with_fixture(
@@ -797,6 +836,7 @@ fn files_outside_of_root_with_push_diagnostics() {
 
     let in_mem_uri = &format!("file://{}/outside_in_mem.py", server.tmp_dir.path_for_uri());
     let m_uri = &format!("file://{}/base/m.py", server.tmp_dir.path_for_uri());
+
     // The in memory files should still work after a panic
     server.raise_and_recover_panic_in_language_server();
     let mut expected: Vec<_> = check_other_uris
@@ -910,7 +950,7 @@ fn diagnostics_positions() {
 
 #[test]
 #[serial]
-fn check_panic_recovery() {
+fn check_panic_recovery_without_push() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -1333,6 +1373,39 @@ fn test_virtual_env_with_pth_into_working_dir() {
     assert_eq!(
         server.diagnostics_for_file("other_project/other_project/__init__.py"),
         [r#""int" not callable"#]
+    );
+}
+
+#[test]
+#[serial]
+fn test_lsp_root_path_wrong() {
+    let server = Project::with_fixture(&format!(
+        r#"
+        [file pyproject.toml]
+
+        [file inner/__init__.py]
+
+        [file inner/something.py]
+
+        [file inner/other.py]
+        from inner import something as x
+        import something
+
+        [file outer.py]
+        from inner import something as x
+        import something
+        "#
+    ))
+    .root("inner")
+    .into_server();
+
+    assert_eq!(
+        server.diagnostics_for_file("outer.py"),
+        ["Cannot find implementation or library stub for module named \"something\""]
+    );
+    assert_eq!(
+        server.diagnostics_for_file("inner/other.py"),
+        ["Cannot find implementation or library stub for module named \"something\""]
     );
 }
 
@@ -2431,7 +2504,7 @@ fn check_notebook_cell_change() {
 
 #[test]
 #[serial]
-fn test_symbols() {
+fn test_symbols_nested() {
     let server = Project::with_fixture(
         r#"
         [file foo.py]
@@ -2887,6 +2960,224 @@ fn test_symbols() {
             }
           }
         ]),
+    );
+}
+
+#[test]
+#[serial]
+fn test_symbols_flat() {
+    let server = Project::with_fixture(
+        r#"
+        [file foo.py]
+        a: int = 1
+        b = ""
+        type Alias = int
+
+        class X:
+            x: int
+
+            def f(self, param: int) -> None:
+                func_var: int = 1
+
+            class Y:
+                def g(self, param: int) -> None: ...
+
+        [file bar.py]
+        x = 1
+        "#,
+    )
+    .without_hierarchical_document_symbol_support()
+    .into_server();
+
+    let foo_py = server.doc_id("foo.py").uri;
+    let bar_py = server.doc_id("bar.py").uri;
+
+    server.request_and_expect_json::<WorkspaceSymbolRequest>(
+        WorkspaceSymbolParams::default(),
+        json!([
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "a"
+          },
+          {
+            "kind": 11,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 2
+                },
+                "start": {
+                  "character": 5,
+                  "line": 2
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Alias"
+          },
+          {
+            "containerName": "X",
+            "kind": 8,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 5,
+                  "line": 5
+                },
+                "start": {
+                  "character": 4,
+                  "line": 5
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "x"
+          },
+          {
+            "containerName": "X.Y",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 13,
+                  "line": 11
+                },
+                "start": {
+                  "character": 12,
+                  "line": 11
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "g"
+          },
+          {
+            "containerName": "X",
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 11,
+                  "line": 10
+                },
+                "start": {
+                  "character": 10,
+                  "line": 10
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "Y"
+          },
+          {
+            "containerName": "X",
+            "kind": 6,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 7
+                },
+                "start": {
+                  "character": 8,
+                  "line": 7
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "f"
+          },
+          {
+            "kind": 5,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 6,
+                  "line": 4
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "X"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 1
+                },
+                "start": {
+                  "character": 0,
+                  "line": 1
+                }
+              },
+              "uri": foo_py,
+            },
+            "name": "b"
+          },
+          {
+            "kind": 13,
+            "location": {
+              "range": {
+                "end": {
+                  "character": 1,
+                  "line": 0
+                },
+                "start": {
+                  "character": 0,
+                  "line": 0
+                }
+              },
+              "uri": bar_py,
+            },
+            "name": "x"
+          }
+        ]),
+    );
+
+    server.request_and_expect_json::<DocumentSymbolRequest>(
+        DocumentSymbolParams {
+            text_document: server.doc_id("bar.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+          "kind": 13,
+          "location": {
+            "range": {
+              "end": {
+                "character": 5,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            },
+            "uri": bar_py,
+          },
+          "name": "x"
+        }]),
     );
 }
 
