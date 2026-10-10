@@ -74,6 +74,7 @@ __main__.py:4:rename: Rename: file:///C:/mypylike/foo.py -> file:///C:/mypylike/
 __main__.py:4:rename: Rename: file:///C:/mypylike/foo.pyi -> file:///C:/mypylike/foo3.pyi
 
 [case rename_on_import_should_only_rename_correct_part]
+# flags: --no-windows
 [file a/a.py]
 a = 42
 [file b/b.py]
