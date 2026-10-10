@@ -1,0 +1,25 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+expression: tree_to_string(& tree)
+---
+file: 0-26
+ Error(stmt): 1-23
+  Error(simple_stmts): 1-23
+   Error(simple_stmt): 1-23
+    Error(import_from): 1-23
+     Keyword: 1-5 "lazy"
+     Keyword: 6-10 "from"
+     Keyword: 11-12 "."
+     Keyword: 12-13 "."
+     dotted_import_name: 13-16
+      Name: 13-16 "foo"
+     Keyword: 17-23 "import"
+ Error(stmt): 24-25
+  Error(simple_stmts): 24-25
+   Error(simple_stmt): 24-25
+    Error(star_expressions): 24-25
+     Error(star_expression): 24-25
+      Keyword: 24-25 "*"
+ stmt: 25-26
+  Newline: 25-26 "\n"
+ Endmarker: 26-26 ""

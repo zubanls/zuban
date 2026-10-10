@@ -1,0 +1,129 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+expression: tree_to_string(& tree)
+---
+file: 0-196
+ stmt: 1-17
+  simple_stmts: 1-17
+   simple_stmt: 1-16
+    import_name: 1-16
+     Keyword: 1-5 "lazy"
+     Keyword: 6-12 "import"
+     dotted_as_names: 13-16
+      dotted_as_name: 13-16
+       name_def: 13-16
+        Name: 13-16 "foo"
+   Newline: 16-17 "\n"
+ stmt: 17-44
+  simple_stmts: 17-44
+   simple_stmt: 17-43
+    import_name: 17-43
+     Keyword: 17-21 "lazy"
+     Keyword: 22-28 "import"
+     dotted_as_names: 29-43
+      dotted_as_name: 29-43
+       dotted_import_name: 29-36
+        dotted_import_name: 29-32
+         Name: 29-32 "foo"
+        Keyword: 32-33 "."
+        Name: 33-36 "bar"
+       Keyword: 37-39 "as"
+       name_def: 40-43
+        Name: 40-43 "baz"
+   Newline: 43-44 "\n"
+ stmt: 44-70
+  simple_stmts: 44-70
+   simple_stmt: 44-69
+    import_name: 44-69
+     Keyword: 44-48 "lazy"
+     Keyword: 49-55 "import"
+     dotted_as_names: 56-69
+      dotted_as_name: 56-59
+       name_def: 56-59
+        Name: 56-59 "foo"
+      Keyword: 59-60 ","
+      dotted_as_name: 61-64
+       name_def: 61-64
+        Name: 61-64 "bar"
+      Keyword: 64-65 ","
+      dotted_as_name: 66-69
+       name_def: 66-69
+        Name: 66-69 "baz"
+   Newline: 69-70 "\n"
+ stmt: 70-94
+  simple_stmts: 70-94
+   simple_stmt: 70-93
+    import_name: 70-93
+     Keyword: 70-74 "lazy"
+     Keyword: 75-81 "import"
+     dotted_as_names: 82-93
+      dotted_as_name: 82-93
+       name_def: 82-85
+        Name: 82-85 "foo"
+       Keyword: 85-86 "."
+       dotted_import_name: 86-93
+        dotted_import_name: 86-89
+         Name: 86-89 "bar"
+        Keyword: 89-90 "."
+        Name: 90-93 "baz"
+   Newline: 93-94 "\n"
+ stmt: 94-131
+  simple_stmts: 94-131
+   simple_stmt: 94-130
+    import_from: 94-130
+     Keyword: 94-98 "lazy"
+     Keyword: 99-103 "from"
+     Keyword: 104-105 "."
+     Keyword: 106-112 "import"
+     import_from_named_targets: 113-130
+      Keyword: 113-114 "("
+      import_from_as_name: 114-124
+       Name: 114-117 "foo"
+       Keyword: 118-120 "as"
+       name_def: 121-124
+        Name: 121-124 "baz"
+      Keyword: 124-125 ","
+      import_from_as_name: 126-129
+       name_def: 126-129
+        Name: 126-129 "bar"
+      Keyword: 129-130 ")"
+   Newline: 130-131 "\n"
+ stmt: 131-162
+  simple_stmts: 131-162
+   simple_stmt: 131-161
+    import_from: 131-161
+     Keyword: 131-135 "lazy"
+     Keyword: 136-140 "from"
+     Keyword: 141-142 "."
+     Keyword: 143-149 "import"
+     import_from_named_targets: 150-161
+      Keyword: 150-151 "("
+      import_from_as_name: 151-154
+       name_def: 151-154
+        Name: 151-154 "foo"
+      Keyword: 154-155 ","
+      import_from_as_name: 156-159
+       name_def: 156-159
+        Name: 156-159 "bar"
+      Keyword: 159-160 ","
+      Keyword: 160-161 ")"
+   Newline: 161-162 "\n"
+ stmt: 162-196
+  simple_stmts: 162-196
+   simple_stmt: 162-195
+    import_from: 162-195
+     Keyword: 162-166 "lazy"
+     Keyword: 167-171 "from"
+     Keyword: 172-173 "."
+     Keyword: 173-174 "."
+     dotted_import_name: 174-177
+      Name: 174-177 "foo"
+     Keyword: 178-184 "import"
+     import_from_named_targets: 185-195
+      import_from_as_name: 185-195
+       Name: 185-188 "bar"
+       Keyword: 189-191 "as"
+       name_def: 192-195
+        Name: 192-195 "baz"
+   Newline: 195-196 "\n"
+ Endmarker: 196-196 ""
