@@ -26,7 +26,7 @@ use super::{
 };
 use crate::{
     arguments::{ArgKind, SimpleArgs},
-    database::ParentScope,
+    database::{ParentScope, TypeAlias},
     file::flow_analysis::{DelayedConstraintVerification, DelayedDiagnostic},
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{ImportResult, namespace_import},
@@ -233,7 +233,7 @@ enum TypeContent<'db, 'a> {
     Dataclass(Arc<Dataclass>),
     NamedTuple(Arc<NamedTuple>),
     TypedDictDefinition(Arc<TypedDict>),
-    TypeAlias(&'db crate::database::TypeAlias),
+    TypeAlias(&'db TypeAlias),
     TypeAliasWithAppliedGenerics(Type),
     Type(Type),
     SpecialCase(Specific),
@@ -1814,7 +1814,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_generics_for_alias(
         &mut self,
         slice_type: SliceType,
-        alias: &crate::database::TypeAlias,
+        alias: &TypeAlias,
     ) -> Vec<GenericItem> {
         let mut generics = vec![];
         self.calculate_type_arguments(
@@ -2708,7 +2708,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_type_get_item_on_alias(
         &mut self,
-        alias: &crate::database::TypeAlias,
+        alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, alias);
