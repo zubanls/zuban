@@ -10,10 +10,7 @@ use crate::{
     file::infer_index,
     inference_state::Mode,
     new_class,
-    prelude::{
-        Database, InferenceState, Inferred, IssueKind, NodeRef, PythonFile, ResultContext, Tuple,
-        Type,
-    },
+    prelude::*,
 };
 
 #[derive(Debug, Copy, Clone)]

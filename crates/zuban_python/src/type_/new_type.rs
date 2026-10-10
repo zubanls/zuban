@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use crate::prelude::{Database, FormatData, FormatStyle, NodeRef, PointLink, Type};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Eq)]
 pub(crate) struct NewType {

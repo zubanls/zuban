@@ -6,13 +6,10 @@ use super::{
     CallableContent, ClassGenerics, GenericItem, GenericsList, ParamType, ParamTypeDetails,
     StarParamType, StarStarParamType, TypeGuardInfo,
 };
-use crate::prelude::{
-    CallableParam, CallableParams, Tuple, TupleArgs, Type, TypeVarLike, Variance,
-};
+use crate::prelude::*;
 use crate::{
     debug,
     matching::CheckedTypeRecursion,
-    prelude::{AnyCause, Class, Database, InferenceState, Match, Matcher},
     type_::{CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::TypeOrClass,
     utils::debug_indent,

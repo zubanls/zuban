@@ -7,9 +7,7 @@ use crate::{
     file::File as _,
     goto::{PositionalDocument, with_i_s_non_self},
     params::Param as _,
-    prelude::{
-        CallableParam, CallableParams, Database, FormatData, InferenceState, PythonFile, Type,
-    },
+    prelude::*,
     type_::{CallableContent, CallableLike, ParamType, ParamTypeDetails},
     utils::debug_indent,
 };

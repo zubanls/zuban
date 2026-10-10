@@ -19,18 +19,13 @@ use crate::{
         maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
     },
     new_class,
-    prelude::{
-        AnyCause, CallableParams, Class, ComplexPoint, Database, FormatData, InferenceState,
-        IssueKind, Literal as DbLiteral, LiteralKind, LiteralValue, Locality, Matcher, NodeRef,
-        Point, PointKind, PointLink, PythonFile, ReplaceTypeVarLikes, ResultContext, Specific,
-        Type, TypeVarKind, TypeVarLike, TypeVarLikes,
-    },
+    prelude::*,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, ClassGenerics, DbBytes, DbString, FunctionKind,
         FunctionOverload, GenericClass, GenericItem, GenericsList, InferredTypeGatherer, IterCause,
-        IterInfos, LookupArgs, LookupResult, NeverCause, PropertySetter, PropertySetterType,
-        execute_tuple_class, execute_type_of_type,
+        IterInfos, Literal as DbLiteral, LookupArgs, LookupResult, NeverCause, PropertySetter,
+        PropertySetterType, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, FirstParamProperties, FuncLike as _, Function,

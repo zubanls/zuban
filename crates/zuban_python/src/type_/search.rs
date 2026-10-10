@@ -3,7 +3,7 @@ use super::{
     StarParamType, StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 use crate::debug;
-use crate::prelude::{CallableParams, TupleArgs, Type, TypeVarLikeUsage, TypedDict};
+use crate::prelude::*;
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);

@@ -4,17 +4,13 @@ use std::{
 };
 
 use super::{CallableLike, DbString, LookupResult};
-use crate::prelude::{AnyCause, FormatStyle, Literal, LiteralKind, Type};
+use crate::prelude::*;
 use crate::{
     database::ParentScope,
     debug,
     file::File as _,
     inferred::AttributeKind,
     matching::LookupKind,
-    prelude::{
-        Class, ComplexPoint, Database, FormatData, InferenceState, Inferred, IssueKind, NodeRef,
-        PointLink,
-    },
     type_helpers::{
         ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },

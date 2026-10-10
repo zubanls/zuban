@@ -7,10 +7,7 @@ use parsa_python_cst::{
 use crate::{
     arguments::{ArgKind, Args},
     file::name_resolution::NameResolution,
-    prelude::{
-        Class, Enum, InferenceState, Inferred, IssueKind, Literal, LiteralKind, NodeRef, PointLink,
-        ResultContext, Type,
-    },
+    prelude::*,
     type_::{DbString, EnumMemberDefinition, StringSlice},
 };
 

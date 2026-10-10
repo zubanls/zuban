@@ -3,10 +3,7 @@ use std::borrow::Cow;
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
     matching::{CheckedTypeRecursion, Generic, Generics},
-    prelude::{
-        CallableParams, Database, FormatData, InferenceState, Inferred, IssueKind,
-        ReplaceTypeVarLikes as _, ResultContext, TupleArgs, Type, TypedDict,
-    },
+    prelude::*,
     result_context::CouldBeALiteral,
     type_::{
         ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType, TypedDictGenerics,

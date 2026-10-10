@@ -8,7 +8,7 @@ use super::{
     ReplaceSelfInMatcher,
     type_var_matcher::TypeVarMatcher,
 };
-use crate::prelude::{FormatData, Matcher};
+use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
     debug,
@@ -17,11 +17,6 @@ use crate::{
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
-    },
-    prelude::{
-        CallableParams, Class, Database, InferenceState, Inferred, IssueKind, Match, NodeRef,
-        PointLink, ReplaceTypeVarLikes, ResultContext, SearchTypeVars, Tuple, TupleArgs, Type,
-        TypeVarLikes, Variance,
     },
     recoverable_error,
     type_::{

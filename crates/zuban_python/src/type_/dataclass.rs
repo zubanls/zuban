@@ -14,10 +14,7 @@ use super::{
     CallableContent, ClassGenerics, DbString, GenericClass, LookupResult, ParamType, StringSlice,
     TypeVarKindInfos,
 };
-use crate::prelude::{
-    AnyCause, CallableParam, CallableParams, Literal, LiteralKind, Tuple, Type, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage,
-};
+use crate::prelude::*;
 use crate::{
     arguments::{ArgKind, Args, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     debug,
@@ -29,10 +26,6 @@ use crate::{
     },
     new_class,
     node_ref::KnownNodeRef,
-    prelude::{
-        Class, Database, InferenceState, Inferred, Issue, IssueKind, Locality, NodeRef, Point,
-        PointLink, PythonFile, ReplaceTypeVarLikes, ResultContext, Specific,
-    },
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     type_::{CallableLike, callable::add_any_params_to_params},

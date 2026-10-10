@@ -21,10 +21,7 @@ use crate::{
     matching::Generics,
     name::{ModuleName, Range, TreeName, process_docstring},
     params::Param,
-    prelude::{
-        CallableParam, CallableParams, Class, ComplexPoint, Database, Enum, InferenceState,
-        Inferred, NodeRef, PointKind, PythonFile, Type,
-    },
+    prelude::*,
     pytest::find_all_possible_pytest_fixtures,
     recoverable_error,
     type_::{

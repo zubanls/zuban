@@ -5,10 +5,7 @@ use crate::{
     arguments::Args,
     file::FLOW_ANALYSIS,
     matching::{OnTypeError, calc_callable_type_vars},
-    prelude::{
-        CallableParams, Database, InferenceState, Inferred, IssueKind, PointLink, ResultContext,
-        Type, TypeVarLikes,
-    },
+    prelude::*,
     type_::{CallableContent, NeverCause, ParamType, ReplaceSelf},
 };
 

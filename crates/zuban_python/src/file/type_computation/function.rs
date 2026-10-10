@@ -11,11 +11,7 @@ use crate::{
     file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, func_parent_scope},
     new_class,
     node_ref::KnownNodeRef,
-    prelude::{
-        AnyCause, Class, ComplexPoint, Database, InferenceState, Issue, IssueKind, Locality,
-        NodeRef, Point, PointLink, PythonFile, Specific, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes,
-    },
+    prelude::*,
     recoverable_error,
     type_::{StringSlice, TypeGuardInfo, TypeVarManager},
     type_helpers::Function,

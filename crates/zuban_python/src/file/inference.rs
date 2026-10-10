@@ -35,18 +35,14 @@ use crate::{
     new_class,
     node_ref::{KnownNodeRef, KnownPointLink},
     params::matches_simple_params,
-    prelude::{
-        AnyCause, CallableParam, CallableParams, Class, ComplexPoint, Database, FormatData,
-        InferenceState, Inferred, Issue, IssueKind, Literal, LiteralKind, LiteralValue, Locality,
-        Matcher, NodeRef, Point, PointKind, PointLink, ResultContext, Specific, Tuple, TupleArgs,
-        Type, Variance,
-    },
+    prelude::*,
     pytest::maybe_infer_pytest_param,
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
         CallableContent, DbString, IterCause, IterInfos, LookupResult, ParamType, StarParamType,
-        StarStarParamType, StringSlice, TupleUnpack, UnionType, dataclass_converter_fields_lookup,
+        StarStarParamType, StringSlice, Tuple, TupleUnpack, UnionType,
+        dataclass_converter_fields_lookup,
     },
     type_helpers::{
         ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,

@@ -31,10 +31,7 @@ use crate::{
     diagnostics::{Diagnostic, Diagnostics},
     imports::{ImportResult, STUBS_SUFFIX},
     lines::{BytePositionInfos, NewlineIndices, PositionInfos},
-    prelude::{
-        ComplexPoint, Database, InferenceState, Issue, IssueKind, Locality, NodeRef, Point,
-        PointKind, PointLink, Specific,
-    },
+    prelude::*,
     type_::{DbString, LookupResult},
     utils::SymbolTable,
 };

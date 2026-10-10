@@ -5,7 +5,7 @@ use crate::{
     auto_imports::{ImportFinder, create_import_code_action},
     debug,
     file::File as _,
-    prelude::{NodeRef, Specific},
+    prelude::*,
 };
 
 impl<'project> Document<'project> {

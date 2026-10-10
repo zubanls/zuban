@@ -9,19 +9,13 @@ use super::{
     CallableContent, DbString, FunctionKind, LookupResult, ParamType, StringSlice,
     tuple::lookup_tuple_magic_methods,
 };
-use crate::prelude::{
-    AnyCause, CallableParam, CallableParams, FormatStyle, Literal, LiteralKind,
-    ReplaceTypeVarLikes, Tuple, Type, TypeVarLikes,
-};
+use crate::prelude::*;
 use crate::{
     format_data::AvoidRecursionFor,
     getitem::SliceType,
     inferred::AttributeKind,
     matching::{Generics, IteratorContent, LookupKind},
     new_class,
-    prelude::{
-        Database, FormatData, InferenceState, Inferred, IssueKind, PointLink, ResultContext,
-    },
     type_helpers::LookupDetails,
     utils::join_with_commas,
 };

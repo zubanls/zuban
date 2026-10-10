@@ -8,9 +8,7 @@ use super::{
     CallableContent, CustomBehavior, DbString, GenericsList, LookupResult, ParamType, StringSlice,
     utils::method_with_fallback,
 };
-use crate::prelude::{
-    CallableParam, CallableParams, FormatStyle, ReplaceTypeVarLikes, Type, TypeVarLikes,
-};
+use crate::prelude::*;
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
     file::infer_string_index,
@@ -20,10 +18,6 @@ use crate::{
     match_::MismatchReason,
     matching::{ErrorStrs, LookupKind, OnTypeError},
     new_class,
-    prelude::{
-        Class, Database, FormatData, InferenceState, Inferred, IssueKind, Match, Matcher,
-        PointLink, ResultContext, Tuple,
-    },
     type_::StarStarParamType,
     type_helpers::{Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,

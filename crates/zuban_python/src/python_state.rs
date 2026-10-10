@@ -9,11 +9,7 @@ use crate::{
     file::{ClassInitializer, ClassNodeRef},
     matching::Generics,
     new_class,
-    prelude::{
-        AnyCause, CallableParam, CallableParams, Class, Database, InferenceState, Inferred,
-        Locality, NodeRef, Point, PointLink, PythonFile, Specific, Tuple, TupleArgs, Type,
-        TypeVarLikes,
-    },
+    prelude::*,
     type_::{
         CallableContent, ClassGenerics, CustomBehavior, ParamType, TypeArgs, dataclasses_replace,
     },

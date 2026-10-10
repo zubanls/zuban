@@ -7,7 +7,7 @@ use crate::{
     file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     name::{Range, TreeName},
-    prelude::{Class, ComplexPoint, FormatData, InferenceState, NodeRef, Type, TypeVarLike},
+    prelude::*,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, TypeGatherer,

@@ -8,19 +8,10 @@ use std::{
 use parsa_python_cst::{FunctionDef, NodeIndex, ParamKind};
 
 use super::{CallableContent, GenericItem, GenericsList, TupleUnpack, TypeArgs, WithUnpack};
-use crate::prelude::{AnyCause, CallableParams, FormatStyle, ReplaceTypeVarLikes, TupleArgs, Type};
+use crate::prelude::*;
 use crate::{
-    database::ParentScope,
-    debug,
-    file::TypeVarTupleDefaultOrigin,
-    format_data::ParamsStyle,
-    prelude::{
-        Class, ComplexPoint, Database, FormatData, InferenceState, IssueKind, Locality, Matcher,
-        NodeRef, PointLink, PythonFile,
-    },
-    recoverable_error,
-    type_::ParamSpecArg,
-    utils::join_with_commas,
+    database::ParentScope, debug, file::TypeVarTupleDefaultOrigin, format_data::ParamsStyle,
+    recoverable_error, type_::ParamSpecArg, utils::join_with_commas,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash)]

@@ -13,10 +13,7 @@ use crate::{
         global_import, import_module_by_strings, is_binary_extension,
         namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
-    prelude::{
-        ComplexPoint, Database, InferenceState, Inferred, IssueKind, Locality, NodeRef, Point,
-        PointKind, Specific, Type,
-    },
+    prelude::*,
     type_::LookupResult,
 };
 

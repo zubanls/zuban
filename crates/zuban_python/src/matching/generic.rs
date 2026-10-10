@@ -3,10 +3,7 @@ use std::borrow::Cow;
 use crate::prelude::Matcher;
 use crate::{
     params::matches_params_with_variance,
-    prelude::{
-        AnyCause, CallableParams, Database, FormatData, InferenceState, Match, TupleArgs, Type,
-        Variance,
-    },
+    prelude::*,
     type_::{
         GenericItem, ParamSpecArg, TypeArgs, format_callable_params, format_params_as_param_spec,
         match_tuple_type_arguments,

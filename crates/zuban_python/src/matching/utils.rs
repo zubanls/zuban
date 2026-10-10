@@ -4,10 +4,7 @@ use crate::prelude::Matcher;
 use crate::{
     debug,
     inferred::infer_class_method_on_instance,
-    prelude::{
-        AnyCause, Class, Database, FormatData, InferenceState, ReplaceTypeVarLikes, Type,
-        TypeVarLikeUsage,
-    },
+    prelude::*,
     type_::{CallableContent, GenericItem, ReplaceSelf},
     type_helpers::Callable,
 };

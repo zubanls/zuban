@@ -28,12 +28,7 @@ use crate::{
         },
     },
     node_ref::KnownNodeRef,
-    prelude::{
-        AnyCause, CallableParam, CallableParams, Class, ComplexPoint, Database, Dataclass, Enum,
-        InferenceState, Issue, IssueKind, Locality, NamedTuple, NodeRef, Point, PointLink,
-        PythonFile, ReplaceTypeVarLikes, Specific, Tuple, Type, TypeVarLike, TypeVarLikes,
-        TypedDict, Variance,
-    },
+    prelude::*,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
         CallableContent, ClassGenerics, DataclassOptions, DataclassTransformObj, DbString,

@@ -6,10 +6,9 @@ use utils::FastHashSet;
 use super::{
     CallableContent, CallableLike, ParamType, StarParamType, StarStarParamType, TypeGuardInfo,
 };
-use crate::prelude::{AnyCause, CallableParam, CallableParams, Type};
+use crate::prelude::*;
 use crate::{
     debug,
-    prelude::{InferenceState, Tuple, TupleArgs},
     type_::{self, ComplexTypeGatherer, TupleUnpack},
     utils::debug_indent,
 };

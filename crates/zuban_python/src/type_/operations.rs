@@ -6,7 +6,7 @@ use super::{
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
 };
-use crate::prelude::{AnyCause, NewType, TupleArgs, Type, TypeVarKind};
+use crate::prelude::*;
 use crate::{
     arguments::{Args, NoArgs},
     debug,
@@ -19,10 +19,6 @@ use crate::{
     matching::{
         ErrorTypes, GotType, IteratorContent, LookupKind, OnLookupError, OnTypeError,
         calc_callable_type_vars,
-    },
-    prelude::{
-        Class, Database, InferenceState, Inferred, IssueKind, Literal, LiteralKind, LiteralValue,
-        Match, NamedTuple, NodeRef, PythonFile, ResultContext, Specific,
     },
     recoverable_error,
     type_::{ClassGenerics, DbBytes, DbString, Intersection, TupleUnpack},

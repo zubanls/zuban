@@ -6,10 +6,7 @@ use crate::{
     arguments::{ArgKind, Args, KeywordArg},
     debug,
     file::name_resolution::NameResolution,
-    prelude::{
-        ComplexPoint, InferenceState, Inferred, IssueKind, ParamSpec, PointLink, TypeVar,
-        TypeVarLike, TypeVarTuple, Variance,
-    },
+    prelude::*,
     type_::{TypeLikeInTypeVar, TypeVarKindInfos, TypeVarLikeName, TypeVarVariance},
 };
 

@@ -11,10 +11,7 @@ use crate::{
         CalculatedTypeArgs, Generics, OnTypeError, calc_callable_dunder_init_type_vars,
         calc_callable_type_vars, maybe_class_usage, replace_class_type_vars_in_callable,
     },
-    prelude::{
-        AnyCause, Database, FormatData, InferenceState, Inferred, IssueKind,
-        ReplaceTypeVarLikes as _, ResultContext, Type,
-    },
+    prelude::*,
     type_::{
         CallableContent, ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf,
     },

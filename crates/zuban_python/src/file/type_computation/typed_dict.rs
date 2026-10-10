@@ -10,9 +10,7 @@ use crate::{
     database::TypedDictArgs,
     file::name_resolution::NameResolution,
     getitem::SliceType,
-    prelude::{
-        Database, FormatData, InferenceState, IssueKind, NodeRef, PythonFile, Type, TypedDict,
-    },
+    prelude::*,
     recoverable_error,
     type_::{
         DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, TypedDictGenerics,

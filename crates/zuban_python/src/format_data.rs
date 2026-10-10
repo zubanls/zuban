@@ -4,10 +4,7 @@ use utils::{AlreadySeen, FastHashSet};
 
 use crate::{
     matching::MatcherFormatResult,
-    prelude::{
-        Database, FormatStyle, Matcher, NodeRef, ParamSpecUsage, PointLink, RecursiveType, Type,
-        TypeVarLikeUsage, TypeVarTupleUsage, TypeVarUsage,
-    },
+    prelude::*,
     type_::{RecursiveTypeOrigin, TypeVarLikeName, TypeVarName},
 };
 

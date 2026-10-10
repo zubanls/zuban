@@ -11,7 +11,7 @@ use crate::{
     completion::ScopesIterator,
     database::ParentScope,
     file::{ClassNodeRef, File, FuncNodeRef},
-    prelude::{Class, Database, InferenceState, NodeRef, PythonFile, Type},
+    prelude::*,
     type_::LookupResult,
     utils::SymbolTable,
 };

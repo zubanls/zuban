@@ -13,17 +13,13 @@ use super::{
     ClassGenerics, CustomBehavior, GenericItem, GenericsList, LookupResult,
     utils::method_with_fallback,
 };
-use crate::prelude::{FormatStyle, TypeVarTupleUsage};
+use crate::prelude::*;
 use crate::{
     arguments::Args,
     debug,
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
     matching::{Generics, IteratorContent, OnTypeError},
-    prelude::{
-        AnyCause, Class, Database, FormatData, InferenceState, Inferred, IssueKind, ResultContext,
-        Type,
-    },
     recoverable_error,
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, debug_indent, join_with_commas},

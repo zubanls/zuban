@@ -6,12 +6,8 @@ use super::{
     StarParamType, StarStarParamType, TypeArgs, TypeGuardInfo, TypeVarManager, TypedDictGenerics,
     UnionType, callable::add_param_spec_to_params, type_var_likes::CallableId,
 };
-use crate::prelude::{
-    CallableParam, CallableParams, Dataclass, NamedTuple, ParamSpecUsage, RecursiveType, Tuple,
-    TupleArgs, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypedDict,
-};
+use crate::prelude::*;
 use crate::{
-    prelude::{AnyCause, Database, InferenceState, PointLink},
     type_::{PropertySetterType, TupleUnpack, TypeGatherer, WithUnpack},
     utils::arc_slice_into_vec,
 };

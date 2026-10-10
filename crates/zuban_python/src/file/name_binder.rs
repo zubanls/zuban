@@ -12,7 +12,7 @@ use crate::{
         ComplexValues,
         python_file::{FileImport, StarImport},
     },
-    prelude::{ComplexPoint, Issue, IssueKind, Locality, Point, PointKind, Specific},
+    prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::StringSlice,
     utils::SymbolTable,

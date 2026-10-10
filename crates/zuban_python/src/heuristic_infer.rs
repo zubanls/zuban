@@ -32,11 +32,7 @@ use crate::{
     matching::{Generics, IteratorContent, LookupKind, OnTypeError},
     new_class,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
-    prelude::{
-        Class, ComplexPoint, Database, FormatData, InferenceState, Inferred, Literal, LiteralKind,
-        LiteralValue, NodeRef, PointKind, PointLink, PythonFile, ReplaceTypeVarLikes as _,
-        ResultContext, Specific, Tuple, Type, TypedDict,
-    },
+    prelude::*,
     type_::{
         ClassGenerics, ComplexTypeGatherer, DbString, ExtraItemsType, FunctionKind, GenericClass,
         GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, LookupResult,

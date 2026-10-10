@@ -29,12 +29,7 @@ use crate::{
     inferred::{UnionValue, add_attribute_error},
     matching::{LookupKind, OnTypeError},
     new_class,
-    prelude::{
-        AnyCause, CallableParams, Class, ComplexPoint, Database, Enum, EnumMember, FormatData,
-        InferenceState, Inferred, IssueKind, Literal, LiteralKind, Locality, Match, Matcher,
-        NamedTuple, NodeRef, Point, PointKind, PointLink, ResultContext, Specific, Tuple,
-        TupleArgs, Type, TypeVar, TypeVarKind, TypedDict,
-    },
+    prelude::*,
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{

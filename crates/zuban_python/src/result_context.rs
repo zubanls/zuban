@@ -3,14 +3,8 @@ use core::fmt;
 use parsa_python_cst::Assignment;
 
 use crate::{
-    debug,
-    file::ClassNodeRef,
-    node_ref::KnownPointLink,
-    prelude::{
-        AnyCause, Class, InferenceState, Matcher, ReplaceTypeVarLikes as _, TupleArgs, Type,
-    },
-    type_::UniqueInUnpackedUnionError,
-    utils::debug_indent,
+    debug, file::ClassNodeRef, node_ref::KnownPointLink, prelude::*,
+    type_::UniqueInUnpackedUnionError, utils::debug_indent,
 };
 
 pub(crate) enum ResultContext<'a, 'b> {

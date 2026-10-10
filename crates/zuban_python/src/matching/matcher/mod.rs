@@ -10,7 +10,7 @@ use std::{
 };
 use utils::AlreadySeen;
 
-use crate::prelude::{ReplaceTypeVarLikes, SearchTypeVars};
+use crate::prelude::*;
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -33,12 +33,6 @@ use crate::{
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
-    },
-    prelude::{
-        AnyCause, CallableParam, CallableParams, Class, Database, Enum, FormatData, InferenceState,
-        IssueKind, Match, ParamSpecUsage, PointLink, ResultContext, Tuple, TupleArgs, Type,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
-        TypedDict, Variance,
     },
     recoverable_error,
     type_::{

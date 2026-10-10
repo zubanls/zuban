@@ -7,10 +7,7 @@ use crate::{
     Document, InputPosition, PositionInfos,
     file::{ClassNodeRef, File as _, use_cached_param_annotation_type},
     inferred::specific_to_type,
-    prelude::{
-        ComplexPoint, Database, InferenceState, NodeRef, Point, PointKind, PythonFile, Specific,
-        Type,
-    },
+    prelude::*,
     type_::FunctionKind,
 };
 

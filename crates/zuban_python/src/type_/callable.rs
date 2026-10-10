@@ -4,18 +4,12 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{DbString, StringSlice, TypeLikeInTypeVar, TypeVarKindInfos};
-use crate::prelude::{
-    AnyCause, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, Type, TypeVar, TypeVarLike, TypeVarLikes,
-    TypeVarUsage, TypedDict,
-};
+use crate::prelude::*;
 use crate::{
     format_data::ParamsStyle,
     matching::{Generics, maybe_class_usage},
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
-    },
-    prelude::{
-        Class, Database, FormatData, FormatStyle, NodeRef, PointLink, TupleArgs, TypeVarLikeUsage,
     },
     type_helpers::TypeOrClass,
     utils::join_with_commas,

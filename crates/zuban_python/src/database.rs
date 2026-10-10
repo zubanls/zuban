@@ -19,11 +19,7 @@ use crate::{
     ProjectOptions, debug,
     file::{ClassNodeRef, File, SuperFile},
     lines::split_lines,
-    prelude::{
-        Class, NodeRef, ParamSpecUsage, PythonFile, RecursiveType, ReplaceTypeVarLikes, Type,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        Variance,
-    },
+    prelude::*,
     python_state::PythonState,
     recoverable_error, sys_path,
     type_::{

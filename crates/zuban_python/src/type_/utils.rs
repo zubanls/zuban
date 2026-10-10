@@ -1,9 +1,5 @@
 use super::Instance;
-use crate::{
-    arguments::Args,
-    matching::OnTypeError,
-    prelude::{InferenceState, Inferred, ResultContext},
-};
+use crate::{arguments::Args, matching::OnTypeError, prelude::*};
 
 pub(crate) fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,

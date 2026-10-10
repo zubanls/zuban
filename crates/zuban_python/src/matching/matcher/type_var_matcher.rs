@@ -5,10 +5,7 @@ use super::{
 use crate::{
     debug,
     matching::matcher::bound::{BoundInfo, BoundOrigin},
-    prelude::{
-        AnyCause, Database, InferenceState, Match, PointLink, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
-    },
+    prelude::*,
     recoverable_error,
     type_::{GenericItem, GenericsList},
     utils::{debug_indent, join_with_commas},

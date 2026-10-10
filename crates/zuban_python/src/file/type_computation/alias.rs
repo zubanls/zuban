@@ -27,11 +27,7 @@ use crate::{
     },
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
-    prelude::{
-        AnyCause, Class, ComplexPoint, Database, InferenceState, Inferred, IssueKind, Locality,
-        NamedTuple, NodeRef, Point, PointKind, PointLink, PythonFile, Specific, TupleArgs, Type,
-        TypeVarLike, TypeVarLikes, TypedDict,
-    },
+    prelude::*,
     recoverable_error,
     type_::{GenericItem, TupleUnpack, TypeVarManager},
     type_helpers::cache_class_name,

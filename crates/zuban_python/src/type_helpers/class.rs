@@ -24,13 +24,7 @@ use crate::{
         calc_callable_type_vars, calc_class_dunder_init_type_vars, format_got_expected,
         maybe_class_usage,
     },
-    prelude::{
-        AnyCause, CallableParam, CallableParams, ComplexPoint, Database, Dataclass, Enum,
-        FormatData, FormatStyle, InferenceState, Inferred, IssueKind, LiteralValue, Locality,
-        Match, Matcher, NamedTuple, NodeRef, ParamSpecUsage, Point, PointKind, PointLink,
-        ReplaceTypeVarLikes, ResultContext, Specific, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, Variance,
-    },
+    prelude::*,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, ClassGenerics, DbString, FunctionOverload, GenericClass,

@@ -1,13 +1,9 @@
 use crate::{
-    debug,
-    params::has_overlapping_params,
-    prelude::{AnyCause, Class, InferenceState, Matcher, TupleArgs},
-    type_::TupleUnpack,
+    debug, params::has_overlapping_params, prelude::*, type_::TupleUnpack,
     type_helpers::TypeOrClass,
 };
 
 use super::{CallableContent, CallableLike, ClassGenerics};
-use crate::prelude::{Type, TypeVarKind, TypedDict};
 
 enum OverlappingAllowListKind {
     Builtins,

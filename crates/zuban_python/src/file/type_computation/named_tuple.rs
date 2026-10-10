@@ -8,10 +8,7 @@ use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
     file::name_resolution::NameResolution,
     getitem::SliceType,
-    prelude::{
-        AnyCause, CallableParam, CallableParams, ComplexPoint, Database, InferenceState, Inferred,
-        IssueKind, NamedTuple, NodeRef, ReplaceTypeVarLikes, Type,
-    },
+    prelude::*,
     type_::{CallableContent, DbString, ParamType, StringSlice},
 };
 

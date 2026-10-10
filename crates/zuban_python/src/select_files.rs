@@ -11,7 +11,7 @@ use vfs::{
 use crate::{
     diagnostics::Diagnostic,
     imports::ImportResult,
-    prelude::{Database, PythonFile},
+    prelude::*,
     utils::{is_file_with_python_ending, join_with_commas},
 };
 

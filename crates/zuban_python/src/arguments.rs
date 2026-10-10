@@ -11,10 +11,7 @@ use crate::{
     getitem::SliceType,
     inference_state::Mode,
     matching::{IteratorContent, UnpackedArgument},
-    prelude::{
-        Database, InferenceState, Inferred, IssueKind, Matcher, NodeRef, ParamSpecUsage,
-        PythonFile, ResultContext, TupleArgs, Type, TypedDict,
-    },
+    prelude::*,
     recoverable_error,
     type_::{DbString, IterCause, WithUnpack},
 };

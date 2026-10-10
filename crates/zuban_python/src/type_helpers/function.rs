@@ -25,12 +25,7 @@ use crate::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         params_have_self_type_after_self,
     },
-    prelude::{
-        AnyCause, CallableParam, CallableParams, Class, ComplexPoint, Database, FormatData,
-        InferenceState, Inferred, IssueKind, Locality, NodeRef, Point, PointLink, PythonFile,
-        ReplaceTypeVarLikes, ResultContext, Specific, Tuple, TupleArgs, Type, TypeVarLike,
-        TypeVarLikes,
-    },
+    prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     type_::{

@@ -6,11 +6,7 @@ use crate::{
     debug,
     format_data::ParamsStyle,
     params::matches_params_with_variance,
-    prelude::{
-        AnyCause, CallableParams, Class, Database, FormatData, InferenceState, Match,
-        ReplaceTypeVarLikes, SearchTypeVars, TupleArgs, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, Variance,
-    },
+    prelude::*,
     type_::{
         GenericItem, ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
         match_tuple_type_arguments,

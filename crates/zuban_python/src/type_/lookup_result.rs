@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use parsa_python_cst::NodeIndex;
 use vfs::FileIndex;
 
-use crate::prelude::{AnyCause, Database, Inferred, Locality, Point, PointLink, PythonFile};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub(crate) enum LookupResult {

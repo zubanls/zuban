@@ -8,13 +8,12 @@ use crate::{
     file::{check_multiple_inheritance, linearize_mro},
     getitem::SliceType,
     matching::{IteratorContent, OnTypeError},
-    prelude::{FormatData, InferenceState, Inferred, IssueKind, ResultContext},
+    prelude::*,
     type_::TypeGatherer,
     type_helpers::LookupDetails,
 };
 
 use super::{IterInfos, UnionType};
-use crate::prelude::{AnyCause, CallableParams, FormatStyle, Type};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind) -> bool, &mut dyn FnMut(&Type, LookupDetails));

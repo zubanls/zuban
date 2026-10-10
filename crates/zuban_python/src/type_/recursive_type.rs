@@ -6,11 +6,7 @@ use std::{
 use super::GenericsList;
 use crate::prelude::Type;
 use crate::{
-    database::TypeAlias,
-    file::ClassNodeRef,
-    matching::Generics,
-    prelude::{Class, Database, NodeRef, PointLink},
-    recoverable_error,
+    database::TypeAlias, file::ClassNodeRef, matching::Generics, prelude::*, recoverable_error,
 };
 
 #[derive(Clone, Eq)]

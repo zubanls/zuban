@@ -25,12 +25,7 @@ use crate::{
     inferred::{AttributeKind, infer_class_method},
     matching::{ErrorStrs, Generics, LookupKind, OnTypeError, ReplaceSelfInMatcher},
     params::{Param, WrappedParamType, WrappedStar, matches_params},
-    prelude::{
-        AnyCause, CallableParams, Class, ComplexPoint, Database, FormatData, InferenceState,
-        Inferred, Issue, IssueKind, Literal, LiteralKind, Locality, Match, Matcher, NodeRef, Point,
-        PointLink, ReplaceTypeVarLikes, ResultContext, Specific, TupleArgs, Type, TypeVarKind,
-        TypeVarLike, TypeVarLikes, Variance,
-    },
+    prelude::*,
     recoverable_error,
     type_::{
         CallableContent, CallableLike, ClassGenerics, DbString, FunctionKind, FunctionOverload,

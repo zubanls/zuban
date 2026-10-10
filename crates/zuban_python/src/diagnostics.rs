@@ -17,7 +17,7 @@ use crate::{
     PythonVersion, TypeCheckerFlags,
     file::{File, GenericCounts, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     lines::PositionInfos,
-    prelude::{Database, NodeRef, PointLink, PythonFile, TypeVarLike, Variance},
+    prelude::*,
     utils::join_with_commas,
 };
 

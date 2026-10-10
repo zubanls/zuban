@@ -4,7 +4,7 @@ use crate::{
     TypeCheckerFlags,
     database::ParentScope,
     file::{ClassNodeRef, FLOW_ANALYSIS, TypeVarCallbackReturn},
-    prelude::{Class, Database, NodeRef, PythonFile, Type, TypeVarLike},
+    prelude::*,
     type_::CallableContent,
     type_helpers::Function,
 };

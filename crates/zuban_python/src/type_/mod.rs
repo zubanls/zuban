@@ -42,9 +42,7 @@ use crate::{
     match_::MismatchReason,
     matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType},
     new_class,
-    prelude::{
-        Class, Database, FormatData, InferenceState, Inferred, IssueKind, Match, Matcher, PointLink,
-    },
+    prelude::*,
     recoverable_error,
     type_helpers::{Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,

@@ -11,10 +11,7 @@ use crate::{
     getitem::SliceType,
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, add_attribute_error},
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError},
-    prelude::{
-        AnyCause, CallableParams, ComplexPoint, Database, InferenceState, Inferred, IssueKind,
-        Literal, LiteralKind, NodeRef, PointLink, ResultContext, Specific, Type, TypeVarKind,
-    },
+    prelude::*,
     type_::{CallableLike, DbString, FunctionKind, IterInfos, LookupResult, PropertySetterType},
 };
 

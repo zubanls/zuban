@@ -10,10 +10,7 @@ use super::{
 use crate::{
     debug,
     getitem::{SliceOrSimple, SliceType},
-    prelude::{
-        ComplexPoint, InferenceState, IssueKind, NodeRef, Point, PointKind, PointLink, PythonFile,
-        Specific, TypeVarLike, TypeVarLikes,
-    },
+    prelude::*,
     type_::{TypeVarIndex, TypeVarManager},
     utils::debug_indent,
 };

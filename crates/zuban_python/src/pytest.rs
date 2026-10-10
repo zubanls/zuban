@@ -11,7 +11,7 @@ use crate::{
     debug,
     file::{ClassNodeRef, File as _, func_parent_scope},
     imports::{ImportResult, import_module_by_strings, python_import},
-    prelude::{Database, InferenceState, Inferred, NodeRef, PythonFile, Type},
+    prelude::*,
     type_::LookupResult,
     type_helpers::{FuncLike as _, Function},
 };

@@ -5,7 +5,7 @@ use vfs::FileIndex;
 
 use crate::{
     file::ClassNodeRef,
-    prelude::{Class, Database, FormatData, NodeRef, PointLink, Type},
+    prelude::*,
     type_::ClassGenerics,
     type_helpers::Instance,
     utils::{bytes_repr, str_repr},

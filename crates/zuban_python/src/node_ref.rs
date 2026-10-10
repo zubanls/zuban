@@ -15,10 +15,7 @@ use crate::{
         CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, File,
         GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, OtherDefinitionIterator,
     },
-    prelude::{
-        ComplexPoint, Database, InferenceState, Inferred, Issue, IssueKind, Locality, Point,
-        PointKind, PointLink, PythonFile, Specific, Type,
-    },
+    prelude::*,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::StringSlice,
     type_helpers::Function,

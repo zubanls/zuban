@@ -26,10 +26,7 @@ use crate::{
     inference_state::Mode,
     matching::LookupKind,
     name::{ModuleName, Name, NodeName, Range, TreeName},
-    prelude::{
-        ComplexPoint, Database, FormatData, InferenceState, Inferred, NodeRef, PointKind,
-        PythonFile, ResultContext, Specific, Type,
-    },
+    prelude::*,
     pytest::find_pytest_fixture_for_param,
     recoverable_error,
     type_::{LookupResult, TypeVarLikeName, TypeVarName, UnionType},
