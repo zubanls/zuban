@@ -161,6 +161,18 @@ parametrize_snapshots!(
         from . import foo,
         from . import foo, bar,
         ");
+    lazy_import_names: dedent("
+        lazy import foo
+        lazy import foo.bar as baz
+        lazy import foo, bar, baz
+        lazy import foo.bar.baz
+        lazy from . import (foo as baz, bar)
+        lazy from . import (foo, bar,)
+        lazy from ..foo import bar as baz
+        ");
+    lazy_import_fails: dedent("
+        lazy from ..foo import *
+        ");
     calls: dedent("
         foo(bar)
         foo(bar_foo=3)

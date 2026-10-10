@@ -62,12 +62,15 @@ create_grammar!(
 
     // Import statements
     // -----------------
-    import_name: "import" dotted_as_names
+    import_name: "lazy"? "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from:
         | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
+        | "lazy" "from" ("." | "...")* dotted_import_name "import" import_from_named_targets
+        | "lazy" "from" ("." | "...")+ "import" import_from_named_targets
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+    import_from_named_targets: "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
     import_from_as_name: Name "as" name_def | name_def
     dotted_as_names: ",".dotted_as_name+
     dotted_as_name: dotted_import_name "as" name_def | name_def ["." dotted_import_name]
