@@ -10,6 +10,7 @@ use std::{
 };
 use utils::AlreadySeen;
 
+use crate::prelude::{ReplaceTypeVarLikes, SearchTypeVars};
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -40,11 +41,10 @@ use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, DbString, Enum, GenericItem,
-        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf, ReplaceTypeVarLikes, SearchTypeVars,
-        StarParamType, StarStarParamType, Tuple, TupleArgs, TupleUnpack, Type, TypeArgs,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
-        TypedDict, TypedDictGenerics, Variance, WithUnpack, add_param_spec_to_params,
-        match_tuple_type_arguments,
+        ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+        WithUnpack, add_param_spec_to_params, match_tuple_type_arguments,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
     utils::{debug_indent, join_with_commas},
