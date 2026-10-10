@@ -10,8 +10,8 @@ use crate::{
     params::matches_params_with_variance,
     type_::{
         AnyCause, CallableParams, GenericItem, ParamSpecArg, ParamType, ReplaceTypeVarLikes,
-        StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, Variance, WithUnpack, match_tuple_type_arguments,
+        SearchTypeVars, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, Variance, WithUnpack, match_tuple_type_arguments,
     },
     type_helpers::Class,
 };

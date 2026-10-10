@@ -6,8 +6,8 @@ use std::{
 
 use super::{
     CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Type,
-    TypeVarLikeUsage, TypeVarLikes, utils::method_with_fallback,
+    GenericsList, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
@@ -589,12 +589,6 @@ impl TypedDict {
             }
         }
         matches
-    }
-
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
-        if let TypedDictGenerics::Generics(list) = &self.generics {
-            list.search_type_vars(found_type_var)
-        }
     }
 
     fn can_be_emptied(&self, db: &Database) -> bool {

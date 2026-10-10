@@ -5,7 +5,7 @@ use crate::{
     format_data::FormatData,
     matching::Generic,
     type_::{
-        AnyCause, CallableParams, TupleArgs, Type, TypeVarIndex, TypeVarLikeUsage, TypeVarLikes,
+        AnyCause, CallableParams, SearchTypeVars, TupleArgs, Type, TypeVarIndex, TypeVarLikes,
     },
     utils::{arc_slice_into_vec, join_with_commas},
 };
@@ -132,19 +132,6 @@ impl GenericsList {
     pub fn has_param_spec(&self) -> bool {
         self.iter()
             .any(|g| matches!(g, GenericItem::ParamSpecArg(_)))
-    }
-
-    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(
-        &self,
-        found_type_var: &mut C,
-    ) {
-        for g in self.iter() {
-            match g {
-                GenericItem::TypeArg(t) => t.search_type_vars(found_type_var),
-                GenericItem::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
-                GenericItem::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
-            }
-        }
     }
 
     pub fn has_type_vars(&self) -> bool {

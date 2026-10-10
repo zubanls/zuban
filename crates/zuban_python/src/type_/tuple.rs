@@ -11,7 +11,7 @@ use num_bigint::BigInt;
 
 use super::{
     ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
-    TypeVarLikeUsage, TypeVarTupleUsage, utils::method_with_fallback,
+    TypeVarTupleUsage, utils::method_with_fallback,
 };
 use crate::{
     arguments::Args,
@@ -599,31 +599,6 @@ impl TupleArgs {
             Self::FixedLen(ts) => join_with_commas(ts.iter().map(|g| g.format(format_data))).into(),
             Self::ArbitraryLen(t) => format!("{}, ...", t.format(format_data)).into(),
             Self::WithUnpack(unpack) => unpack.format(format_data),
-        }
-    }
-
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
-        match self {
-            TupleArgs::FixedLen(ts) => {
-                for t in ts.iter() {
-                    t.search_type_vars(found_type_var)
-                }
-            }
-            TupleArgs::ArbitraryLen(t) => t.search_type_vars(found_type_var),
-            TupleArgs::WithUnpack(with_unpack) => {
-                for t in with_unpack.before.iter() {
-                    t.search_type_vars(found_type_var)
-                }
-                match &with_unpack.unpack {
-                    TupleUnpack::TypeVarTuple(tvt) => {
-                        found_type_var(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-                    }
-                    TupleUnpack::ArbitraryLen(t) => t.search_type_vars(found_type_var),
-                }
-                for t in with_unpack.after.iter() {
-                    t.search_type_vars(found_type_var)
-                }
-            }
         }
     }
 

@@ -335,37 +335,6 @@ impl CallableParams {
         params.last()?.type_.maybe_param_spec()
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
-        match self {
-            Self::Simple(params) => {
-                for param in params.iter() {
-                    match &param.type_ {
-                        ParamType::PositionalOnly(t)
-                        | ParamType::PositionalOrKeyword(t)
-                        | ParamType::KeywordOnly(t)
-                        | ParamType::Star(StarParamType::ArbitraryLen(t))
-                        | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                            t.search_type_vars(found_type_var)
-                        }
-                        ParamType::Star(StarParamType::UnpackedTuple(u)) => {
-                            u.args.search_type_vars(found_type_var)
-                        }
-                        ParamType::Star(StarParamType::ParamSpecArgs(u)) => {
-                            found_type_var(TypeVarLikeUsage::ParamSpec(u.clone()))
-                        }
-                        ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
-                            t.search_type_vars(found_type_var)
-                        }
-                        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
-                            // Do nothing here, because we already found it above.
-                        }
-                    }
-                }
-            }
-            Self::Any(_) => (),
-        }
-    }
-
     pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
             Self::Simple(params) => any_for_each_type_like(params, |t| t.find_in_type(db, check)),
@@ -788,14 +757,6 @@ impl CallableContent {
         match self.class_name {
             Some(class_name) => format!("{base}.{}.{name}", class_name.as_str(db)),
             _ => format!("{base}.{name}"),
-        }
-    }
-
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
-        self.params.search_type_vars(found_type_var);
-        self.return_type.search_type_vars(found_type_var);
-        if let Some(guard) = self.guard.as_ref() {
-            guard.type_.search_type_vars(found_type_var)
         }
     }
 

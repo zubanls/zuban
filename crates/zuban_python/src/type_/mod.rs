@@ -16,6 +16,7 @@ mod operations;
 mod overlaps;
 mod recursive_type;
 mod replace;
+mod search;
 mod sentinel;
 mod tuple;
 mod type_var_likes;
@@ -31,8 +32,8 @@ use vfs::FileIndex;
 pub(crate) use self::{
     callable::*, custom_behavior::*, dataclass::*, enum_::*, generics::*, intersection::*,
     literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*, new_type::*,
-    operations::*, recursive_type::*, replace::*, sentinel::*, tuple::*, type_var_likes::*,
-    typed_dict::*, union::*,
+    operations::*, recursive_type::*, replace::*, search::*, sentinel::*, tuple::*,
+    type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{
     database::{Database, PointLink},
@@ -688,71 +689,6 @@ impl Type {
             Self::LiteralString { .. } => "LiteralString".into(),
             Self::TypeForm(t) => format!("TypeForm[{}]", t.format(format_data)).into(),
             Self::Sentinel(s) => s.format(format_data),
-        }
-    }
-
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
-        match self {
-            Self::Class(GenericClass {
-                generics: ClassGenerics::List(generics),
-                ..
-            }) => generics.search_type_vars(found_type_var),
-            Self::Union(u) => {
-                for t in u.iter() {
-                    t.search_type_vars(found_type_var);
-                }
-            }
-            Self::FunctionOverload(intersection) => {
-                for callable in intersection.iter_functions() {
-                    callable.search_type_vars(found_type_var);
-                }
-            }
-            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t.clone())),
-            Self::Type(type_) => type_.search_type_vars(found_type_var),
-            Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
-            Self::Callable(c) => c.search_type_vars(found_type_var),
-            Self::Class(..)
-            | Self::Any(_)
-            | Self::None
-            | Self::Never(_)
-            | Self::Literal { .. }
-            | Self::Module(_)
-            | Self::Self_
-            | Self::Namespace(_)
-            | Self::Super { .. }
-            | Self::CustomBehavior(_)
-            | Self::DataclassTransformObj(_)
-            | Self::Enum(_)
-            | Self::EnumMember(_)
-            | Self::NewType(_)
-            | Self::Sentinel(_)
-            | Self::LiteralString { .. } => (),
-            Self::RecursiveType(rec) => {
-                if let Some(generics) = rec.generics.as_ref() {
-                    generics.search_type_vars(found_type_var)
-                }
-            }
-            Self::ParamSpecArgs(usage) => {
-                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
-            }
-            Self::ParamSpecKwargs(usage) => {
-                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
-            }
-            Self::Dataclass(d) => {
-                if let ClassGenerics::List(generics) = &d.class.generics {
-                    generics.search_type_vars(found_type_var)
-                }
-            }
-            Self::TypedDict(d) => d.search_type_vars(found_type_var),
-            Self::NamedTuple(_) => {
-                debug!("TODO do we need to support namedtuple searching for type vars?");
-            }
-            Self::Intersection(i) => {
-                for t in i.iter_entries() {
-                    t.search_type_vars(found_type_var)
-                }
-            }
-            Self::TypeForm(tf) => tf.search_type_vars(found_type_var),
         }
     }
 

@@ -27,8 +27,8 @@ use crate::{
     type_::{
         CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics, DbString,
         GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
-        ReplaceTypeVarLikes, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
-        Variance, match_arbitrary_len_vs_unpack, match_unpack,
+        ReplaceTypeVarLikes, SearchTypeVars, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
+        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, Class, FuncLike, Function},
     utils::debug_indent,
