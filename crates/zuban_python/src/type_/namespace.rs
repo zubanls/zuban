@@ -2,7 +2,7 @@ use std::{hash::Hasher, sync::Arc};
 
 use vfs::Directory;
 
-use crate::{file::dotted_path_from_dir, prelude::Database, utils::join_with_commas};
+use crate::{file::dotted_path_from_dir, prelude::*, utils::join_with_commas};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Namespace {

@@ -3,7 +3,6 @@ use std::{borrow::Cow, cell::Cell, sync::Arc};
 use parsa_python_cst::Name;
 
 use super::{ClassLookupOptions, FirstParamKind, Function, MroIterator, class::TypeOrClass};
-use crate::prelude::Class;
 use crate::{
     arguments::{CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     file::{ORDERING_METHODS, on_argument_type_error},

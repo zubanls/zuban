@@ -24,7 +24,7 @@ mod matching;
 mod name;
 mod node_ref;
 mod params;
-pub(crate) mod prelude;
+mod prelude;
 mod pytest;
 mod python_state;
 mod result_context;
@@ -52,19 +52,19 @@ use rayon::prelude::*;
 pub use signatures::{CallSignature, CallSignatures, SignatureParam};
 use vfs::{AbsPath, FileIndex, LocalFS, PathWithScheme, VfsHandler};
 
-use crate::prelude::Database;
 pub use code_actions::CodeAction;
 use config::{IgnoreFileReason, ProjectOptions, PythonVersion, Settings, TypeCheckerFlags};
 pub use database::RunCause;
 pub use diagnostics::Severity;
 pub use documentation::DocumentationResult;
-use file::File;
 pub use lines::PositionInfos;
-use matching::invalidate_matching_cache;
 pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
-use crate::{goto::HeuristicDetail, prelude::NodeRef, select_files::all_typechecked_files};
+use crate::{
+    file::File, goto::HeuristicDetail, matching::invalidate_matching_cache, prelude::*,
+    select_files::all_typechecked_files,
+};
 
 pub struct Project {
     db: Database,

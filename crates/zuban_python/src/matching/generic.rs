@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use crate::prelude::Matcher;
 use crate::{
     params::matches_params_with_variance,
     prelude::*,

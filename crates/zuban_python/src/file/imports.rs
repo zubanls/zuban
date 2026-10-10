@@ -16,7 +16,6 @@ use crate::{
 };
 
 use super::python_file::StarImport;
-use crate::prelude::PythonFile;
 
 impl PythonFile {
     pub fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {

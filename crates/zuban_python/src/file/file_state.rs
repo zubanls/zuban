@@ -6,7 +6,7 @@ use crate::{
     InputPosition,
     diagnostics::Diagnostic,
     lines::{BytePositionInfos, PositionInfos},
-    prelude::Database,
+    prelude::*,
 };
 
 pub trait File: std::fmt::Debug {

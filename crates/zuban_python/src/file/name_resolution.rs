@@ -16,7 +16,6 @@ use crate::{
 };
 
 use super::{ClassInitializer, python_file::StarImport};
-use crate::prelude::PythonFile;
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {

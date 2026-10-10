@@ -1,7 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 
 use super::Callable;
-use crate::prelude::Class;
 use crate::{
     arguments::{Arg, ArgIterator, ArgKind, InferredArg},
     file::FLOW_ANALYSIS,

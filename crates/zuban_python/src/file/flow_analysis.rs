@@ -48,7 +48,6 @@ use super::{
     on_argument_type_error,
     utils::func_of_self_symbol,
 };
-use crate::prelude::PythonFile;
 
 type Entries = Vec<Entry>;
 type ParentUnions = Vec<(FlowKey, UnionType)>;

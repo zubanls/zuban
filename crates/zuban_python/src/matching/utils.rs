@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use crate::prelude::Matcher;
 use crate::{
     inferred::infer_class_method_on_instance,
     prelude::*,

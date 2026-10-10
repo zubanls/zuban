@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use crate::prelude::Class;
 use crate::{
     file::FLOW_ANALYSIS,
     matching::{OnTypeError, calc_callable_type_vars},

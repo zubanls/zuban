@@ -10,7 +10,6 @@ use super::{
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
 };
-use crate::prelude::PythonFile;
 use crate::{
     arguments::{InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::RunCause,

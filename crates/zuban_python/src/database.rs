@@ -1950,10 +1950,7 @@ mod tests {
     fn test_sizes() {
         use std::mem::size_of;
 
-        use crate::{
-            prelude::Tuple,
-            type_::{ClassGenerics, UnionType},
-        };
+        use crate::type_::{ClassGenerics, UnionType};
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<Tuple>(), 104);
