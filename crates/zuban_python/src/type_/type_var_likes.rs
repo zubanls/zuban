@@ -11,7 +11,7 @@ use super::{GenericItem, GenericsList, TupleUnpack, TypeArgs, WithUnpack};
 use crate::prelude::*;
 use crate::{
     database::ParentScope, file::TypeVarTupleDefaultOrigin, format_data::ParamsStyle,
-    recoverable_error, type_::ParamSpecArg, utils::join_with_commas,
+    type_::ParamSpecArg, utils::join_with_commas,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash)]

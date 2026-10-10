@@ -5,7 +5,7 @@ use std::{
 
 use super::GenericsList;
 use crate::prelude::Type;
-use crate::{matching::Generics, prelude::*, recoverable_error};
+use crate::{matching::Generics, prelude::*};
 
 #[derive(Clone, Eq)]
 pub(crate) struct RecursiveType {

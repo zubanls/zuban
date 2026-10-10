@@ -31,7 +31,6 @@ use crate::{
     imports::{ImportResult, STUBS_SUFFIX},
     lines::{BytePositionInfos, NewlineIndices, PositionInfos},
     prelude::*,
-    type_::DbString,
     utils::SymbolTable,
 };
 

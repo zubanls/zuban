@@ -3,7 +3,7 @@ use std::{borrow::Cow, sync::Arc};
 use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
-use super::{DbString, StringSlice, TypeLikeInTypeVar, TypeVarKindInfos};
+use super::{TypeLikeInTypeVar, TypeVarKindInfos};
 use crate::prelude::*;
 use crate::{
     format_data::ParamsStyle,

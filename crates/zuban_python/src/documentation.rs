@@ -8,7 +8,6 @@ use crate::{
     goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     name::{Range, TreeName},
     prelude::*,
-    recoverable_error,
     type_::{FunctionKind, PrettyCallableOptions, TypeGatherer, TypeVarVariance},
 };
 

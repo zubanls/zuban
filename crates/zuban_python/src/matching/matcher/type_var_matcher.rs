@@ -5,7 +5,6 @@ use super::{
 use crate::{
     matching::matcher::bound::{BoundInfo, BoundOrigin},
     prelude::*,
-    recoverable_error,
     type_::{GenericItem, GenericsList},
     utils::join_with_commas,
 };

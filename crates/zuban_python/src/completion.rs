@@ -22,7 +22,6 @@ use crate::{
     params::Param,
     prelude::*,
     pytest::find_all_possible_pytest_fixtures,
-    recoverable_error,
     type_::{EnumMemberDefinition, FunctionKind, Namespace, ParamType},
     type_helpers::{Function, TypeOrClass, is_private},
     utils::is_magic_method,

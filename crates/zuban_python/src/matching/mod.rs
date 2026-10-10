@@ -23,7 +23,6 @@ use crate::{
     format_data::find_similar_types,
     match_::MismatchReason,
     prelude::*,
-    recoverable_error,
     type_::{InferredTypeGatherer, TupleUnpack, WithUnpack},
     type_helpers::FuncLike,
 };

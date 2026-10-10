@@ -12,8 +12,7 @@ use crate::{
     new_class,
     node_ref::KnownNodeRef,
     prelude::*,
-    recoverable_error,
-    type_::{StringSlice, TypeGuardInfo, TypeVarManager},
+    type_::{TypeGuardInfo, TypeVarManager},
     type_helpers::Function,
 };
 

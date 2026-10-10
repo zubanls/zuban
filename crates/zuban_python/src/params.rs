@@ -7,7 +7,7 @@ use crate::{
     format_data::ParamsStyle,
     prelude::*,
     type_::{
-        DbString, MaybeUnpackGatherer, ParamType, StarParamType, StarStarParamType, TupleUnpack,
+        MaybeUnpackGatherer, ParamType, StarParamType, StarStarParamType, TupleUnpack,
         TypedDictMember, WithUnpack, empty_types, match_arbitrary_len_vs_unpack,
         match_tuple_type_arguments,
     },

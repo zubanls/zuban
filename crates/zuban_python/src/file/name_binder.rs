@@ -13,7 +13,6 @@ use crate::{
     },
     prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_::StringSlice,
     utils::SymbolTable,
 };
 

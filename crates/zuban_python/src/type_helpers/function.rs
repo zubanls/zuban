@@ -26,12 +26,11 @@ use crate::{
     },
     prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
-    recoverable_error,
     type_::{
-        ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, DbString, FunctionKind,
-        FunctionOverload, GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType,
-        PropertySetter, PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType,
-        StringSlice, WrongPositionalCount, replace_param_spec,
+        ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, FunctionKind, FunctionOverload,
+        GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
+        PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType, WrongPositionalCount,
+        replace_param_spec,
     },
     utils::is_magic_method,
 };

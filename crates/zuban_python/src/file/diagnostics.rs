@@ -25,10 +25,9 @@ use crate::{
     matching::{ErrorStrs, Generics, LookupKind, OnTypeError, ReplaceSelfInMatcher},
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
-    recoverable_error,
     type_::{
-        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericItem, GenericsList,
-        IterCause, LookupArgs, NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
+        ClassGenerics, FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause,
+        LookupArgs, NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
         dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{

@@ -27,7 +27,6 @@ use crate::{
     name::{ModuleName, Name, NodeName, Range, TreeName},
     prelude::*,
     pytest::find_pytest_fixture_for_param,
-    recoverable_error,
     type_::{TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
     utils::is_file_with_python_ending,

@@ -9,7 +9,7 @@ use crate::{
     file::name_resolution::NameResolution,
     getitem::SliceType,
     prelude::*,
-    type_::{DbString, ParamType, StringSlice},
+    type_::ParamType,
 };
 
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};

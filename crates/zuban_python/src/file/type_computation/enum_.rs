@@ -5,10 +5,8 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::ArgKind,
-    file::name_resolution::NameResolution,
-    prelude::*,
-    type_::{DbString, EnumMemberDefinition, StringSlice},
+    arguments::ArgKind, file::name_resolution::NameResolution, prelude::*,
+    type_::EnumMemberDefinition,
 };
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {

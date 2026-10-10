@@ -17,11 +17,10 @@ use crate::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
     },
-    recoverable_error,
     type_::{
-        CallableWithParent, ClassGenerics, DbString, GenericItem, GenericsList,
-        MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
-        match_arbitrary_len_vs_unpack, match_unpack,
+        CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
+        ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager, match_arbitrary_len_vs_unpack,
+        match_unpack,
     },
     type_helpers::{Callable, FuncLike, Function},
 };

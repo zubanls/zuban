@@ -30,8 +30,8 @@ use crate::{
     prelude::*,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
-        ClassGenerics, DataclassOptions, DataclassTransformObj, DbString, EnumMemberAlias,
-        EnumMemberDefinition, ExtraItemsType, FunctionKind, GenericClass, ParamType, StringSlice,
+        ClassGenerics, DataclassOptions, DataclassTransformObj, EnumMemberAlias,
+        EnumMemberDefinition, ExtraItemsType, FunctionKind, GenericClass, ParamType,
         TypeVarVariance, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{FirstParamProperties, Function},

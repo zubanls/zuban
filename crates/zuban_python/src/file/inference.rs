@@ -36,11 +36,10 @@ use crate::{
     params::matches_simple_params,
     prelude::*,
     pytest::maybe_infer_pytest_param,
-    recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        DbString, IterCause, IterInfos, ParamType, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleUnpack, UnionType, dataclass_converter_fields_lookup,
+        IterCause, IterInfos, ParamType, StarParamType, StarStarParamType, Tuple, TupleUnpack,
+        UnionType, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,

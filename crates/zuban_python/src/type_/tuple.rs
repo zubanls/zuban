@@ -17,7 +17,6 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
     matching::{Generics, IteratorContent, OnTypeError},
-    recoverable_error,
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
 };

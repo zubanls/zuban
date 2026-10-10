@@ -11,8 +11,7 @@ use crate::{
     inference_state::Mode,
     matching::{IteratorContent, UnpackedArgument},
     prelude::*,
-    recoverable_error,
-    type_::{DbString, IterCause, WithUnpack},
+    type_::{IterCause, WithUnpack},
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {

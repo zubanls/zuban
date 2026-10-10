@@ -9,7 +9,6 @@ use crate::{
     match_::MismatchReason,
     matching::{ErrorStrs, ErrorTypes, GotType, format_got_expected},
     params::matches_params,
-    recoverable_error,
     type_::TupleUnpack,
     type_helpers::TypeOrClass,
 };

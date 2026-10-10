@@ -19,8 +19,7 @@ use crate::{
         ErrorTypes, GotType, IteratorContent, LookupKind, OnLookupError, OnTypeError,
         calc_callable_type_vars,
     },
-    recoverable_error,
-    type_::{ClassGenerics, DbBytes, DbString, Intersection, TupleUnpack},
+    type_::{ClassGenerics, DbBytes, Intersection, TupleUnpack},
     type_helpers::{
         Callable, ClassLookupOptions, Function, Instance, InstanceLookupOptions, LookupDetails,
         OverloadedFunction,

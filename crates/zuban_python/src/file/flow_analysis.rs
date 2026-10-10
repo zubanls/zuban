@@ -29,12 +29,10 @@ use crate::{
     matching::{LookupKind, OnTypeError},
     new_class,
     prelude::*,
-    recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        ClassGenerics, ComplexTypeGatherer, DbBytes, DbString, EnumKind, GenericClass,
-        Intersection, NeverCause, StringSlice, TupleUnpack, TypeGatherer, UnionType, WithUnpack,
-        lookup_on_enum_instance,
+        ClassGenerics, ComplexTypeGatherer, DbBytes, EnumKind, GenericClass, Intersection,
+        NeverCause, TupleUnpack, TypeGatherer, UnionType, WithUnpack, lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,

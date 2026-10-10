@@ -11,7 +11,7 @@ use crate::{
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, add_attribute_error},
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError},
     prelude::*,
-    type_::{DbString, FunctionKind, IterInfos, PropertySetterType},
+    type_::{FunctionKind, IterInfos, PropertySetterType},
 };
 
 #[derive(Debug, Clone, Copy)]

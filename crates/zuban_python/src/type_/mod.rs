@@ -41,7 +41,6 @@ use crate::{
     matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType},
     new_class,
     prelude::*,
-    recoverable_error,
     type_helpers::{Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,
 };

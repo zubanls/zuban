@@ -10,10 +10,9 @@ use crate::{
     file::name_resolution::NameResolution,
     getitem::SliceType,
     prelude::*,
-    recoverable_error,
     type_::{
-        DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, TypedDictGenerics,
-        TypedDictMember, TypedDictMembers,
+        ExtraItemsType, GenericsList, NeverCause, TypedDictGenerics, TypedDictMember,
+        TypedDictMembers,
     },
 };
 

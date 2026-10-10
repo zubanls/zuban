@@ -25,7 +25,6 @@ use crate::{
     },
     imports::ImportResult,
     prelude::*,
-    recoverable_error,
     utils::is_file_with_python_ending,
 };
 

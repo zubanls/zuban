@@ -21,10 +21,10 @@ use crate::{
     lines::split_lines,
     prelude::*,
     python_state::PythonState,
-    recoverable_error, sys_path,
+    sys_path,
     type_::{
         DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem, GenericsList,
-        StringSlice, TypeVarLikeName,
+        TypeVarLikeName,
     },
     type_helpers::Function,
     utils::SymbolTable,
@@ -1952,7 +1952,7 @@ mod tests {
 
         use crate::{
             prelude::Tuple,
-            type_::{ClassGenerics, StringSlice, UnionType},
+            type_::{ClassGenerics, UnionType},
         };
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);

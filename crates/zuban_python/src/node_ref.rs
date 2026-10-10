@@ -16,7 +16,6 @@ use crate::{
     },
     prelude::*,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
-    type_::StringSlice,
     type_helpers::Function,
 };
 
