@@ -46,6 +46,8 @@ pub(crate) fn server_capabilities(
                 "@".to_owned(),
                 "(".to_owned(),
                 "[".to_owned(),
+                "\"".to_owned(),
+                "'".to_owned(),
             ]),
             all_commit_characters: None,
             completion_item: None,
