@@ -15,12 +15,11 @@ use vfs::{FileEntry, FileIndex};
 
 use crate::{
     arguments::{
-        ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
-        KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
+        ArgIteratorBase, ArgKind, ArgsKwargsIterator, CombinedArgs, KnownArgsWithCustomAddIssue,
+        SimpleArgs, unpack_star_star,
     },
     database::{HeuristicBound, ParentScope, PyTypedMissing},
-    debug,
-    file::{ClassNodeRef, FuncNodeRef, Inference, await_aiter_and_next, maybe_func_of_self_symbol},
+    file::{FuncNodeRef, Inference, await_aiter_and_next, maybe_func_of_self_symbol},
     getitem::SliceType,
     goto::{
         FollowImportResultKind, HeuristicDetail, PositionalDocument,
@@ -35,11 +34,11 @@ use crate::{
     prelude::*,
     type_::{
         ClassGenerics, ComplexTypeGatherer, DbString, ExtraItemsType, FunctionKind, GenericClass,
-        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, LookupResult,
-        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
     type_helpers::{FirstParamProperties, Function, FunctionParam, OverloadedFunction},
-    utils::{debug_indent, is_magic_method, limit_length_for_debug},
+    utils::{is_magic_method, limit_length_for_debug},
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:

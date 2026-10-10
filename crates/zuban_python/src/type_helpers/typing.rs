@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    arguments::{ArgKind, Args, InferredArg},
+    arguments::{ArgKind, InferredArg},
     matching::{CheckedTypeRecursion, Generic, Generics},
     prelude::*,
     result_context::CouldBeALiteral,

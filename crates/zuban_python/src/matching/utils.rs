@@ -2,10 +2,9 @@ use std::borrow::Cow;
 
 use crate::prelude::Matcher;
 use crate::{
-    debug,
     inferred::infer_class_method_on_instance,
     prelude::*,
-    type_::{CallableContent, GenericItem, ReplaceSelf},
+    type_::{GenericItem, ReplaceSelf},
     type_helpers::Callable,
 };
 

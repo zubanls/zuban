@@ -9,13 +9,12 @@ use parsa_python_cst::{
 use utils::{AlreadySeen, FastHashSet};
 
 use super::{
-    super::name_resolution::NameResolution, ClassNodeRef, InvalidVariableType, Lookup, TypeContent,
+    super::name_resolution::NameResolution, InvalidVariableType, Lookup, TypeContent,
     TypeVarFinder, UnknownCause,
 };
 use crate::{
-    arguments::{Args, SimpleArgs},
-    database::{ClassKind, TypeAlias},
-    debug,
+    arguments::SimpleArgs,
+    database::ClassKind,
     file::{
         TypeVarCallbackReturn,
         name_resolution::PointResolution,
@@ -31,7 +30,6 @@ use crate::{
     recoverable_error,
     type_::{GenericItem, TupleUnpack, TypeVarManager},
     type_helpers::cache_class_name,
-    utils::debug_indent,
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;

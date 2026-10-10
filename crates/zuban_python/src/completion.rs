@@ -10,8 +10,7 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 use crate::{
     InputPosition,
     database::{ClassKind, ParentScope, PyTypedMissing},
-    debug,
-    file::{ClassNodeRef, File as _, FuncNodeRef, is_reexport_issue},
+    file::{File as _, FuncNodeRef, is_reexport_issue},
     goto::{
         FollowImportResultKind, PositionalDocument, try_to_follow_imports, unpack_union_types,
         with_i_s_non_self,
@@ -24,11 +23,9 @@ use crate::{
     prelude::*,
     pytest::find_all_possible_pytest_fixtures,
     recoverable_error,
-    type_::{
-        CallableContent, CallableLike, EnumMemberDefinition, FunctionKind, Namespace, ParamType,
-    },
+    type_::{EnumMemberDefinition, FunctionKind, Namespace, ParamType},
     type_helpers::{Function, TypeOrClass, is_private},
-    utils::{debug_indent, is_magic_method},
+    utils::is_magic_method,
 };
 
 struct CompletionInfo<'db> {

@@ -23,8 +23,7 @@ use parsa_python_cst::{
 use crate::{
     arguments::{KnownArgsWithCustomAddIssue, SimpleArgs},
     database::{ClassKind, WidenedType},
-    debug,
-    file::{ClassNodeRef, OtherDefinitionIterator, utils::TupleGatherer},
+    file::{OtherDefinitionIterator, utils::TupleGatherer},
     getitem::SliceType,
     inferred::{UnionValue, add_attribute_error},
     matching::{LookupKind, OnTypeError},
@@ -33,15 +32,15 @@ use crate::{
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        CallableContent, CallableLike, ClassGenerics, ComplexTypeGatherer, DbBytes, DbString,
-        EnumKind, GenericClass, Intersection, LookupResult, NeverCause, StringSlice, TupleUnpack,
-        TypeGatherer, UnionType, WithUnpack, lookup_on_enum_instance,
+        ClassGenerics, ComplexTypeGatherer, DbBytes, DbString, EnumKind, GenericClass,
+        Intersection, NeverCause, StringSlice, TupleUnpack, TypeGatherer, UnionType, WithUnpack,
+        lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
         OverloadResult, OverloadedFunction,
     },
-    utils::{EitherIterator, debug_indent},
+    utils::EitherIterator,
 };
 
 use super::{

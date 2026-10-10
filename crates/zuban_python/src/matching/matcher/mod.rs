@@ -26,7 +26,6 @@ use self::{
 use super::{Generics, GotType, OnTypeError};
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
-    debug,
     format_data::ParamsStyle,
     match_::SignatureMatch,
     matching::{Generic, matcher::bound::BoundOrigin},
@@ -36,12 +35,12 @@ use crate::{
     },
     recoverable_error,
     type_::{
-        CallableContent, DbString, GenericItem, ParamSpecArg, ParamType, ReplaceSelf,
-        StarParamType, StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
+        DbString, GenericItem, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
+        StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
         add_param_spec_to_params, match_tuple_type_arguments,
     },
     type_helpers::{Callable, FuncLike, Function},
-    utils::{debug_indent, join_with_commas},
+    utils::join_with_commas,
 };
 
 pub type ReplaceSelfInMatcher<'x> = &'x dyn Fn() -> Type;

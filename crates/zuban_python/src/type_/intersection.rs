@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    arguments::Args,
     file::{check_multiple_inheritance, linearize_mro},
     getitem::SliceType,
     matching::{IteratorContent, OnTypeError},

@@ -10,15 +10,10 @@ use parsa_python_cst::{
 };
 use utils::FastHashMap;
 
-use super::{
-    CallableContent, ClassGenerics, DbString, GenericClass, LookupResult, ParamType, StringSlice,
-    TypeVarKindInfos,
-};
+use super::{ClassGenerics, DbString, GenericClass, ParamType, StringSlice, TypeVarKindInfos};
 use crate::prelude::*;
 use crate::{
-    arguments::{ArgKind, Args, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
-    debug,
-    file::ClassNodeRef,
+    arguments::{ArgKind, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     inferred::AttributeKind,
     matching::{
         Generics, LookupKind, OnTypeError, calc_callable_type_vars, maybe_class_usage,
@@ -28,12 +23,11 @@ use crate::{
     node_ref::KnownNodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
-    type_::{CallableLike, callable::add_any_params_to_params},
+    type_::callable::add_any_params_to_params,
     type_helpers::{
         Callable, ClassLookupOptions, InstanceLookupOptions, LookupDetails, OverloadResult,
         OverloadedFunction, TypeOrClass,
     },
-    utils::debug_indent,
 };
 
 type FieldSpecifiers = Arc<[PointLink]>;

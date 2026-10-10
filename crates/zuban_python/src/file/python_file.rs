@@ -27,12 +27,11 @@ use super::{
 use crate::{
     InputPosition,
     database::{Points, PythonProject},
-    debug,
     diagnostics::{Diagnostic, Diagnostics},
     imports::{ImportResult, STUBS_SUFFIX},
     lines::{BytePositionInfos, NewlineIndices, PositionInfos},
     prelude::*,
-    type_::{DbString, LookupResult},
+    type_::DbString,
     utils::SymbolTable,
 };
 

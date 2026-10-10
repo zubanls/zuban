@@ -1,15 +1,14 @@
 use std::{iter::repeat_n, sync::Arc};
 
 use super::{
-    LookupResult, Namespace, dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol,
+    Namespace, dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol,
     lookup_on_dataclass, lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
 };
 use crate::prelude::*;
 use crate::{
-    arguments::{Args, NoArgs},
-    debug,
+    arguments::NoArgs,
     getitem::SliceType,
     imports::{
         ImportResult, has_binary_extension_submodule, namespace_has_binary_extension_submodule,

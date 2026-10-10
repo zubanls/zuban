@@ -16,7 +16,6 @@ use crate::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, DeferredTypedDictMembers, MetaclassState,
         ParentScope, ProtocolMember, RunCause, TypedDictArgs, TypedDictDefinition,
     },
-    debug,
     file::{
         OtherDefinitionIterator, TypeVarCallbackReturn, TypeVarFinder,
         name_resolution::{NameResolution, PointResolution},
@@ -31,12 +30,12 @@ use crate::{
     prelude::*,
     python_state::{NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
     type_::{
-        CallableContent, ClassGenerics, DataclassOptions, DataclassTransformObj, DbString,
-        EnumMemberAlias, EnumMemberDefinition, ExtraItemsType, FunctionKind, GenericClass,
-        ParamType, StringSlice, TypeVarVariance, TypedDictMember, TypedDictMembers,
+        ClassGenerics, DataclassOptions, DataclassTransformObj, DbString, EnumMemberAlias,
+        EnumMemberDefinition, ExtraItemsType, FunctionKind, GenericClass, ParamType, StringSlice,
+        TypeVarVariance, TypedDictMember, TypedDictMembers,
     },
     type_helpers::{FirstParamProperties, Function},
-    utils::{debug_indent, join_with_commas},
+    utils::join_with_commas,
 };
 
 use super::{

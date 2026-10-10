@@ -10,9 +10,8 @@ use crate::{
     PositionInfos,
     completion::ScopesIterator,
     database::ParentScope,
-    file::{ClassNodeRef, File, FuncNodeRef},
+    file::{File, FuncNodeRef},
     prelude::*,
-    type_::LookupResult,
     utils::SymbolTable,
 };
 

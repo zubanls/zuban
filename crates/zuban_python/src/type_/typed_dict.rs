@@ -5,12 +5,11 @@ use std::{
 };
 
 use super::{
-    CallableContent, CustomBehavior, DbString, GenericsList, LookupResult, ParamType, StringSlice,
-    utils::method_with_fallback,
+    CustomBehavior, DbString, GenericsList, ParamType, StringSlice, utils::method_with_fallback,
 };
 use crate::prelude::*;
 use crate::{
-    arguments::{ArgKind, Args, InferredArg},
+    arguments::{ArgKind, InferredArg},
     file::infer_string_index,
     format_data::AvoidRecursionFor,
     getitem::{SliceType, SliceTypeContent},

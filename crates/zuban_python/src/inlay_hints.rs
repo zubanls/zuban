@@ -5,8 +5,8 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    Document, InputPosition, PositionInfos, debug,
-    file::{ClassNodeRef, File as _, assignment_type_node_ref},
+    Document, InputPosition, PositionInfos,
+    file::{File as _, assignment_type_node_ref},
     prelude::*,
     type_helpers::{FuncLike as _, Function},
 };

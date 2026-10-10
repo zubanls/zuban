@@ -6,7 +6,7 @@ use parsa_python_cst::Name;
 use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
 use crate::recoverable_error;
-use crate::{database::TypeAlias, getitem::SliceType, prelude::*};
+use crate::{getitem::SliceType, prelude::*};
 
 macro_rules! maybe_compute_new_type_alias_definition {
     ($self:ident, $result_context:expr) => {{

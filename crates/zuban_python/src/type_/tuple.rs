@@ -10,19 +10,16 @@ use std::{
 use num_bigint::BigInt;
 
 use super::{
-    ClassGenerics, CustomBehavior, GenericItem, GenericsList, LookupResult,
-    utils::method_with_fallback,
+    ClassGenerics, CustomBehavior, GenericItem, GenericsList, utils::method_with_fallback,
 };
 use crate::prelude::*;
 use crate::{
-    arguments::Args,
-    debug,
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
     matching::{Generics, IteratorContent, OnTypeError},
     recoverable_error,
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
-    utils::{arc_slice_into_vec, debug_indent, join_with_commas},
+    utils::{arc_slice_into_vec, join_with_commas},
 };
 
 thread_local! {

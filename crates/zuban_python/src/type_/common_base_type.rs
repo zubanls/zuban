@@ -3,16 +3,14 @@ use std::sync::Arc;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    CallableContent, ClassGenerics, GenericItem, GenericsList, ParamType, ParamTypeDetails,
-    StarParamType, StarStarParamType, TypeGuardInfo,
+    ClassGenerics, GenericItem, GenericsList, ParamType, ParamTypeDetails, StarParamType,
+    StarStarParamType, TypeGuardInfo,
 };
 use crate::prelude::*;
 use crate::{
-    debug,
     matching::CheckedTypeRecursion,
-    type_::{CallableLike, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
+    type_::{ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::TypeOrClass,
-    utils::debug_indent,
 };
 
 impl Type {

@@ -2,10 +2,7 @@ use core::fmt;
 
 use parsa_python_cst::Assignment;
 
-use crate::{
-    debug, file::ClassNodeRef, node_ref::KnownPointLink, prelude::*,
-    type_::UniqueInUnpackedUnionError, utils::debug_indent,
-};
+use crate::{node_ref::KnownPointLink, prelude::*, type_::UniqueInUnpackedUnionError};
 
 pub(crate) enum ResultContext<'a, 'b> {
     Known {

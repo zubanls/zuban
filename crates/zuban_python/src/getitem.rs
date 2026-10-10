@@ -5,12 +5,8 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{ArgIterator, Args},
-    database::PointsBackup,
-    file::infer_index,
-    inference_state::Mode,
-    new_class,
-    prelude::*,
+    arguments::ArgIterator, database::PointsBackup, file::infer_index, inference_state::Mode,
+    new_class, prelude::*,
 };
 
 #[derive(Debug, Copy, Clone)]

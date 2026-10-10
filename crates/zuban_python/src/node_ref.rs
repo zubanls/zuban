@@ -9,11 +9,10 @@ use parsa_python_cst::{
 use vfs::FileIndex;
 
 use crate::{
-    database::TypeAlias,
     diagnostics::Diagnostic,
     file::{
-        CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, File,
-        GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, OtherDefinitionIterator,
+        CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, File, GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE,
+        OtherDefinitionIterator,
     },
     prelude::*,
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},

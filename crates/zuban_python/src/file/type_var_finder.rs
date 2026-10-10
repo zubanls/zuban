@@ -4,15 +4,13 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use super::{
-    ClassInitializer, ClassNodeRef,
+    ClassInitializer,
     name_resolution::{NameResolution, PointResolution},
 };
 use crate::{
-    debug,
     getitem::{SliceOrSimple, SliceType},
     prelude::*,
     type_::{TypeVarIndex, TypeVarManager},
-    utils::debug_indent,
 };
 
 #[derive(Debug, Clone, PartialEq)]

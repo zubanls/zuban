@@ -4,7 +4,6 @@ use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 use vfs::FileIndex;
 
 use crate::{
-    file::ClassNodeRef,
     prelude::*,
     type_::ClassGenerics,
     type_helpers::Instance,

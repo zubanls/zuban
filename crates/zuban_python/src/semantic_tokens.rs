@@ -5,7 +5,7 @@ use parsa_python_cst::{CodeIndex, Name as CstName};
 
 use crate::{
     Document, InputPosition, PositionInfos,
-    file::{ClassNodeRef, File as _, use_cached_param_annotation_type},
+    file::{File as _, use_cached_param_annotation_type},
     inferred::specific_to_type,
     prelude::*,
     type_::FunctionKind,

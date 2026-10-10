@@ -11,7 +11,6 @@ use super::{
 use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
-    debug,
     match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
     matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin, maybe_class_usage},
     params::{
@@ -20,12 +19,11 @@ use crate::{
     },
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, CallableWithParent, ClassGenerics, DbString, GenericItem,
-        GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf, TupleUnpack,
-        TypeVarManager, match_arbitrary_len_vs_unpack, match_unpack,
+        CallableWithParent, ClassGenerics, DbString, GenericItem, GenericsList,
+        MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
+        match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, FuncLike, Function},
-    utils::debug_indent,
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(

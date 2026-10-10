@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{arguments::Args, matching::OnTypeError, prelude::*};
+use crate::{matching::OnTypeError, prelude::*};
 
 type CustomBehaviorCallback = for<'db> fn(
     i_s: &InferenceState<'db, '_>,

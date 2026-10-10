@@ -9,12 +9,11 @@ use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Nam
 
 use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::ArgKind,
     database::{BaseClass, ClassKind, ClassStorage, MetaclassState, ParentScope},
-    debug,
     file::{
-        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, StarImportError,
-        TypeVarCallbackReturn, use_cached_return_annotation_type,
+        ClassInitializer, FLOW_ANALYSIS, FuncNodeRef, StarImportError, TypeVarCallbackReturn,
+        use_cached_return_annotation_type,
     },
     getitem::SliceType,
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, MroIndex},
@@ -27,13 +26,13 @@ use crate::{
     prelude::*,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, ClassGenerics, DbString, FunctionOverload, GenericClass,
-        GenericItem, GenericsList, LookupArgs, LookupResult, ParamSpecArg, ParamType,
-        PrettyCallableOptions, StarParamType, StarStarParamType, StringSlice, TypeArgs,
-        TypeGatherer, TypeVarIndex, TypedDictGenerics, add_any_params_to_params,
+        ClassGenerics, DbString, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        LookupArgs, ParamSpecArg, ParamType, PrettyCallableOptions, StarParamType,
+        StarStarParamType, StringSlice, TypeArgs, TypeGatherer, TypeVarIndex, TypedDictGenerics,
+        add_any_params_to_params,
     },
     type_helpers::FuncLike,
-    utils::{debug_indent, is_magic_method},
+    utils::is_magic_method,
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {

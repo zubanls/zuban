@@ -3,8 +3,7 @@ use std::{borrow::Cow, sync::Arc};
 use super::Callable;
 use crate::prelude::Class;
 use crate::{
-    arguments::{Arg, ArgIterator, ArgKind, Args, InferredArg},
-    debug,
+    arguments::{Arg, ArgIterator, ArgKind, InferredArg},
     file::FLOW_ANALYSIS,
     match_::{ArgumentIndexWithParam, SignatureMatch},
     matching::{
@@ -12,10 +11,7 @@ use crate::{
         calc_callable_type_vars, maybe_class_usage, replace_class_type_vars_in_callable,
     },
     prelude::*,
-    type_::{
-        CallableContent, ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf,
-    },
-    utils::debug_indent,
+    type_::{ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf},
 };
 
 #[derive(Debug)]

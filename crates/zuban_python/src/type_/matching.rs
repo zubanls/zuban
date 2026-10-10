@@ -2,19 +2,16 @@ use std::{borrow::Cow, sync::Arc};
 
 use utils::FastHashSet;
 
-use super::{CallableContent, ClassGenerics, FunctionOverload, UnionType, WithUnpack};
+use super::{ClassGenerics, FunctionOverload, UnionType, WithUnpack};
 use crate::prelude::*;
 use crate::{
     database::MetaclassState,
-    debug,
-    file::ClassNodeRef,
     match_::MismatchReason,
     matching::{ErrorStrs, ErrorTypes, GotType, format_got_expected},
     params::matches_params,
     recoverable_error,
-    type_::{CallableLike, TupleUnpack},
+    type_::TupleUnpack,
     type_helpers::TypeOrClass,
-    utils::debug_indent,
 };
 
 impl Type {

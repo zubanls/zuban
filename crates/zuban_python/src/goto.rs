@@ -17,9 +17,8 @@ use crate::{
     InputPosition, ValueName,
     completion::ScopesIterator,
     database::{ParentScope, PyTypedMissing},
-    debug,
     file::{
-        ClassInitializer, ClassNodeRef, File, FuncNodeRef, OtherDefinitionIterator,
+        ClassInitializer, File, FuncNodeRef, OtherDefinitionIterator,
         expect_class_or_simple_generic, first_defined_name,
     },
     heuristic_infer::infer_heuristics_if_necessary,
@@ -29,9 +28,9 @@ use crate::{
     prelude::*,
     pytest::find_pytest_fixture_for_param,
     recoverable_error,
-    type_::{LookupResult, TypeVarLikeName, TypeVarName, UnionType},
+    type_::{TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
-    utils::{debug_indent, is_file_with_python_ending},
+    utils::is_file_with_python_ending,
 };
 
 pub(crate) struct FullyInferred {

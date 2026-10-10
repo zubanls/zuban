@@ -3,7 +3,6 @@ use std::sync::Arc;
 use super::MatcherFormatResult;
 use crate::prelude::Matcher;
 use crate::{
-    debug,
     format_data::ParamsStyle,
     params::matches_params_with_variance,
     prelude::*,

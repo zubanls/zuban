@@ -9,14 +9,13 @@ use config::TypeCheckerFlags;
 use parsa_python_cst::*;
 
 use super::{
-    ClassNodeRef, FuncNodeRef, OtherDefinitionIterator, first_defined_name,
-    flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error,
+    FuncNodeRef, OtherDefinitionIterator, first_defined_name, flow_analysis::FLOW_ANALYSIS,
+    inference::await_, on_argument_type_error,
 };
 use crate::{
     RunCause,
     arguments::{CombinedArgs, InitSubclassArgs, KnownArgs, NoArgs, SimpleArgs},
     database::{ClassKind, MetaclassState, OverloadImplementation, ParentScope},
-    debug,
     file::{
         File, Inference, flow_analysis::DelayedDiagnostic, inference::AssignKind,
         utils::for_each_reachable_if_stmt_block_and_return_reachability_always_known,
@@ -28,17 +27,15 @@ use crate::{
     prelude::*,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, ClassGenerics, DbString, FunctionKind, FunctionOverload,
-        GenericItem, GenericsList, IterCause, LookupArgs, LookupResult, NeverCause, ParamType,
-        StarParamType, TupleUnpack, TypeVarVariance, dataclass_post_init_func,
-        ensure_calculated_dataclass, format_callable_params,
+        ClassGenerics, DbString, FunctionKind, FunctionOverload, GenericItem, GenericsList,
+        IterCause, LookupArgs, NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
+        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{
         Callable, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function, Instance,
         InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name,
         check_type_var_variance_validity_for_type, is_private,
     },
-    utils::debug_indent,
 };
 
 const IGNORED_INHERITANCE_NAMES: [&str; 5] = [

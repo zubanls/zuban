@@ -4,7 +4,6 @@ use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpre
 
 use crate::{
     database::ClassKind,
-    debug,
     prelude::*,
     type_::{ClassGenerics, TupleUnpack},
     utils::join_with_commas,

@@ -4,16 +4,12 @@ use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
-    file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
+    file::{FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
     name::{Range, TreeName},
     prelude::*,
     recoverable_error,
-    type_::{
-        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, TypeGatherer,
-        TypeVarVariance,
-    },
-    utils::debug_indent,
+    type_::{FunctionKind, PrettyCallableOptions, TypeGatherer, TypeVarVariance},
 };
 
 impl<'project> Document<'project> {

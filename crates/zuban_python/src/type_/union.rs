@@ -9,7 +9,6 @@ use utils::{FastHashMap, FastHashSet};
 
 use super::NeverCause;
 use crate::prelude::*;
-use crate::{debug, utils::debug_indent};
 
 impl Type {
     pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Self {

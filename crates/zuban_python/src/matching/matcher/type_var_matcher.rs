@@ -3,12 +3,11 @@ use super::{
     bound::{Bound, BoundKind},
 };
 use crate::{
-    debug,
     matching::matcher::bound::{BoundInfo, BoundOrigin},
     prelude::*,
     recoverable_error,
     type_::{GenericItem, GenericsList},
-    utils::{debug_indent, join_with_commas},
+    utils::join_with_commas,
 };
 
 #[derive(Debug, Default, Clone)]

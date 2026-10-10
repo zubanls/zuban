@@ -4,7 +4,6 @@ use parsa_python_cst::ParamKind;
 
 use crate::{
     arguments::{Arg, ArgKind, TypedDictExtraItemsOrigin},
-    debug,
     format_data::ParamsStyle,
     prelude::*,
     type_::{

@@ -5,12 +5,11 @@ use parsa_python_cst::{NodeIndex, ParamKind};
 use vfs::FileIndex;
 
 use crate::{
-    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
+    arguments::{CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
     database::OverloadDefinition,
-    debug,
     file::{
-        ANNOTATION_TO_EXPR_DIFFERENCE, ClassNodeRef, maybe_saved_annotation,
-        on_argument_type_error, should_add_deprecated, use_cached_annotation_or_type_comment,
+        ANNOTATION_TO_EXPR_DIFFERENCE, maybe_saved_annotation, on_argument_type_error,
+        should_add_deprecated, use_cached_annotation_or_type_comment,
     },
     getitem::SliceType,
     matching::{
@@ -22,17 +21,16 @@ use crate::{
     prelude::*,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, ClassGenerics, DbBytes, DbString, FunctionKind,
-        FunctionOverload, GenericClass, GenericItem, GenericsList, InferredTypeGatherer, IterCause,
-        IterInfos, Literal as DbLiteral, LookupArgs, LookupResult, NeverCause, PropertySetter,
-        PropertySetterType, execute_tuple_class, execute_type_of_type,
+        ClassGenerics, DbBytes, DbString, FunctionKind, FunctionOverload, GenericClass,
+        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos,
+        Literal as DbLiteral, LookupArgs, NeverCause, PropertySetter, PropertySetterType,
+        execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, FirstParamProperties, FuncLike as _, Function,
         LookupDetails, OverloadedFunction, TypeOrClass, execute_assert_type, execute_cast,
         execute_isinstance, execute_issubclass, execute_reveal_type, execute_super,
     },
-    utils::debug_indent,
 };
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;

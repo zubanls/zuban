@@ -25,9 +25,8 @@ use super::{
     utils::func_of_self_symbol,
 };
 use crate::{
-    arguments::{ArgKind, Args, SimpleArgs},
-    database::{ParentScope, TypeAlias},
-    debug,
+    arguments::{ArgKind, SimpleArgs},
+    database::ParentScope,
     file::flow_analysis::{DelayedConstraintVerification, DelayedDiagnostic},
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{ImportResult, namespace_import},
@@ -36,12 +35,12 @@ use crate::{
     prelude::*,
     recoverable_error,
     type_::{
-        CallableContent, CallableWithParent, ClassGenerics, DbBytes, DbString, GenericClass,
-        GenericItem, GenericsList, MaybeUnpackGatherer, Namespace, NeverCause, ParamSpecArg,
-        ParamType, RecursiveTypeOrigin, Sentinel, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleUnpack, TypeArgs, TypeGatherer, TypeGuardInfo, TypeLikeInTypeVar,
-        TypeVarKindInfos, TypeVarLikeName, TypeVarManager, TypeVarVariance, TypedDictGenerics,
-        UnionType, WithUnpack, add_any_params_to_params, add_param_spec_to_params,
+        CallableWithParent, ClassGenerics, DbBytes, DbString, GenericClass, GenericItem,
+        GenericsList, MaybeUnpackGatherer, Namespace, NeverCause, ParamSpecArg, ParamType,
+        RecursiveTypeOrigin, Sentinel, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleUnpack, TypeArgs, TypeGatherer, TypeGuardInfo, TypeLikeInTypeVar, TypeVarKindInfos,
+        TypeVarLikeName, TypeVarManager, TypeVarVariance, TypedDictGenerics, UnionType, WithUnpack,
+        add_any_params_to_params, add_param_spec_to_params,
     },
     type_helpers::{Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
@@ -234,7 +233,7 @@ enum TypeContent<'db, 'a> {
     Dataclass(Arc<Dataclass>),
     NamedTuple(Arc<NamedTuple>),
     TypedDictDefinition(Arc<TypedDict>),
-    TypeAlias(&'db TypeAlias),
+    TypeAlias(&'db crate::database::TypeAlias),
     TypeAliasWithAppliedGenerics(Type),
     Type(Type),
     SpecialCase(Specific),
@@ -1815,7 +1814,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_generics_for_alias(
         &mut self,
         slice_type: SliceType,
-        alias: &TypeAlias,
+        alias: &crate::database::TypeAlias,
     ) -> Vec<GenericItem> {
         let mut generics = vec![];
         self.calculate_type_arguments(
@@ -2709,7 +2708,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_type_get_item_on_alias(
         &mut self,
-        alias: &TypeAlias,
+        alias: &crate::database::TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, alias);

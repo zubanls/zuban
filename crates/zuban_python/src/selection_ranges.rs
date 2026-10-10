@@ -1,4 +1,4 @@
-use crate::{Document, InputPosition, PositionInfos, debug, file::File as _};
+use crate::{Document, InputPosition, PositionInfos, file::File as _, prelude::*};
 
 impl<'project> Document<'project> {
     pub fn selection_ranges(

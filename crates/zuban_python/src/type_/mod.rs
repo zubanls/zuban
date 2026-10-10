@@ -36,8 +36,6 @@ pub(crate) use self::{
     type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{
-    debug,
-    file::ClassNodeRef,
     format_data::{AvoidRecursionFor, find_similar_types},
     match_::MismatchReason,
     matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType},

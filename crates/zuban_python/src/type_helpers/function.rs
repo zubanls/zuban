@@ -7,9 +7,8 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{Arg, Args, KnownArgs, KnownArgsWithCustomAddIssue},
+    arguments::{Arg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{OverloadDefinition, OverloadImplementation},
-    debug,
     file::{
         DecoratorState, FLOW_ANALYSIS, FuncNodeRef, FuncParent, OtherDefinitionIterator,
         RedefinitionResult, TypeVarCallbackReturn, first_defined_name_of_multi_def,
@@ -29,12 +28,12 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, ClassGenerics, ComplexTypeGatherer, DataclassTransformObj,
-        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, InferredTypeGatherer,
-        NeverCause, ParamType, PropertySetter, PropertySetterType, ReplaceSelf, StarParamType,
-        StarStarParamType, StringSlice, WrongPositionalCount, replace_param_spec,
+        ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, DbString, FunctionKind,
+        FunctionOverload, GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType,
+        PropertySetter, PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType,
+        StringSlice, WrongPositionalCount, replace_param_spec,
     },
-    utils::{debug_indent, is_magic_method},
+    utils::is_magic_method,
 };
 
 use super::callable::FuncLike;

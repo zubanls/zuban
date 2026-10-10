@@ -18,8 +18,7 @@ use crate::{
 };
 
 use super::{
-    ClassNodeRef, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
-    use_cached_param_annotation_type,
+    TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, use_cached_param_annotation_type,
 };
 
 pub type FuncNodeRef<'x> = KnownNodeRef<'x, FunctionDef<'x>>;

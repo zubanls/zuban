@@ -8,11 +8,9 @@ use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
     database::ParentScope,
-    debug,
-    file::{ClassNodeRef, File as _, func_parent_scope},
+    file::{File as _, func_parent_scope},
     imports::{ImportResult, import_module_by_strings, python_import},
     prelude::*,
-    type_::LookupResult,
     type_helpers::{FuncLike as _, Function},
 };
 

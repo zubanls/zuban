@@ -16,15 +16,15 @@ use vfs::{
 };
 
 use crate::{
-    ProjectOptions, debug,
-    file::{ClassNodeRef, File, SuperFile},
+    ProjectOptions,
+    file::{File, SuperFile},
     lines::split_lines,
     prelude::*,
     python_state::PythonState,
     recoverable_error, sys_path,
     type_::{
-        CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
-        GenericsList, StringSlice, TypeVarLikeName,
+        DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem, GenericsList,
+        StringSlice, TypeVarLikeName,
     },
     type_helpers::Function,
     utils::SymbolTable,

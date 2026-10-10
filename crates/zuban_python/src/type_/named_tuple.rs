@@ -5,10 +5,7 @@ use std::{
 
 use vfs::FileIndex;
 
-use super::{
-    CallableContent, DbString, FunctionKind, LookupResult, ParamType, StringSlice,
-    tuple::lookup_tuple_magic_methods,
-};
+use super::{DbString, FunctionKind, ParamType, StringSlice, tuple::lookup_tuple_magic_methods};
 use crate::prelude::*;
 use crate::{
     format_data::AvoidRecursionFor,

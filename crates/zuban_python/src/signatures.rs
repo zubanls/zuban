@@ -3,13 +3,12 @@ use std::sync::Arc;
 use parsa_python_cst::{ExpressionPart, SignatureArg, SignatureArgsIterator};
 
 use crate::{
-    InputPosition, debug,
+    InputPosition,
     file::File as _,
     goto::{PositionalDocument, with_i_s_non_self},
     params::Param as _,
     prelude::*,
-    type_::{CallableContent, CallableLike, ParamType, ParamTypeDetails},
-    utils::debug_indent,
+    type_::{ParamType, ParamTypeDetails},
 };
 
 struct SignatureInfo<'db> {

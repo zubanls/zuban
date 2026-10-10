@@ -6,7 +6,6 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::Args,
     database::TypedDictArgs,
     file::name_resolution::NameResolution,
     getitem::SliceType,

@@ -9,12 +9,10 @@ use vfs::FileIndex;
 use crate::{
     RunCause,
     database::PyTypedMissing,
-    debug,
     file::{File, python_file::DunderAllState},
     imports::{ImportResult, LoadedImportResult, global_import, namespace_import},
     prelude::*,
     recoverable_error,
-    type_::LookupResult,
     utils::{SymbolTable, is_magic_method},
 };
 

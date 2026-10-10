@@ -3,11 +3,10 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::{CallableLike, DbString, LookupResult};
+use super::DbString;
 use crate::prelude::*;
 use crate::{
     database::ParentScope,
-    debug,
     file::File as _,
     inferred::AttributeKind,
     matching::LookupKind,

@@ -2,7 +2,7 @@ use parsa_python_cst::*;
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use super::{
-    ClassNodeRef, FLOW_ANALYSIS, File,
+    FLOW_ANALYSIS, File,
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
     name_resolution::{ModuleAccessDetail, NameResolution},
@@ -12,9 +12,8 @@ use super::{
 };
 use crate::prelude::PythonFile;
 use crate::{
-    arguments::{Args, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
+    arguments::{InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::RunCause,
-    debug,
     file::{
         OtherDefinitionIterator, StarImportResolutionKind,
         flow_analysis::RedefinitionResult,
@@ -40,15 +39,13 @@ use crate::{
     recoverable_error,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        CallableContent, DbString, IterCause, IterInfos, LookupResult, ParamType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleUnpack, UnionType,
-        dataclass_converter_fields_lookup,
+        DbString, IterCause, IterInfos, ParamType, StarParamType, StarStarParamType, StringSlice,
+        Tuple, TupleUnpack, UnionType, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
         InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
     },
-    utils::debug_indent,
 };
 
 const ENUM_NAMES_OVERRIDABLE: [&str; 2] = ["value", "name"];
@@ -4046,7 +4043,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         }
     }
 
-    pub(super) fn assign_type_alias_name(&self, alias: TypeAlias) {
+    pub(super) fn assign_type_alias_name(&self, alias: parsa_python_cst::TypeAlias) {
         let name_def = alias.name_def();
         self.assign_to_name_def_simple(
             name_def,

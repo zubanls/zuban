@@ -7,7 +7,6 @@ use parsa_python_cst::{
 
 use crate::{
     database::PointsBackup,
-    debug,
     getitem::SliceType,
     inference_state::Mode,
     matching::{IteratorContent, UnpackedArgument},

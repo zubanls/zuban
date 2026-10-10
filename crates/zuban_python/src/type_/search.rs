@@ -1,8 +1,8 @@
 use super::{
-    CallableContent, ClassGenerics, GenericClass, GenericItem, GenericsList, ParamType,
-    StarParamType, StarStarParamType, TupleUnpack, TypedDictGenerics,
+    ClassGenerics, GenericClass, GenericItem, GenericsList, ParamType, StarParamType,
+    StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
-use crate::debug;
+
 use crate::prelude::*;
 
 pub(crate) trait SearchTypeVars {

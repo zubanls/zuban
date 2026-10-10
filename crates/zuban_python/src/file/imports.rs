@@ -6,7 +6,6 @@ use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
 use crate::{
     database::PyTypedMissing,
-    debug,
     file::{inference::Inference, name_resolution::StarImportError},
     imports::{
         ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
@@ -14,7 +13,6 @@ use crate::{
         namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
     prelude::*,
-    type_::LookupResult,
 };
 
 use super::python_file::StarImport;

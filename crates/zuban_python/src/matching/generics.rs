@@ -2,7 +2,7 @@ use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 
 use super::Generic;
 use crate::{
-    file::{ClassNodeRef, use_cached_simple_generic_type},
+    file::use_cached_simple_generic_type,
     prelude::*,
     type_::{ClassGenerics, GenericItem, GenericsList},
 };

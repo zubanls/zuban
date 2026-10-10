@@ -20,7 +20,6 @@ pub(crate) use utils::{
 
 use crate::{
     arguments::Arg,
-    debug,
     format_data::find_similar_types,
     match_::MismatchReason,
     prelude::*,

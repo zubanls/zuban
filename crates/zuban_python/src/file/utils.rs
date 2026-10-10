@@ -8,8 +8,7 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{Arg, Args, unpack_star_star},
-    debug,
+    arguments::{Arg, unpack_star_star},
     file::Inference,
     getitem::Simple,
     inferred::UnionValue,
@@ -24,8 +23,6 @@ use crate::{
     },
     utils::join_with_commas,
 };
-
-use super::ClassNodeRef;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn infer_list_or_set<'x>(

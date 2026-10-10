@@ -5,11 +5,11 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    arguments::{ArgIterator, ArgKind, Args, KeywordArg},
+    arguments::{ArgIterator, ArgKind, KeywordArg},
     file::name_resolution::NameResolution,
     getitem::SliceType,
     prelude::*,
-    type_::{CallableContent, DbString, ParamType, StringSlice},
+    type_::{DbString, ParamType, StringSlice},
 };
 
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};

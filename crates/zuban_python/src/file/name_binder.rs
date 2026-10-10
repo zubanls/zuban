@@ -6,7 +6,6 @@ use vfs::FileIndex;
 
 use crate::{
     database::{ClassStorage, ParentScope, Points},
-    debug,
     diagnostics::Diagnostics,
     file::{
         ComplexValues,
@@ -668,7 +667,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn index_type_alias(&mut self, type_alias: TypeAlias<'db>) {
+    fn index_type_alias(&mut self, type_alias: parsa_python_cst::TypeAlias<'db>) {
         let (name_def, type_params, expr) = type_alias.unpack();
         self.add_new_definition_with_cause(
             name_def,

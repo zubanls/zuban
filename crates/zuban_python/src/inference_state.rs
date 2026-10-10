@@ -3,9 +3,8 @@ use std::cell::Cell;
 use crate::{
     TypeCheckerFlags,
     database::ParentScope,
-    file::{ClassNodeRef, FLOW_ANALYSIS, TypeVarCallbackReturn},
+    file::{FLOW_ANALYSIS, TypeVarCallbackReturn},
     prelude::*,
-    type_::CallableContent,
     type_helpers::Function,
 };
 

@@ -3,8 +3,7 @@ use std::sync::Arc;
 use parsa_python_cst::NodeIndex;
 
 use crate::{
-    arguments::{ArgKind, Args, KeywordArg},
-    debug,
+    arguments::{ArgKind, KeywordArg},
     file::name_resolution::NameResolution,
     prelude::*,
     type_::{TypeLikeInTypeVar, TypeVarKindInfos, TypeVarLikeName, TypeVarVariance},

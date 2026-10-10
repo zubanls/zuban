@@ -5,14 +5,13 @@ use parsa_python_cst::Name;
 use super::{ClassLookupOptions, FirstParamKind, Function, MroIterator, class::TypeOrClass};
 use crate::prelude::Class;
 use crate::{
-    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
-    debug,
+    arguments::{CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     file::{ORDERING_METHODS, on_argument_type_error},
     getitem::SliceType,
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, add_attribute_error},
     matching::{ErrorStrs, IteratorContent, LookupKind, OnTypeError},
     prelude::*,
-    type_::{CallableLike, DbString, FunctionKind, IterInfos, LookupResult, PropertySetterType},
+    type_::{DbString, FunctionKind, IterInfos, PropertySetterType},
 };
 
 #[derive(Debug, Clone, Copy)]
