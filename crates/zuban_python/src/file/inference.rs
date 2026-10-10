@@ -2,7 +2,7 @@ use parsa_python_cst::*;
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use super::{
-    ClassNodeRef, FLOW_ANALYSIS, File, PythonFile,
+    ClassNodeRef, FLOW_ANALYSIS, File,
     diagnostics::{await_aiter_and_next, check_override},
     flow_analysis::has_custom_special_method,
     name_resolution::{ModuleAccessDetail, NameResolution},
@@ -10,11 +10,11 @@ use super::{
     type_computation::ANNOTATION_TO_EXPR_DIFFERENCE,
     utils::{func_of_self_symbol, infer_dict_like},
 };
+use crate::prelude::PythonFile;
 use crate::{
     arguments::{Args, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
-    database::{ComplexPoint, Database, Locality, Point, PointKind, PointLink, RunCause, Specific},
+    database::RunCause,
     debug,
-    diagnostics::{Issue, IssueKind},
     file::{
         OtherDefinitionIterator, StarImportResolutionKind,
         flow_analysis::RedefinitionResult,
@@ -22,31 +22,34 @@ use crate::{
         type_computation::TypeCommentState,
         utils::TupleGatherer,
     },
-    format_data::FormatData,
     getitem::SliceType,
-    inference_state::{InferenceState, Mode},
+    inference_state::Mode,
     inferred::{
-        ApplyClassDescriptorsOrigin, AttributeKind, Inferred, MroIndex,
-        NAME_DEF_TO_DEFAULTDICT_DIFF, UnionValue, add_attribute_error, specific_to_type,
+        ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, NAME_DEF_TO_DEFAULTDICT_DIFF,
+        UnionValue, add_attribute_error, specific_to_type,
     },
     matching::{
-        ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, Matcher, OnTypeError,
-        TupleLenInfos, format_got_expected,
+        ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, OnTypeError, TupleLenInfos,
+        format_got_expected,
     },
     new_class,
-    node_ref::{KnownNodeRef, KnownPointLink, NodeRef},
+    node_ref::{KnownNodeRef, KnownPointLink},
     params::matches_simple_params,
+    prelude::{
+        AnyCause, CallableParam, CallableParams, Class, ComplexPoint, Database, FormatData,
+        InferenceState, Inferred, Issue, IssueKind, Literal, LiteralKind, LiteralValue, Locality,
+        Matcher, NodeRef, Point, PointKind, PointLink, ResultContext, Specific, Tuple, TupleArgs,
+        Type, Variance,
+    },
     pytest::maybe_infer_pytest_param,
     recoverable_error,
-    result_context::{CouldBeALiteral, ResultContext, ResultContextOrigin},
+    result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, DbString, IterCause, IterInfos,
-        Literal, LiteralKind, LiteralValue, LookupResult, ParamType, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionType, Variance,
-        dataclass_converter_fields_lookup,
+        CallableContent, DbString, IterCause, IterInfos, LookupResult, ParamType, StarParamType,
+        StarStarParamType, StringSlice, TupleUnpack, UnionType, dataclass_converter_fields_lookup,
     },
     type_helpers::{
-        Class, ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
+        ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
         InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
     },
     utils::debug_indent,

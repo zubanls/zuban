@@ -6,20 +6,22 @@ use std::{
 use vfs::FileIndex;
 
 use super::{
-    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FormatStyle, FunctionKind,
-    Literal, LiteralKind, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
-    TypeVarLikes, tuple::lookup_tuple_magic_methods,
+    CallableContent, DbString, FunctionKind, LookupResult, ParamType, StringSlice,
+    tuple::lookup_tuple_magic_methods,
+};
+use crate::prelude::{
+    AnyCause, CallableParam, CallableParams, FormatStyle, Literal, LiteralKind,
+    ReplaceTypeVarLikes, Tuple, Type, TypeVarLikes,
 };
 use crate::{
-    database::{Database, PointLink},
-    diagnostics::IssueKind,
-    format_data::{AvoidRecursionFor, FormatData},
+    format_data::AvoidRecursionFor,
     getitem::SliceType,
-    inference_state::InferenceState,
-    inferred::{AttributeKind, Inferred},
+    inferred::AttributeKind,
     matching::{Generics, IteratorContent, LookupKind},
     new_class,
-    result_context::ResultContext,
+    prelude::{
+        Database, FormatData, InferenceState, Inferred, IssueKind, PointLink, ResultContext,
+    },
     type_helpers::LookupDetails,
     utils::join_with_commas,
 };

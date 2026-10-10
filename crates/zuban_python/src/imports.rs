@@ -4,10 +4,9 @@ use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent, Workspace, WorkspaceKind};
 
 use crate::{
-    database::{ComplexPoint, Database, PyTypedMissing},
-    file::PythonFile,
-    inferred::Inferred,
-    type_::{Namespace, Type},
+    database::PyTypedMissing,
+    prelude::{ComplexPoint, Database, Inferred, PythonFile, Type},
+    type_::Namespace,
 };
 
 pub const STUBS_SUFFIX: &str = "-stubs";

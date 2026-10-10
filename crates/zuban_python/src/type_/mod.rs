@@ -36,17 +36,17 @@ pub(crate) use self::{
     type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{
-    database::{Database, PointLink},
     debug,
-    diagnostics::IssueKind,
     file::ClassNodeRef,
-    format_data::{AvoidRecursionFor, FormatData, find_similar_types},
-    inference_state::InferenceState,
-    inferred::Inferred,
-    match_::{Match, MismatchReason},
-    matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType, Matcher},
-    new_class, recoverable_error,
-    type_helpers::{Class, Instance, MroIterator, TypeOrClass},
+    format_data::{AvoidRecursionFor, find_similar_types},
+    match_::MismatchReason,
+    matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType},
+    new_class,
+    prelude::{
+        Class, Database, FormatData, InferenceState, Inferred, IssueKind, Match, Matcher, PointLink,
+    },
+    recoverable_error,
+    type_helpers::{Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,
 };
 

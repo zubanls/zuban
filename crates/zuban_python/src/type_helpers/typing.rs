@@ -2,16 +2,14 @@ use std::borrow::Cow;
 
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
-    database::Database,
-    diagnostics::IssueKind,
-    format_data::FormatData,
-    inference_state::InferenceState,
-    inferred::Inferred,
     matching::{CheckedTypeRecursion, Generic, Generics},
-    result_context::{CouldBeALiteral, ResultContext},
+    prelude::{
+        CallableParams, Database, FormatData, InferenceState, Inferred, IssueKind,
+        ReplaceTypeVarLikes as _, ResultContext, TupleArgs, Type, TypedDict,
+    },
+    result_context::CouldBeALiteral,
     type_::{
-        CallableParams, ClassGenerics, GenericClass, ParamType, ReplaceTypeVarLikes as _,
-        StarParamType, StarStarParamType, TupleArgs, Type, TypedDict, TypedDictGenerics,
+        ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType, TypedDictGenerics,
     },
     utils::join_with_commas,
 };

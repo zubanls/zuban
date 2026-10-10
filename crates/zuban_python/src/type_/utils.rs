@@ -1,7 +1,8 @@
 use super::Instance;
 use crate::{
-    arguments::Args, inference_state::InferenceState, inferred::Inferred, matching::OnTypeError,
-    result_context::ResultContext,
+    arguments::Args,
+    matching::OnTypeError,
+    prelude::{InferenceState, Inferred, ResultContext},
 };
 
 pub(crate) fn method_with_fallback<'db, 'x, T>(

@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::type_::{Type, TypeVar};
+use crate::prelude::{Type, TypeVar};
 
 #[derive(Debug)]
 pub(crate) struct ArgumentIndexWithParam {

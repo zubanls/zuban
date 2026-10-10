@@ -9,10 +9,9 @@ use vfs::{
 };
 
 use crate::{
-    database::Database,
     diagnostics::Diagnostic,
-    file::PythonFile,
     imports::ImportResult,
+    prelude::{Database, PythonFile},
     utils::{is_file_with_python_ending, join_with_commas},
 };
 

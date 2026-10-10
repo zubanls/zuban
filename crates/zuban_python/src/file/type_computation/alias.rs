@@ -14,14 +14,10 @@ use super::{
 };
 use crate::{
     arguments::{Args, SimpleArgs},
-    database::{
-        ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
-        TypeAlias,
-    },
+    database::{ClassKind, TypeAlias},
     debug,
-    diagnostics::IssueKind,
     file::{
-        PythonFile, TypeVarCallbackReturn,
+        TypeVarCallbackReturn,
         name_resolution::PointResolution,
         type_computation::{
             TypeCommentState, TypeComputation, TypeComputationOrigin,
@@ -31,15 +27,14 @@ use crate::{
     },
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    recoverable_error,
-    type_::{
-        AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypedDict,
+    prelude::{
+        AnyCause, Class, ComplexPoint, Database, InferenceState, Inferred, IssueKind, Locality,
+        NamedTuple, NodeRef, Point, PointKind, PointLink, PythonFile, Specific, TupleArgs, Type,
+        TypeVarLike, TypeVarLikes, TypedDict,
     },
-    type_helpers::{Class, cache_class_name},
+    recoverable_error,
+    type_::{GenericItem, TupleUnpack, TypeVarManager},
+    type_helpers::cache_class_name,
     utils::debug_indent,
 };
 

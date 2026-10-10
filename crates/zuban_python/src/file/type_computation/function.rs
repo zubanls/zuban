@@ -7,21 +7,18 @@ use parsa_python_cst::{
 use utils::FastHashSet;
 
 use crate::{
-    database::{
-        ComplexPoint, Database, Locality, OverloadDefinition, ParentScope, Point, PointLink,
-        Specific,
-    },
-    diagnostics::{Issue, IssueKind},
-    file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, PythonFile, func_parent_scope},
-    inference_state::InferenceState,
+    database::{OverloadDefinition, ParentScope},
+    file::{FUNC_TO_RETURN_OR_YIELD_DIFF, FUNC_TO_TYPE_VAR_DIFF, func_parent_scope},
     new_class,
-    node_ref::{KnownNodeRef, NodeRef},
-    recoverable_error,
-    type_::{
-        AnyCause, StringSlice, Type, TypeGuardInfo, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypeVarManager,
+    node_ref::KnownNodeRef,
+    prelude::{
+        AnyCause, Class, ComplexPoint, Database, InferenceState, Issue, IssueKind, Locality,
+        NodeRef, Point, PointLink, PythonFile, Specific, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikes,
     },
-    type_helpers::{Class, Function},
+    recoverable_error,
+    type_::{StringSlice, TypeGuardInfo, TypeVarManager},
+    type_helpers::Function,
 };
 
 use super::{

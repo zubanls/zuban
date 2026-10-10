@@ -4,13 +4,13 @@ use parsa_python_cst::ParamKind;
 use utils::FastHashSet;
 
 use super::{
-    AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ParamType,
-    StarParamType, StarStarParamType, Type, TypeGuardInfo,
+    CallableContent, CallableLike, ParamType, StarParamType, StarStarParamType, TypeGuardInfo,
 };
+use crate::prelude::{AnyCause, CallableParam, CallableParams, Type};
 use crate::{
     debug,
-    inference_state::InferenceState,
-    type_::{self, ComplexTypeGatherer, Tuple, TupleArgs, TupleUnpack},
+    prelude::{InferenceState, Tuple, TupleArgs},
+    type_::{self, ComplexTypeGatherer, TupleUnpack},
     utils::debug_indent,
 };
 

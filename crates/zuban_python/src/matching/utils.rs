@@ -1,17 +1,15 @@
 use std::borrow::Cow;
 
-use super::Matcher;
+use crate::prelude::Matcher;
 use crate::{
-    database::Database,
     debug,
-    format_data::FormatData,
-    inference_state::InferenceState,
     inferred::infer_class_method_on_instance,
-    type_::{
-        AnyCause, CallableContent, GenericItem, ReplaceSelf, ReplaceTypeVarLikes, Type,
+    prelude::{
+        AnyCause, Class, Database, FormatData, InferenceState, ReplaceTypeVarLikes, Type,
         TypeVarLikeUsage,
     },
-    type_helpers::{Callable, Class},
+    type_::{CallableContent, GenericItem, ReplaceSelf},
+    type_helpers::Callable,
 };
 
 pub fn maybe_replace_class_type_vars(

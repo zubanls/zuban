@@ -1,15 +1,15 @@
 use std::borrow::Cow;
 
-use super::Matcher;
+use crate::prelude::Matcher;
 use crate::{
-    database::Database,
-    format_data::FormatData,
-    inference_state::InferenceState,
-    match_::Match,
     params::matches_params_with_variance,
+    prelude::{
+        AnyCause, CallableParams, Database, FormatData, InferenceState, Match, TupleArgs, Type,
+        Variance,
+    },
     type_::{
-        AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, Variance,
-        format_callable_params, format_params_as_param_spec, match_tuple_type_arguments,
+        GenericItem, ParamSpecArg, TypeArgs, format_callable_params, format_params_as_param_spec,
+        match_tuple_type_arguments,
     },
 };
 

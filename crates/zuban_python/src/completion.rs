@@ -9,28 +9,28 @@ use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent};
 
 use crate::{
     InputPosition,
-    database::{ClassKind, ComplexPoint, Database, ParentScope, PointKind, PyTypedMissing},
+    database::{ClassKind, ParentScope, PyTypedMissing},
     debug,
-    file::{ClassNodeRef, File as _, FuncNodeRef, PythonFile, is_reexport_issue},
+    file::{ClassNodeRef, File as _, FuncNodeRef, is_reexport_issue},
     goto::{
         FollowImportResultKind, PositionalDocument, try_to_follow_imports, unpack_union_types,
         with_i_s_non_self,
     },
     imports::{ImportResult, global_import},
-    inference_state::InferenceState,
-    inferred::Inferred,
     lines::BytePositionInfos,
     matching::Generics,
     name::{ModuleName, Range, TreeName, process_docstring},
-    node_ref::NodeRef,
     params::Param,
+    prelude::{
+        CallableParam, CallableParams, Class, ComplexPoint, Database, Enum, InferenceState,
+        Inferred, NodeRef, PointKind, PythonFile, Type,
+    },
     pytest::find_all_possible_pytest_fixtures,
     recoverable_error,
     type_::{
-        CallableContent, CallableLike, CallableParam, CallableParams, Enum, EnumMemberDefinition,
-        FunctionKind, Namespace, ParamType, Type,
+        CallableContent, CallableLike, EnumMemberDefinition, FunctionKind, Namespace, ParamType,
     },
-    type_helpers::{Class, Function, TypeOrClass, is_private},
+    type_helpers::{Function, TypeOrClass, is_private},
     utils::{debug_indent, is_magic_method},
 };
 

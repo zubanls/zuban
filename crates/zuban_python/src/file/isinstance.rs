@@ -3,11 +3,10 @@ use std::sync::Arc;
 use parsa_python_cst::{Expression, ExpressionContent, ExpressionPart, NamedExpression, NodeIndex};
 
 use crate::{
-    database::{ClassKind, ComplexPoint, Specific},
+    database::ClassKind,
     debug,
-    diagnostics::IssueKind,
-    inference_state::InferenceState,
-    type_::{ClassGenerics, TupleArgs, TupleUnpack, Type},
+    prelude::{ComplexPoint, InferenceState, IssueKind, Specific, TupleArgs, Type},
+    type_::{ClassGenerics, TupleUnpack},
     utils::join_with_commas,
 };
 

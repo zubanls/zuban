@@ -3,21 +3,21 @@ use std::{borrow::Cow, sync::Arc};
 use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
-use super::{
-    AnyCause, DbString, ParamSpecUsage, ReplaceTypeVarLikes, StringSlice, Tuple, Type,
-    TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikes, TypeVarUsage,
-    TypedDict,
+use super::{DbString, StringSlice, TypeLikeInTypeVar, TypeVarKindInfos};
+use crate::prelude::{
+    AnyCause, ParamSpecUsage, ReplaceTypeVarLikes, Tuple, Type, TypeVar, TypeVarLike, TypeVarLikes,
+    TypeVarUsage, TypedDict,
 };
 use crate::{
-    database::{Database, PointLink},
-    format_data::{FormatData, ParamsStyle},
+    format_data::ParamsStyle,
     matching::{Generics, maybe_class_usage},
-    node_ref::NodeRef,
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
-    type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
-    type_helpers::{Class, TypeOrClass},
+    prelude::{
+        Class, Database, FormatData, FormatStyle, NodeRef, PointLink, TupleArgs, TypeVarLikeUsage,
+    },
+    type_helpers::TypeOrClass,
     utils::join_with_commas,
 };
 

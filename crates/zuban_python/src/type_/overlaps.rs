@@ -1,13 +1,13 @@
 use crate::{
     debug,
-    inference_state::InferenceState,
-    matching::Matcher,
     params::has_overlapping_params,
-    type_::{AnyCause, TupleArgs, TupleUnpack},
-    type_helpers::{Class, TypeOrClass},
+    prelude::{AnyCause, Class, InferenceState, Matcher, TupleArgs},
+    type_::TupleUnpack,
+    type_helpers::TypeOrClass,
 };
 
-use super::{CallableContent, CallableLike, ClassGenerics, Type, TypeVarKind, TypedDict};
+use super::{CallableContent, CallableLike, ClassGenerics};
+use crate::prelude::{Type, TypeVarKind, TypedDict};
 
 enum OverlappingAllowListKind {
     Builtins,

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    arguments::Args, inference_state::InferenceState, inferred::Inferred, matching::OnTypeError,
-    result_context::ResultContext, type_::Type,
+    arguments::Args,
+    matching::OnTypeError,
+    prelude::{InferenceState, Inferred, ResultContext, Type},
 };
 
 type CustomBehaviorCallback = for<'db> fn(

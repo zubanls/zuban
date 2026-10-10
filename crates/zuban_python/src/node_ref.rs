@@ -9,18 +9,18 @@ use parsa_python_cst::{
 use vfs::FileIndex;
 
 use crate::{
-    database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
-    },
-    diagnostics::{Diagnostic, Issue, IssueKind},
+    database::TypeAlias,
+    diagnostics::Diagnostic,
     file::{
         CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, File,
-        GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, OtherDefinitionIterator, PythonFile,
+        GLOBAL_NONLOCAL_TO_NAME_DIFFERENCE, OtherDefinitionIterator,
     },
-    inference_state::InferenceState,
-    inferred::Inferred,
+    prelude::{
+        ComplexPoint, Database, InferenceState, Inferred, Issue, IssueKind, Locality, Point,
+        PointKind, PointLink, PythonFile, Specific, Type,
+    },
     python_state::{NAME_DEF_TO_CLASS_DIFF, NAME_TO_CLASS_DIFF, NAME_TO_FUNCTION_DIFF},
-    type_::{StringSlice, Type},
+    type_::StringSlice,
     type_helpers::Function,
 };
 

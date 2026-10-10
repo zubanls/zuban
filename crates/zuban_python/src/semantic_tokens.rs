@@ -5,12 +5,13 @@ use parsa_python_cst::{CodeIndex, Name as CstName};
 
 use crate::{
     Document, InputPosition, PositionInfos,
-    database::{ComplexPoint, Database, Point, PointKind, Specific},
-    file::{ClassNodeRef, File as _, PythonFile, use_cached_param_annotation_type},
-    inference_state::InferenceState,
+    file::{ClassNodeRef, File as _, use_cached_param_annotation_type},
     inferred::specific_to_type,
-    node_ref::NodeRef,
-    type_::{FunctionKind, Type},
+    prelude::{
+        ComplexPoint, Database, InferenceState, NodeRef, Point, PointKind, PythonFile, Specific,
+        Type,
+    },
+    type_::FunctionKind,
 };
 
 impl<'project> Document<'project> {

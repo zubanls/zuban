@@ -5,25 +5,27 @@ use std::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Type, TypeVarLikes,
+    CallableContent, CustomBehavior, DbString, GenericsList, LookupResult, ParamType, StringSlice,
     utils::method_with_fallback,
+};
+use crate::prelude::{
+    CallableParam, CallableParams, FormatStyle, ReplaceTypeVarLikes, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args, InferredArg},
-    database::{Database, PointLink},
-    diagnostics::IssueKind,
     file::infer_string_index,
-    format_data::{AvoidRecursionFor, FormatData},
+    format_data::AvoidRecursionFor,
     getitem::{SliceType, SliceTypeContent},
-    inference_state::InferenceState,
-    inferred::{AttributeKind, Inferred},
-    match_::{Match, MismatchReason},
-    matching::{ErrorStrs, LookupKind, Matcher, OnTypeError},
+    inferred::AttributeKind,
+    match_::MismatchReason,
+    matching::{ErrorStrs, LookupKind, OnTypeError},
     new_class,
-    result_context::ResultContext,
-    type_::{StarStarParamType, Tuple},
-    type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
+    prelude::{
+        Class, Database, FormatData, InferenceState, Inferred, IssueKind, Match, Matcher,
+        PointLink, ResultContext, Tuple,
+    },
+    type_::StarStarParamType,
+    type_helpers::{Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
 

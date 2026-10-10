@@ -8,14 +8,13 @@ use super::{
     name_resolution::{NameResolution, PointResolution},
 };
 use crate::{
-    database::{ComplexPoint, Point, PointKind, PointLink, Specific},
     debug,
-    diagnostics::IssueKind,
-    file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
-    inference_state::InferenceState,
-    node_ref::NodeRef,
-    type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
+    prelude::{
+        ComplexPoint, InferenceState, IssueKind, NodeRef, Point, PointKind, PointLink, PythonFile,
+        Specific, TypeVarLike, TypeVarLikes,
+    },
+    type_::{TypeVarIndex, TypeVarManager},
     utils::debug_indent,
 };
 

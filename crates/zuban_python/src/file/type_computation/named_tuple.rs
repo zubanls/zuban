@@ -6,17 +6,13 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
-    database::{ComplexPoint, Database},
-    diagnostics::IssueKind,
     file::name_resolution::NameResolution,
     getitem::SliceType,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, DbString, NamedTuple, ParamType,
-        ReplaceTypeVarLikes, StringSlice, Type,
+    prelude::{
+        AnyCause, CallableParam, CallableParams, ComplexPoint, Database, InferenceState, Inferred,
+        IssueKind, NamedTuple, NodeRef, ReplaceTypeVarLikes, Type,
     },
+    type_::{CallableContent, DbString, ParamType, StringSlice},
 };
 
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};

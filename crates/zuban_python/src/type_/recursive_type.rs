@@ -3,14 +3,14 @@ use std::{
     sync::OnceLock,
 };
 
-use super::{GenericsList, Type};
+use super::GenericsList;
+use crate::prelude::Type;
 use crate::{
-    database::{Database, PointLink, TypeAlias},
+    database::TypeAlias,
     file::ClassNodeRef,
     matching::Generics,
-    node_ref::NodeRef,
+    prelude::{Class, Database, NodeRef, PointLink},
     recoverable_error,
-    type_helpers::Class,
 };
 
 #[derive(Clone, Eq)]

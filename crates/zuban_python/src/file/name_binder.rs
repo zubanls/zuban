@@ -5,15 +5,14 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use crate::{
-    database::{
-        ClassStorage, ComplexPoint, Locality, ParentScope, Point, PointKind, Points, Specific,
-    },
+    database::{ClassStorage, ParentScope, Points},
     debug,
-    diagnostics::{Diagnostics, Issue, IssueKind},
+    diagnostics::Diagnostics,
     file::{
         ComplexValues,
         python_file::{FileImport, StarImport},
     },
+    prelude::{ComplexPoint, Issue, IssueKind, Locality, Point, PointKind, Specific},
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::StringSlice,
     utils::SymbolTable,

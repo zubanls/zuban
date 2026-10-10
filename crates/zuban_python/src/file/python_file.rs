@@ -26,16 +26,15 @@ use super::{
 };
 use crate::{
     InputPosition,
-    database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Points, PythonProject,
-        Specific,
-    },
+    database::{Points, PythonProject},
     debug,
-    diagnostics::{Diagnostic, Diagnostics, Issue, IssueKind},
+    diagnostics::{Diagnostic, Diagnostics},
     imports::{ImportResult, STUBS_SUFFIX},
-    inference_state::InferenceState,
     lines::{BytePositionInfos, NewlineIndices, PositionInfos},
-    node_ref::NodeRef,
+    prelude::{
+        ComplexPoint, Database, InferenceState, Issue, IssueKind, Locality, NodeRef, Point,
+        PointKind, PointLink, Specific,
+    },
     type_::{DbString, LookupResult},
     utils::SymbolTable,
 };

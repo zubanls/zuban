@@ -7,10 +7,12 @@ use std::{
 
 use utils::{FastHashMap, FastHashSet};
 
-use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
+use super::NeverCause;
+use crate::prelude::{FormatStyle, Literal, LiteralKind, Type};
 use crate::{
-    database::Database, debug, format_data::FormatData, inference_state::InferenceState,
-    inferred::Inferred, matching::Matcher, type_::AnyCause, utils::debug_indent,
+    debug,
+    prelude::{AnyCause, Database, FormatData, InferenceState, Inferred, Matcher},
+    utils::debug_indent,
 };
 
 impl Type {

@@ -7,14 +7,12 @@ use parsa_python_cst::{
 use vfs::{Directory, DirectoryEntry, Parent};
 
 use crate::{
-    database::{Database, ParentScope},
+    database::ParentScope,
     debug,
-    file::{ClassNodeRef, File as _, PythonFile, func_parent_scope},
+    file::{ClassNodeRef, File as _, func_parent_scope},
     imports::{ImportResult, import_module_by_strings, python_import},
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    type_::{LookupResult, Type},
+    prelude::{Database, InferenceState, Inferred, NodeRef, PythonFile, Type},
+    type_::LookupResult,
     type_helpers::{FuncLike as _, Function},
 };
 

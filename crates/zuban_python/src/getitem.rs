@@ -6,15 +6,14 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::{ArgIterator, Args},
-    database::{Database, PointsBackup},
-    diagnostics::IssueKind,
-    file::{PythonFile, infer_index},
-    inference_state::{InferenceState, Mode},
-    inferred::Inferred,
+    database::PointsBackup,
+    file::infer_index,
+    inference_state::Mode,
     new_class,
-    node_ref::NodeRef,
-    result_context::ResultContext,
-    type_::{Tuple, Type},
+    prelude::{
+        Database, InferenceState, Inferred, IssueKind, NodeRef, PythonFile, ResultContext, Tuple,
+        Type,
+    },
 };
 
 #[derive(Debug, Copy, Clone)]

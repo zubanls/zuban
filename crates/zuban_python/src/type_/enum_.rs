@@ -3,21 +3,20 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::{
-    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, LookupResult, Type,
-};
+use super::{CallableLike, DbString, LookupResult};
+use crate::prelude::{AnyCause, FormatStyle, Literal, LiteralKind, Type};
 use crate::{
-    database::{ComplexPoint, Database, ParentScope, PointLink},
+    database::ParentScope,
     debug,
-    diagnostics::IssueKind,
     file::File as _,
-    format_data::FormatData,
-    inference_state::InferenceState,
-    inferred::{AttributeKind, Inferred},
+    inferred::AttributeKind,
     matching::LookupKind,
-    node_ref::NodeRef,
+    prelude::{
+        Class, ComplexPoint, Database, FormatData, InferenceState, Inferred, IssueKind, NodeRef,
+        PointLink,
+    },
     type_helpers::{
-        Class, ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
+        ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },
 };
 

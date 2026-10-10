@@ -5,19 +5,16 @@ use std::{
 
 use crate::{
     arguments::Args,
-    diagnostics::IssueKind,
     file::{check_multiple_inheritance, linearize_mro},
-    format_data::FormatData,
     getitem::SliceType,
-    inference_state::InferenceState,
-    inferred::Inferred,
     matching::{IteratorContent, OnTypeError},
-    result_context::ResultContext,
+    prelude::{FormatData, InferenceState, Inferred, IssueKind, ResultContext},
     type_::TypeGatherer,
     type_helpers::LookupDetails,
 };
 
-use super::{AnyCause, CallableParams, FormatStyle, IterInfos, Type, UnionType};
+use super::{IterInfos, UnionType};
+use crate::prelude::{AnyCause, CallableParams, FormatStyle, Type};
 
 type RunOnUnionEntry<'a> =
     &'a mut dyn FnMut(&Type, &dyn Fn(IssueKind) -> bool, &mut dyn FnMut(&Type, LookupDetails));

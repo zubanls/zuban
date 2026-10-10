@@ -7,14 +7,12 @@ use super::super::name_resolution::NameResolution;
 use super::{TypeComputation, TypeComputationOrigin, TypeContent, TypeVarCallbackReturn};
 use crate::recoverable_error;
 use crate::{
-    database::{Specific, TypeAlias},
-    diagnostics::IssueKind,
+    database::TypeAlias,
     getitem::SliceType,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    result_context::ResultContext,
-    type_::{Dataclass, NamedTuple, Type, TypeVarLike, TypedDict},
-    type_helpers::Class,
+    prelude::{
+        Class, Dataclass, InferenceState, Inferred, IssueKind, NamedTuple, ResultContext, Specific,
+        Type, TypeVarLike, TypedDict,
+    },
 };
 
 macro_rules! maybe_compute_new_type_alias_definition {

@@ -3,12 +3,13 @@ use core::fmt;
 use parsa_python_cst::Assignment;
 
 use crate::{
-    InferenceState, debug,
+    debug,
     file::ClassNodeRef,
-    matching::Matcher,
     node_ref::KnownPointLink,
-    type_::{AnyCause, ReplaceTypeVarLikes as _, TupleArgs, Type, UniqueInUnpackedUnionError},
-    type_helpers::Class,
+    prelude::{
+        AnyCause, Class, InferenceState, Matcher, ReplaceTypeVarLikes as _, TupleArgs, Type,
+    },
+    type_::UniqueInUnpackedUnionError,
     utils::debug_indent,
 };
 

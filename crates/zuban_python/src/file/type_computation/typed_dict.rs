@@ -7,17 +7,16 @@ use parsa_python_cst::{
 
 use crate::{
     arguments::Args,
-    database::{Database, TypedDictArgs},
-    diagnostics::IssueKind,
-    file::{PythonFile, name_resolution::NameResolution},
-    format_data::FormatData,
+    database::TypedDictArgs,
+    file::name_resolution::NameResolution,
     getitem::SliceType,
-    inference_state::InferenceState,
-    node_ref::NodeRef,
+    prelude::{
+        Database, FormatData, InferenceState, IssueKind, NodeRef, PythonFile, Type, TypedDict,
+    },
     recoverable_error,
     type_::{
-        DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, Type, TypedDict,
-        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        DbString, ExtraItemsType, GenericsList, NeverCause, StringSlice, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
 };
 

@@ -3,16 +3,14 @@ use super::{
     bound::{Bound, BoundKind},
 };
 use crate::{
-    database::{Database, PointLink},
     debug,
-    inference_state::InferenceState,
-    match_::Match,
     matching::matcher::bound::{BoundInfo, BoundOrigin},
-    recoverable_error,
-    type_::{
-        AnyCause, GenericItem, GenericsList, Type, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarUsage, Variance,
+    prelude::{
+        AnyCause, Database, InferenceState, Match, PointLink, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
+    recoverable_error,
+    type_::{GenericItem, GenericsList},
     utils::{debug_indent, join_with_commas},
 };
 
