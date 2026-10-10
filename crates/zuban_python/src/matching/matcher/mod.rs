@@ -1232,24 +1232,14 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, type_: &Type, cause: AnyCause) {
-        for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
-            tvm.set_all_contained_type_vars_to_any(
-                |callback| type_.search_type_vars(callback),
-                i as u32,
-                cause,
-            )
-        }
-    }
-
-    pub fn set_all_contained_type_vars_to_any_in_callable_params(
+    pub fn set_all_contained_type_vars_to_any<S: SearchTypeVars>(
         &mut self,
-        p: &CallableParams,
+        type_: &S,
         cause: AnyCause,
     ) {
         for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
             tvm.set_all_contained_type_vars_to_any(
-                |callback| p.search_type_vars(callback),
+                |callback| type_.search_type_vars(callback),
                 i as u32,
                 cause,
             )
