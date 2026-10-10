@@ -302,3 +302,22 @@ f(identity)  # E: Incompatible callable argument with type vars
 reveal_type((  # N: Revealed type is "def (*Any) -> tuple[Any, ...]"
     g(identity)  # E: Incompatible callable argument with type vars
 ))
+
+[case typevartuple_self_matching]
+# From GH #602
+from typing import Generic, TypeVar, Optional, Iterator, Any, Tuple, assert_type, TypeVarTuple, Unpack
+
+_T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
+
+class Result(Generic[Unpack[_Ts]]):
+    def scalar(self: "Result[_T, Unpack[Tuple[Any, ...]]]") -> Optional[_T]:
+        return None
+
+def test_function() -> Iterator[Any]:
+    result: Result[Unpack[Tuple[Any, ...]]] = Result()
+    data = result.scalar()
+    assert_type(data, Any | None)
+    if data is None:
+        return
+    yield from iter(data)
