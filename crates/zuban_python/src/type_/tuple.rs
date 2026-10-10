@@ -10,24 +10,15 @@ use std::{
 use num_bigint::BigInt;
 
 use super::{
-    ClassGenerics, CustomBehavior, FormatStyle, GenericItem, GenericsList, LookupResult,
-    TypeVarTupleUsage, utils::method_with_fallback,
+    ClassGenerics, CustomBehavior, GenericItem, GenericsList, utils::method_with_fallback,
 };
+use crate::prelude::*;
 use crate::{
-    arguments::Args,
-    database::Database,
-    debug,
-    diagnostics::IssueKind,
-    format_data::FormatData,
     getitem::{SliceType, SliceTypeContent},
-    inference_state::InferenceState,
-    inferred::{AttributeKind, Inferred},
+    inferred::AttributeKind,
     matching::{Generics, IteratorContent, OnTypeError},
-    recoverable_error,
-    result_context::ResultContext,
-    type_::{AnyCause, Type},
-    type_helpers::{Class, ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
-    utils::{arc_slice_into_vec, debug_indent, join_with_commas},
+    type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
+    utils::{arc_slice_into_vec, join_with_commas},
 };
 
 thread_local! {

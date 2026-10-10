@@ -1,19 +1,15 @@
 use std::sync::Arc;
 
-use super::{Matcher, MatcherFormatResult};
+use super::MatcherFormatResult;
+use crate::prelude::Matcher;
 use crate::{
-    database::Database,
-    debug,
-    format_data::{FormatData, ParamsStyle},
-    inference_state::InferenceState,
-    match_::Match,
+    format_data::ParamsStyle,
     params::matches_params_with_variance,
+    prelude::*,
     type_::{
-        AnyCause, CallableParams, GenericItem, ParamSpecArg, ParamType, ReplaceTypeVarLikes,
-        SearchTypeVars, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, Variance, WithUnpack, match_tuple_type_arguments,
+        GenericItem, ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
+        match_tuple_type_arguments,
     },
-    type_helpers::Class,
 };
 
 #[derive(Debug, Clone, PartialEq)]

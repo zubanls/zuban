@@ -4,20 +4,11 @@ use parsa_python_cst::{GotoNode, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
-    database::ComplexPoint,
-    file::{ClassNodeRef, FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
-    format_data::FormatData,
+    file::{FuncNodeRef, TypeDocs, TypeVarCallbackReturn},
     goto::{GotoResolver, HeuristicDetail, PositionalDocument, with_i_s_non_self},
-    inference_state::InferenceState,
     name::{Range, TreeName},
-    node_ref::NodeRef,
-    recoverable_error,
-    type_::{
-        CallableContent, CallableLike, FunctionKind, PrettyCallableOptions, Type, TypeGatherer,
-        TypeVarLike, TypeVarVariance,
-    },
-    type_helpers::Class,
-    utils::debug_indent,
+    prelude::*,
+    type_::{FunctionKind, PrettyCallableOptions, TypeGatherer, TypeVarVariance},
 };
 
 impl<'project> Document<'project> {

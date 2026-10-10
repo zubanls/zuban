@@ -9,43 +9,28 @@ use parsa_python_cst::{Assignment, AssignmentContent, AtomContent, ClassDef, Nam
 
 use super::{Callable, Instance, InstanceLookupOptions, LookupDetails, overload::OverloadResult};
 use crate::{
-    arguments::{ArgKind, Args},
-    database::{
-        BaseClass, ClassKind, ClassStorage, ComplexPoint, Database, Locality, MetaclassState,
-        ParentScope, Point, PointKind, PointLink, Specific,
-    },
-    debug,
-    diagnostics::IssueKind,
+    arguments::ArgKind,
+    database::{BaseClass, ClassKind, ClassStorage, MetaclassState, ParentScope},
     file::{
-        ClassInitializer, ClassNodeRef, FLOW_ANALYSIS, FuncNodeRef, StarImportError,
-        TypeVarCallbackReturn, use_cached_return_annotation_type,
+        ClassInitializer, FLOW_ANALYSIS, FuncNodeRef, StarImportError, TypeVarCallbackReturn,
+        use_cached_return_annotation_type,
     },
-    format_data::FormatData,
     getitem::SliceType,
-    inference_state::InferenceState,
-    inferred::{
-        ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, Inferred, MroIndex,
-    },
-    match_::{Match, MismatchReason},
+    inferred::{ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, MroIndex},
+    match_::MismatchReason,
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, Matcher, OnTypeError,
-        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
-        calc_class_dunder_init_type_vars, format_got_expected, maybe_class_usage,
+        ErrorStrs, Generic, Generics, LookupKind, OnTypeError, calc_callable_dunder_init_type_vars,
+        calc_callable_type_vars, calc_class_dunder_init_type_vars, format_got_expected,
+        maybe_class_usage,
     },
-    node_ref::NodeRef,
-    recoverable_error,
-    result_context::ResultContext,
+    prelude::*,
     type_::{
-        AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-        Dataclass, DbString, Enum, FormatStyle, FunctionOverload, GenericClass, GenericItem,
-        GenericsList, LiteralValue, LookupArgs, LookupResult, NamedTuple, ParamSpecArg,
-        ParamSpecUsage, ParamType, PrettyCallableOptions, ReplaceTypeVarLikes, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, Type, TypeArgs, TypeGatherer,
-        TypeVarIndex, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictGenerics,
-        Variance, add_any_params_to_params,
+        ClassGenerics, FunctionOverload, GenericClass, GenericItem, GenericsList, LookupArgs,
+        ParamSpecArg, ParamType, PrettyCallableOptions, StarParamType, StarStarParamType, TypeArgs,
+        TypeGatherer, TypeVarIndex, TypedDictGenerics, add_any_params_to_params,
     },
     type_helpers::FuncLike,
-    utils::{debug_indent, is_magic_method},
+    utils::is_magic_method,
 };
 
 pub fn cache_class_name(name_def: NodeRef, class: ClassDef) {

@@ -4,26 +4,19 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::{
-    CallableContent, CallableParam, CallableParams, CustomBehavior, DbString, FormatStyle,
-    GenericsList, LookupResult, ParamType, ReplaceTypeVarLikes, StringSlice, Type, TypeVarLikes,
-    utils::method_with_fallback,
-};
+use super::{CustomBehavior, GenericsList, ParamType, utils::method_with_fallback};
+use crate::prelude::*;
 use crate::{
-    arguments::{ArgKind, Args, InferredArg},
-    database::{Database, PointLink},
-    diagnostics::IssueKind,
+    arguments::{ArgKind, InferredArg},
     file::infer_string_index,
-    format_data::{AvoidRecursionFor, FormatData},
+    format_data::AvoidRecursionFor,
     getitem::{SliceType, SliceTypeContent},
-    inference_state::InferenceState,
-    inferred::{AttributeKind, Inferred},
-    match_::{Match, MismatchReason},
-    matching::{ErrorStrs, LookupKind, Matcher, OnTypeError},
+    inferred::AttributeKind,
+    match_::MismatchReason,
+    matching::{ErrorStrs, LookupKind, OnTypeError},
     new_class,
-    result_context::ResultContext,
-    type_::{StarStarParamType, Tuple},
-    type_helpers::{Class, Instance, InstanceLookupOptions, LookupDetails},
+    type_::StarStarParamType,
+    type_helpers::{Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };
 

@@ -3,12 +3,7 @@ use std::sync::Arc;
 use utils::match_case;
 use vfs::{Directory, DirectoryEntry, Entries, FileIndex, Parent, Workspace, WorkspaceKind};
 
-use crate::{
-    database::{ComplexPoint, Database, PyTypedMissing},
-    file::PythonFile,
-    inferred::Inferred,
-    type_::{Namespace, Type},
-};
+use crate::{database::PyTypedMissing, prelude::*, type_::Namespace};
 
 pub const STUBS_SUFFIX: &str = "-stubs";
 const INIT_PY: &str = "__init__.py";

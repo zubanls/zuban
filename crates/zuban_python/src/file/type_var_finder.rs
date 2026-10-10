@@ -4,19 +4,13 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use super::{
-    ClassInitializer, ClassNodeRef,
+    ClassInitializer,
     name_resolution::{NameResolution, PointResolution},
 };
 use crate::{
-    database::{ComplexPoint, Point, PointKind, PointLink, Specific},
-    debug,
-    diagnostics::IssueKind,
-    file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
-    inference_state::InferenceState,
-    node_ref::NodeRef,
-    type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
-    utils::debug_indent,
+    prelude::*,
+    type_::{TypeVarIndex, TypeVarManager},
 };
 
 #[derive(Debug, Clone, PartialEq)]

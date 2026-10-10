@@ -3,13 +3,9 @@ use std::borrow::Cow;
 use utils::{AlreadySeen, FastHashSet};
 
 use crate::{
-    database::{Database, PointLink},
-    matching::{Matcher, MatcherFormatResult},
-    node_ref::NodeRef,
-    type_::{
-        FormatStyle, ParamSpecUsage, RecursiveType, RecursiveTypeOrigin, Type, TypeVarLikeName,
-        TypeVarLikeUsage, TypeVarName, TypeVarTupleUsage, TypeVarUsage,
-    },
+    matching::MatcherFormatResult,
+    prelude::*,
+    type_::{RecursiveTypeOrigin, TypeVarLikeName, TypeVarName},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]

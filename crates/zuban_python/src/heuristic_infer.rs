@@ -15,40 +15,30 @@ use vfs::{FileEntry, FileIndex};
 
 use crate::{
     arguments::{
-        ArgIteratorBase, ArgKind, Args, ArgsKwargsIterator, CombinedArgs,
-        KnownArgsWithCustomAddIssue, SimpleArgs, unpack_star_star,
+        ArgIteratorBase, ArgKind, ArgsKwargsIterator, CombinedArgs, KnownArgsWithCustomAddIssue,
+        SimpleArgs, unpack_star_star,
     },
-    database::{
-        ComplexPoint, Database, HeuristicBound, ParentScope, PointKind, PointLink, PyTypedMissing,
-        Specific,
-    },
-    debug,
-    file::{
-        ClassNodeRef, FuncNodeRef, Inference, PythonFile, await_aiter_and_next,
-        maybe_func_of_self_symbol,
-    },
-    format_data::FormatData,
+    database::{HeuristicBound, ParentScope, PyTypedMissing},
+    file::{FuncNodeRef, Inference, await_aiter_and_next, maybe_func_of_self_symbol},
     getitem::SliceType,
     goto::{
         FollowImportResultKind, HeuristicDetail, PositionalDocument,
         check_node_ref_and_maybe_follow_import, try_to_follow,
     },
     imports::{ImportResult, namespace_import},
-    inference_state::{InferenceState, Mode},
-    inferred::{AttributeKind, Inferred},
+    inference_state::Mode,
+    inferred::AttributeKind,
     matching::{Generics, IteratorContent, LookupKind, OnTypeError},
     new_class,
-    node_ref::NodeRef,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
-    result_context::ResultContext,
+    prelude::*,
     type_::{
-        ClassGenerics, ComplexTypeGatherer, DbString, ExtraItemsType, FunctionKind, GenericClass,
-        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, Literal,
-        LiteralKind, LiteralValue, LookupResult, ReplaceTypeVarLikes as _, Tuple, Type, TypedDict,
-        TypedDictGenerics, TypedDictMember, TypedDictMembers,
+        ClassGenerics, ComplexTypeGatherer, ExtraItemsType, FunctionKind, GenericClass,
+        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, TypedDictGenerics,
+        TypedDictMember, TypedDictMembers,
     },
-    type_helpers::{Class, FirstParamProperties, Function, FunctionParam, OverloadedFunction},
-    utils::{debug_indent, is_magic_method, limit_length_for_debug},
+    type_helpers::{FirstParamProperties, Function, FunctionParam, OverloadedFunction},
+    utils::{is_magic_method, limit_length_for_debug},
 };
 
 // Stats from a 2016 Lenovo Notebook running Linux:

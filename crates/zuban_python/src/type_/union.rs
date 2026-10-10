@@ -7,11 +7,8 @@ use std::{
 
 use utils::{FastHashMap, FastHashSet};
 
-use super::{FormatStyle, Literal, LiteralKind, NeverCause, Type};
-use crate::{
-    database::Database, debug, format_data::FormatData, inference_state::InferenceState,
-    inferred::Inferred, matching::Matcher, type_::AnyCause, utils::debug_indent,
-};
+use super::NeverCause;
+use crate::prelude::*;
 
 impl Type {
     pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Self {

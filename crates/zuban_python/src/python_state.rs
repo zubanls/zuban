@@ -5,18 +5,13 @@ use parsa_python_cst::{FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name, NodeIndex
 use vfs::FileIndex;
 
 use crate::{
-    InferenceState,
-    database::{BaseClass, Database, Locality, Point, PointLink, Specific},
-    file::{ClassInitializer, ClassNodeRef, PythonFile},
-    inferred::Inferred,
+    database::BaseClass,
+    file::ClassInitializer,
     matching::Generics,
     new_class,
-    node_ref::NodeRef,
-    type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, CustomBehavior,
-        ParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLikes, dataclasses_replace,
-    },
-    type_helpers::{Class, FirstParamProperties, Function, Instance, cache_class_name},
+    prelude::*,
+    type_::{ClassGenerics, CustomBehavior, ParamType, TypeArgs, dataclasses_replace},
+    type_helpers::{FirstParamProperties, Function, Instance, cache_class_name},
 };
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is

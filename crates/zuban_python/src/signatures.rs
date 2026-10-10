@@ -4,18 +4,11 @@ use parsa_python_cst::{ExpressionPart, SignatureArg, SignatureArgsIterator};
 
 use crate::{
     InputPosition,
-    database::Database,
-    debug,
-    file::{File as _, PythonFile},
-    format_data::FormatData,
+    file::File as _,
     goto::{PositionalDocument, with_i_s_non_self},
-    inference_state::InferenceState,
     params::Param as _,
-    type_::{
-        CallableContent, CallableLike, CallableParam, CallableParams, ParamType, ParamTypeDetails,
-        Type,
-    },
-    utils::debug_indent,
+    prelude::*,
+    type_::{ParamType, ParamTypeDetails},
 };
 
 struct SignatureInfo<'db> {

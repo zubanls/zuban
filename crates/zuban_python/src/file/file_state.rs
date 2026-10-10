@@ -4,9 +4,9 @@ use vfs::{FileIndex, NormalizedPath};
 
 use crate::{
     InputPosition,
-    database::Database,
     diagnostics::Diagnostic,
     lines::{BytePositionInfos, PositionInfos},
+    prelude::Database,
 };
 
 pub trait File: std::fmt::Debug {

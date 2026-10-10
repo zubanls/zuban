@@ -1,18 +1,11 @@
 use std::borrow::Cow;
 
-use super::Class;
+use crate::prelude::Class;
 use crate::{
-    arguments::Args,
-    database::{Database, PointLink},
-    diagnostics::IssueKind,
     file::FLOW_ANALYSIS,
-    inference_state::InferenceState,
-    inferred::Inferred,
     matching::{OnTypeError, calc_callable_type_vars},
-    result_context::ResultContext,
-    type_::{
-        CallableContent, CallableParams, NeverCause, ParamType, ReplaceSelf, Type, TypeVarLikes,
-    },
+    prelude::*,
+    type_::{NeverCause, ParamType, ReplaceSelf},
 };
 
 #[derive(Debug, Copy, Clone)]

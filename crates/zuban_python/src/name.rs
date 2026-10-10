@@ -9,12 +9,9 @@ use vfs::{FileIndex, NormalizedPath};
 use crate::{
     PositionInfos,
     completion::ScopesIterator,
-    database::{Database, ParentScope},
-    file::{ClassNodeRef, File, FuncNodeRef, PythonFile},
-    inference_state::InferenceState,
-    node_ref::NodeRef,
-    type_::{LookupResult, Type},
-    type_helpers::Class,
+    database::ParentScope,
+    file::{File, FuncNodeRef},
+    prelude::*,
     utils::SymbolTable,
 };
 

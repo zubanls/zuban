@@ -5,22 +5,18 @@ use parsa_python_cst::{
 use vfs::{Directory, DirectoryEntry, FileEntry, Parent};
 
 use crate::{
-    database::{ComplexPoint, Database, Locality, Point, PointKind, PyTypedMissing, Specific},
-    debug,
-    diagnostics::IssueKind,
+    database::PyTypedMissing,
     file::{inference::Inference, name_resolution::StarImportError},
     imports::{
         ImportAncestor, ImportResult, LoadedImportResult, STUBS_SUFFIX, find_import_ancestor,
         global_import, import_module_by_strings, is_binary_extension,
         namespace_import_with_unloaded_file, python_import_with_needs_exact_case,
     },
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    type_::{LookupResult, Type},
+    prelude::*,
 };
 
-use super::{PythonFile, python_file::StarImport};
+use super::python_file::StarImport;
+use crate::prelude::PythonFile;
 
 impl PythonFile {
     pub fn global_import(&self, db: &Database, name: Name) -> Option<ImportResult> {

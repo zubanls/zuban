@@ -1,9 +1,9 @@
 use super::{
-    CallableContent, CallableParams, ClassGenerics, GenericClass, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, TupleArgs, TupleUnpack, Type, TypeVarLikeUsage,
-    TypedDict, TypedDictGenerics,
+    ClassGenerics, GenericClass, GenericItem, GenericsList, ParamType, StarParamType,
+    StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
-use crate::debug;
+
+use crate::prelude::*;
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);

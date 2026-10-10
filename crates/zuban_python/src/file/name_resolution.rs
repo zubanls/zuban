@@ -8,22 +8,15 @@ use vfs::FileIndex;
 
 use crate::{
     RunCause,
-    database::{
-        ComplexPoint, Database, Locality, Point, PointKind, PointLink, PyTypedMissing, Specific,
-    },
-    debug,
-    diagnostics::IssueKind,
+    database::PyTypedMissing,
     file::{File, python_file::DunderAllState},
     imports::{ImportResult, LoadedImportResult, global_import, namespace_import},
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    recoverable_error,
-    type_::LookupResult,
+    prelude::*,
     utils::{SymbolTable, is_magic_method},
 };
 
-use super::{ClassInitializer, PythonFile, python_file::StarImport};
+use super::{ClassInitializer, python_file::StarImport};
+use crate::prelude::PythonFile;
 
 #[derive(Copy, Clone)]
 pub(crate) struct NameResolution<'db: 'file, 'file, 'i_s> {

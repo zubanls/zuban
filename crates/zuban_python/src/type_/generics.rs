@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    database::PointLink,
-    format_data::FormatData,
     matching::Generic,
-    type_::{
-        AnyCause, CallableParams, SearchTypeVars, TupleArgs, Type, TypeVarIndex, TypeVarLikes,
-    },
+    prelude::*,
+    type_::TypeVarIndex,
     utils::{arc_slice_into_vec, join_with_commas},
 };
 

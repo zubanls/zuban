@@ -3,16 +3,9 @@ use std::sync::Arc;
 use parsa_python_cst::ParamKind;
 use utils::FastHashSet;
 
-use super::{
-    AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ParamType,
-    StarParamType, StarStarParamType, Type, TypeGuardInfo,
-};
-use crate::{
-    debug,
-    inference_state::InferenceState,
-    type_::{self, ComplexTypeGatherer, Tuple, TupleArgs, TupleUnpack},
-    utils::debug_indent,
-};
+use super::{ParamType, StarParamType, StarStarParamType, TypeGuardInfo};
+use crate::prelude::*;
+use crate::type_::{self, ComplexTypeGatherer, TupleUnpack};
 
 impl Type {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {

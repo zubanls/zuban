@@ -15,11 +15,9 @@ use utils::InsertOnlyVec;
 
 use crate::{
     PythonVersion, TypeCheckerFlags,
-    database::{Database, PointLink},
-    file::{File, GenericCounts, OVERLAPPING_REVERSE_TO_NORMAL_METHODS, PythonFile},
+    file::{File, GenericCounts, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     lines::PositionInfos,
-    node_ref::NodeRef,
-    type_::{TypeVarLike, Variance},
+    prelude::*,
     utils::join_with_commas,
 };
 

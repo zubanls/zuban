@@ -3,17 +3,10 @@ use std::sync::Arc;
 use parsa_python_cst::NodeIndex;
 
 use crate::{
-    arguments::{ArgKind, Args, KeywordArg},
-    database::{ComplexPoint, PointLink},
-    debug,
-    diagnostics::IssueKind,
+    arguments::{ArgKind, KeywordArg},
     file::name_resolution::NameResolution,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    type_::{
-        ParamSpec, TypeLikeInTypeVar, TypeVar, TypeVarKindInfos, TypeVarLike, TypeVarLikeName,
-        TypeVarTuple, TypeVarVariance, Variance,
-    },
+    prelude::*,
+    type_::{TypeLikeInTypeVar, TypeVarKindInfos, TypeVarLikeName, TypeVarVariance},
 };
 
 impl<'db, 'file> NameResolution<'db, 'file, '_> {

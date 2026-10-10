@@ -9,19 +9,14 @@ use parsa_python_cst::{
 use utils::{AlreadySeen, FastHashSet};
 
 use super::{
-    super::name_resolution::NameResolution, ClassNodeRef, InvalidVariableType, Lookup, TypeContent,
+    super::name_resolution::NameResolution, InvalidVariableType, Lookup, TypeContent,
     TypeVarFinder, UnknownCause,
 };
 use crate::{
-    arguments::{Args, SimpleArgs},
-    database::{
-        ClassKind, ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific,
-        TypeAlias,
-    },
-    debug,
-    diagnostics::IssueKind,
+    arguments::SimpleArgs,
+    database::ClassKind,
     file::{
-        PythonFile, TypeVarCallbackReturn,
+        TypeVarCallbackReturn,
         name_resolution::PointResolution,
         type_computation::{
             TypeCommentState, TypeComputation, TypeComputationOrigin,
@@ -31,16 +26,9 @@ use crate::{
     },
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    node_ref::NodeRef,
-    recoverable_error,
-    type_::{
-        AnyCause, GenericItem, NamedTuple, TupleArgs, TupleUnpack, Type, TypeVarLike, TypeVarLikes,
-        TypeVarManager, TypedDict,
-    },
-    type_helpers::{Class, cache_class_name},
-    utils::debug_indent,
+    prelude::*,
+    type_::{GenericItem, TupleUnpack, TypeVarManager},
+    type_helpers::cache_class_name,
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;

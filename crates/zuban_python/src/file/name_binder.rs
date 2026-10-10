@@ -5,17 +5,14 @@ use parsa_python_cst::*;
 use vfs::FileIndex;
 
 use crate::{
-    database::{
-        ClassStorage, ComplexPoint, Locality, ParentScope, Point, PointKind, Points, Specific,
-    },
-    debug,
-    diagnostics::{Diagnostics, Issue, IssueKind},
+    database::{ClassStorage, ParentScope, Points},
+    diagnostics::Diagnostics,
     file::{
         ComplexValues,
         python_file::{FileImport, StarImport},
     },
+    prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
-    type_::StringSlice,
     utils::SymbolTable,
 };
 
@@ -669,7 +666,7 @@ impl<'db> NameBinder<'db> {
         }
     }
 
-    fn index_type_alias(&mut self, type_alias: TypeAlias<'db>) {
+    fn index_type_alias(&mut self, type_alias: parsa_python_cst::TypeAlias<'db>) {
         let (name_def, type_params, expr) = type_alias.unpack();
         self.add_new_definition_with_cause(
             name_def,

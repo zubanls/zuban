@@ -20,15 +20,10 @@ pub(crate) use utils::{
 
 use crate::{
     arguments::Arg,
-    database::Database,
-    debug,
-    diagnostics::IssueKind,
-    format_data::{FormatData, find_similar_types},
-    inference_state::InferenceState,
-    inferred::Inferred,
+    format_data::find_similar_types,
     match_::MismatchReason,
-    recoverable_error,
-    type_::{AnyCause, InferredTypeGatherer, Tuple, TupleUnpack, Type, WithUnpack},
+    prelude::*,
+    type_::{InferredTypeGatherer, TupleUnpack, WithUnpack},
     type_helpers::FuncLike,
 };
 

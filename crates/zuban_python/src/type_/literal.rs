@@ -4,12 +4,9 @@ use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 use vfs::FileIndex;
 
 use crate::{
-    database::{Database, PointLink},
-    file::ClassNodeRef,
-    format_data::FormatData,
-    node_ref::NodeRef,
-    type_::{ClassGenerics, Type},
-    type_helpers::{Class, Instance},
+    prelude::*,
+    type_::ClassGenerics,
+    type_helpers::Instance,
     utils::{bytes_repr, str_repr},
 };
 

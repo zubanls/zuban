@@ -3,15 +3,9 @@ use std::{
     sync::OnceLock,
 };
 
-use super::{GenericsList, Type};
-use crate::{
-    database::{Database, PointLink, TypeAlias},
-    file::ClassNodeRef,
-    matching::Generics,
-    node_ref::NodeRef,
-    recoverable_error,
-    type_helpers::Class,
-};
+use super::GenericsList;
+use crate::prelude::Type;
+use crate::{matching::Generics, prelude::*};
 
 #[derive(Clone, Eq)]
 pub(crate) struct RecursiveType {

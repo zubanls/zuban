@@ -8,30 +8,21 @@ use parsa_python_cst::{
 };
 
 use crate::{
-    Inferred,
-    arguments::{Arg, Args, unpack_star_star},
-    database::{Database, PointKind, Specific},
-    debug,
-    diagnostics::IssueKind,
-    file::{Inference, PythonFile},
-    format_data::FormatData,
+    arguments::{Arg, unpack_star_star},
+    file::Inference,
     getitem::Simple,
-    inference_state::InferenceState,
     inferred::UnionValue,
-    match_::{Match, MismatchReason},
-    matching::{ErrorStrs, ErrorTypes, GotType, IteratorContent, Matcher},
+    match_::MismatchReason,
+    matching::{ErrorStrs, ErrorTypes, GotType, IteratorContent},
     new_class,
-    node_ref::NodeRef,
-    result_context::ResultContext,
+    prelude::*,
     type_::{
-        AnyCause, InferredTypeGatherer, IterCause, Literal, LiteralKind, LiteralValue, Tuple,
-        TupleArgs, TupleUnpack, Type, TypedDict, TypedDictGenerics, UniqueInUnpackedUnionError,
-        WithUnpack, check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue,
+        InferredTypeGatherer, IterCause, TupleUnpack, TypedDictGenerics,
+        UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
+        maybe_add_extra_keys_issue,
     },
     utils::join_with_commas,
 };
-
-use super::ClassNodeRef;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn infer_list_or_set<'x>(

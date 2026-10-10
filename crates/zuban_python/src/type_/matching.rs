@@ -2,26 +2,15 @@ use std::{borrow::Cow, sync::Arc};
 
 use utils::FastHashSet;
 
-use super::{
-    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
-    WithUnpack,
-};
+use super::{ClassGenerics, FunctionOverload, UnionType, WithUnpack};
+use crate::prelude::*;
 use crate::{
     database::MetaclassState,
-    debug,
-    file::ClassNodeRef,
-    format_data::FormatData,
-    inference_state::InferenceState,
-    match_::{Match, MismatchReason},
-    matching::{ErrorStrs, ErrorTypes, GotType, Matcher, format_got_expected},
+    match_::MismatchReason,
+    matching::{ErrorStrs, ErrorTypes, GotType, format_got_expected},
     params::matches_params,
-    recoverable_error,
-    type_::{
-        AnyCause, CallableLike, CallableParams, LiteralKind, ReplaceTypeVarLikes as _, TupleArgs,
-        TupleUnpack, Variance,
-    },
-    type_helpers::{Class, TypeOrClass},
-    utils::debug_indent,
+    type_::TupleUnpack,
+    type_helpers::TypeOrClass,
 };
 
 impl Type {

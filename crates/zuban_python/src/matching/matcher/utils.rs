@@ -4,34 +4,25 @@ pub(super) use utils::AlreadySeen;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    super::{FormatData, Generics, Matcher, OnTypeError},
+    super::{Generics, OnTypeError},
     ReplaceSelfInMatcher,
     type_var_matcher::TypeVarMatcher,
 };
+use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
-    database::{Database, PointLink},
-    debug,
-    diagnostics::IssueKind,
-    inference_state::InferenceState,
-    inferred::Inferred,
-    match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch},
+    match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
     matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin, maybe_class_usage},
-    node_ref::NodeRef,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
     },
-    recoverable_error,
-    result_context::ResultContext,
     type_::{
-        CallableContent, CallableLike, CallableParams, CallableWithParent, ClassGenerics, DbString,
-        GenericItem, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars, ReplaceSelf,
-        ReplaceTypeVarLikes, SearchTypeVars, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypeVarManager, Variance, match_arbitrary_len_vs_unpack, match_unpack,
+        CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
+        ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager, match_arbitrary_len_vs_unpack,
+        match_unpack,
     },
-    type_helpers::{Callable, Class, FuncLike, Function},
-    utils::debug_indent,
+    type_helpers::{Callable, FuncLike, Function},
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(

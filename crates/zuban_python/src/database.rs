@@ -16,19 +16,17 @@ use vfs::{
 };
 
 use crate::{
-    ProjectOptions, debug,
-    file::{ClassNodeRef, File, PythonFile, SuperFile},
+    ProjectOptions,
+    file::{File, SuperFile},
     lines::split_lines,
-    node_ref::NodeRef,
+    prelude::*,
     python_state::PythonState,
-    recoverable_error, sys_path,
+    sys_path,
     type_::{
-        CallableContent, DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem,
-        GenericsList, ParamSpecUsage, RecursiveType, ReplaceTypeVarLikes, StringSlice, Type,
-        TypeVarLike, TypeVarLikeName, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage,
-        TypeVarUsage, TypedDict, Variance,
+        DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem, GenericsList,
+        TypeVarLikeName,
     },
-    type_helpers::{Class, Function},
+    type_helpers::Function,
     utils::SymbolTable,
 };
 
@@ -1952,7 +1950,10 @@ mod tests {
     fn test_sizes() {
         use std::mem::size_of;
 
-        use crate::type_::{ClassGenerics, StringSlice, Tuple, UnionType};
+        use crate::{
+            prelude::Tuple,
+            type_::{ClassGenerics, UnionType},
+        };
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<Tuple>(), 104);

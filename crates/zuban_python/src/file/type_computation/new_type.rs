@@ -1,12 +1,6 @@
 use parsa_python_cst::Expression;
 
-use crate::{
-    arguments::Args,
-    database::PointLink,
-    diagnostics::IssueKind,
-    node_ref::NodeRef,
-    type_::{NewType, Type},
-};
+use crate::prelude::*;
 
 use super::{TypeComputation, TypeContent};
 
