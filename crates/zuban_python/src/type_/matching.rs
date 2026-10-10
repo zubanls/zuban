@@ -1454,8 +1454,12 @@ fn match_unpack_internal(
             };
         }
         TupleArgs::ArbitraryLen(t2) => {
-            if t2.is_any() {
-                return Match::True { with_any: true };
+            if let Type::Any(cause) = &**t2 {
+                debug!("Matched unpack tuple because the other side is Any");
+                matcher.set_all_contained_type_vars_to_any(with_unpack1, *cause);
+                return Match::True {
+                    with_any: matcher.is_matching_reverse(),
+                };
             }
             if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
                 debug!(

@@ -3,7 +3,7 @@ use super::{
     StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, type_::WithUnpack};
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);
@@ -97,20 +97,24 @@ impl SearchTypeVars for TupleArgs {
                 }
             }
             TupleArgs::ArbitraryLen(t) => t.search_type_vars(found_type_var),
-            TupleArgs::WithUnpack(with_unpack) => {
-                for t in with_unpack.before.iter() {
-                    t.search_type_vars(found_type_var)
-                }
-                match &with_unpack.unpack {
-                    TupleUnpack::TypeVarTuple(tvt) => {
-                        found_type_var(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
-                    }
-                    TupleUnpack::ArbitraryLen(t) => t.search_type_vars(found_type_var),
-                }
-                for t in with_unpack.after.iter() {
-                    t.search_type_vars(found_type_var)
-                }
+            TupleArgs::WithUnpack(w) => w.search_type_vars(found_type_var),
+        }
+    }
+}
+
+impl SearchTypeVars for WithUnpack {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        for t in self.before.iter() {
+            t.search_type_vars(found_type_var)
+        }
+        match &self.unpack {
+            TupleUnpack::TypeVarTuple(tvt) => {
+                found_type_var(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
             }
+            TupleUnpack::ArbitraryLen(t) => t.search_type_vars(found_type_var),
+        }
+        for t in self.after.iter() {
+            t.search_type_vars(found_type_var)
         }
     }
 }
