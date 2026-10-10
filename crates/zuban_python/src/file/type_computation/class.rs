@@ -729,11 +729,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         if func_def.maybe_decorated().is_some() {
                             debug!("TODO use the classmethod decorators: {name}");
                         }
-                        if !c.kind.had_first_self_or_class_annotation() {
-                            let params = &mut c.params;
-                            let CallableParams::Simple(ps) = params else {
-                                unreachable!()
-                            };
+                        if !c.kind.had_first_self_or_class_annotation()
+                            && let params = &mut c.params
+                            && let CallableParams::Simple(ps) = params
+                        {
                             *ps = ps
                                 .iter()
                                 .enumerate()

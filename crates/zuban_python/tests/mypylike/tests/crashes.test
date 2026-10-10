@@ -21,3 +21,9 @@ def norm_sep(path: os.PathLike):
 class C:
     class D(AnyStr):  # E: Invalid base class "AnyStr"
         pass
+
+[case no_crash_on_wrong_class_getitem_with_param_spec]
+# From GH #605
+class C[**T]:
+    def __class_getitem__(cls, *args: T.args):  # E: ParamSpec must have "*args" typed as "T.args" and "**kwargs" typed as "T.kwargs"
+        pass
