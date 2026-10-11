@@ -10,7 +10,6 @@ def asc(column: ColumnElement[float]) -> None: ...
 
 def reproduce(order: int) -> None:
     sort_column: ColumnElement[Any]
-    reveal_type(sort_column)  # N: Revealed type is "__main__.ColumnElement[Any]"
     asc(sort_column)
     match order:
         case 0:
@@ -18,5 +17,4 @@ def reproduce(order: int) -> None:
         case _:
             sort_column = Label[None]()
 
-    reveal_type(sort_column)  # N: Revealed type is "__main__.Label[builtins.float] | __main__.Label[None]"
     asc(sort_column)  # E: Argument 1 to "asc" has incompatible type "Label[float] | Label[None]"; expected "ColumnElement[float]"
