@@ -617,3 +617,18 @@ class C(tuple):
 class D:
     def __init__(self) -> None:
         super(D, C).a  # E: Argument 2 for "super" not an instance of argument 1
+
+[case assert_type_with_tuple]
+# From GH #610
+from typing import assert_type
+
+def f(a: tuple[str, str], b: tuple[int, int, int], c: tuple[str, ...]) -> None:
+    assert_type(a, tuple[str, str, str])   # E: Expression is of type "tuple[str, str]", not "tuple[str, str, str]"
+    assert_type(a, tuple[str])       # E: Expression is of type "tuple[str, str]", not "tuple[str]"
+    assert_type(b, tuple[int, int])  # E: Expression is of type "tuple[int, int, int]", not "tuple[int, int]"
+    assert_type(a, tuple[str, ...])  # E: Expression is of type "tuple[str, str]", not "tuple[str, ...]"
+    assert_type(c, tuple[str, str])  # E: Expression is of type "tuple[str, ...]", not "tuple[str, str]"
+    assert_type(a, tuple[int, int])  # E: Expression is of type "tuple[str, str]", not "tuple[int, int]"
+    assert_type(a, tuple[str, str])  # Fine!
+
+    assert_type({"k": a}, dict[str, tuple[str, str, str]])  # E: Expression is of type "dict[str, tuple[str, str]]", not "dict[str, tuple[str, str, str]]"

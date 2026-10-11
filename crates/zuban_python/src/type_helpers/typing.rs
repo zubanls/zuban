@@ -297,8 +297,9 @@ impl Type {
                 any_is_all,
             )
         };
-        let all_eq =
-            |ts1: &[Type], ts2: &[Type]| ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2));
+        let all_eq = |ts1: &[Type], ts2: &[Type]| {
+            ts1.len() == ts2.len() && ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2))
+        };
         let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
             let m1 = td1.members(db);
             let m2 = td2.members(db);
