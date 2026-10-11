@@ -1,0 +1,13 @@
+[case github_issue_295_annotated_variable_after_match]
+def takes_float(value: float) -> None: ...
+
+def reproduce(order: int) -> None:
+    value: object
+    match order:
+        case 0:
+            value = 1.0
+        case _:
+            value = None
+
+    reveal_type(value)  # N: Revealed type is "float | None"
+    takes_float(value)  # E: Argument 1 to "takes_float" has incompatible type "float | None"; expected "float"
