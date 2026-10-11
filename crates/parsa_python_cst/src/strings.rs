@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use parsa_python::{
     CodeIndex, NonterminalType::fstring, PyNode, PyNodeType::Nonterminal, SiblingIterator,
 };
-use utils::dedent_cow;
+use utils::{dedent, dedent_cow};
 
 use crate::Strings;
 
@@ -274,8 +274,22 @@ pub(crate) fn unpack_string_or_bytes_content(code: &str) -> UnpackedLiteral<'_> 
 impl<'db> Strings<'db> {
     pub fn clean_docstring(&self) -> Option<Cow<'db, str>> {
         let s = self.as_python_string().into_cow_str()?;
-        Some(match dedent_cow(s) {
-            Cow::Borrowed(s) => Cow::Borrowed(s),
+
+        let s = match s.trim_start_matches([' ', '\t']).chars().next() {
+            Some('\n') | None => dedent_cow(s),
+            Some(_) => {
+                // If there is content on the first line we have to dedent only the second part.
+                if let Some((first_line, rest)) = s.split_once("\n")
+                    && !rest.trim().is_empty()
+                {
+                    Cow::Owned(format!("{}\n{}", first_line, dedent(rest)))
+                } else {
+                    s
+                }
+            }
+        };
+        Some(match s {
+            Cow::Borrowed(s) => Cow::Borrowed(s.trim()),
             Cow::Owned(mut s) => {
                 trim_string_in_place(&mut s);
                 Cow::Owned(s)

@@ -1430,3 +1430,16 @@ if isinstance(two, tuple):
 [out]
 __main__.py:6:documentation -> "```python\n(variable) two: Any | None\n```"
 __main__.py:9:documentation -> "```python\n(variable) two: tuple[int, int]\n```"
+
+[case documentation_for_multiline_docstring_that_starts_after_quote]
+# From GH #606
+
+#? --codepoint-column 7 documentation
+class A:
+    """a
+    b
+    c
+    """
+
+[out]
+__main__.py:4:documentation -> "```python\n(class) A() -> A\n```\n---\na\nb\nc"
