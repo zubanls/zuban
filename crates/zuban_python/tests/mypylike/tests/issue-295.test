@@ -1,13 +1,22 @@
 [case github_issue_295_annotated_variable_after_match]
-def takes_float(value: float) -> None: ...
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+
+class ColumnElement(Generic[T]): ...
+class Label(ColumnElement[T]): ...
+
+def asc(column: ColumnElement[float]) -> None: ...
 
 def reproduce(order: int) -> None:
-    value: object
+    sort_column: ColumnElement[Any]
+    reveal_type(sort_column)  # N: Revealed type is "__main__.ColumnElement[Any]"
+    asc(sort_column)
     match order:
         case 0:
-            value = 1.0
+            sort_column = Label[float]()
         case _:
-            value = None
+            sort_column = Label[None]()
 
-    reveal_type(value)  # N: Revealed type is "float | None"
-    takes_float(value)  # E: Argument 1 to "takes_float" has incompatible type "float | None"; expected "float"
+    reveal_type(sort_column)  # N: Revealed type is "__main__.Label[builtins.float] | __main__.Label[None]"
+    asc(sort_column)  # E: Argument 1 to "asc" has incompatible type "Label[float] | Label[None]"; expected "ColumnElement[float]"
