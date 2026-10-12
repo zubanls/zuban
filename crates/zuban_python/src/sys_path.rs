@@ -176,7 +176,10 @@ fn lib_path(settings: &Settings) -> Option<String> {
     let with_which = |executable_name| {
         let path_of_exe = match which::which(executable_name) {
             Ok(path_of_exe) => match path_of_exe.canonicalize() {
-                Ok(p) => p,
+                Ok(p) => {
+                    tracing::debug!("which python3 (canonicalized): {p:?}");
+                    p
+                }
                 Err(err) => {
                     tracing::warn!("Wanted to canonicalize {path_of_exe:?} but got error: {err:?}");
                     /*
@@ -257,6 +260,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
                     }
                 }
                 found.sort();
+                tracing::debug!("Found the following potential python base paths {found:?}");
                 for (_version, in_path) in found.into_iter().rev() {
                     if let result @ Some(_) = check_path_buf(in_path) {
                         return result;
@@ -298,6 +302,14 @@ pub(crate) fn typeshed_path_from_executable() -> Arc<NormalizedPath> {
     if let Ok(canonicalized) = std::fs::canonicalize(&executable) {
         executable = canonicalized;
     }
+    tracing::debug!("Trying to find typeshed path for executable {executable:?}");
+
+    let result = typeshed_path_from_executable_part2(&executable);
+    tracing::debug!("Found typeshed path: {:?}", &result);
+    result
+}
+
+fn typeshed_path_from_executable_part2(executable: &Path) -> Arc<NormalizedPath> {
     const NEEDS_PARENTS: &str = "The executable is expected to be relative to the typeshed path";
     let env_folder = executable
         .parent()
