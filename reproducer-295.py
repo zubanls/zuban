@@ -1,25 +1,26 @@
 from typing import Any, Generic, TypeVar
 
 _T = TypeVar("_T")
-_ColumnType = TypeVar("_ColumnType", covariant=True)
-_SortType = TypeVar("_SortType", float, None)
+_T_co = TypeVar("_T_co", covariant=True)
 
 
-class ColumnElement(Generic[_ColumnType]):
-    def label(self, name: str) -> "Label[_ColumnType]":
+class TypedColumnsClauseRole(Generic[_T_co]): ...
+class ExpressionElementRole(TypedColumnsClauseRole[_T_co]): ...
+class BinaryElementRole(ExpressionElementRole[_T]): ...
+
+
+class ColumnElement(BinaryElementRole[_T], Generic[_T]):
+    def label(self, name: str) -> Label[_T]:
         raise NotImplementedError
 
 
-class Label(ColumnElement[_ColumnType]):
-    ...
+class Label(ColumnElement[_T]): ...
+class BindParameter(ColumnElement[_T]): ...
 
 
-def literal(value: _T) -> ColumnElement[_T]:
+def literal(value: _T) -> BindParameter[_T]:
     raise NotImplementedError
-
-
-def asc(column: ColumnElement[_SortType]) -> None:
-    ...
+def asc(value: ColumnElement[_T] | TypedColumnsClauseRole[_T]) -> None: ...
 
 
 def build_query(order: int) -> None:
