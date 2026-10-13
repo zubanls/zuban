@@ -11,6 +11,14 @@ pub(crate) fn create_sys_path(
     handler: &dyn VfsHandler,
     settings: &Settings,
 ) -> Vec<(WorkspaceKind, Arc<NormalizedPath>)> {
+    create_sys_path_with_file_access(FileAccess, handler, settings)
+}
+
+fn create_sys_path_with_file_access(
+    file_access: impl TestableFileAccess,
+    handler: &dyn VfsHandler,
+    settings: &Settings,
+) -> Vec<(WorkspaceKind, Arc<NormalizedPath>)> {
     let mut sys_path = vec![];
 
     sys_path.extend(
@@ -21,7 +29,7 @@ pub(crate) fn create_sys_path(
     );
 
     let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
-    let lib_path = lib_path(settings);
+    let lib_path = lib_path(file_access, settings);
     if let Some(path) = &lib_path {
         tracing::info!("Decided to use {path} as the Python lib folder");
         sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
@@ -43,15 +51,15 @@ pub(crate) fn create_sys_path(
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
-        add_site(site_packages_path_from_env(env, version));
-        add_editable_src_packages(handler, &mut sys_path, env);
-        include_system_site_packages_in_pyvenv_cfg(env)
+        add_site(site_packages_path_from_env(file_access, env, version));
+        add_editable_src_packages(file_access, handler, &mut sys_path, env);
+        include_system_site_packages_in_pyvenv_cfg(file_access, env)
     } else {
         if let Some(lib_path) = &lib_path
             && settings.add_global_packages_default
         {
             let p = Path::new(lib_path).join("site-packages");
-            if p.exists() {
+            if file_access.exists(&p).unwrap_or(false) {
                 // This is not necessary on Ubuntu (and probably Debian), but the default in
                 // site.py is that site-packages are added. Ubuntu probably patches this.
                 tracing::info!("Looked up site-packages for {p:?} and added it to the sys path");
@@ -63,32 +71,41 @@ pub(crate) fn create_sys_path(
         settings.add_global_packages_default
     };
     if check_global_site_packages {
-        add_user_site_packages(version, |p| {
+        add_user_site_packages(file_access, version, |p| {
             sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))
         });
-        add_global_site_packages(lib_path, version, |p| {
+        add_global_site_packages(file_access, lib_path, version, |p| {
             sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))
         });
     }
     sys_path
 }
 
-fn site_packages_path_from_env(environment: &AbsPath, version: PythonVersion) -> PathBuf {
+fn site_packages_path_from_env(
+    file_access: impl TestableFileAccess,
+    environment: &AbsPath,
+    version: PythonVersion,
+) -> PathBuf {
     if cfg!(windows) {
         let direct_site_packages = environment.as_ref().join("site-packages");
-        if direct_site_packages.exists() {
+        if file_access.exists(&direct_site_packages).unwrap_or(false) {
             return direct_site_packages;
         }
         // This is the more typical case, see also comments in finding typeshed path for Windows.
         environment.as_ref().join("Lib").join("site-packages")
     } else {
         let lib = environment.as_ref().join("lib");
-        lookup_site_packages_with_version(&lib, version)
+        lookup_site_packages_with_version(file_access, &lib, version)
     }
 }
 
-fn lookup_site_packages_with_version(lib: impl AsRef<Path>, version: PythonVersion) -> PathBuf {
+fn lookup_site_packages_with_version(
+    file_access: impl TestableFileAccess,
+    lib: impl AsRef<Path>,
+    version: PythonVersion,
+) -> PathBuf {
     lookup_site_packages_with_version_detailed(
+        file_access,
         lib.as_ref(),
         format!("python{}.{}", version.major, version.minor),
         "python",
@@ -97,6 +114,7 @@ fn lookup_site_packages_with_version(lib: impl AsRef<Path>, version: PythonVersi
 }
 
 fn lookup_site_packages_with_version_detailed(
+    file_access: impl TestableFileAccess,
     base: &Path,
     version_folder_name: String,
     starts_with: &str,
@@ -104,12 +122,12 @@ fn lookup_site_packages_with_version_detailed(
 ) -> PathBuf {
     let expected_path = base.join(version_folder_name).join(end);
 
-    if expected_path.exists() {
+    if file_access.exists(&expected_path).unwrap_or(false) {
         return expected_path;
     }
     // Since the path we wanted doesn't exist, we fall back to trying to find a folder in the lib,
     // because we are probably not always using the correct PythonVersion.
-    match base.read_dir() {
+    match file_access.read_dir(base) {
         Ok(dir) => {
             for path_in_dir in dir.flatten() {
                 let n = path_in_dir.file_name();
@@ -127,11 +145,12 @@ fn lookup_site_packages_with_version_detailed(
 }
 
 fn add_editable_src_packages(
+    file_access: impl TestableFileAccess,
     handler: &dyn VfsHandler,
     sys_path: &mut Vec<(WorkspaceKind, Arc<NormalizedPath>)>,
     env: &NormalizedPath,
 ) {
-    let Ok(entries) = env.as_ref().join("src").read_dir() else {
+    let Ok(entries) = file_access.read_dir(&env.as_ref().join("src")) else {
         return;
     };
     for entry in entries.flatten() {
@@ -144,10 +163,10 @@ fn add_editable_src_packages(
     }
 }
 
-fn lib_path(settings: &Settings) -> Option<String> {
+fn lib_path(file_access: impl TestableFileAccess, settings: &Settings) -> Option<String> {
     let check = |path: String| {
         let os_path = Path::new(&path).join("os.py");
-        match std::fs::exists(&path) {
+        match file_access.exists(&path) {
             Ok(true) => {
                 tracing::debug!("Found {os_path:?} -> choosing {path} as the library path");
                 Some(path)
@@ -174,8 +193,8 @@ fn lib_path(settings: &Settings) -> Option<String> {
         }
     };
     let with_which = |executable_name| {
-        let path_of_exe = match which::which(executable_name) {
-            Ok(path_of_exe) => match path_of_exe.canonicalize() {
+        let path_of_exe = match file_access.which(executable_name) {
+            Ok(path_of_exe) => match file_access.canonicalize(&path_of_exe) {
                 Ok(p) => {
                     tracing::debug!("which python3 (canonicalized): {p:?}");
                     p
@@ -233,7 +252,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
             } else {
                 let lib_path = parent.join("lib");
                 let mut found = vec![];
-                match std::fs::read_dir(&lib_path) {
+                match file_access.read_dir(&lib_path) {
                     Ok(list) => {
                         for entry in list {
                             match entry {
@@ -261,6 +280,7 @@ fn lib_path(settings: &Settings) -> Option<String> {
                 }
                 found.sort();
                 tracing::debug!("Found the following potential python base paths {found:?}");
+                // Return the highest version path
                 for (_version, in_path) in found.into_iter().rev() {
                     if let result @ Some(_) = check_path_buf(in_path) {
                         return result;
@@ -420,9 +440,12 @@ fn search_typeshed_dir_in_unix(
     Ok(None)
 }
 
-fn include_system_site_packages_in_pyvenv_cfg(env: &NormalizedPath) -> bool {
+fn include_system_site_packages_in_pyvenv_cfg(
+    file_access: impl TestableFileAccess,
+    env: &NormalizedPath,
+) -> bool {
     let path = env.as_ref().join("pyvenv.cfg");
-    match std::fs::read_to_string(&path) {
+    match file_access.read_to_string(&path) {
         Ok(content) => {
             for line in content.lines() {
                 if let Some((key, value)) = line.split_once('=')
@@ -441,11 +464,16 @@ fn include_system_site_packages_in_pyvenv_cfg(env: &NormalizedPath) -> bool {
     }
 }
 
-fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
+fn add_user_site_packages(
+    file_access: impl TestableFileAccess,
+    version: PythonVersion,
+    mut add: impl FnMut(&str),
+) {
     if cfg!(windows) {
         if let Some(app_data) = std::env::var_os("APPDATA") {
             if let Some(app_data) = app_data.to_str() {
                 let new = lookup_site_packages_with_version_detailed(
+                    file_access,
                     &Path::new(app_data).join("Python"),
                     format!("Python{}{}", version.major, version.minor),
                     "Python",
@@ -462,10 +490,11 @@ fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
         } else {
             tracing::warn!("Did not find the environment variable APPDATA");
         }
-    } else if let Some(home) = dirs::home_dir() {
+    } else if let Some(home) = file_access.home_dir() {
         if cfg!(any(target_os = "macos", target_os = "ios")) {
             let base = home.join("Library").join("Python");
             let new = lookup_site_packages_with_version_detailed(
+                file_access,
                 &base,
                 format!("{}.{}", version.major, version.minor),
                 "python",
@@ -477,8 +506,12 @@ fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
                 tracing::warn!("site-packages path not unicode: {new:?}");
             }
         }
-        if let Some(pkg) =
-            lookup_site_packages_with_version(&home.join(".local").join("lib"), version).to_str()
+        if let Some(pkg) = lookup_site_packages_with_version(
+            file_access,
+            &home.join(".local").join("lib"),
+            version,
+        )
+        .to_str()
         {
             add(pkg)
         }
@@ -486,6 +519,7 @@ fn add_user_site_packages(version: PythonVersion, mut add: impl FnMut(&str)) {
 }
 
 fn add_global_site_packages(
+    file_access: impl TestableFileAccess,
     lib_path: Option<String>,
     version: PythonVersion,
     mut add: impl FnMut(&str),
@@ -495,9 +529,9 @@ fn add_global_site_packages(
             // Windows has site-packages directly on
             Path::new(&lib).join("site-packages")
         } else {
-            lookup_site_packages_with_version(lib, version)
+            lookup_site_packages_with_version(file_access, lib, version)
         };
-        match std::fs::exists(&site_packages) {
+        match file_access.exists(&site_packages) {
             Ok(true) => {
                 if let Some(site_packages) = site_packages.to_str() {
                     add(site_packages)
@@ -515,10 +549,118 @@ fn add_global_site_packages(
     if cfg!(target_os = "linux") {
         // This adds the paths for Debian-likes.
         let p = "/usr/lib/python3/dist-packages";
-        if std::fs::exists(p).is_ok_and(|found| found) {
+        if file_access.exists(&p).is_ok_and(|found| found) {
             add(p);
         }
         // TODO maybe add /usr/local/lib/python3.12/dist-packages, but it seems Ubuntu doesn't
         // really use it (at least for me).
+    }
+}
+
+trait TestableFileAccess: Copy {
+    fn exists(&self, path: &dyn AsRef<Path>) -> std::io::Result<bool>;
+    fn home_dir(&self) -> Option<PathBuf>;
+    fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error>;
+    fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String>;
+    fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf>;
+    fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir>;
+}
+
+#[derive(Copy, Clone)]
+struct FileAccess;
+
+impl TestableFileAccess for FileAccess {
+    fn exists(&self, path: &dyn AsRef<Path>) -> std::io::Result<bool> {
+        std::fs::exists(path)
+    }
+
+    fn home_dir(&self) -> Option<PathBuf> {
+        dirs::home_dir()
+    }
+
+    fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error> {
+        which::which(executable_name)
+    }
+
+    fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String> {
+        std::fs::read_to_string(&path)
+    }
+
+    fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
+        path.canonicalize()
+    }
+
+    fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir> {
+        std::fs::read_dir(path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Copy, Clone)]
+    struct KnownFiles<'x> {
+        files: &'x [&'x str],
+        home_dir: bool,
+    }
+
+    impl TestableFileAccess for KnownFiles<'_> {
+        fn exists(&self, path: &dyn AsRef<Path>) -> std::io::Result<bool> {
+            Ok(self.files.iter().any(|p| Path::new(p) == path.as_ref()))
+        }
+
+        fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error> {
+            match executable_name {
+                "python3" => Ok("/usr/bin/python3".into()),
+                _ => unimplemented!("{executable_name}"),
+            }
+        }
+
+        fn home_dir(&self) -> Option<PathBuf> {
+            self.home_dir.then(|| "/home/myuser".into())
+        }
+
+        fn read_to_string(&self, _path: &dyn AsRef<Path>) -> std::io::Result<String> {
+            unimplemented!()
+        }
+
+        fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
+            Ok(path.clone())
+        }
+
+        fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir> {
+            // TODO
+            std::fs::read_dir(path)
+        }
+    }
+
+    fn sys_path(files: &[&str], home_dir: bool) -> Vec<String> {
+        create_sys_path_with_file_access(
+            KnownFiles { files, home_dir },
+            &LocalFS::without_watcher(),
+            &Settings::default(),
+        )
+        .into_iter()
+        .map(|(_, p)| p.to_string())
+        .collect()
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_sys_path_for_linux() {
+        assert_eq!(
+            sys_path(&[], false), // No homedir
+            [] as [&str; 0]
+        );
+        assert_eq!(
+            sys_path(&[], true), // homedir
+            ["/home/myuser/.local/lib/python3.14/site-packages"]
+        );
+
+        assert_eq!(
+            sys_path(&["/usr/lib/python3/dist-packages/"], false),
+            ["/usr/lib/python3/dist-packages"]
+        );
     }
 }
