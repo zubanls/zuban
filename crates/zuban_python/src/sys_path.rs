@@ -439,7 +439,7 @@ fn include_system_site_packages_in_pyvenv_cfg(
                 if let Some((key, value)) = line.split_once('=')
                     && key.trim() == "include-system-site-packages"
                 {
-                    return value.to_lowercase() == "true";
+                    return value.to_lowercase().trim() == "true";
                 }
             }
             tracing::warn!("Did not find an include-system-site-packages definition in {path:?}");
@@ -674,9 +674,14 @@ mod tests {
         }
 
         fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String> {
-            if let Some(content) = self.files_or_dirs.iter().find_map(|f| match &f.kind {
-                DirOrFileKind::Dir => None,
-                DirOrFileKind::File(content) => Some(content),
+            if let Some(content) = self.files_or_dirs.iter().find_map(|f| {
+                if f.path != path.as_ref() {
+                    return None;
+                }
+                match &f.kind {
+                    DirOrFileKind::Dir => None,
+                    DirOrFileKind::File(content) => Some(content),
+                }
             }) {
                 Ok(content.to_string())
             } else {
@@ -884,7 +889,7 @@ mod tests {
         assert_eq!(
             sys_path(
                 Some("/home/proj/venv"),
-                &["/usr/lib/python3.13/"],
+                &["/usr/lib/python3.13/site-packages"],
                 &[("/home/proj/venv/pyvenv.cfg", "")],
                 false
             ),
@@ -893,7 +898,46 @@ mod tests {
                 // because the venv doesn't have a version so we have to guess. And if the version
                 // is not available, it should fall back to whatever version there is around.
                 "/usr/lib/python3.13",
-                "/home/proj/venv/lib/python3.14/site-packages"
+                "/home/proj/venv/lib/python3.14/site-packages",
+                // This is in here because include-system-site-packages is missing
+                "/usr/lib/python3.13/site-packages",
+            ]
+        );
+
+        assert_eq!(
+            sys_path(
+                Some("/home/proj/venv"),
+                &[
+                    "/usr/lib/python3.13/site-packages/",
+                    "/usr/lib/python3.12/site-packages/",
+                    "/home/proj/venv/lib/python3.13/site-packages/",
+                ],
+                &[(
+                    "/home/proj/venv/pyvenv.cfg",
+                    "include-system-site-packages = true"
+                )],
+                false
+            ),
+            [
+                "/usr/lib/python3.13",
+                "/home/proj/venv/lib/python3.13/site-packages",
+                "/usr/lib/python3.13/site-packages",
+            ]
+        );
+
+        assert_eq!(
+            sys_path(
+                Some("/home/proj/venv"),
+                &["/usr/lib/python3.13/", "/usr/lib/python3.12/"],
+                &[(
+                    "/home/proj/venv/pyvenv.cfg",
+                    "include-system-site-packages = false"
+                )],
+                false
+            ),
+            [
+                "/usr/lib/python3.13",
+                "/home/proj/venv/lib/python3.14/site-packages",
             ]
         );
     }
