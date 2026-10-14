@@ -509,10 +509,10 @@ fn add_user_site_packages(
 fn add_global_site_packages(
     file_access: impl TestableFileAccess,
     lib_path: Option<String>,
-    version: PythonVersion,
+    _version: PythonVersion,
     mut add: impl FnMut(&str),
 ) {
-    let mut maybe_add = |site_packages: PathBuf| match file_access.exists(&site_packages) {
+    let mut maybe_add = |site_packages: &Path| match file_access.exists(&site_packages) {
         Ok(true) => {
             if let Some(site_packages) = site_packages.to_str() {
                 add(site_packages)
@@ -533,10 +533,13 @@ fn add_global_site_packages(
         {
             // Fedora patches site.py and adds /usr/local as an additional prefix:
             // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
-            maybe_add(format!("/usr/local/lib/{suffix}").into())
+            let usr_local = PathBuf::from(format!("/usr/local/lib/{suffix}"));
+            maybe_add(&usr_local);
+            // Ubuntu uses the dist-packages name instead of site-packages
+            maybe_add(&usr_local.parent().unwrap().join("dist-packages"));
         }
 
-        maybe_add(site_packages)
+        maybe_add(&site_packages)
     }
 
     if cfg!(target_os = "linux") {
@@ -756,13 +759,33 @@ mod tests {
     fn test_debian_like() {
         assert_eq!(
             sys_path(
-                &["/usr/lib/python3.14/", "/usr/lib/python3/dist-packages/"],
+                &[
+                    "/usr/lib/python3.14/",
+                    "/usr/lib/python3/dist-packages/",
+                    "/usr/local/lib/python3.12/dist-packages/",
+                ],
                 true
             ),
             [
                 "/usr/lib/python3.14",
                 "/home/myuser/.local/lib/python3.14/site-packages",
-                "/usr/lib/python3/dist-packages"
+                "/usr/lib/python3/dist-packages",
+            ]
+        );
+        assert_eq!(
+            sys_path(
+                &[
+                    "/usr/lib/python3.13/",
+                    "/usr/lib/python3/dist-packages/",
+                    "/usr/local/lib/python3.13/dist-packages/",
+                    "/usr/local/lib/python3.14/dist-packages/",
+                ],
+                false,
+            ),
+            [
+                "/usr/lib/python3.13",
+                "/usr/local/lib/python3.13/dist-packages",
+                "/usr/lib/python3/dist-packages",
             ]
         );
     }
