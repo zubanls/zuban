@@ -695,10 +695,12 @@ mod tests {
         }
 
         fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error> {
-            match executable_name {
-                "python3" => Ok("/usr/bin/python3".into()),
+            Ok(match executable_name {
+                "python3.exe" => r"C:\Program Files\Python312\python.exe",
+                "python3" => "/usr/bin/python3",
                 _ => unimplemented!("{executable_name}"),
             }
+            .into())
         }
 
         fn home_dir(&self) -> Option<PathBuf> {
@@ -917,7 +919,7 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "linux")]
-    fn test_venv_path() {
+    fn test_venv_path_on_linux() {
         assert_eq!(
             sys_path(
                 Some("/home/proj/venv"),
@@ -990,6 +992,27 @@ mod tests {
             [
                 "/usr/lib/python3.13",
                 "/home/proj/venv/lib/python3.14/site-packages",
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_venv_path_on_windows() {
+        assert_eq!(
+            sys_path(
+                Some(r"C:\Users\myuser\proj\venv"),
+                &[r"C:\Program Files\Python312\Lib\site-packages\"],
+                &[(
+                    r"C:\Users\myuser\proj\venv\pyvenv.cfg",
+                    "include-system-site-packages = true\nversion_info = 3.12.3"
+                )],
+                false
+            ),
+            [
+                r"C:\Program Files\Python312\Lib",
+                r"C:\Users\myuser\proj\venv\Lib\site-packages",
+                r"C:\Program Files\Python312\Lib\site-packages",
             ]
         );
     }
