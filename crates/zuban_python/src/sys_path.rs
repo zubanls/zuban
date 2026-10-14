@@ -525,26 +525,34 @@ fn add_global_site_packages(
     version: PythonVersion,
     mut add: impl FnMut(&str),
 ) {
+    let mut maybe_add = |site_packages: PathBuf| match file_access.exists(&site_packages) {
+        Ok(true) => {
+            if let Some(site_packages) = site_packages.to_str() {
+                add(site_packages)
+            } else {
+                tracing::info!("site-packages are not unicode: {site_packages:?}")
+            }
+        }
+        Ok(false) => {}
+        Err(err) => {
+            tracing::info!("Failed while looking for global site packages: {err}")
+        }
+    };
     if let Some(lib) = lib_path {
         let site_packages = if cfg!(windows) {
             // Windows has site-packages directly on
             Path::new(&lib).join("site-packages")
         } else {
-            lookup_site_packages_with_version(file_access, lib, version)
+            lookup_site_packages_with_version(file_access, &lib, version)
         };
-        match file_access.exists(&site_packages) {
-            Ok(true) => {
-                if let Some(site_packages) = site_packages.to_str() {
-                    add(site_packages)
-                } else {
-                    tracing::info!("site-packages are not unicode: {site_packages:?}")
-                }
-            }
-            Ok(false) => {}
-            Err(err) => {
-                tracing::info!("Failed while looking for global site packages: {err}")
-            }
+
+        if cfg!(target_os = "linux")
+            && let Some(suffix) = lib.strip_prefix("/usr/lib/")
+        {
+            maybe_add(format!("/usr/local/lib/{suffix}").into())
         }
+
+        maybe_add(site_packages)
     }
 
     if cfg!(target_os = "linux") {
@@ -744,21 +752,39 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn test_debian_like() {
         assert_eq!(
-            sys_path(&["/usr/lib/python3/dist-packages/"], false),
-            ["/usr/lib/python3/dist-packages"]
+            sys_path(
+                &["/usr/lib/python3.14/", "/usr/lib/python3/dist-packages/"],
+                true
+            ),
+            [
+                "/usr/lib/python3.14",
+                "/home/myuser/.local/lib/python3.14/site-packages",
+                "/usr/lib/python3/dist-packages"
+            ]
         );
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn test_fedora_like() {
+        // From GH #612
         assert_eq!(
             sys_path(
-                &["/usr/lib/python3.14/", "/usr/lib/local/python3.14/"],
+                &["/usr/lib/python3.14/", "/usr/local/lib/python3.14/"],
                 false
             ),
-            // TODO the lib/local is missing
-            ["/usr/lib/python3.14"]
+            ["/usr/lib/python3.14", "/usr/local/lib/python3.14"]
+        );
+        assert_eq!(
+            sys_path(
+                &[
+                    "/usr/lib/python3.13/",
+                    "/usr/local/lib/python3.13/",
+                    "/usr/local/lib/python3.14/",
+                ],
+                false
+            ),
+            ["/usr/lib/python3.13", "/usr/local/lib/python3.13"]
         );
     }
 }
