@@ -30,7 +30,19 @@ fn create_sys_path_with_file_access(
     );
 
     let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
-    let lib_path = lib_path(file_access, settings);
+
+    let mut version = settings.python_version;
+    let check_global_site_packages = if let Some(env) = &settings.environment {
+        let infos = pyvenv_cfg_infos(file_access, env);
+        if version.is_none() {
+            version = infos.version
+        }
+        infos.include_system_site_packages
+    } else {
+        settings.add_global_packages_default
+    };
+
+    let lib_path = lib_path(file_access, version);
     if let Some(path) = &lib_path {
         tracing::info!("Decided to use {path} as the Python lib folder");
         sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
@@ -38,7 +50,7 @@ fn create_sys_path_with_file_access(
         tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
     }
 
-    let version = settings.python_version_or_default();
+    let version = version.unwrap_or_else(|| settings.python_version_or_default());
     let mut add_site =
         |p: PathBuf| {
             sys_path.push((
@@ -48,16 +60,13 @@ fn create_sys_path_with_file_access(
                 )),
             ))
         };
-    let check_global_site_packages = if let Some(env) = &settings.environment {
+    if let Some(env) = &settings.environment {
         // We cannot use cannonicalize here, because the path of the exe is often a venv path
         // that is a symlink to the actual exectuable. We however want the relative paths to
         // the symlink. Therefore cannonicalize only after getting the first dir
         add_site(site_packages_path_from_env(file_access, env, version));
         add_editable_src_packages(file_access, handler, &mut sys_path, env);
-        include_system_site_packages_in_pyvenv_cfg(file_access, env)
-    } else {
-        settings.add_global_packages_default
-    };
+    }
     if check_global_site_packages {
         add_user_site_packages(file_access, version, |p| {
             sys_path.push((WorkspaceKind::SitePackages, new_unchecked(p)))
@@ -151,7 +160,10 @@ fn add_editable_src_packages(
     }
 }
 
-fn lib_path(file_access: impl TestableFileAccess, settings: &Settings) -> Option<String> {
+fn lib_path(
+    file_access: impl TestableFileAccess,
+    version: Option<PythonVersion>,
+) -> Option<String> {
     let check = |path: String| {
         let os_path = Path::new(&path).join("os.py");
         match file_access.exists(&path) {
@@ -288,7 +300,7 @@ fn lib_path(file_access: impl TestableFileAccess, settings: &Settings) -> Option
         // /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/
         //    or /usr/local/Cellar/python@3.12/.../Frameworks/.../lib/python3.12/
     } else {
-        if let Some(version) = settings.python_version {
+        if let Some(version) = version {
             let path = format!("/usr/lib/python{}.{}", version.major, version.minor);
             if let result @ Some(_) = check(path) {
                 return result;
@@ -428,26 +440,46 @@ fn search_typeshed_dir_in_unix(
     Ok(None)
 }
 
-fn include_system_site_packages_in_pyvenv_cfg(
-    file_access: impl TestableFileAccess,
-    env: &NormalizedPath,
-) -> bool {
+#[derive(Default)]
+struct PyvenvInfos {
+    include_system_site_packages: bool,
+    version: Option<PythonVersion>,
+}
+
+fn pyvenv_cfg_infos(file_access: impl TestableFileAccess, env: &NormalizedPath) -> PyvenvInfos {
     let path = env.as_ref().join("pyvenv.cfg");
     match file_access.read_to_string(&path) {
         Ok(content) => {
+            let mut infos = PyvenvInfos::default();
+            let mut had_include_system_site_packages = false;
             for line in content.lines() {
-                if let Some((key, value)) = line.split_once('=')
-                    && key.trim() == "include-system-site-packages"
-                {
-                    return value.to_lowercase().trim() == "true";
+                if let Some((key, value)) = line.split_once('=') {
+                    match key.trim() {
+                        "include-system-site-packages" => {
+                            had_include_system_site_packages = true;
+                            infos.include_system_site_packages =
+                                value.to_lowercase().trim() == "true";
+                        }
+                        "version" => {
+                            infos.version = value.trim().parse().ok();
+                        }
+                        _ => (),
+                    }
                 }
             }
-            tracing::warn!("Did not find an include-system-site-packages definition in {path:?}");
-            true
+            if !had_include_system_site_packages {
+                tracing::warn!(
+                    "Did not find an include-system-site-packages definition in {path:?}"
+                );
+                // Since this should always be available we fall back to the more comfortable
+                // setting for users.
+                infos.include_system_site_packages = true;
+            }
+            infos
         }
         Err(err) => {
             tracing::info!("Error while looking up {path:?}: {err}");
-            false
+            PyvenvInfos::default()
         }
     }
 }
@@ -928,10 +960,30 @@ mod tests {
         assert_eq!(
             sys_path(
                 Some("/home/proj/venv"),
+                &[
+                    "/usr/lib/python3.13/",
+                    "/usr/lib/python3.12/",
+                    "/home/proj/venv/lib/python3.13/site-packages/"
+                ],
+                &[(
+                    "/home/proj/venv/pyvenv.cfg",
+                    "include-system-site-packages = false\nversion_info = 3.13.0"
+                )],
+                false
+            ),
+            [
+                "/usr/lib/python3.13",
+                "/home/proj/venv/lib/python3.13/site-packages",
+            ]
+        );
+
+        assert_eq!(
+            sys_path(
+                Some("/home/proj/venv"),
                 &["/usr/lib/python3.13/", "/usr/lib/python3.12/"],
                 &[(
                     "/home/proj/venv/pyvenv.cfg",
-                    "include-system-site-packages = false"
+                    "include-system-site-packages = true\nversion_info = 3.12.3"
                 )],
                 false
             ),
