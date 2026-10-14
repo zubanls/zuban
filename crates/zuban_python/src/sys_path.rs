@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsString,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -557,13 +558,55 @@ fn add_global_site_packages(
     }
 }
 
+enum ReadDir {
+    Std(std::fs::ReadDir),
+    #[allow(dead_code)] //  This is not actually dead code, it's just used in testing
+    Testable(std::vec::IntoIter<DirEntry>),
+}
+
+impl Iterator for ReadDir {
+    type Item = std::io::Result<DirEntry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ReadDir::Std(read_dir) => Some(read_dir.next()?.map(|d| DirEntry::Std(d))),
+            ReadDir::Testable(entries) => entries.next().map(|e| Ok(e)),
+        }
+    }
+}
+
+enum DirEntry {
+    Std(std::fs::DirEntry),
+    #[allow(dead_code)] //  This is not actually dead code, it's just used in testing
+    Testable {
+        name: String,
+        path: String,
+    },
+}
+
+impl DirEntry {
+    fn file_name(&self) -> OsString {
+        match self {
+            Self::Std(entry) => entry.file_name(),
+            Self::Testable { name, .. } => name.into(),
+        }
+    }
+
+    fn path(&self) -> PathBuf {
+        match self {
+            Self::Std(entry) => entry.path(),
+            Self::Testable { path, .. } => path.into(),
+        }
+    }
+}
+
 trait TestableFileAccess: Copy {
     fn exists(&self, path: &dyn AsRef<Path>) -> std::io::Result<bool>;
     fn home_dir(&self) -> Option<PathBuf>;
     fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error>;
     fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String>;
     fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf>;
-    fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir>;
+    fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir>;
 }
 
 #[derive(Copy, Clone)]
@@ -590,8 +633,8 @@ impl TestableFileAccess for FileAccess {
         path.canonicalize()
     }
 
-    fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir> {
-        std::fs::read_dir(path)
+    fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {
+        std::fs::read_dir(path).map(|r| ReadDir::Std(r))
     }
 }
 
@@ -629,9 +672,26 @@ mod tests {
             Ok(path.clone())
         }
 
-        fn read_dir(&self, path: &Path) -> std::io::Result<std::fs::ReadDir> {
-            // TODO
-            std::fs::read_dir(path)
+        fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {
+            let found: Vec<DirEntry> = self
+                .files
+                .iter()
+                .filter_map(|p| {
+                    let potential_entry = Path::new(p);
+                    potential_entry
+                        .starts_with(path)
+                        .then(|| DirEntry::Testable {
+                            path: p.to_string(),
+                            name: potential_entry
+                                .file_name()
+                                .unwrap()
+                                .to_str()
+                                .unwrap()
+                                .into(),
+                        })
+                })
+                .collect();
+            Ok(ReadDir::Testable(found.into_iter()))
         }
     }
 
@@ -648,7 +708,7 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "linux")]
-    fn test_sys_path_for_linux() {
+    fn test_homedir_sys_path_for_linux() {
         assert_eq!(
             sys_path(&[], false), // No homedir
             [] as [&str; 0]
@@ -657,10 +717,48 @@ mod tests {
             sys_path(&[], true), // homedir
             ["/home/myuser/.local/lib/python3.14/site-packages"]
         );
+    }
 
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_different_versions_for_linux() {
+        assert_eq!(
+            sys_path(&["/usr/lib/python3.14/"], false),
+            ["/usr/lib/python3.14"]
+        );
+        assert_eq!(
+            sys_path(&["/usr/lib/python3.12/"], false),
+            ["/usr/lib/python3.12"]
+        );
+        assert_eq!(
+            sys_path(&["/usr/lib/python3.12/", "/usr/lib/python3.14/"], false),
+            ["/usr/lib/python3.14"]
+        );
+        assert_eq!(
+            sys_path(&["/usr/lib/python3.14/", "/usr/lib/python3.13/"], false),
+            ["/usr/lib/python3.14"]
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_debian_like() {
         assert_eq!(
             sys_path(&["/usr/lib/python3/dist-packages/"], false),
             ["/usr/lib/python3/dist-packages"]
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_fedora_like() {
+        assert_eq!(
+            sys_path(
+                &["/usr/lib/python3.14/", "/usr/lib/local/python3.14/"],
+                false
+            ),
+            // TODO the lib/local is missing
+            ["/usr/lib/python3.14"]
         );
     }
 }
