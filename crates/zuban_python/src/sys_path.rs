@@ -56,19 +56,6 @@ fn create_sys_path_with_file_access(
         add_editable_src_packages(file_access, handler, &mut sys_path, env);
         include_system_site_packages_in_pyvenv_cfg(file_access, env)
     } else {
-        if let Some(lib_path) = &lib_path
-            && settings.add_global_packages_default
-        {
-            let p = Path::new(lib_path).join("site-packages");
-            if file_access.exists(&p).unwrap_or(false) {
-                // This is not necessary on Ubuntu (and probably Debian), but the default in
-                // site.py is that site-packages are added. Ubuntu probably patches this.
-                tracing::info!("Looked up site-packages for {p:?} and added it to the sys path");
-                add_site(p);
-            } else {
-                tracing::info!("Looked up site-packages for {p:?} but it doesn't exist");
-            }
-        }
         settings.add_global_packages_default
     };
     if check_global_site_packages {
@@ -539,16 +526,13 @@ fn add_global_site_packages(
         }
     };
     if let Some(lib) = lib_path {
-        let site_packages = if cfg!(windows) {
-            // Windows has site-packages directly on
-            Path::new(&lib).join("site-packages")
-        } else {
-            lookup_site_packages_with_version(file_access, &lib, version)
-        };
-
+        let site_packages = Path::new(&lib).join("site-packages");
         if cfg!(target_os = "linux")
-            && let Some(suffix) = lib.strip_prefix("/usr/lib/")
+            && let Some(suffix) = site_packages.strip_prefix("/usr/lib/").ok()
+            && let Some(suffix) = suffix.to_str()
         {
+            // Fedora patches site.py and adds /usr/local as an additional prefix:
+            // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
             maybe_add(format!("/usr/local/lib/{suffix}").into())
         }
 
@@ -652,13 +636,18 @@ mod tests {
 
     #[derive(Copy, Clone)]
     struct KnownFiles<'x> {
-        files: &'x [&'x str],
+        // Files are a list of dirs/files that exist. Files also imply that the directories below
+        // them exist.
+        files_or_dirs: &'x [&'x str],
         home_dir: bool,
     }
 
     impl TestableFileAccess for KnownFiles<'_> {
         fn exists(&self, path: &dyn AsRef<Path>) -> std::io::Result<bool> {
-            Ok(self.files.iter().any(|p| Path::new(p) == path.as_ref()))
+            Ok(self
+                .files_or_dirs
+                .iter()
+                .any(|p| Path::new(p).starts_with(path.as_ref())))
         }
 
         fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error> {
@@ -681,31 +670,39 @@ mod tests {
         }
 
         fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {
+            let mut had_entries = false;
             let found: Vec<DirEntry> = self
-                .files
+                .files_or_dirs
                 .iter()
-                .filter_map(|p| {
-                    let potential_entry = Path::new(p);
-                    potential_entry
-                        .starts_with(path)
-                        .then(|| DirEntry::Testable {
-                            path: p.to_string(),
-                            name: potential_entry
-                                .file_name()
-                                .unwrap()
-                                .to_str()
-                                .unwrap()
-                                .into(),
-                        })
+                .filter_map(|file_or_dir| {
+                    let potential_entry = Path::new(file_or_dir);
+                    let found = potential_entry.strip_prefix(path).ok()?;
+                    had_entries = true;
+
+                    let name = found.iter().next()?;
+                    Some(DirEntry::Testable {
+                        path: path.join(name).to_str().unwrap().to_string(),
+                        name: name.to_str().unwrap().to_string(),
+                    })
                 })
                 .collect();
-            Ok(ReadDir::Testable(found.into_iter()))
+            if had_entries {
+                Ok(ReadDir::Testable(found.into_iter()))
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "not found (from tests)",
+                ))
+            }
         }
     }
 
     fn sys_path(files: &[&str], home_dir: bool) -> Vec<String> {
         create_sys_path_with_file_access(
-            KnownFiles { files, home_dir },
+            KnownFiles {
+                files_or_dirs: files,
+                home_dir,
+            },
             &LocalFS::without_watcher(),
             &Settings::default(),
         )
@@ -731,20 +728,26 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn test_different_versions_for_linux() {
         assert_eq!(
-            sys_path(&["/usr/lib/python3.14/"], false),
-            ["/usr/lib/python3.14"]
+            sys_path(&["/usr/lib/python3.14/site-packages/"], false),
+            ["/usr/lib/python3.14", "/usr/lib/python3.14/site-packages"]
         );
         assert_eq!(
-            sys_path(&["/usr/lib/python3.12/"], false),
-            ["/usr/lib/python3.12"]
+            sys_path(&["/usr/lib/python3.12/site-packages/"], false),
+            ["/usr/lib/python3.12", "/usr/lib/python3.12/site-packages"]
         );
         assert_eq!(
             sys_path(&["/usr/lib/python3.12/", "/usr/lib/python3.14/"], false),
             ["/usr/lib/python3.14"]
         );
         assert_eq!(
-            sys_path(&["/usr/lib/python3.14/", "/usr/lib/python3.13/"], false),
-            ["/usr/lib/python3.14"]
+            sys_path(
+                &[
+                    "/usr/lib/python3.14/site-packages",
+                    "/usr/lib/python3.13/site-packages"
+                ],
+                false
+            ),
+            ["/usr/lib/python3.14", "/usr/lib/python3.14/site-packages",]
         );
     }
 
@@ -770,21 +773,42 @@ mod tests {
         // From GH #612
         assert_eq!(
             sys_path(
-                &["/usr/lib/python3.14/", "/usr/local/lib/python3.14/"],
+                &[
+                    "/usr/lib/python3.14/site-packages/",
+                    "/usr/local/lib/python3.14/site-packages/"
+                ],
                 false
             ),
-            ["/usr/lib/python3.14", "/usr/local/lib/python3.14"]
+            [
+                "/usr/lib/python3.14",
+                "/usr/local/lib/python3.14/site-packages",
+                "/usr/lib/python3.14/site-packages",
+            ]
         );
         assert_eq!(
             sys_path(
                 &[
-                    "/usr/lib/python3.13/",
-                    "/usr/local/lib/python3.13/",
-                    "/usr/local/lib/python3.14/",
+                    "/usr/lib/python3.13/site-packages/",
+                    "/usr/local/lib/python3.13/site-packages/",
+                    "/usr/local/lib/python3.14/site-packages/",
                 ],
                 false
             ),
-            ["/usr/lib/python3.13", "/usr/local/lib/python3.13"]
+            [
+                "/usr/lib/python3.13",
+                "/usr/local/lib/python3.13/site-packages",
+                "/usr/lib/python3.13/site-packages",
+            ]
+        );
+        assert_eq!(
+            sys_path(
+                &[
+                    "/usr/lib/python3.13/site-packages/",
+                    "/usr/local/lib/python3.14/site-packages/",
+                ],
+                false
+            ),
+            ["/usr/lib/python3.13", "/usr/lib/python3.13/site-packages"]
         );
     }
 }
