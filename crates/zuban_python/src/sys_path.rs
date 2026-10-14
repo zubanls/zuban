@@ -637,11 +637,20 @@ impl TestableFileAccess for FileAccess {
 mod tests {
     use super::*;
 
+    struct DirOrFile<'x> {
+        path: &'x str,
+        kind: DirOrFileKind<'x>,
+    }
+    enum DirOrFileKind<'x> {
+        Dir,
+        File(&'x str),
+    }
+
     #[derive(Copy, Clone)]
     struct KnownFiles<'x> {
         // Files are a list of dirs/files that exist. Files also imply that the directories below
         // them exist.
-        files_or_dirs: &'x [&'x str],
+        files_or_dirs: &'x [DirOrFile<'x>],
         home_dir: bool,
     }
 
@@ -650,7 +659,7 @@ mod tests {
             Ok(self
                 .files_or_dirs
                 .iter()
-                .any(|p| Path::new(p).starts_with(path.as_ref())))
+                .any(|p| Path::new(p.path).starts_with(path.as_ref())))
         }
 
         fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error> {
@@ -664,8 +673,18 @@ mod tests {
             self.home_dir.then(|| "/home/myuser".into())
         }
 
-        fn read_to_string(&self, _path: &dyn AsRef<Path>) -> std::io::Result<String> {
-            unimplemented!()
+        fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String> {
+            if let Some(content) = self.files_or_dirs.iter().find_map(|f| match &f.kind {
+                DirOrFileKind::Dir => None,
+                DirOrFileKind::File(content) => Some(content),
+            }) {
+                Ok(content.to_string())
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "not found file (from tests)",
+                ))
+            }
         }
 
         fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
@@ -678,7 +697,7 @@ mod tests {
                 .files_or_dirs
                 .iter()
                 .filter_map(|file_or_dir| {
-                    let potential_entry = Path::new(file_or_dir);
+                    let potential_entry = Path::new(file_or_dir.path);
                     let found = potential_entry.strip_prefix(path).ok()?;
                     had_entries = true;
 
@@ -694,20 +713,44 @@ mod tests {
             } else {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    "not found (from tests)",
+                    "not found dir (from tests)",
                 ))
             }
         }
     }
 
-    fn sys_path(files: &[&str], home_dir: bool) -> Vec<String> {
+    fn sys_path_for_dirs(dirs: &[&str], home_dir: bool) -> Vec<String> {
+        sys_path(None, dirs, &[], home_dir)
+    }
+
+    fn sys_path(
+        environment: Option<&str>,
+        dirs: &[&str],
+        files: &[(&str, &str)],
+        home_dir: bool,
+    ) -> Vec<String> {
+        let files_or_dirs: Vec<_> = dirs
+            .iter()
+            .map(|path| DirOrFile {
+                path,
+                kind: DirOrFileKind::Dir,
+            })
+            .chain(files.iter().map(|(path, content)| DirOrFile {
+                path,
+                kind: DirOrFileKind::File(content),
+            }))
+            .collect();
+        let local_fs = LocalFS::without_watcher();
         create_sys_path_with_file_access(
             KnownFiles {
-                files_or_dirs: files,
+                files_or_dirs: &files_or_dirs,
                 home_dir,
             },
-            &LocalFS::without_watcher(),
-            &Settings::default(),
+            &local_fs,
+            &Settings {
+                environment: environment.map(|env| local_fs.normalize_unchecked_abs_path(env)),
+                ..Settings::default()
+            },
         )
         .into_iter()
         .map(|(_, p)| p.to_string())
@@ -718,11 +761,11 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn test_homedir_sys_path_for_linux() {
         assert_eq!(
-            sys_path(&[], false), // No homedir
+            sys_path_for_dirs(&[], false), // No homedir
             [] as [&str; 0]
         );
         assert_eq!(
-            sys_path(&[], true), // homedir
+            sys_path_for_dirs(&[], true), // homedir
             ["/home/myuser/.local/lib/python3.14/site-packages"]
         );
     }
@@ -731,19 +774,19 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn test_different_versions_for_linux() {
         assert_eq!(
-            sys_path(&["/usr/lib/python3.14/site-packages/"], false),
+            sys_path_for_dirs(&["/usr/lib/python3.14/site-packages/"], false),
             ["/usr/lib/python3.14", "/usr/lib/python3.14/site-packages"]
         );
         assert_eq!(
-            sys_path(&["/usr/lib/python3.12/site-packages/"], false),
+            sys_path_for_dirs(&["/usr/lib/python3.12/site-packages/"], false),
             ["/usr/lib/python3.12", "/usr/lib/python3.12/site-packages"]
         );
         assert_eq!(
-            sys_path(&["/usr/lib/python3.12/", "/usr/lib/python3.14/"], false),
+            sys_path_for_dirs(&["/usr/lib/python3.12/", "/usr/lib/python3.14/"], false),
             ["/usr/lib/python3.14"]
         );
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.14/site-packages",
                     "/usr/lib/python3.13/site-packages"
@@ -758,7 +801,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn test_debian_like() {
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.14/",
                     "/usr/lib/python3/dist-packages/",
@@ -773,7 +816,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.13/",
                     "/usr/lib/python3/dist-packages/",
@@ -795,7 +838,7 @@ mod tests {
     fn test_fedora_like() {
         // From GH #612
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.14/site-packages/",
                     "/usr/local/lib/python3.14/site-packages/"
@@ -809,7 +852,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.13/site-packages/",
                     "/usr/local/lib/python3.13/site-packages/",
@@ -824,7 +867,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            sys_path(
+            sys_path_for_dirs(
                 &[
                     "/usr/lib/python3.13/site-packages/",
                     "/usr/local/lib/python3.14/site-packages/",
@@ -832,6 +875,26 @@ mod tests {
                 false
             ),
             ["/usr/lib/python3.13", "/usr/lib/python3.13/site-packages"]
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_venv_path() {
+        assert_eq!(
+            sys_path(
+                Some("/home/proj/venv"),
+                &["/usr/lib/python3.13/"],
+                &[("/home/proj/venv/pyvenv.cfg", "")],
+                false
+            ),
+            [
+                // It feels weird that the version mismatches here, but I kind of like this,
+                // because the venv doesn't have a version so we have to guess. And if the version
+                // is not available, it should fall back to whatever version there is around.
+                "/usr/lib/python3.13",
+                "/home/proj/venv/lib/python3.14/site-packages"
+            ]
         );
     }
 }
