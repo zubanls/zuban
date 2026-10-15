@@ -1,6 +1,6 @@
 use parsa_python::CodeIndex;
 
-use crate::{Tree, TypeIgnoreComment};
+use crate::{IgnoreDirectives, Tree, TypeIgnoreComment};
 
 pub struct TypeIgnoreInsertion<'tree> {
     pub insertion_index: CodeIndex,
@@ -26,9 +26,10 @@ impl Tree {
     /// Checks where we can insert `type: ignore[<code>]` and `zuban: ignore[<code>]`
     pub fn insertion_point_for_type_ignore(
         &self,
+        directives: &IgnoreDirectives,
         position: CodeIndex,
     ) -> Option<TypeIgnoreInsertion<'_>> {
-        match self.type_ignore_comment_for(position, position) {
+        match directives.type_ignore_comment_for(self.code(), position, position) {
             Some(TypeIgnoreComment::WithCodes {
                 codes,
                 codes_start_at_index,
