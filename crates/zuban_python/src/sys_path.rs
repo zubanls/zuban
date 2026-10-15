@@ -45,6 +45,14 @@ fn create_sys_path_with_file_access(
     let lib_path = lib_path(file_access, version);
     if let Some(path) = &lib_path {
         tracing::info!("Decided to use {path} as the Python lib folder");
+        if cfg!(target_os = "linux") {
+            if let Some(suffix) = path.strip_prefix("/usr/lib/") {
+                let lib64 = format!("/usr/lib64/{suffix}");
+                if file_access.exists(&lib64).unwrap_or_default() {
+                    sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&lib64)));
+                }
+            }
+        }
         sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
     } else {
         tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
@@ -431,16 +439,22 @@ fn add_global_site_packages(
     };
     if let Some(lib) = lib_path {
         let site_packages = Path::new(&lib).join("site-packages");
-        if cfg!(target_os = "linux")
-            && let Some(suffix) = site_packages.strip_prefix("/usr/lib/").ok()
-            && let Some(suffix) = suffix.to_str()
-        {
-            // Fedora patches site.py and adds /usr/local as an additional prefix:
-            // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
-            let usr_local = PathBuf::from(format!("/usr/local/lib/{suffix}"));
-            maybe_add(&usr_local);
-            // Ubuntu uses the dist-packages name instead of site-packages
-            maybe_add(&usr_local.parent().unwrap().join("dist-packages"));
+        if cfg!(target_os = "linux") {
+            if let Some(suffix) = site_packages.strip_prefix("/usr/lib/").ok()
+                && let Some(suffix) = suffix.to_str()
+            {
+                // Fedora patches site.py and adds /usr/local as an additional prefix:
+                // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
+                let usr64_local = PathBuf::from(format!("/usr/local/lib64/{suffix}"));
+                maybe_add(&usr64_local);
+                let usr_local = PathBuf::from(format!("/usr/local/lib/{suffix}"));
+                maybe_add(&usr_local);
+                let lib64 = PathBuf::from(format!("/usr/lib64/{suffix}"));
+                maybe_add(&lib64);
+
+                // Ubuntu uses the dist-packages name instead of site-packages
+                maybe_add(&usr_local.parent().unwrap().join("dist-packages"));
+            }
         }
 
         maybe_add(&site_packages)
@@ -634,7 +648,7 @@ mod tests {
             }
         }
 
-        fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString> {
+        fn var_os<K: AsRef<std::ffi::OsStr>>(&self, _key: K) -> Option<OsString> {
             None
         }
     }
@@ -795,6 +809,26 @@ mod tests {
                 false
             ),
             ["/usr/lib/python3.13", "/usr/lib/python3.13/site-packages"]
+        );
+
+        assert_eq!(
+            sys_path_for_dirs(
+                &[
+                    "/usr/lib64/python3.11/site-packages/",
+                    "/usr/lib/python3.11/site-packages/",
+                    "/usr/local/lib/python3.11/site-packages/",
+                    "/usr/local/lib64/python3.11/site-packages/",
+                ],
+                false
+            ),
+            [
+                "/usr/lib64/python3.11",
+                "/usr/lib/python3.11",
+                "/usr/local/lib64/python3.11/site-packages",
+                "/usr/local/lib/python3.11/site-packages",
+                "/usr/lib64/python3.11/site-packages",
+                "/usr/lib/python3.11/site-packages",
+            ]
         );
     }
 
