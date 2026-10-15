@@ -35,6 +35,7 @@ mod signatures;
 mod sys_path;
 mod type_;
 mod type_helpers;
+mod typeshed;
 mod utils;
 
 use std::{cell::OnceCell, path::Path};
