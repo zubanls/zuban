@@ -362,7 +362,7 @@ fn add_user_site_packages(
     mut add: impl FnMut(&str),
 ) {
     if cfg!(windows) {
-        if let Some(app_data) = std::env::var_os("APPDATA") {
+        if let Some(app_data) = file_access.var_os("APPDATA") {
             if let Some(app_data) = app_data.to_str() {
                 let new = lookup_site_packages_with_version_detailed(
                     file_access,
@@ -506,6 +506,7 @@ trait TestableFileAccess: Copy {
     fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String>;
     fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf>;
     fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir>;
+    fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString>;
 }
 
 #[derive(Copy, Clone)]
@@ -534,6 +535,10 @@ impl TestableFileAccess for FileAccess {
 
     fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {
         std::fs::read_dir(path).map(|r| ReadDir::Std(r))
+    }
+
+    fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString> {
+        std::env::var_os(key)
     }
 }
 
@@ -627,6 +632,10 @@ mod tests {
                     "not found dir (from tests)",
                 ))
             }
+        }
+
+        fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString> {
+            None
         }
     }
 
