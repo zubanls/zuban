@@ -27,6 +27,7 @@ use crate::{
         TypeVarLikeName,
     },
     type_helpers::Function,
+    typeshed::typeshed_path_from_executable,
     utils::SymbolTable,
 };
 
@@ -1121,7 +1122,7 @@ impl Database {
             .settings
             .typeshed_path
             .clone()
-            .unwrap_or_else(sys_path::typeshed_path_from_executable);
+            .unwrap_or_else(typeshed_path_from_executable);
         let sep = vfs_handler.separator();
         for p in [
             format!("{typeshed_path}{sep}stdlib"),
