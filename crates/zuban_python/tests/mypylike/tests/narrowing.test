@@ -2454,3 +2454,31 @@ class A:
 one = A.new()
 two = one and one.flag
 assert_type(two, None | bool)
+
+[case narrowing_away_none_in_recursive_aliases]
+# From GH #616
+from collections.abc import Mapping
+from typing import TypeAlias, Literal, assert_type
+
+Rec: TypeAlias = int | Mapping[str, "Rec"]
+OptRec: TypeAlias = Rec | None
+OptMap: TypeAlias = Mapping[str, Rec] | None
+
+def truthiness(x: OptRec, m: OptMap) -> None:
+    assert_type(x or 0, Rec)
+    assert_type(m or {}, Mapping[str, Rec])
+    dict(m or {})
+    if m:
+        assert_type(m, Mapping[str, Rec])
+
+def identity(m: OptMap) -> None:
+    if m is not None:
+        assert_type(m, Mapping[str, Rec])
+
+def inline(m: Mapping[str, Rec] | None) -> None:
+    assert_type(m or {}, Mapping[str, Rec])
+
+OptFlat: TypeAlias = Mapping[str, int] | None
+
+def non_recursive(m: OptFlat) -> None:
+    assert_type(m or {}, Mapping[str, int])

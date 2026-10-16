@@ -1645,11 +1645,11 @@ fn split_truthy_and_falsey_t(
     };
 
     match t {
-        Type::Union(union) => {
+        Type::Union(_) => {
             let mut truthy = TypeGatherer::default();
             let mut falsey = TypeGatherer::default();
             let mut had_split = false;
-            for t in union.iter() {
+            for t in t.iter_with_unpacked_unions(i_s.db) {
                 let result = split_truthy_and_falsey_t(i_s, t);
                 had_split |= result.is_some();
                 if let Some((new_true, new_false)) = result {
@@ -1663,6 +1663,7 @@ fn split_truthy_and_falsey_t(
             had_split.then_some((truthy, falsey))
         }
         Type::Never(_) => Some((Default::default(), Default::default())),
+        Type::RecursiveType(r) => split_truthy_and_falsey_t(i_s, r.calculated_type(i_s.db)),
         _ => split_truthy_and_falsey_single(t),
     }
 }
