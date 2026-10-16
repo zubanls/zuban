@@ -280,7 +280,37 @@ impl Type {
         self.is_equal_type_internal(db, None, other, false, false)
     }
 
-    pub fn is_equal_type_internal(
+    fn is_equal_type_internal(
+        &self,
+        db: &Database,
+        checking_type_recursion: Option<CheckedTypeRecursion>,
+        other: &Type,
+        unpack_recursive_type: bool,
+        any_is_all: bool,
+    ) -> bool {
+        debug!(
+            "Equal types {:?} == {:?}",
+            self.format_short(db),
+            other.format_short(db)
+        );
+        let indent = debug_indent();
+        let result = self.is_equal_type_internal_part2(
+            db,
+            checking_type_recursion,
+            other,
+            unpack_recursive_type,
+            any_is_all,
+        );
+        drop(indent);
+        debug!(
+            "Result: Equal types {:?} == {:?} = {result}",
+            self.format_short(db),
+            other.format_short(db)
+        );
+        result
+    }
+
+    fn is_equal_type_internal_part2(
         &self,
         db: &Database,
         checking_type_recursion: Option<CheckedTypeRecursion>,
@@ -439,7 +469,14 @@ impl Type {
                 if checking_type_recursion.is_cycle() {
                     return true;
                 }
-                r1.calculated_type(db).is_equal_type_internal(
+                let new_t1 = r1.calculated_type(db);
+                debug!(
+                    "Unpack Recursive type for equal type {:?} == {:?}",
+                    new_t1.format_short(db),
+                    t2.format_short(db)
+                );
+                let _indent = debug_indent();
+                new_t1.is_equal_type_internal(
                     db,
                     Some(checking_type_recursion),
                     t2,
