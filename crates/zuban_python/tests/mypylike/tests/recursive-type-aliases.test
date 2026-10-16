@@ -308,12 +308,10 @@ DMP(f)
 
 [case recursive_type_with_assert_type]
 from collections.abc import Mapping
-from typing import Literal, assert_type
+from typing import assert_type
 
 type Rec = int | Mapping[str, "Rec"]
 type OptRec = Rec | None
 
 def truthiness(x: OptRec) -> None:
-    pass
-    # TODO
-    # assert_type(x, int | Mapping[str, Rec] | None | Literal[0])
+    assert_type(x, int | Mapping[str, Rec] | None)

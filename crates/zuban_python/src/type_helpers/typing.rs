@@ -493,14 +493,35 @@ impl Type {
             (Type::LiteralString { .. }, Type::LiteralString { .. }) => true,
             (Type::Any(_), Type::Any(_)) => true,
             (Type::Never(_), Type::Never(_)) => true,
-            (Type::Union(u1), Type::Union(u2)) => is_equal_union_or_intersection(
-                db,
-                checking_type_recursion,
-                u1.entries.iter(),
-                u2.entries.iter(),
-                unpack_recursive_type,
-                any_is_all,
-            ),
+            (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
+            (Type::Enum(_), Type::Union(u)) | (Type::Union(u), Type::Enum(_))
+                if u.iter().all(|t| matches!(t, Type::EnumMember(_))) =>
+            {
+                self.is_simple_same_type(&InferenceState::new_in_unknown_file(db), other)
+                    .bool()
+            }
+            (Type::Union(_), _) | (_, Type::Union(_)) => {
+                let mut all_second: Vec<_> = other.iter_with_unpacked_unions(db).collect();
+                let mut t1_counter = 0;
+                let t2_count = all_second.len();
+                'outer: for t1 in self.iter_with_unpacked_unions(db) {
+                    t1_counter += 1;
+                    for (i, t2) in all_second.iter().enumerate() {
+                        if t1.is_equal_type_internal(
+                            db,
+                            checking_type_recursion,
+                            t2,
+                            unpack_recursive_type,
+                            any_is_all,
+                        ) {
+                            all_second.remove(i);
+                            continue 'outer;
+                        }
+                    }
+                    return false;
+                }
+                t1_counter == t2_count
+            }
             (Type::Intersection(i1), Type::Intersection(i2)) => is_equal_union_or_intersection(
                 db,
                 checking_type_recursion,
@@ -512,14 +533,7 @@ impl Type {
             (Type::EnumMember(m1), Type::EnumMember(m2)) => {
                 m1.member_index == m2.member_index && m1.enum_.defined_at == m2.enum_.defined_at
             }
-            (Type::Any(_), _) | (_, Type::Any(_)) => any_is_all,
             (Type::TypeForm(t1), Type::TypeForm(t2)) => eq(t1, t2),
-            (Type::Enum(_), Type::Union(u)) | (Type::Union(u), Type::Enum(_))
-                if u.iter().all(|t| matches!(t, Type::EnumMember(_))) =>
-            {
-                self.is_simple_same_type(&InferenceState::new_in_unknown_file(db), other)
-                    .bool()
-            }
             _ => self == other,
         }
     }
