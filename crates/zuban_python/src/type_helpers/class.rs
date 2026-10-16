@@ -27,7 +27,8 @@ use crate::{
     type_::{
         ClassGenerics, FunctionOverload, GenericClass, GenericItem, GenericsList, LookupArgs,
         ParamSpecArg, ParamType, PrettyCallableOptions, StarParamType, StarStarParamType, TypeArgs,
-        TypeGatherer, TypeVarIndex, TypedDictGenerics, add_any_params_to_params,
+        TypeGatherer, TypeLikeInTypeVar, TypeVarIndex, TypeVarKindInfos, TypedDictGenerics,
+        add_any_params_to_params,
     },
     type_helpers::FuncLike,
     utils::is_magic_method,
@@ -869,15 +870,57 @@ impl<'db: 'a, 'a> Class<'a> {
                 MetaclassState::None if ignore_no_metaclass => return LookupDetails::none(),
                 _ => {
                     let instance = Instance::new(class_infos.metaclass(i_s.db), None);
-                    instance.lookup(
+                    let need_to_replace_self_type_var = Cell::new(false);
+                    let mut result = instance.lookup(
                         i_s,
                         name,
                         InstanceLookupOptions::new(options.add_issue).with_as_self_instance(
-                            options
-                                .as_type_type
-                                .unwrap_or(&|| self.as_type_type(i_s.db)),
+                            &|| {
+                                if let Some(as_type_type) = options.as_type_type {
+                                    let t = as_type_type();
+                                    // If Self is present we have to avoid it because otherwise
+                                    // Self can be confused with t from the metaclass instance
+                                    t.maybe_replace_self(i_s.db, &|| {
+                                        need_to_replace_self_type_var.set(true);
+                                        let self_type_var =
+                                            Arc::new(TypeVar::new_self(TypeVarKindInfos::Bound(
+                                                TypeLikeInTypeVar::new_known(self.as_type(i_s.db)),
+                                            )));
+                                        Some(Type::TypeVar(TypeVarUsage::new(
+                                            self_type_var,
+                                            // This feels a bit weird, but is the definition ever
+                                            // used? It's replaced again to Type::Self_ below
+                                            // anyway.
+                                            PointLink::new(self.node_ref.file_index(), 0),
+                                            0.into(),
+                                        )))
+                                    })
+                                    .unwrap_or(t)
+                                } else {
+                                    self.as_type_type(i_s.db)
+                                }
+                            },
                         ),
-                    )
+                    );
+                    if need_to_replace_self_type_var.get()
+                        && let Some(inf) = result.lookup.maybe_inferred()
+                        && let Some(new_type) =
+                            inf.as_cow_type(i_s)
+                                .maybe_replace_type_var_likes(i_s.db, &mut |tvl| {
+                                    if let TypeVarLikeUsage::TypeVar(tv) = tvl {
+                                        if tv.type_var.is_self_name() {
+                                            debug_assert!(
+                                                tv.in_definition.file == self.node_ref.file_index()
+                                            );
+                                            return Some(GenericItem::TypeArg(Type::Self_));
+                                        }
+                                    }
+                                    None
+                                })
+                    {
+                        result.lookup.update_inferred(Inferred::from_type(new_type))
+                    }
+                    result
                 }
             };
             if matches!(&metaclass_result.lookup, LookupResult::None) && self.incomplete_mro(i_s.db)

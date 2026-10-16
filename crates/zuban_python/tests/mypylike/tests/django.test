@@ -82,3 +82,19 @@ class Tracked(models.Model):
 # Django models, mirroring the behaviour of the django-stubs mypy plugin.
 class Model(Tracked, ArchivableModel):
     pass
+
+[case django_manager_self_mapping]
+# From GH #614
+from typing import Self, reveal_type, assert_type
+
+from django.db import models
+
+class Thing(models.Model):
+    @classmethod
+    def first(cls) -> Self | None:
+        return cls.objects.first()
+
+    def refresh_count(self) -> int:
+        return type(self).objects.filter(pk=self.pk).count()
+
+assert_type(Thing.objects, models.manager.Manager[Thing])

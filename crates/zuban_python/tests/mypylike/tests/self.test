@@ -777,3 +777,34 @@ class C:
     def list(cls) -> None:
         iter_dirs: Iterable[Self] = []
         iter_dirs = islice(iter_dirs, 1)
+
+[case self_binding_in_metaclass]
+# From GH #614
+from typing import Generic, Literal, Self, TypeVar, reveal_type, assert_type
+
+_T = TypeVar("_T")
+_Self = TypeVar("_Self", bound="Model")
+
+class Manager(Generic[_T]):
+    def first(self) -> _T | None: ...
+
+class ModelBase(type):
+    @property
+    def default_manager(cls: type[_Self]) -> Manager[_Self]: ...  # type: ignore[misc, empty-body]
+
+    def __getattr__(cls: type[_Self], name: Literal["objects"]) -> Manager[_Self]: ...  # type: ignore[misc, empty-body]
+
+class Model(metaclass=ModelBase): ...
+
+class Thing(Model):
+    @classmethod
+    def via_cls(cls) -> Self | None:
+        assert_type(cls.objects, Manager[Self])
+        return cls.default_manager.first()
+
+    def via_type(self) -> None:
+        assert_type(type(self).objects, Manager[Self])
+        assert_type(type(self).default_manager, Manager[Self])
+
+assert_type(Thing.objects, Manager[Thing])
+assert_type(Thing.default_manager, Manager[Thing])
