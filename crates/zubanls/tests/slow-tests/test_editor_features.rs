@@ -289,7 +289,7 @@ fn test_semantic_tokens_folding_and_selection_ranges() {
 
 #[test]
 #[serial]
-fn semantic_tokens_after_deleting_open_imported_file_does_not_crash() {
+fn semantic_tokens_after_deleting_open_imported_file_reproduces_issue_617() {
     let server = Project::with_fixture(
         r#"
         [file src/a.py]
@@ -318,10 +318,24 @@ fn semantic_tokens_after_deleting_open_imported_file_does_not_crash() {
     request_semantic_tokens("src/a.py");
     request_semantic_tokens("src/data/b.py");
 
+    server.close_in_memory_file("src/data/b.py");
+    request_semantic_tokens("src/a.py");
+
     server.remove_file_and_wait("src/data/b.py");
     server.remove_dir_and_wait("src/data");
 
-    request_semantic_tokens("src/a.py");
+    let panic_message = server
+        .connection
+        .request_and_expect_panic::<SemanticTokensFullRequest>(SemanticTokensParams {
+            text_document: server.doc_id("src/a.py"),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        });
+    let panic_line = panic_message
+        .lines()
+        .find(|line| line.starts_with("Expected loaded file #"))
+        .expect("Expected issue #617's loaded-file panic");
+    panic!("{panic_line}");
 }
 
 #[test]

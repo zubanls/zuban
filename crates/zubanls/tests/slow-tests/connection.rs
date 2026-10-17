@@ -7,6 +7,7 @@ use lsp_types::{
     DocumentSymbolClientCapabilities, GotoCapability, InitializeResult,
     InlayHintWorkspaceClientCapabilities, SemanticTokensWorkspaceClientCapabilities,
     ServerCapabilities, TextDocumentClientCapabilities, Url, WorkspaceFolder,
+    notification::Notification as _,
     request::{InlayHintRefreshRequest, SemanticTokensRefresh, WorkspaceDiagnosticRefresh},
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -185,6 +186,45 @@ impl Connection {
             panic!("Unexpected result: {result:?}")
         }
         response.error.expect("Expected error")
+    }
+
+    pub(crate) fn request_and_expect_panic<R>(&self, params: R::Params) -> String
+    where
+        R: lsp_types::request::Request,
+        R::Params: Serialize,
+    {
+        let id = self.request_id_counter.get();
+        self.request_id_counter.set(id.wrapping_add(1));
+
+        let request_id = RequestId::from(id);
+        self.send(lsp_server::Request::new(
+            request_id.clone(),
+            R::METHOD.to_string(),
+            params,
+        ));
+
+        let mut panic_message = None;
+        loop {
+            match self.recv_timeout() {
+                Ok(Message::Notification(notification))
+                    if notification.method == lsp_types::notification::ShowMessage::METHOD =>
+                {
+                    let message = notification
+                        .extract::<lsp_types::ShowMessageParams>(
+                            lsp_types::notification::ShowMessage::METHOD,
+                        )
+                        .expect("Expected panic notification");
+                    panic_message = Some(message.message);
+                }
+                Ok(Message::Response(response)) if response.id == request_id => {
+                    assert!(response.error.is_some(), "Expected request to panic");
+                    return panic_message
+                        .expect("Expected panic notification before error response");
+                }
+                Ok(message) => panic!("Unexpected message while waiting for panic: {message:?}"),
+                Err(error) => panic!("Expected panic response, but got: {error:?}"),
+            }
+        }
     }
 
     pub fn request_with_expected_response<R>(&self, params: R::Params) -> Value
