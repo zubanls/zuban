@@ -289,6 +289,43 @@ fn test_semantic_tokens_folding_and_selection_ranges() {
 
 #[test]
 #[serial]
+fn semantic_tokens_after_deleting_open_imported_file_does_not_crash() {
+    let server = Project::with_fixture(
+        r#"
+        [file src/a.py]
+        from src.data.b import PREFIXES
+
+        [file src/data/b.py]
+        PREFIXES = (
+            'a',
+        )
+        "#,
+    )
+    .into_server();
+
+    server.open_in_memory_file("src/a.py", "from src.data.b import PREFIXES\n");
+    server.open_in_memory_file("src/data/b.py", "PREFIXES = (\n    'a',\n)\n");
+
+    let request_semantic_tokens = |path| {
+        server
+            .connection
+            .request_with_expected_response::<SemanticTokensFullRequest>(SemanticTokensParams {
+                text_document: server.doc_id(path),
+                work_done_progress_params: Default::default(),
+                partial_result_params: Default::default(),
+            })
+    };
+    request_semantic_tokens("src/a.py");
+    request_semantic_tokens("src/data/b.py");
+
+    server.remove_file_and_wait("src/data/b.py");
+    server.remove_dir_and_wait("src/data");
+
+    request_semantic_tokens("src/a.py");
+}
+
+#[test]
+#[serial]
 fn test_inlay_hints() {
     let server = Project::with_fixture(
         r#"
