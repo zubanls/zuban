@@ -1,4 +1,9 @@
-use super::*;
+use super::{
+    DocumentHighlightKind, DocumentHighlightParams, DocumentHighlightRequest, GotoDeclaration,
+    GotoDefinition, GotoDefinitionParams, GotoImplementation, GotoTypeDefinition, HoverParams,
+    HoverRequest, Position, PrepareRenameRequest, Project, ReferenceContext, ReferenceParams,
+    References, Rename, RenameParams, TextDocumentPositionParams, Value, json, serial,
+};
 
 #[test]
 #[serial]

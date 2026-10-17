@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    GotoDeclaration, GotoDefinitionParams, Position, Project, Range,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, json,
+    serial,
+};
 
 #[test]
 #[serial]
