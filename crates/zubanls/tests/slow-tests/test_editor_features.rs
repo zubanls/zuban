@@ -428,6 +428,6 @@ fn test_semantic_tokens_after_deleting_directory_of_opened_files() {
     // VS Code closes the editor of the deleted file
     server.close_in_memory_file(b_py);
 
-    // This currently panics with "Expected loaded file #15: .../src/data/b.py"
+    // This used to panic with "Expected loaded file #15: .../src/data/b.py"
     assert!(semantic_tokens(a_py).error.is_none());
 }

@@ -788,6 +788,17 @@ impl<F: VfsFile> Vfs<F> {
             match ensured.kind {
                 AddedKind::FileEntry(file_entry) => {
                     file_entry.with_set_file_index(|| file_index);
+                    // The old entry was removed from the tree, but the in-memory file lives on.
+                    // Other files that import it register their invalidations on the entry in
+                    // the tree, so the file state needs to point to that one. Otherwise they
+                    // would not be invalidated when the in-memory file is closed and unloaded.
+                    let file_state = self.file_state_mut(file_index);
+                    if !Arc::ptr_eq(&file_state.file_entry, &file_entry) {
+                        if file_state.file_entry.invalidations.invalidates_db() {
+                            file_entry.invalidations.set_invalidates_db();
+                        }
+                        file_state.file_entry = file_entry;
+                    }
                     self.handler
                         .on_invalidated_in_memory_file(InvalidatedInMemoryFile {
                             path,
