@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn check_completions() {
@@ -281,7 +280,6 @@ fn check_completions() {
     );
 }
 
-
 #[test]
 #[serial]
 fn check_call_signatures() {
@@ -384,7 +382,6 @@ fn check_call_signatures() {
     );
 }
 
-
 #[test]
 #[serial]
 fn test_auto_imports_code_actions() {
@@ -479,4 +476,3 @@ fn test_auto_imports_code_actions() {
         ]),
     );
 }
-

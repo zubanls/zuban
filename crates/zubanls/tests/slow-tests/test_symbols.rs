@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn test_symbols_nested() {
@@ -462,7 +461,6 @@ fn test_symbols_nested() {
     );
 }
 
-
 #[test]
 #[serial]
 fn test_symbols_flat() {
@@ -680,4 +678,3 @@ fn test_symbols_flat() {
         }]),
     );
 }
-

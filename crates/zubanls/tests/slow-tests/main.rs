@@ -34,13 +34,13 @@ use lsp_types::{
 mod connection;
 mod custom;
 mod support;
-mod test_initialization_options;
-mod test_diagnostics;
-mod test_navigation;
 mod test_completion;
-mod test_symbols;
+mod test_diagnostics;
 mod test_editor_features;
+mod test_initialization_options;
+mod test_navigation;
 mod test_notebooks;
+mod test_symbols;
 
 use connection::Connection;
 use serde::Deserialize as _;
@@ -52,6 +52,7 @@ use serde_json::{Value, json};
 // https://users.rust-lang.org/t/is-there-any-way-to-set-panic-hook-reliably-in-the-test/18202
 use serial_test::{parallel, serial};
 use support::Project;
+use test_diagnostics::fails_too_much_on_linux_and_github_actions;
 
 #[test]
 #[parallel]

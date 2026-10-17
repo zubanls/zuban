@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn test_semantic_tokens_folding_and_selection_ranges() {
@@ -276,7 +275,6 @@ fn test_semantic_tokens_folding_and_selection_ranges() {
     );
 }
 
-
 #[test]
 #[serial]
 fn test_inlay_hints() {
@@ -374,4 +372,3 @@ fn test_inlay_hints() {
         ]),
     );
 }
-

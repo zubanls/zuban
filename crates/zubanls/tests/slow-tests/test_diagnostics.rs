@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn diagnostics_for_saved_files_and_workspace_diagnostics() {
@@ -185,7 +184,6 @@ fn diagnostics_for_saved_files_and_workspace_diagnostics() {
     );
 }
 
-
 #[test]
 #[serial]
 fn diagnostics_for_protocols_invalidation() {
@@ -291,7 +289,6 @@ fn diagnostics_for_protocols_invalidation() {
     );
 }
 
-
 #[test]
 #[parallel]
 fn in_memory_file_changes() {
@@ -365,7 +362,6 @@ fn in_memory_file_changes() {
     assert_eq!(error.code, lsp_server::ErrorCode::InvalidParams as i32);
 }
 
-
 #[test]
 #[serial]
 fn pull_notifications_and_refresh_notification() {
@@ -396,7 +392,6 @@ fn pull_notifications_and_refresh_notification() {
     // This should not cause refreshes, because unrelated is not used in memory files
     server.remove_file_and_wait("unrelated.py");
 }
-
 
 #[test]
 #[parallel]
@@ -434,7 +429,6 @@ fn diagnostics_positions() {
     }
 }
 
-
 #[test]
 #[serial]
 fn check_panic_recovery_without_push() {
@@ -470,7 +464,6 @@ fn check_panic_recovery_without_push() {
     server.change_in_memory_file("in_mem.py", "");
     assert!(server.diagnostics_for_file("in_mem.py").is_empty());
 }
-
 
 #[test]
 #[serial]
@@ -508,7 +501,6 @@ fn check_panic_recovery_with_push_diagnostics() {
     );
 }
 
-
 #[test]
 #[serial]
 fn publish_diagnostics_without_symlinks() {
@@ -517,7 +509,6 @@ fn publish_diagnostics_without_symlinks() {
     }
     publish_diagnostics(false)
 }
-
 
 #[test]
 #[serial]
@@ -530,7 +521,6 @@ fn publish_diagnostics_with_symlinks() {
     }
     publish_diagnostics(true)
 }
-
 
 fn publish_diagnostics(with_symlinks: bool) {
     // Check PublishDiagnostics where the client is not requesting diagnostics, but receiving them
@@ -628,8 +618,6 @@ fn publish_diagnostics(with_symlinks: bool) {
     tracing::info!("Finished all checks");
 }
 
-
-fn fails_too_much_on_linux_and_github_actions() -> bool {
+pub(super) fn fails_too_much_on_linux_and_github_actions() -> bool {
     cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
 }
-

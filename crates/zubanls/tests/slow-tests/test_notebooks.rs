@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn check_notebook_cell_change() {
@@ -78,4 +77,3 @@ fn check_notebook_cell_change() {
     );
     expect_result();
 }
-

@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 #[serial]
 fn check_rename_without_symlinks() {
@@ -10,7 +9,6 @@ fn check_rename_without_symlinks() {
     check_rename(false);
 }
 
-
 #[test]
 #[serial]
 fn check_rename_with_symlinks() {
@@ -19,7 +17,6 @@ fn check_rename_with_symlinks() {
     }
     check_rename(true);
 }
-
 
 fn check_rename(contains_symlink: bool) {
     let mut project = Project::with_fixture(
@@ -78,7 +75,6 @@ fn check_rename(contains_symlink: bool) {
         ]
     );
 }
-
 
 #[test]
 #[serial]
@@ -574,4 +570,3 @@ fn check_goto_likes() {
         );
     }
 }
-
