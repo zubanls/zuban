@@ -18,9 +18,9 @@ use lsp_types::{
 };
 
 mod connection;
-mod custom;
 mod support;
 mod test_completion;
+mod test_custom;
 mod test_diagnostics;
 mod test_editor_features;
 mod test_initialization_options;
