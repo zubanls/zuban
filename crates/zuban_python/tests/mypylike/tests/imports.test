@@ -984,3 +984,14 @@ def x() -> None:
 [file m.py]
 from typing import TypeVar
 TX = TypeVar('TX', int, str)
+
+[case py315_lazy_imports]
+lazy import m1
+m1.C()
+lazy from m1 import D
+D()
+[file m1.py]
+lazy from m2 import D
+class C: pass
+[file m2.py]
+class D: pass
