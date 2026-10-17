@@ -1,4 +1,16 @@
-use super::*;
+use crate::support::Project;
+use lsp_types::{
+    FoldingRangeParams, InlayHintParams, Position, Range, SelectionRangeParams, SemanticToken,
+    SemanticTokenType, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensServerCapabilities,
+    request::{
+        FoldingRangeRequest, InlayHintRequest, SelectionRangeRequest, SemanticTokensFullRequest,
+        SemanticTokensRangeRequest,
+    },
+};
+use serde::Deserialize as _;
+use serde_json::json;
+use serial_test::serial;
 
 #[test]
 #[serial]

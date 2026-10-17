@@ -1,4 +1,10 @@
-use super::*;
+use crate::support::Project;
+use lsp_types::{
+    GotoDefinitionParams, Position, Range, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentPositionParams, request::GotoDeclaration,
+};
+use serde_json::json;
+use serial_test::serial;
 
 #[test]
 #[serial]

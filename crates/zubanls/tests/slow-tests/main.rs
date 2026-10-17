@@ -11,24 +11,10 @@ use std::str::FromStr;
 
 use lsp_server::Response;
 use lsp_types::{
-    CodeActionParams, CompletionItem, CompletionItemKind, CompletionParams,
-    DiagnosticServerCapabilities, DocumentDiagnosticParams, DocumentDiagnosticReport,
-    DocumentDiagnosticReportResult, DocumentHighlightKind, DocumentHighlightParams,
-    DocumentSymbolParams, FoldingRangeParams, GotoDefinitionParams, HoverParams, InlayHintParams,
-    NumberOrString, PartialResultParams, Position, PositionEncodingKind, Range, ReferenceContext,
-    ReferenceParams, RenameParams, SelectionRangeParams, SemanticToken, SemanticTokenType,
-    SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensServerCapabilities, SignatureHelpParams, SymbolKind,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentPositionParams, Url,
-    WorkDoneProgressParams, WorkspaceDiagnosticParams, WorkspaceSymbolParams,
-    request::{
-        CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
-        DocumentSymbolRequest, FoldingRangeRequest, GotoDeclaration, GotoDefinition,
-        GotoImplementation, GotoTypeDefinition, HoverRequest, InlayHintRequest,
-        PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
-        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
-        WorkspaceDiagnosticRequest, WorkspaceSymbolRequest,
-    },
+    CompletionParams, DiagnosticServerCapabilities, DocumentDiagnosticParams, PartialResultParams,
+    Position, PositionEncodingKind, TextDocumentIdentifier, TextDocumentPositionParams, Url,
+    WorkDoneProgressParams,
+    request::{Completion, DocumentDiagnosticRequest},
 };
 
 mod connection;
@@ -43,8 +29,6 @@ mod test_notebooks;
 mod test_symbols;
 
 use connection::Connection;
-use serde::Deserialize as _;
-use serde_json::{Value, json};
 // It is very unfortunate, but we need to tag every test in this crate, to avoid having set_hook
 // overwritten by the thread spawning? test setup? I'm not sure what it is exactly, but I have seen
 // cases where the panic hook disappeared from tests and would be reverted to the default one,

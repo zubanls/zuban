@@ -1,4 +1,13 @@
-use super::*;
+use crate::support::Project;
+use crate::symlink_creation_allowed;
+use lsp_types::{
+    DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+    NumberOrString, PartialResultParams, PositionEncodingKind, WorkDoneProgressParams,
+    WorkspaceDiagnosticParams,
+    request::{DocumentDiagnosticRequest, WorkspaceDiagnosticRequest},
+};
+use serde_json::json;
+use serial_test::{parallel, serial};
 
 #[test]
 #[serial]

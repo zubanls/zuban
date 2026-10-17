@@ -1,4 +1,10 @@
-use super::*;
+use crate::support::Project;
+use lsp_types::{
+    DocumentSymbolParams, SymbolKind, WorkspaceSymbolParams,
+    request::{DocumentSymbolRequest, WorkspaceSymbolRequest},
+};
+use serde_json::json;
+use serial_test::serial;
 
 #[test]
 #[serial]
