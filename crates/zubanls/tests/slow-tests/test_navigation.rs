@@ -1,10 +1,15 @@
-use super::{
-    DocumentHighlightKind, DocumentHighlightParams, DocumentHighlightRequest, GotoDeclaration,
-    GotoDefinition, GotoDefinitionParams, GotoImplementation, GotoTypeDefinition, HoverParams,
-    HoverRequest, Position, PrepareRenameRequest, Project, ReferenceContext, ReferenceParams,
-    References, Rename, RenameParams, TextDocumentPositionParams, Value, json, serial,
-    symlink_creation_allowed,
+use crate::support::Project;
+use crate::symlink_creation_allowed;
+use lsp_types::{
+    DocumentHighlightKind, DocumentHighlightParams, GotoDefinitionParams, HoverParams, Position,
+    ReferenceContext, ReferenceParams, RenameParams, TextDocumentPositionParams,
+    request::{
+        DocumentHighlightRequest, GotoDeclaration, GotoDefinition, GotoImplementation,
+        GotoTypeDefinition, HoverRequest, PrepareRenameRequest, References, Rename,
+    },
 };
+use serde_json::{Value, json};
+use serial_test::serial;
 
 #[test]
 #[serial]
