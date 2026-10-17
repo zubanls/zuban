@@ -4,6 +4,7 @@ use super::{
     SemanticTokens, SemanticTokensFullRequest, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensRangeRequest, SemanticTokensServerCapabilities, json, serial,
 };
+use serde::Deserialize as _;
 
 #[test]
 #[serial]

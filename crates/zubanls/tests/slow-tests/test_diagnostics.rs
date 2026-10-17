@@ -1,8 +1,8 @@
 use super::{
     DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
     DocumentDiagnosticRequest, NumberOrString, PartialResultParams, PositionEncodingKind, Project,
-    WorkDoneProgressParams, WorkspaceDiagnosticParams, WorkspaceDiagnosticRequest,
-    fails_too_much_on_linux_and_github_actions, json, parallel, serial,
+    WorkDoneProgressParams, WorkspaceDiagnosticParams, WorkspaceDiagnosticRequest, json, parallel,
+    serial, symlink_creation_allowed,
 };
 
 #[test]

@@ -3,6 +3,7 @@ use super::{
     GotoDefinition, GotoDefinitionParams, GotoImplementation, GotoTypeDefinition, HoverParams,
     HoverRequest, Position, PrepareRenameRequest, Project, ReferenceContext, ReferenceParams,
     References, Rename, RenameParams, TextDocumentPositionParams, Value, json, serial,
+    symlink_creation_allowed,
 };
 
 #[test]

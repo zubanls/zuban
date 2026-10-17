@@ -43,7 +43,6 @@ mod test_notebooks;
 mod test_symbols;
 
 use connection::Connection;
-use serde::Deserialize as _;
 use serde_json::{Value, json};
 // It is very unfortunate, but we need to tag every test in this crate, to avoid having set_hook
 // overwritten by the thread spawning? test setup? I'm not sure what it is exactly, but I have seen
