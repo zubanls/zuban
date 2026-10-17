@@ -384,3 +384,50 @@ fn test_inlay_hints() {
         ]),
     );
 }
+
+// https://github.com/zubanls/zuban/issues/617
+#[test]
+#[serial]
+fn test_semantic_tokens_after_deleting_directory_of_opened_files() {
+    let server = Project::with_fixture(
+        r#"
+        [file src/a.py]
+        from src.data.b import PREFIXES
+
+        [file src/data/b.py]
+        PREFIXES = (
+            'a',
+        )
+        "#,
+    )
+    .into_server();
+
+    let a_py = "src/a.py";
+    let b_py = "src/data/b.py";
+    server.open_in_memory_file(a_py, "from src.data.b import PREFIXES\n");
+    server.open_in_memory_file(b_py, "PREFIXES = (\n    'a',\n)\n");
+
+    let semantic_tokens = |path: &str| {
+        server
+            .connection
+            .request_with_response::<SemanticTokensFullRequest>(SemanticTokensParams {
+                text_document: server.doc_id(path),
+                work_done_progress_params: Default::default(),
+                partial_result_params: Default::default(),
+            })
+    };
+    assert!(semantic_tokens(a_py).error.is_none());
+    assert!(semantic_tokens(b_py).error.is_none());
+
+    // Deleting a directory in VS Code removes the files first and then the directory
+    server.remove_file_and_wait(b_py);
+    server.remove_dir_and_wait("src/data");
+    assert!(semantic_tokens(a_py).error.is_none());
+    assert!(semantic_tokens(b_py).error.is_none());
+
+    // VS Code closes the editor of the deleted file
+    server.close_in_memory_file(b_py);
+
+    // This currently panics with "Expected loaded file #15: .../src/data/b.py"
+    assert!(semantic_tokens(a_py).error.is_none());
+}
