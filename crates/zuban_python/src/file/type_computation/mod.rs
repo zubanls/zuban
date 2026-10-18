@@ -1267,6 +1267,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::TypingParamSpecClass => {
                     return Some(self.i_s.db.python_state.param_spec_type());
                 }
+                Specific::BuiltinsSentinel => {
+                    return Some(self.i_s.db.python_state.sentinel_type());
+                }
                 _ => {
                     self.add_issue(node_ref, IssueKind::new_invalid_type("Invalid type"));
                 }
