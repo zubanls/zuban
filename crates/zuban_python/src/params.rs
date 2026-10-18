@@ -510,13 +510,25 @@ fn matches_simple_params_part2<
                     },
                     _ => match s1 {
                         WrappedStar::UnpackedTuple(tup1) => {
-                            let Some(tup2_args) = gather_unpack_args(i_s.db, &mut params2) else {
+                            let Some((tup2_args, trailing_defaults)) =
+                                gather_unpack_args(i_s.db, &mut params2)
+                            else {
                                 debug!("Params mismatch, because tuple args");
                                 return Match::new_false();
                             };
-                            matches &= match_tuple_type_arguments(
-                                i_s, matcher, &tup1.args, &tup2_args, variance,
-                            );
+                            matches &= match_type_var_tuple_with_trailing_defaults(
+                                i_s,
+                                matcher,
+                                &tup1.args,
+                                &tup2_args,
+                                trailing_defaults,
+                                variance,
+                            )
+                            .unwrap_or_else(|| {
+                                match_tuple_type_arguments(
+                                    i_s, matcher, &tup1.args, &tup2_args, variance,
+                                )
+                            });
                             continue;
                         }
                         _ => {
@@ -760,7 +772,7 @@ fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P
         // TODO making params1 peekable is not possible in this way and will always
         // fetch a param too much.
         let mut params1 = as_params();
-        let tup1_args = gather_unpack_args(i_s.db, &mut params1)?;
+        let (tup1_args, _) = gather_unpack_args(i_s.db, &mut params1)?;
         return Some(match_tuple_type_arguments(
             i_s,
             matcher,
@@ -790,34 +802,100 @@ fn typed_dict_to_params<'x>(
         .chain(extra_t.map(TypedDictMemberParam::ExtraItems).into_iter())
 }
 
+/// Returns the gathered tuple args and the number of positional params with defaults at the end
+/// of the gathered params.
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     db: &'db Database,
     params: &mut Peekable<impl Iterator<Item = P>>,
-) -> Option<TupleArgs> {
+) -> Option<(TupleArgs, usize)> {
     let mut gatherer = MaybeUnpackGatherer::default();
+    let mut trailing_defaults = 0;
     while let Some(next) = params.peek() {
         match next.specific(db) {
             WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
                 let t2 = t2
                     .map(|t2| t2.into_owned())
                     .unwrap_or(Type::Any(AnyCause::Unannotated));
-                gatherer.add_type(t2)
+                gatherer.add_type(t2);
+                if next.has_default() {
+                    trailing_defaults += 1;
+                } else {
+                    trailing_defaults = 0;
+                }
             }
-            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
-                .add_tuple_args(&tup.args)
-                .expect("There shouldn't ever be an unpack after an unpack"),
-            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => gatherer
-                .add_unpack(TupleUnpack::ArbitraryLen(
-                    t.map(|t| t.into_owned())
-                        .unwrap_or(Type::Any(AnyCause::Unannotated)),
-                ))
-                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
+                trailing_defaults = 0;
+                gatherer
+                    .add_tuple_args(&tup.args)
+                    .expect("There shouldn't ever be an unpack after an unpack")
+            }
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => {
+                trailing_defaults = 0;
+                gatherer
+                    .add_unpack(TupleUnpack::ArbitraryLen(
+                        t.map(|t| t.into_owned())
+                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                    ))
+                    .expect("There shouldn't ever be an unpack after an unpack")
+            }
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
         params.next();
     }
-    Some(gatherer.into_tuple_args())
+    Some((gatherer.into_tuple_args(), trailing_defaults))
+}
+
+/// A callable like `def f(x: int = 1)` can be matched against `Callable[[*Ts], R]` with `Ts`
+/// being either `()` or `(int,)`. This is only relevant if `Ts` is being inferred, otherwise
+/// `None` is returned and the tuple args should be matched normally.
+fn match_type_var_tuple_with_trailing_defaults(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    tup1: &TupleArgs,
+    tup2: &TupleArgs,
+    trailing_defaults: usize,
+    variance: Variance,
+) -> Option<Match> {
+    if trailing_defaults == 0
+        || variance != Variance::Contravariant
+        || matcher.is_matching_reverse()
+    {
+        return None;
+    }
+    let TupleArgs::WithUnpack(WithUnpack {
+        before,
+        unpack: TupleUnpack::TypeVarTuple(tvt),
+        after,
+    }) = tup1
+    else {
+        return None;
+    };
+    let TupleArgs::FixedLen(ts2) = tup2 else {
+        return None;
+    };
+    // If there are params after the unpack, the params with defaults are not optional for the
+    // TypeVarTuple, because they would be filled by the params after the unpack.
+    if !after.is_empty()
+        || before.len() > ts2.len()
+        || !matcher.has_responsible_type_var_tuple_matcher(tvt)
+    {
+        return None;
+    }
+    let mut matches = Match::new_true();
+    for (t1, t2) in before.iter().zip(ts2.iter()) {
+        matches &= t1.matches(i_s, matcher, t2, variance);
+    }
+    let rest: Arc<[Type]> = ts2[before.len()..].into();
+    let optional_trailing = trailing_defaults.min(rest.len());
+    matches &= matcher.match_or_add_type_var_tuple_with_optional_trailing(
+        i_s,
+        tvt,
+        rest,
+        optional_trailing,
+        variance,
+    );
+    Some(matches)
 }
 
 pub fn has_overlapping_params(

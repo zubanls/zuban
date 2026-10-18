@@ -26,10 +26,11 @@ impl CalculatingTypeArg {
         self.merge(i_s, other.type_)
     }
 
-    pub fn merge(&mut self, i_s: &InferenceState, other: Bound) -> Match {
+    pub fn merge(&mut self, i_s: &InferenceState, mut other: Bound) -> Match {
         if self.type_ == other {
             return Match::new_true();
         }
+        self.type_.narrow_type_var_tuple_prefixes_with(&mut other);
         if let Bound::Uncalculated { fallback } = &self.type_ {
             if !matches!(&other, Bound::Uncalculated { .. }) || fallback.is_none() {
                 let any = other.maybe_any();

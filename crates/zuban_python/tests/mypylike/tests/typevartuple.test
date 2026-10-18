@@ -321,3 +321,87 @@ def test_function() -> Iterator[Any]:
     if data is None:
         return
     yield from iter(data)
+
+[case unpacked_type_var_tuple_optional_arg]
+# From GH #518
+from typing import Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def run(
+    fn: Callable[[Unpack[Ts]], object],
+    *args: Unpack[Ts],
+) -> object:
+    return fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+run(opt1)
+run(opt1, None)
+run(opt1, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[None]"
+run(opt2)
+run(opt2, 1)
+run(opt3)  # E: Too few arguments for "run"
+run(opt3, 1)
+run(empty)
+run(empty, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+[case unpacked_type_var_tuple_optional_args_inference]
+from typing import Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def run(fn: Callable[[Unpack[Ts]], object], *args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
+def run_kw(*args: Unpack[Ts], fn: Callable[[Unpack[Ts]], object]) -> tuple[Unpack[Ts]]: ...
+def two(
+    f: Callable[[Unpack[Ts]], object], g: Callable[[Unpack[Ts]], object], *args: Unpack[Ts]
+) -> tuple[Unpack[Ts]]: ...
+def ret(fn: Callable[[Unpack[Ts]], object]) -> tuple[Unpack[Ts]]: ...
+def run_before(fn: Callable[[int, Unpack[Ts]], object], *args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
+def run_after(fn: Callable[[Unpack[Ts], str], object], *args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
+
+def opt1(arg: None = None) -> None: ...
+def opt2(a: int = 1, b: str = "") -> None: ...
+def opt3(a: int, b: str = "", c: bytes = b"") -> None: ...
+def opt4(a: int, b: str = "") -> None: ...
+
+i: int
+s: str
+
+reveal_type(run(opt2))  # N: Revealed type is "tuple[()]"
+reveal_type(run(opt2, i))  # N: Revealed type is "tuple[int]"
+reveal_type(run(opt2, i, s))  # N: Revealed type is "tuple[int, str]"
+run(opt2, i, i)  # E: Argument 2 to "run" has incompatible type "tuple[int, int]"; expected "tuple[int, str]"
+run(opt2, s)  # E: Argument 2 to "run" has incompatible type "tuple[str]"; expected "tuple[int]"
+run(opt2, i, s, i)  # E: Argument 2 to "run" has incompatible type "tuple[int, str, int]"; expected "tuple[int, str]"
+run(opt3)  # E: Too few arguments for "run"
+reveal_type(run(opt3, i))  # N: Revealed type is "tuple[int]"
+
+reveal_type(run_kw(fn=opt1))  # N: Revealed type is "tuple[()]"
+reveal_type(run_kw(None, fn=opt1))  # N: Revealed type is "tuple[None]"
+
+reveal_type(two(opt1, opt2))  # N: Revealed type is "tuple[()]"
+two(opt2, opt3)  # E: Too few arguments for "two"
+reveal_type(two(opt2, opt3, i))  # N: Revealed type is "tuple[int]"
+reveal_type(two(opt2, opt2, i))  # N: Revealed type is "tuple[int]"
+two(opt2, opt1, i)  # E: Argument 3 to "two" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+reveal_type(ret(opt1))  # N: Revealed type is "tuple[None]"
+reveal_type(ret(opt2))  # N: Revealed type is "tuple[int, str]"
+
+reveal_type(run_before(opt4))  # N: Revealed type is "tuple[()]"
+reveal_type(run_before(opt4, s))  # N: Revealed type is "tuple[str]"
+run_before(opt4, i)  # E: Argument 2 to "run_before" has incompatible type "tuple[int]"; expected "tuple[str]"
+
+run_after(opt2)  # E: Too few arguments for "run_after"
+reveal_type(run_after(opt2, i))  # N: Revealed type is "tuple[int]"

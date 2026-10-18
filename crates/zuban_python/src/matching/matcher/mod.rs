@@ -7,6 +7,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet},
+    sync::Arc,
 };
 use utils::AlreadySeen;
 
@@ -622,12 +623,33 @@ impl<'a> Matcher<'a> {
                         TupleUnpack::TypeVarTuple(tvt1.clone()),
                     )),
                     variance.invert(),
+                    0,
                 )
             }),
             _ => Match::new_false(),
         };
-        let m = self.match_or_add_type_var_tuple_internal(i_s, tvt1, args2, variance);
+        let m = self.match_or_add_type_var_tuple_internal(i_s, tvt1, args2, variance, 0);
         m.or(|| other_side)
+    }
+
+    /// Like `match_or_add_type_var_tuple`, but the last `optional_trailing` entries of `types`
+    /// may be left out, because they belong to params with defaults.
+    pub fn match_or_add_type_var_tuple_with_optional_trailing(
+        &mut self,
+        i_s: &InferenceState,
+        tvt: &TypeVarTupleUsage,
+        types: Arc<[Type]>,
+        optional_trailing: usize,
+        variance: Variance,
+    ) -> Match {
+        debug_assert!(optional_trailing <= types.len());
+        self.match_or_add_type_var_tuple_internal(
+            i_s,
+            tvt,
+            TupleArgs::FixedLen(types),
+            variance,
+            optional_trailing,
+        )
     }
 
     fn match_or_add_type_var_tuple_internal(
@@ -636,23 +658,35 @@ impl<'a> Matcher<'a> {
         tvt: &TypeVarTupleUsage,
         args2: TupleArgs,
         variance: Variance,
+        optional_trailing: usize,
     ) -> Match {
         if let Some(matcher_index) = self
             .find_responsible_type_var_matcher_index(tvt.in_definition, tvt.temporary_matcher_id)
         {
+            let new_bound = |args2: TupleArgs| match args2 {
+                // Leaving out arguments is only possible for upper bounds, because they
+                // originate from callable params.
+                TupleArgs::FixedLen(types)
+                    if optional_trailing > 0 && variance == Variance::Contravariant =>
+                {
+                    let min_len = types.len() - optional_trailing;
+                    Bound::new_type_var_tuple_prefixes(types, min_len, variance)
+                }
+                _ => Bound::new_type_args(args2, variance),
+            };
             if self.check_if_unresolved_transitive_constraint(
                 TypeVarIndexed {
                     matcher_index,
                     type_var_index: tvt.index.as_usize(),
                 },
                 |found_type_var| args2.search_type_vars(found_type_var),
-                || Bound::new_type_args(args2.clone(), variance),
+                || new_bound(args2.clone()),
             ) {
                 return Match::new_true();
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            let m = tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .merge(i_s, Bound::new_type_args(args2, variance));
+            let m =
+                tv_matcher.calculating_type_args[tvt.index.as_usize()].merge(i_s, new_bound(args2));
             debug!(
                 "Generics after changing {:?} (#{}/{}) are now: [{}]",
                 tvt.type_var_tuple.format(&FormatData::new_short(i_s.db)),

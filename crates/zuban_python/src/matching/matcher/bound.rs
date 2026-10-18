@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, ops::RangeInclusive, sync::Arc};
 
 use super::MatcherFormatResult;
 use crate::{
@@ -38,6 +38,11 @@ pub(crate) enum BoundOrigin {
 pub(crate) enum BoundKind {
     TypeVar(Type),
     TypeVarTuple(TupleArgs),
+    // A callable like `def f(x: int = 1)` matched against `Callable[[*Ts], R]` allows `Ts` to be
+    // either `()` or `(int,)`. This means that any prefix of `types` with at least `min_len`
+    // entries is a valid tuple for `Ts`. In all other regards this is treated like the full
+    // tuple `types`.
+    TypeVarTuplePrefixes { types: Arc<[Type]>, min_len: usize },
     ParamSpec(CallableParams),
 }
 
@@ -50,6 +55,18 @@ impl Default for Bound {
 impl Bound {
     pub fn new_type_args(ts: TupleArgs, variance: Variance) -> Self {
         Self::new(BoundKind::TypeVarTuple(ts).into(), variance)
+    }
+
+    pub fn new_type_var_tuple_prefixes(
+        types: Arc<[Type]>,
+        min_len: usize,
+        variance: Variance,
+    ) -> Self {
+        debug_assert!(min_len < types.len());
+        Self::new(
+            BoundKind::TypeVarTuplePrefixes { types, min_len }.into(),
+            variance,
+        )
     }
 
     pub fn new_param_spec(params: CallableParams, variance: Variance) -> Self {
@@ -289,6 +306,42 @@ impl Bound {
             _ => {}
         }
     }
+
+    fn type_var_tuple_len_range(&self) -> Option<RangeInclusive<usize>> {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.type_var_tuple_len_range(),
+            Self::UpperAndLower(upper, lower) => {
+                let upper = upper.type_var_tuple_len_range()?;
+                let lower = lower.type_var_tuple_len_range()?;
+                Some(*upper.start().max(lower.start())..=*upper.end().min(lower.end()))
+            }
+            Self::Uncalculated { .. } => None,
+        }
+    }
+
+    fn narrow_type_var_tuple_prefixes(&mut self, range: &RangeInclusive<usize>) {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => {
+                k.kind.narrow_type_var_tuple_prefixes(range)
+            }
+            Self::UpperAndLower(upper, lower) => {
+                upper.kind.narrow_type_var_tuple_prefixes(range);
+                lower.kind.narrow_type_var_tuple_prefixes(range);
+            }
+            Self::Uncalculated { .. } => (),
+        }
+    }
+
+    /// TypeVarTuple bounds that allow multiple lengths (see `BoundKind::TypeVarTuplePrefixes`)
+    /// are narrowed to the lengths that are allowed by both bounds.
+    pub(super) fn narrow_type_var_tuple_prefixes_with(&mut self, other: &mut Self) {
+        if let Some(range) = other.type_var_tuple_len_range() {
+            self.narrow_type_var_tuple_prefixes(&range)
+        }
+        if let Some(range) = self.type_var_tuple_len_range() {
+            other.narrow_type_var_tuple_prefixes(&range)
+        }
+    }
 }
 
 impl BoundInfo {
@@ -305,13 +358,17 @@ impl BoundInfo {
                 t1.avoid_implicit_literal_cow(i_s.db)
                     .simplified_union(i_s, &t2.avoid_implicit_literal_cow(i_s.db))
             }),
-            (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
-                BoundKind::TypeVarTuple(tup1.simplified_union_for_type_var_tuple(i_s, tup2)?)
-            }
             (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
                 BoundKind::ParamSpec(params1.common_base_type(i_s, params2, None)?)
             }
-            _ => unreachable!(),
+            (kind1, kind2) => {
+                let (Some(tup1), Some(tup2)) =
+                    (kind1.type_var_tuple_args(), kind2.type_var_tuple_args())
+                else {
+                    unreachable!()
+                };
+                BoundKind::TypeVarTuple(tup1.simplified_union_for_type_var_tuple(i_s, &tup2)?)
+            }
         };
         Some(Self {
             origin: self.origin.merge(other.origin),
@@ -324,9 +381,6 @@ impl BoundInfo {
             (BoundKind::TypeVar(t1), BoundKind::TypeVar(t2)) => {
                 BoundKind::TypeVar(t1.common_sub_type(i_s, t2)?)
             }
-            (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
-                BoundKind::TypeVarTuple(tup1.common_sub_type(i_s, tup2)?)
-            }
             (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
                 debug!(
                     "Common subtype for ParamSpec '{}' and '{}'",
@@ -335,7 +389,44 @@ impl BoundInfo {
                 );
                 BoundKind::ParamSpec(params1.common_sub_type(i_s, params2)?)
             }
-            _ => unreachable!(),
+            (
+                BoundKind::TypeVarTuplePrefixes {
+                    types: types1,
+                    min_len: min_len1,
+                },
+                BoundKind::TypeVarTuplePrefixes {
+                    types: types2,
+                    min_len: min_len2,
+                },
+            ) => {
+                let min_len = *min_len1.max(min_len2);
+                let mut types = vec![];
+                for (t1, t2) in types1.iter().zip(types2.iter()) {
+                    // If there is no common sub type, a shorter prefix might still work.
+                    let Some(t) = t1.common_sub_type(i_s, t2) else {
+                        break;
+                    };
+                    types.push(t)
+                }
+                match types.len().cmp(&min_len) {
+                    std::cmp::Ordering::Less => return None,
+                    std::cmp::Ordering::Equal => {
+                        BoundKind::TypeVarTuple(TupleArgs::FixedLen(types.into()))
+                    }
+                    std::cmp::Ordering::Greater => BoundKind::TypeVarTuplePrefixes {
+                        types: types.into(),
+                        min_len,
+                    },
+                }
+            }
+            (kind1, kind2) => {
+                let (Some(tup1), Some(tup2)) =
+                    (kind1.type_var_tuple_args(), kind2.type_var_tuple_args())
+                else {
+                    unreachable!()
+                };
+                BoundKind::TypeVarTuple(tup1.common_sub_type(i_s, &tup2)?)
+            }
         };
         Some(Self {
             origin: self.origin.merge(other.origin),
@@ -356,6 +447,19 @@ impl BoundInfo {
                 BoundKind::TypeVarTuple(tup) => {
                     BoundKind::TypeVarTuple(tup.maybe_replace_type_var_likes(db, on_type_var_like)?)
                 }
+                BoundKind::TypeVarTuplePrefixes { types, min_len } => {
+                    match TupleArgs::FixedLen(types.clone())
+                        .maybe_replace_type_var_likes(db, on_type_var_like)?
+                    {
+                        TupleArgs::FixedLen(new) if new.len() == types.len() => {
+                            BoundKind::TypeVarTuplePrefixes {
+                                types: new,
+                                min_len: *min_len,
+                            }
+                        }
+                        tup => BoundKind::TypeVarTuple(tup),
+                    }
+                }
                 BoundKind::ParamSpec(params) => BoundKind::ParamSpec(
                     params.maybe_replace_type_var_likes_and_self(db, on_type_var_like, &|| None)?,
                 ),
@@ -372,6 +476,9 @@ impl BoundInfo {
                 t
             }),
             BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
+            BoundKind::TypeVarTuplePrefixes { types, .. } => {
+                GenericItem::TypeArgs(TypeArgs::new(TupleArgs::FixedLen(types)))
+            }
             BoundKind::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
                 params: param_spec,
                 type_vars: None,
@@ -391,10 +498,51 @@ impl BoundKind {
         }
     }
 
+    fn type_var_tuple_args(&self) -> Option<Cow<'_, TupleArgs>> {
+        match self {
+            Self::TypeVarTuple(ts) => Some(Cow::Borrowed(ts)),
+            Self::TypeVarTuplePrefixes { types, .. } => {
+                Some(Cow::Owned(TupleArgs::FixedLen(types.clone())))
+            }
+            Self::TypeVar(_) | Self::ParamSpec(_) => None,
+        }
+    }
+
+    fn type_var_tuple_len_range(&self) -> Option<RangeInclusive<usize>> {
+        match self {
+            Self::TypeVarTuple(TupleArgs::FixedLen(ts)) => Some(ts.len()..=ts.len()),
+            Self::TypeVarTuplePrefixes { types, min_len } => Some(*min_len..=types.len()),
+            _ => None,
+        }
+    }
+
+    fn narrow_type_var_tuple_prefixes(&mut self, range: &RangeInclusive<usize>) {
+        if let Self::TypeVarTuplePrefixes { types, min_len } = self {
+            let new_min_len = *range.start().max(min_len);
+            let new_max_len = *range.end().min(&types.len());
+            if new_min_len > new_max_len {
+                // There is no overlap, the bounds will therefore simply not match.
+                return;
+            }
+            let types: Arc<[Type]> = types[..new_max_len].into();
+            *self = if new_min_len == new_max_len {
+                Self::TypeVarTuple(TupleArgs::FixedLen(types))
+            } else {
+                Self::TypeVarTuplePrefixes {
+                    types,
+                    min_len: new_min_len,
+                }
+            }
+        }
+    }
+
     fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         match &self {
             Self::TypeVar(bound) => bound.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
+            Self::TypeVarTuplePrefixes { types, .. } => {
+                TupleArgs::FixedLen(types.clone()).format(format_data)
+            }
             Self::ParamSpec(p) => p.format(format_data, style),
         }
     }
@@ -423,6 +571,11 @@ impl BoundKind {
         match self {
             Self::TypeVar(t) => t.search_type_vars(found_type_var),
             Self::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
+            Self::TypeVarTuplePrefixes { types, .. } => {
+                for t in types.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
             Self::ParamSpec(params) => params.search_type_vars(found_type_var),
         }
     }
@@ -431,6 +584,7 @@ impl BoundKind {
         match self {
             Self::TypeVar(t) => t.has_any(db),
             Self::TypeVarTuple(ts) => ts.find_in_type(db, &mut |t| t.has_any(db)),
+            Self::TypeVarTuplePrefixes { types, .. } => types.iter().any(|t| t.has_any(db)),
             Self::ParamSpec(params) => params.has_any(db),
         }
     }
@@ -440,6 +594,7 @@ impl BoundKind {
             Self::TypeVar(Type::Any(cause)) => Some(*cause),
             Self::TypeVar(_) => None,
             Self::TypeVarTuple(ts) => ts.maybe_any(),
+            Self::TypeVarTuplePrefixes { .. } => None,
             Self::ParamSpec(params) => match params {
                 CallableParams::Any(cause) => Some(*cause),
                 _ => None,
@@ -463,13 +618,17 @@ impl BoundKind {
     ) -> Match {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.matches(i_s, matcher, t2, variance),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                match_tuple_type_arguments(i_s, matcher, tup1, tup2, variance)
-            }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
                 matches_params_with_variance(i_s, matcher, params1, params2, variance)
             }
-            _ => unreachable!(),
+            (kind1, kind2) => {
+                let (Some(tup1), Some(tup2)) =
+                    (kind1.type_var_tuple_args(), kind2.type_var_tuple_args())
+                else {
+                    unreachable!()
+                };
+                match_tuple_type_arguments(i_s, matcher, &tup1, &tup2, variance)
+            }
         }
     }
 }
