@@ -38,10 +38,7 @@ pub(crate) enum BoundOrigin {
 pub(crate) enum BoundKind {
     TypeVar(Type),
     TypeVarTuple(TupleArgs),
-    // A callable like `def f(x: int = 1)` matched against `Callable[[*Ts], R]` allows `Ts` to be
-    // either `()` or `(int,)`. This means that any prefix of `types` with at least `min_len`
-    // entries is a valid tuple for `Ts`. In all other regards this is treated like the full
-    // tuple `types`.
+    // Any prefix of `types` with at least `min_len` entries (params with defaults may be omitted)
     TypeVarTuplePrefixes { types: Arc<[Type]>, min_len: usize },
     ParamSpec(CallableParams),
 }
