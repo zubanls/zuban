@@ -1,7 +1,7 @@
 # Zuban
 
 This is a normal Rust repository. You have to make sure `cargo fmt --check`,
-`cargo test` and `cargo check --all-targets` pass. 
+`cargo test` and `cargo check --all-targets` pass.
 
 Never cheat when solving a problem. I always want a perfect solution.
 

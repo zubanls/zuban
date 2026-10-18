@@ -593,10 +593,10 @@ impl Invalidations {
         }
     }
 
-    pub(crate) fn extend(&mut self, other: Self) {
-        match (self.0.get_mut().unwrap(), other.0.into_inner().unwrap()) {
+    pub(crate) fn extend(&self, other: Self) {
+        match (&mut *self.0.write().unwrap(), other.0.into_inner().unwrap()) {
             (InvalidationDetail::Some(invs), InvalidationDetail::Some(other)) => invs.extend(other),
-            _ => self.0 = RwLock::new(InvalidationDetail::InvalidatesDb),
+            (inner, _) => *inner = InvalidationDetail::InvalidatesDb,
         }
     }
 

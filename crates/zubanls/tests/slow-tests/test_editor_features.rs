@@ -384,3 +384,43 @@ fn test_inlay_hints() {
         ]),
     );
 }
+
+#[test]
+#[serial]
+fn test_semantic_tokens_after_deleting_directory_of_opened_files() {
+    // From GH #617
+    let server = Project::with_fixture(
+        r#"
+        [file src/a.py]
+        from src.data.b import PREFIXES
+        [file src/data/b.py]
+        "#,
+    )
+    .into_server();
+
+    let a_py = "src/a.py";
+    let b_py = "src/data/b.py";
+    server.open_in_memory_file(b_py, "PREFIXES = ('a',)");
+    server.open_in_memory_file(a_py, "from src.data.b import PREFIXES\n");
+
+    let semantic_tokens = |path: &str| {
+        server
+            .connection
+            .request_with_response::<SemanticTokensFullRequest>(SemanticTokensParams {
+                text_document: server.doc_id(path),
+                work_done_progress_params: Default::default(),
+                partial_result_params: Default::default(),
+            })
+    };
+    assert!(semantic_tokens(a_py).error.is_none());
+    assert!(semantic_tokens(b_py).error.is_none());
+
+    server.remove_file_and_wait(b_py);
+    server.remove_dir_and_wait("src/data");
+    assert!(semantic_tokens(a_py).error.is_none());
+    assert!(semantic_tokens(b_py).error.is_none());
+
+    server.close_in_memory_file(b_py);
+
+    assert!(semantic_tokens(a_py).error.is_none());
+}

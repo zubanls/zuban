@@ -608,7 +608,7 @@ fn ensure_dirs_and_file(
             }
         };
         let dir2 = Directory::new(parent, Arc::from(name));
-        let mut result = ensure_dirs_and_file(
+        let result = ensure_dirs_and_file(
             Parent::Directory(Arc::downgrade(&dir2)),
             Directory::entries_with_workspaces(vfs, workspaces, &dir2),
             vfs,
