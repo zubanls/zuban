@@ -27,3 +27,15 @@ class C:
 class C[**T]:
     def __class_getitem__(cls, *args: T.args):  # E: ParamSpec must have "*args" typed as "T.args" and "**kwargs" typed as "T.kwargs"
         pass
+
+[case no_stack_overflow_on_walrus_with_recursive_typed_dict_in_list]
+# From the altair project (https://github.com/vega/altair), where
+# `if func := theme.get():` crashed with a stack overflow.
+from typing import Any, TypedDict
+
+class Merged(TypedDict):
+    between: Merged | Any
+
+x: list[Merged] | None
+if y := x:
+    pass
