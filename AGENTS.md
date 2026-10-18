@@ -14,7 +14,11 @@ allowed to checkout the submodules let the user know and abort immediately.
 - If you have to fix language server issues, the crate is `crates/zubanls/src/`
 
 ## Testing & Security
+
 - Most tests belong in `zuban_python/tests/mypylike/tests/`.
 - If a test needs actual file system access and cannot be reproduced in a
   virtual environment you should probably create a test in `crates/zubanls/tests/slow-tests/`
 
+## Reproducing Crashes
+
+- If you're tasked to reproduce crashes, you should install Zuban `scripts/install-locally.sh --release` and then run `zuban check` to verify the crash. Once you can reproduce the crash you should typically create an MRE (minimum reproducible example) like the tests in `crates/zuban_python/tests/mypylike/tests/imports.test`
