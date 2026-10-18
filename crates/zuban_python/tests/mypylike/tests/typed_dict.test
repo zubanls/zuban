@@ -1403,3 +1403,13 @@ class TD(TypedDict, extra_items=int, closed=True):  # E: Cannot combine closed=T
     example: int
 
 td: TD = {"example": 1, "blah": 10}
+
+[case no_crash_on_recursive_typed_dict]
+from typing import Any, TypedDict
+
+class Merged(TypedDict):
+    between: Merged | Any
+
+def f(x: list[Merged] | None):
+    if y := x:
+        pass
