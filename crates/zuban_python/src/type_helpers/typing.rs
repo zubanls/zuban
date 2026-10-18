@@ -330,30 +330,38 @@ impl Type {
         let all_eq = |ts1: &[Type], ts2: &[Type]| {
             ts1.len() == ts2.len() && ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2))
         };
-        let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
-            let m1 = td1.members(db);
-            let m2 = td2.members(db);
-            m1.named.len() == m2.named.len()
-                && m1.named.iter().zip(m2.named.iter()).all(|(m1, m2)| {
-                    m1.name.as_str(db) == m2.name.as_str(db)
-                        && m1.required == m2.required
-                        && m1.read_only == m2.read_only
-                        && eq(&m1.type_, &m2.type_)
-                })
-                && match (&m1.extra_items, &m2.extra_items) {
-                    (None, None) => true,
-                    (Some(t1), Some(t2)) => {
-                        t1.t.is_equal_type_internal(
-                            db,
-                            checking_type_recursion,
-                            &t2.t,
-                            unpack_recursive_type,
-                            any_is_all,
-                        ) && t1.read_only == t2.read_only
-                    }
-                    _ => false,
+        let typed_dict_eq =
+            |td1: &TypedDict,
+             td2: &TypedDict,
+             checking_type_recursion: Option<CheckedTypeRecursion>| {
+                if td1 == td2 {
+                    // Recursive TypedDicts would otherwise lead to infinite recursion
+                    return true;
                 }
-        };
+                let m1 = td1.members(db);
+                let m2 = td2.members(db);
+                let eq = |t1: &Type, t2: &Type| {
+                    t1.is_equal_type_internal(
+                        db,
+                        checking_type_recursion,
+                        t2,
+                        unpack_recursive_type,
+                        any_is_all,
+                    )
+                };
+                m1.named.len() == m2.named.len()
+                    && m1.named.iter().zip(m2.named.iter()).all(|(m1, m2)| {
+                        m1.name.as_str(db) == m2.name.as_str(db)
+                            && m1.required == m2.required
+                            && m1.read_only == m2.read_only
+                            && eq(&m1.type_, &m2.type_)
+                    })
+                    && match (&m1.extra_items, &m2.extra_items) {
+                        (None, None) => true,
+                        (Some(t1), Some(t2)) => eq(&t1.t, &t2.t) && t1.read_only == t2.read_only,
+                        _ => false,
+                    }
+            };
         let tuple_args_eq = |t1: &TupleArgs, t2: &TupleArgs| match (t1, t2) {
             (TupleArgs::WithUnpack(w1), TupleArgs::WithUnpack(w2)) => {
                 all_eq(&w1.before, &w2.before) && all_eq(&w1.after, &w2.after)
@@ -410,7 +418,7 @@ impl Type {
                                 (
                                     StarStarParamType::UnpackTypedDict(td1),
                                     StarStarParamType::UnpackTypedDict(td2),
-                                ) => typed_dict_eq(td1, td2),
+                                ) => typed_dict_eq(td1, td2, checking_type_recursion),
                                 _ => false,
                             },
                             _ => false,
@@ -442,7 +450,14 @@ impl Type {
             (Type::NamedTuple(nt1), Type::NamedTuple(nt2)) => {
                 tuple_args_eq(&nt1.as_tuple().args, &nt2.as_tuple().args)
             }
-            (Type::TypedDict(td1), Type::TypedDict(td2)) => typed_dict_eq(td1, td2),
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => {
+                let checking_type_recursion = CheckedTypeRecursion {
+                    current: (self, other),
+                    previous: checking_type_recursion.as_ref(),
+                };
+                checking_type_recursion.is_cycle()
+                    || typed_dict_eq(td1, td2, Some(checking_type_recursion))
+            }
             (Type::Callable(c1), Type::Callable(c2)) => {
                 eq(&c1.return_type, &c2.return_type)
                     && params_eq(&c1.params, &c2.params)
