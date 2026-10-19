@@ -1375,6 +1375,7 @@ fn typing_changes(
     set_typing_inference(builtins, "super", Specific::BuiltinsSuper);
     set_typing_inference(builtins, "isinstance", Specific::BuiltinsIsinstance);
     set_typing_inference(builtins, "issubclass", Specific::BuiltinsIssubclass);
+    set_typing_inference(builtins, "sentinel", Specific::BuiltinsSentinel);
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
@@ -1431,6 +1432,7 @@ fn typing_changes(
     set_typing_inference(t, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
+    set_typing_inference(t, "sentinel", Specific::BuiltinsSentinel);
     set_typing_inference(t, "Sentinel", Specific::BuiltinsSentinel);
 
     for module in [typing, mypy_extensions, typing_extensions] {

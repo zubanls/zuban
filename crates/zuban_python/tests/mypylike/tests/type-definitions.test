@@ -1329,3 +1329,23 @@ class C:
 C().a.foo
 assert_type(C().a, Any)
 assert_type(C().b, Any)
+
+[case sentinels_different_versions_in_typing_extensions]
+from typing_extensions import Sentinel, assert_type, sentinel
+
+MISSING = sentinel("<MISSING>")
+OTHER = Sentinel("OTHER")
+
+def func(x: int | MISSING | OTHER = MISSING) -> None:
+    if x is MISSING:
+        assert_type(x, MISSING)
+    else:
+        assert_type(x, int | OTHER)
+
+func(1)
+func(MISSING)
+func(OTHER)
+
+x = "asdf"
+A = sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
+reveal_type(sentinel(""))  # N: Revealed type is "typing_extensions.sentinel"
