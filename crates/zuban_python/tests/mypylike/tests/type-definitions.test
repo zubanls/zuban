@@ -1203,14 +1203,25 @@ from typing_extensions import OrderedDict as TE_OrderedDict
 reveal_type(OrderedDict[str, str])     # N: Revealed type is "type[collections.OrderedDict[str, str]]"
 reveal_type(TE_OrderedDict[str, str])  # N: Revealed type is "type[collections.OrderedDict[str, str]]"
 
-[case sentinels_invalid_instantiations]
+[case sentinels_invalid_instantiations_py314]
+# flags: --python-version 3.14
 from typing_extensions import Sentinel
 
 x = "asdf"
 A = Sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
 B = Sentinel(1)  # E: Sentinel expects a single positional argument that is a string literal
 
-reveal_type(Sentinel(""))  # N: Revealed type is "typing_extensions.Sentinel"
+reveal_type(Sentinel(""))  # N: Revealed type is "typing_extensions.sentinel"
+
+[case sentinels_invalid_instantiations_py315]
+# flags: --python-version 3.15
+from typing_extensions import Sentinel
+
+x = "asdf"
+A = Sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
+B = Sentinel(1)  # E: Sentinel expects a single positional argument that is a string literal
+
+reveal_type(Sentinel(""))  # N: Revealed type is "sentinel"
 
 [case sentinels_from_acceptance_tests]
 # Copied from conformance tests (specialtypes_sentinels.py)
