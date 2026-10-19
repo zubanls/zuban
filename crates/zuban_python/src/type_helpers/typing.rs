@@ -330,7 +330,7 @@ impl Type {
         let all_eq = |ts1: &[Type], ts2: &[Type]| {
             ts1.len() == ts2.len() && ts1.iter().zip(ts2.iter()).all(|(t1, t2)| eq(t1, t2))
         };
-        let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict, checking_type_recursion| {
+        let typed_dict_eq = |td1: &TypedDict, td2: &TypedDict| {
             let m1 = td1.members(db);
             let m2 = td2.members(db);
             m1.named.len() == m2.named.len()
@@ -338,13 +338,7 @@ impl Type {
                     m1.name.as_str(db) == m2.name.as_str(db)
                         && m1.required == m2.required
                         && m1.read_only == m2.read_only
-                        && m1.type_.is_equal_type_internal(
-                            db,
-                            checking_type_recursion,
-                            &m2.type_,
-                            unpack_recursive_type,
-                            any_is_all,
-                        )
+                        && eq(&m1.type_, &m2.type_)
                 })
                 && match (&m1.extra_items, &m2.extra_items) {
                     (None, None) => true,
@@ -416,7 +410,7 @@ impl Type {
                                 (
                                     StarStarParamType::UnpackTypedDict(td1),
                                     StarStarParamType::UnpackTypedDict(td2),
-                                ) => typed_dict_eq(td1, td2, checking_type_recursion),
+                                ) => typed_dict_eq(td1, td2),
                                 _ => false,
                             },
                             _ => false,
@@ -448,14 +442,7 @@ impl Type {
             (Type::NamedTuple(nt1), Type::NamedTuple(nt2)) => {
                 tuple_args_eq(&nt1.as_tuple().args, &nt2.as_tuple().args)
             }
-            (Type::TypedDict(td1), Type::TypedDict(td2)) => {
-                let checking_type_recursion = CheckedTypeRecursion {
-                    current: (self, other),
-                    previous: checking_type_recursion.as_ref(),
-                };
-                checking_type_recursion.is_cycle()
-                    || typed_dict_eq(td1, td2, Some(checking_type_recursion))
-            }
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => typed_dict_eq(td1, td2),
             (Type::Callable(c1), Type::Callable(c2)) => {
                 eq(&c1.return_type, &c2.return_type)
                     && params_eq(&c1.params, &c2.params)
@@ -514,6 +501,15 @@ impl Type {
                     .bool()
             }
             (Type::Union(_), _) | (_, Type::Union(_)) => {
+                // Since we're unpacking recursive types while iterating unions, we have to stop
+                // recursions as well.
+                let checking_type_recursion = CheckedTypeRecursion {
+                    current: (self, other),
+                    previous: checking_type_recursion.as_ref(),
+                };
+                if checking_type_recursion.is_cycle() {
+                    return true;
+                }
                 let mut all_second: Vec<_> = other.iter_with_unpacked_unions(db).collect();
                 let mut t1_counter = 0;
                 let t2_count = all_second.len();
@@ -522,7 +518,7 @@ impl Type {
                     for (i, t2) in all_second.iter().enumerate() {
                         if t1.is_equal_type_internal(
                             db,
-                            checking_type_recursion,
+                            Some(checking_type_recursion),
                             t2,
                             unpack_recursive_type,
                             any_is_all,

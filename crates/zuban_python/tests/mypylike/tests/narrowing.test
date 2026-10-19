@@ -2482,3 +2482,12 @@ OptFlat: TypeAlias = Mapping[str, int] | None
 
 def non_recursive(m: OptFlat) -> None:
     assert_type(m or {}, Mapping[str, int])
+
+[case no_stack_overflow_on_generic_recursive_alias_with_any_after_narrowing]
+from typing import Any
+
+type NestedDict[T] = dict[str, NestedDict[T] | T]
+
+def f(data: NestedDict[Any] | None):
+    if data is None:
+        data = {}
