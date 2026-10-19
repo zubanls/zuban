@@ -9,7 +9,7 @@ use super::{
 use crate::prelude::*;
 use crate::{
     matching::CheckedTypeRecursion,
-    type_::{GenericItemCowExt, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
+    type_::{ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::TypeOrClass,
 };
 
@@ -210,8 +210,11 @@ fn common_base_class_basic(
     {
         match type_var_like {
             TypeVarLike::TypeVar(type_var) => {
-                let inner_t1 = generic1.expect_type_argument();
-                let inner_t2 = generic2.expect_type_argument();
+                let (GenericItem::TypeArg(inner_t1), GenericItem::TypeArg(inner_t2)) =
+                    (generic1.as_ref(), generic2.as_ref())
+                else {
+                    unreachable!()
+                };
                 match type_var.inferred_variance(i_s.db, &c1) {
                     Variance::Invariant => {
                         let matches = inner_t1.is_simple_same_type(i_s, &inner_t2);
@@ -219,10 +222,16 @@ fn common_base_class_basic(
                         // like T[Any, int] & T[int, Any] should become T[Any, Any]
                         match matches {
                             Match::True { with_any: false } => {
-                                generics.push(GenericItem::TypeArg(inner_t1.into_owned()));
+                                let GenericItem::TypeArg(t) = generic1.into_owned() else {
+                                    unreachable!()
+                                };
+                                generics.push(GenericItem::TypeArg(t));
                             }
                             Match::True { with_any: true } => {
-                                generics.push(GenericItem::TypeArg(inner_t2.into_owned()));
+                                let GenericItem::TypeArg(t) = generic2.into_owned() else {
+                                    unreachable!()
+                                };
+                                generics.push(GenericItem::TypeArg(t));
                             }
                             _ => return None,
                         }
@@ -244,16 +253,22 @@ fn common_base_class_basic(
                 }
             }
             TypeVarLike::TypeVarTuple(_) => {
-                let ts1 = generic1.expect_type_arguments();
-                let ts2 = generic2.expect_type_arguments();
+                let (GenericItem::TypeArgs(ts1), GenericItem::TypeArgs(ts2)) =
+                    (generic1.as_ref(), generic2.as_ref())
+                else {
+                    unreachable!()
+                };
                 let new = ts1
                     .args
                     .common_base_type(i_s, &ts2.args, Some(checked_recursions));
                 generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
             }
             TypeVarLike::ParamSpec(_) => {
-                let p1 = generic1.expect_param_spec_arg();
-                let p2 = generic2.expect_param_spec_arg();
+                let (GenericItem::ParamSpecArg(p1), GenericItem::ParamSpecArg(p2)) =
+                    (generic1.as_ref(), generic2.as_ref())
+                else {
+                    unreachable!()
+                };
                 if p1.type_vars.is_some() || p2.type_vars.is_some() {
                     return None;
                 }

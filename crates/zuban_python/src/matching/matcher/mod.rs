@@ -34,9 +34,9 @@ use crate::{
         matches_params,
     },
     type_::{
-        GenericItem, GenericItemCowExt, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
-        StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
-        add_param_spec_to_params, match_tuple_type_arguments,
+        GenericItem, ParamSpecArg, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
+        TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack, add_param_spec_to_params,
+        match_tuple_type_arguments,
     },
     type_helpers::{Callable, FuncLike, Function},
     utils::join_with_commas,
@@ -469,7 +469,9 @@ impl<'a> Matcher<'a> {
                 let generic = class
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
-                let g = generic.expect_type_argument();
+                let GenericItem::TypeArg(g) = generic.as_ref() else {
+                    unreachable!()
+                };
                 debug!(
                     "Use class type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -487,7 +489,9 @@ impl<'a> Matcher<'a> {
                 let generic = func_class
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
-                let g = generic.expect_type_argument();
+                let GenericItem::TypeArg(g) = generic.as_ref() else {
+                    unreachable!()
+                };
                 debug!(
                     "Use func type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -669,7 +673,9 @@ impl<'a> Matcher<'a> {
                 && class.node_ref.as_link() == tvt.in_definition
             {
                 let generic = class.generics().nth_usage(i_s.db, &usage);
-                let ts1 = generic.expect_type_arguments();
+                let GenericItem::TypeArgs(ts1) = generic.as_ref() else {
+                    unreachable!()
+                };
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -681,7 +687,9 @@ impl<'a> Matcher<'a> {
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
                 let generic = func_class.generics().nth_usage(i_s.db, &usage);
-                let ts1 = generic.expect_type_arguments();
+                let GenericItem::TypeArgs(ts1) = generic.as_ref() else {
+                    unreachable!()
+                };
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -741,7 +749,9 @@ impl<'a> Matcher<'a> {
             let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(i_s.db, usage);
-                let ts1 = generic.expect_param_spec_arg();
+                let GenericItem::ParamSpecArg(ts1) = generic.as_ref() else {
+                    unreachable!()
+                };
                 return matches_params(
                     i_s,
                     &mut Matcher::default(),
