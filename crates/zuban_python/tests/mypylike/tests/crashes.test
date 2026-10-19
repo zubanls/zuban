@@ -39,3 +39,15 @@ class Merged(TypedDict):
 x: list[Merged] | None
 if y := x:
     pass
+
+[case no_stack_overflow_on_generic_recursive_alias_with_any_after_narrowing]
+# From the xarray project (https://github.com/pydata/xarray), where
+# `NestedDict[FromDictDataValue] | None` crashed with a stack overflow in
+# `DataTree.from_dict`.
+from typing import Any
+
+type NestedDict[T] = dict[str, NestedDict[T] | T]
+
+def f(data: NestedDict[Any] | None):
+    if data is None:
+        data = {}
