@@ -1015,6 +1015,14 @@ impl PythonState {
         Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
     }
 
+    pub fn sentinel_class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_position(
+            ClassNodeRef::from_link(db, self.sentinel_link),
+            Generics::None,
+            None,
+        )
+    }
+
     pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class<'_> {
         let class_ref = self.memoryview_node_ref();
         Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)

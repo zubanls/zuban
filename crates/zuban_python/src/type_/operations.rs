@@ -507,10 +507,18 @@ impl Type {
                 );
                 callable(self, l)
             }
-            Type::TypeForm(_) | Type::Sentinel(_) => {
+            Type::TypeForm(_) => {
                 let inst = i_s.db.python_state.object_class().instance();
                 callable(self, inst.lookup(i_s, name, options()))
             }
+            Type::Sentinel(_) => callable(
+                self,
+                i_s.db
+                    .python_state
+                    .sentinel_class(i_s.db)
+                    .instance()
+                    .lookup(i_s, name, options().with_as_self_instance(&|| self.clone())),
+            ),
         }
     }
 
