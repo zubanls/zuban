@@ -1203,14 +1203,34 @@ from typing_extensions import OrderedDict as TE_OrderedDict
 reveal_type(OrderedDict[str, str])     # N: Revealed type is "type[collections.OrderedDict[str, str]]"
 reveal_type(TE_OrderedDict[str, str])  # N: Revealed type is "type[collections.OrderedDict[str, str]]"
 
-[case sentinels_invalid_instantiations]
+[case sentinels_invalid_instantiations_py314]
+# flags: --python-version 3.14
 from typing_extensions import Sentinel
 
 x = "asdf"
 A = Sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
 B = Sentinel(1)  # E: Sentinel expects a single positional argument that is a string literal
 
-reveal_type(Sentinel(""))  # N: Revealed type is "typing_extensions.Sentinel"
+reveal_type(Sentinel(""))  # N: Revealed type is "typing_extensions.sentinel"
+
+[case sentinels_invalid_instantiations_py315]
+# flags: --python-version 3.15
+import typing_extensions
+
+MISSING = sentinel("MISSING")
+A = typing_extensions.sentinel("A")
+B = typing_extensions.Sentinel("B")
+
+def func(x: int | MISSING | A | B = MISSING) -> None:
+    if x is MISSING:
+        reveal_type(x)  # N: Revealed type is "Sentinel('MISSING')"
+    elif x is A or x is B:
+        reveal_type(x)  # N: Revealed type is "Sentinel('A') | Sentinel('B')"
+    else:
+        reveal_type(x)  # N: Revealed type is "int"
+
+reveal_type(sentinel(""))  # N: Revealed type is "sentinel"
+reveal_type(typing_extensions.Sentinel(""))  # N: Revealed type is "sentinel"
 
 [case sentinels_from_acceptance_tests]
 # Copied from conformance tests (specialtypes_sentinels.py)
@@ -1318,3 +1338,41 @@ class C:
 C().a.foo
 assert_type(C().a, Any)
 assert_type(C().b, Any)
+
+[case sentinels_different_versions_in_typing_extensions]
+from typing_extensions import Sentinel, assert_type, sentinel
+
+MISSING = sentinel("<MISSING>")
+OTHER = Sentinel("OTHER")
+
+def func(x: int | MISSING | OTHER = MISSING) -> None:
+    if x is MISSING:
+        assert_type(x, MISSING)
+    else:
+        assert_type(x, int | OTHER)
+
+func(1)
+func(MISSING)
+func(OTHER)
+
+x = "asdf"
+A = sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
+reveal_type(sentinel(""))  # N: Revealed type is "typing_extensions.sentinel"
+
+[case sentinels_are_sentinel_instances]
+from typing import Protocol
+from typing_extensions import Sentinel, sentinel
+
+class HasName(Protocol):
+    __name__: str
+
+MISSING = sentinel("MISSING")
+
+def func(x: sentinel, y: Sentinel, z: HasName) -> None:
+    reveal_type(x)  # N: Revealed type is "typing_extensions.sentinel"
+    reveal_type(y)  # N: Revealed type is "typing_extensions.sentinel"
+
+func(MISSING, MISSING, MISSING)
+func(1, MISSING, MISSING)  # E: Argument 1 to "func" has incompatible type "int"; expected "sentinel"
+reveal_type(MISSING.__name__)  # N: Revealed type is "str"
+x: int = MISSING  # E: Incompatible types in assignment (expression has type "Sentinel('MISSING')", variable has type "int")

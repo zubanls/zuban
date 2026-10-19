@@ -1081,7 +1081,7 @@ x = undefined  # E: Name "undefined" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 if x == ...:
     reveal_type(x)  # N: Revealed type is "Any"
-    reveal_type(...)  # N: Revealed type is "ellipsis"
+    reveal_type(...)  # N: Revealed type is "types.EllipsisType"
 
 [case ellipsis_in_newer_python]
 # flags: --python-version 3.13
@@ -1117,7 +1117,7 @@ except *Exception as x:
 # flags: --python-version 3.8
 import typing
 reveal_type(reveal_type)  # N: Revealed type is "def [_T] (_T) -> _T"
-reveal_type(typing.NewType)  # N: Revealed type is "type[typing_extensions.NewType]"
+reveal_type(typing.NewType)  # N: Revealed type is "type[typing.NewType]"
 
 [case set_item_error_code]
 # flags: --show-error-codes

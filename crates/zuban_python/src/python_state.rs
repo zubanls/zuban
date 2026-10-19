@@ -1,6 +1,5 @@
 use std::{ptr::null, sync::Arc};
 
-use config::PythonVersion;
 use parsa_python_cst::{FunctionDef, NAME_DEF_TO_NAME_DIFFERENCE, Name, NodeIndex, TypeLike};
 use vfs::FileIndex;
 
@@ -582,17 +581,9 @@ impl PythonState {
         macro_rules! cache_link_with_fallback {
             ($attr_name:ident, $name:literal, $original_module:ident, $is_func:expr,
              $fallback_module:ident, $fallback_name:literal) => {
-                // NewType is special, because the fallback is a function in current
-                // Typeshed, so use TypingExtensions for now...
-                let use_new_type_from_typing_extensions = $name == "NewType" && legacy_new_type(db);
                 cache_index(
                     db,
-                    |db| {
-                        if use_new_type_from_typing_extensions {
-                            return db.python_state.typing_extensions();
-                        }
-                        db.python_state.$original_module()
-                    },
+                    |db| db.python_state.$original_module(),
                     $name,
                     |db, new_index| {
                         let Some(new_index) = new_index else {
@@ -617,11 +608,7 @@ impl PythonState {
                             );
                             return;
                         };
-                        let file_index = if use_new_type_from_typing_extensions {
-                            db.python_state.typing_extensions().file_index
-                        } else {
-                            db.python_state.$original_module().file_index
-                        };
+                        let file_index = db.python_state.$original_module().file_index;
                         db.python_state.$attr_name = PointLink::new(file_index, new_index);
                     },
                     $is_func,
@@ -730,7 +717,7 @@ impl PythonState {
             false
         );
         cache_link_with_typing_extensions_fallback!(param_spec_link, "ParamSpec", typing, false);
-        cache_link_with_typing_extensions_fallback!(sentinel_link, "Sentinel", builtins, false);
+        cache_link_with_typing_extensions_fallback!(sentinel_link, "sentinel", builtins, false);
         cache_link_with_typing_extensions_fallback!(
             typinglike_namedtuple_link,
             "NamedTuple",
@@ -828,7 +815,6 @@ impl PythonState {
         );
         // Some cases "Special" types need to be precalculated, because their names are overwritten.
         {
-            let legacy_new_type = legacy_new_type(db);
             let mut cache_without_saving_in_typing = |name| {
                 cache_index(db, |db| db.python_state.typing(), name, |_, _| (), true);
                 cache_index(
@@ -841,15 +827,6 @@ impl PythonState {
             };
             cache_without_saving_in_typing("dataclass_transform");
             cache_without_saving_in_typing("assert_type");
-            if legacy_new_type {
-                cache_index(
-                    db,
-                    |db| db.python_state.typing(),
-                    "NewType",
-                    |_, _| (),
-                    true,
-                );
-            }
             let mut cache_without_saving_mypy_extensions = |name| {
                 cache_index(
                     db,
@@ -1036,6 +1013,14 @@ impl PythonState {
     pub fn tuple_class_with_generics_to_be_defined(&self) -> Class<'_> {
         let class_ref = self.tuple_node_ref();
         Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
+    }
+
+    pub fn sentinel_class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_position(
+            ClassNodeRef::from_link(db, self.sentinel_link),
+            Generics::None,
+            None,
+        )
     }
 
     pub fn memoryview_class_with_generics_to_be_defined(&self) -> Class<'_> {
@@ -1398,6 +1383,7 @@ fn typing_changes(
     set_typing_inference(builtins, "super", Specific::BuiltinsSuper);
     set_typing_inference(builtins, "isinstance", Specific::BuiltinsIsinstance);
     set_typing_inference(builtins, "issubclass", Specific::BuiltinsIssubclass);
+    set_typing_inference(builtins, "sentinel", Specific::BuiltinsSentinel);
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
@@ -1454,6 +1440,7 @@ fn typing_changes(
     set_typing_inference(t, "ReadOnly", Specific::TypingReadOnly);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
+    set_typing_inference(t, "sentinel", Specific::BuiltinsSentinel);
     set_typing_inference(t, "Sentinel", Specific::BuiltinsSentinel);
 
     for module in [typing, mypy_extensions, typing_extensions] {
@@ -1548,8 +1535,4 @@ fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {
         },
     );
     mro.into_boxed_slice()
-}
-
-fn legacy_new_type(db: &Database) -> bool {
-    db.project.settings.python_version_or_default() < PythonVersion::new(3, 10)
 }

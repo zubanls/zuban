@@ -5,8 +5,8 @@ reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_empty]
 x: tuple[()]
-reveal_type(x.__getitem__(0)) # N: Revealed type is "Never"
 reveal_type(x.index(0)) # N: Revealed type is "int"
+reveal_type(x.__getitem__(0)) # N: Revealed type is "Never"
 
 [case tuple_methods_one]
 x: tuple[str]
@@ -632,3 +632,26 @@ def f(a: tuple[str, str], b: tuple[int, int, int], c: tuple[str, ...]) -> None:
     assert_type(a, tuple[str, str])  # Fine!
 
     assert_type({"k": a}, dict[str, tuple[str, str, str]])  # E: Expression is of type "dict[str, tuple[str, str]]", not "dict[str, tuple[str, str, str]]"
+
+[case tuple_methods_with_self_annotation]
+# typeshed defines `def __hash__(self: tuple[Hashable, ...]) -> int`
+from typing import Hashable, NamedTuple
+
+class N(NamedTuple):
+    x: int
+
+class C(tuple[int, str]): ...
+
+a: tuple[()]
+b: tuple[int, str]
+c: tuple[int, ...]
+d: tuple[int, list[int]]
+reveal_type(a.__hash__)  # N: Revealed type is "def () -> int"
+reveal_type(b.__hash__)  # N: Revealed type is "def () -> int"
+reveal_type(c.__hash__)  # N: Revealed type is "def () -> int"
+reveal_type(N(1).__hash__)  # N: Revealed type is "def () -> int"
+reveal_type(C().__hash__)  # N: Revealed type is "def () -> int"
+d.__hash__  # E: Invalid self argument "tuple[int, list[int]]" to attribute function "__hash__" with type "Callable[[tuple[Hashable, ...]], int]"
+h1: Hashable = b
+h2: Hashable = d  # E: Incompatible types in assignment (expression has type "tuple[int, list[int]]", variable has type "Hashable") \
+                  # N: Invalid self argument "tuple[int, list[int]]" to attribute function "__hash__" with type "Callable[[tuple[Hashable, ...]], int]"

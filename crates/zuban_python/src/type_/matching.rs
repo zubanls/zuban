@@ -953,6 +953,7 @@ impl Type {
                     variance,
                 )
             }
+
             Type::NamedTuple(_)
                 if class1.node_ref.as_link() == i_s.db.python_state.typinglike_namedtuple_link =>
             {
@@ -1021,6 +1022,15 @@ impl Type {
                 } else {
                     Match::new_false()
                 }
+            }
+            Type::Sentinel(_) if variance == Variance::Covariant => {
+                Self::matches_class_against_type(
+                    i_s,
+                    matcher,
+                    class1,
+                    &i_s.db.python_state.sentinel_type(),
+                    variance,
+                )
             }
             _ => Match::new_false(),
         }
