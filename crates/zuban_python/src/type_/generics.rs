@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
 use crate::{
-    matching::Generic,
+    params::matches_params_with_variance,
     prelude::*,
-    type_::TypeVarIndex,
+    type_::{
+        TypeVarIndex, format_callable_params, format_params_as_param_spec,
+        match_tuple_type_arguments,
+    },
     utils::{arc_slice_into_vec, join_with_commas},
 };
 
@@ -47,6 +50,127 @@ pub(crate) enum GenericItem {
 }
 
 impl GenericItem {
+    pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
+        match self {
+            Self::TypeArg(t) => Some(t.format(format_data)),
+            Self::TypeArgs(ts) => ts.format(format_data),
+            Self::ParamSpecArg(args) => Some(match &args.params {
+                CallableParams::Simple(params) => format_params_as_param_spec(format_data, params)
+                    .unwrap_or_else(|| {
+                        format!(
+                            "[{}]",
+                            &format_callable_params(format_data, false, params.iter(), false, None)
+                        )
+                        .into()
+                    }),
+                CallableParams::Any(_) => Box::from("[*Any, **Any]"),
+            }),
+        }
+    }
+
+    pub fn matches(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        other: &Self,
+        variance: Variance,
+    ) -> Match {
+        if matcher.is_matching_reverse() {
+            return matcher
+                .match_reverse(|matcher| other.matches(i_s, matcher, self, variance.invert()));
+        }
+        match self {
+            Self::TypeArg(t1) => match other {
+                Self::TypeArg(t2) => t1.matches(i_s, matcher, t2, variance),
+                _ => unreachable!(),
+            },
+            Self::TypeArgs(ts1) => match other {
+                Self::TypeArgs(ts2) => {
+                    match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
+                }
+                _ => unreachable!(),
+            },
+            Self::ParamSpecArg(p1) => match other {
+                Self::ParamSpecArg(p2) => {
+                    matches_params_with_variance(i_s, matcher, &p1.params, &p2.params, variance)
+                }
+                _ => unreachable!(),
+            },
+        }
+    }
+
+    pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
+        match self {
+            Self::TypeArg(t1) => match other {
+                Self::TypeArg(t2) => t1.overlaps(i_s, matcher, t2),
+                _ => unreachable!(),
+            },
+            Self::TypeArgs(ts1) => match other {
+                Self::TypeArgs(ts2) => ts1.args.overlaps(i_s, matcher, &ts2.args),
+                _ => unreachable!(),
+            },
+            Self::ParamSpecArg(_) => match other {
+                // I'm not sure why Mypy decided that ParamSpecs always overlap.
+                Self::ParamSpecArg(_) => true,
+                _ => unreachable!(),
+            },
+        }
+    }
+
+    pub fn expect_type_argument(&self) -> &Type {
+        match self {
+            Self::TypeArg(t) => t,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn expect_type_arguments(&self) -> &TypeArgs {
+        match self {
+            Self::TypeArgs(ts) => ts,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn expect_param_spec_arg(&self) -> &ParamSpecArg {
+        match self {
+            Self::ParamSpecArg(p) => p,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> GenericItem {
+        match self {
+            Self::TypeArg(t1) => {
+                let Self::TypeArg(t2) = other else {
+                    unreachable!()
+                };
+                Self::TypeArg(t1.merge_matching_parts(db, t2))
+            }
+            Self::TypeArgs(ts1) => {
+                let Self::TypeArgs(ts2) = other else {
+                    unreachable!()
+                };
+                Self::TypeArgs(TypeArgs::new(ts1.args.merge_matching_parts(db, &ts2.args)))
+            }
+            // TODO This is not correct, we could try to merge, but is it really important? It's
+            // not a big issue that Any is returned here, because this is only for fallbacks in case
+            // of errors.
+            Self::ParamSpecArg(_) => Self::ParamSpecArg(ParamSpecArg::new_any(AnyCause::FromError)),
+        }
+    }
+
+    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            Self::TypeArg(t) => t.find_in_type(db, check),
+            Self::TypeArgs(ts) => match &ts.args {
+                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+                TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
+            },
+            Self::ParamSpecArg(a) => a.params.find_in_type(db, check),
+        }
+    }
+
     pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
             Self::TypeArg(Type::Any(cause)) => Some(*cause),
@@ -118,12 +242,7 @@ impl GenericsList {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        join_with_commas(
-            self.0
-                .iter()
-                .filter_map(|g| Generic::new(g).format(format_data)),
-        )
-        .into()
+        join_with_commas(self.0.iter().filter_map(|g| g.format(format_data))).into()
     }
 
     pub fn has_param_spec(&self) -> bool {

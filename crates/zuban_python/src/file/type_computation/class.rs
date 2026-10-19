@@ -2070,34 +2070,26 @@ pub fn linearize_mro_and_return_linearizable(
                     .t
                     .replace_type_var_likes(db, &mut |usage| {
                         Some(match &bases[base_index] {
-                            Type::Tuple(tup) => tup
-                                .class(db)
-                                .generics
-                                .nth_usage(db, &usage)
-                                .into_generic_item(),
+                            Type::Tuple(tup) => {
+                                tup.class(db).generics.nth_usage(db, &usage).into_owned()
+                            }
                             Type::NamedTuple(n) => n
                                 .as_tuple_ref()
                                 .class(db)
                                 .generics
                                 .nth_usage(db, &usage)
-                                .into_generic_item(),
+                                .into_owned(),
                             Type::Class(GenericClass {
                                 generics: ClassGenerics::List(generics),
                                 ..
                             }) => generics[usage.index()].clone(),
                             // Very rare and therefore a separate case.
-                            Type::Class(c) => c
-                                .class(db)
-                                .generics
-                                .nth_usage(db, &usage)
-                                .into_generic_item(),
+                            Type::Class(c) => {
+                                c.class(db).generics.nth_usage(db, &usage).into_owned()
+                            }
                             Type::Dataclass(d) => match &d.class.generics {
                                 ClassGenerics::List(generics) => generics[usage.index()].clone(),
-                                _ => d
-                                    .class(db)
-                                    .generics
-                                    .nth_usage(db, &usage)
-                                    .into_generic_item(),
+                                _ => d.class(db).generics.nth_usage(db, &usage).into_owned(),
                             },
                             // If we expect class generics and tuples are involved, the tuple was already
                             // calculated.

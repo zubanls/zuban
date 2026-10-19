@@ -38,7 +38,7 @@ pub(crate) use self::{
 use crate::{
     format_data::{AvoidRecursionFor, find_similar_types},
     match_::MismatchReason,
-    matching::{ErrorStrs, ErrorTypes, Generic, Generics, GotType},
+    matching::{ErrorStrs, ErrorTypes, Generics, GotType},
     new_class,
     prelude::*,
     type_helpers::{Instance, MroIterator, TypeOrClass},
@@ -803,14 +803,12 @@ impl Type {
             Self::Tuple(tup) => tup.args.find_in_type(db, check),
             Self::Callable(content) => content.find_in_type(db, check),
             Self::RecursiveType(recursive) => match &recursive.generics {
-                Some(gs) => gs.iter().any(|g| Generic::new(g).find_in_type(db, check)),
+                Some(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
                 None => false,
             },
             Self::TypedDict(d) => {
                 (match &d.generics {
-                    TypedDictGenerics::Generics(gs) => {
-                        gs.iter().any(|g| Generic::new(g).find_in_type(db, check))
-                    }
+                    TypedDictGenerics::Generics(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
                     TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
                 }) || {
                     let Ok(members) = d.members_if_ready(db) else {
@@ -1246,7 +1244,7 @@ impl Type {
                                         Generics::from_class_generics(db, class_ref, &c2.generics)
                                             .iter(db),
                                     )
-                                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
+                                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, &gi2))
                                     .collect(),
                             ))
                         }

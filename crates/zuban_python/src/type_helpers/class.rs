@@ -19,7 +19,7 @@ use crate::{
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, MroIndex},
     match_::MismatchReason,
     matching::{
-        ErrorStrs, Generic, Generics, LookupKind, OnTypeError, calc_callable_dunder_init_type_vars,
+        ErrorStrs, Generics, LookupKind, OnTypeError, calc_callable_dunder_init_type_vars,
         calc_callable_type_vars, calc_class_dunder_init_type_vars, format_got_expected,
         maybe_class_usage,
     },
@@ -1077,10 +1077,10 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
-        self.generics()
-            .nth(db, nth)
-            .expect_type_argument()
-            .into_owned()
+        match self.generics().nth(db, nth).into_owned() {
+            GenericItem::TypeArg(t) => t,
+            _ => unreachable!(),
+        }
     }
 
     pub fn nth_param_spec_usage(
@@ -1091,10 +1091,10 @@ impl<'db: 'a, 'a> Class<'a> {
         let generic = self
             .generics()
             .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
-        if let Generic::ParamSpecArg(p) = generic {
-            p
-        } else {
-            unreachable!()
+        match generic {
+            Cow::Borrowed(GenericItem::ParamSpecArg(p)) => Cow::Borrowed(p),
+            Cow::Owned(GenericItem::ParamSpecArg(p)) => Cow::Owned(p),
+            _ => unreachable!(),
         }
     }
 
@@ -1277,7 +1277,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ))
                 }
                 generics => ClassGenerics::List(GenericsList::new_generics(
-                    generics.iter(db).map(|g| g.into_generic_item()).collect(),
+                    generics.iter(db).map(Cow::into_owned).collect(),
                 )),
             },
             true => ClassGenerics::new_none(),
@@ -2655,7 +2655,7 @@ fn apply_generics_to_base_class<'a>(
             db,
             &mut |usage| {
                 (usage.in_definition() == original_class_link)
-                    .then(|| generics.nth_usage(db, &usage).into_generic_item())
+                    .then(|| generics.nth_usage(db, &usage).into_owned())
             },
             &|| None,
         )),

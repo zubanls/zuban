@@ -28,7 +28,7 @@ use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     format_data::ParamsStyle,
     match_::SignatureMatch,
-    matching::{Generic, matcher::bound::BoundOrigin},
+    matching::matcher::bound::BoundOrigin,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -466,10 +466,10 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class
                 && class.node_ref.as_link() == t1.in_definition
             {
-                let g = class
+                let generic = class
                     .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
-                    .expect_type_argument();
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
+                let g = generic.expect_type_argument();
                 debug!(
                     "Use class type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -484,10 +484,10 @@ impl<'a> Matcher<'a> {
             if let Some(func_class) =
                 self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVar(t1.clone()))
             {
-                let g = func_class
+                let generic = func_class
                     .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
-                    .expect_type_argument();
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
+                let g = generic.expect_type_argument();
                 debug!(
                     "Use func type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -668,10 +668,8 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class
                 && class.node_ref.as_link() == tvt.in_definition
             {
-                let ts1 = class
-                    .generics()
-                    .nth_usage(i_s.db, &usage)
-                    .expect_type_arguments();
+                let generic = class.generics().nth_usage(i_s.db, &usage);
+                let ts1 = generic.expect_type_arguments();
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -682,10 +680,8 @@ impl<'a> Matcher<'a> {
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
-                let ts1 = func_class
-                    .generics()
-                    .nth_usage(i_s.db, &usage)
-                    .expect_type_arguments();
+                let generic = func_class.generics().nth_usage(i_s.db, &usage);
+                let ts1 = generic.expect_type_arguments();
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -744,10 +740,8 @@ impl<'a> Matcher<'a> {
             }
             let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
-                let ts1 = func_class
-                    .generics()
-                    .nth_usage(i_s.db, usage)
-                    .expect_param_spec_arg();
+                let generic = func_class.generics().nth_usage(i_s.db, usage);
+                let ts1 = generic.expect_param_spec_arg();
                 return matches_params(
                     i_s,
                     &mut Matcher::default(),
@@ -983,8 +977,8 @@ impl<'a> Matcher<'a> {
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(format_data.db, usage);
-                let is_same = match (usage, &generic) {
-                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(t2)) => match t2.as_ref() {
+                let is_same = match (usage, generic.as_ref()) {
+                    (TypeVarLikeUsage::TypeVar(u1), GenericItem::TypeArg(t2)) => match t2 {
                         Type::TypeVar(u2) => u1 == u2,
                         _ => false,
                     },
@@ -1190,13 +1184,10 @@ impl<'a> Matcher<'a> {
         if let Some(c) = self.class
             && c.node_ref.as_link() == usage.in_definition()
         {
-            return Some(c.generics().nth_usage(db, &usage).into_generic_item());
+            return Some(c.generics().nth_usage(db, &usage).into_owned());
         }
         if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
-            let g = func_class
-                .generics()
-                .nth_usage(db, usage)
-                .into_generic_item();
+            let g = func_class.generics().nth_usage(db, usage).into_owned();
             // We want to make sure that we don't remap the func_class again (otherwise we
             // cause infinite recursions)
             let without_func_class = Self {

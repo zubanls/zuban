@@ -1822,9 +1822,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     {
                         let new = replace_param_spec(
                             i_s.db,
-                            &mut |usage| {
-                                Some(c.generics().nth_usage(i_s.db, &usage).into_generic_item())
-                            },
+                            &mut |usage| Some(c.generics().nth_usage(i_s.db, &usage).into_owned()),
                             u1,
                         );
                         return return_result(match new {

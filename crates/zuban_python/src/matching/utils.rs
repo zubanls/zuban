@@ -49,12 +49,8 @@ pub fn maybe_class_usage(
     attribute_class: &Class,
     usage: &TypeVarLikeUsage,
 ) -> Option<GenericItem> {
-    (attribute_class.node_ref.as_link() == usage.in_definition()).then(|| {
-        attribute_class
-            .generics()
-            .nth_usage(db, usage)
-            .into_generic_item()
-    })
+    (attribute_class.node_ref.as_link() == usage.in_definition())
+        .then(|| attribute_class.generics().nth_usage(db, usage).into_owned())
 }
 
 pub fn create_signature_without_self_for_callable(
