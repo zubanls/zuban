@@ -9,7 +9,7 @@ use super::{
 use crate::prelude::*;
 use crate::{
     matching::CheckedTypeRecursion,
-    type_::{ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
+    type_::{GenericItemCowExt, ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::TypeOrClass,
 };
 
@@ -214,15 +214,15 @@ fn common_base_class_basic(
                 let inner_t2 = generic2.expect_type_argument();
                 match type_var.inferred_variance(i_s.db, &c1) {
                     Variance::Invariant => {
-                        let matches = inner_t1.is_simple_same_type(i_s, inner_t2);
+                        let matches = inner_t1.is_simple_same_type(i_s, &inner_t2);
                         // TODO this with_any check is not very precise and a structure
                         // like T[Any, int] & T[int, Any] should become T[Any, Any]
                         match matches {
                             Match::True { with_any: false } => {
-                                generics.push(generic1.into_owned());
+                                generics.push(GenericItem::TypeArg(inner_t1.into_owned()));
                             }
                             Match::True { with_any: true } => {
-                                generics.push(generic2.into_owned());
+                                generics.push(GenericItem::TypeArg(inner_t2.into_owned()));
                             }
                             _ => return None,
                         }
@@ -230,12 +230,12 @@ fn common_base_class_basic(
                     Variance::Covariant => {
                         generics.push(GenericItem::TypeArg(inner_t1.common_base_type_internal(
                             i_s,
-                            inner_t2,
+                            &inner_t2,
                             Some(checked_recursions),
                         )));
                     }
                     Variance::Contravariant => {
-                        if let Some(t) = inner_t1.common_sub_type(i_s, inner_t2) {
+                        if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
                             generics.push(GenericItem::TypeArg(t));
                         } else {
                             return None;

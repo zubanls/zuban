@@ -34,9 +34,9 @@ use crate::{
         matches_params,
     },
     type_::{
-        GenericItem, ParamSpecArg, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
-        TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack, add_param_spec_to_params,
-        match_tuple_type_arguments,
+        GenericItem, GenericItemCowExt, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
+        StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
+        add_param_spec_to_params, match_tuple_type_arguments,
     },
     type_helpers::{Callable, FuncLike, Function},
     utils::join_with_commas,

@@ -8,6 +8,13 @@ use crate::{
     type_::{ClassGenerics, GenericItem, GenericsList},
 };
 
+fn generic_type_arg<'a>(type_arg: Cow<'a, Type>) -> Generic<'a> {
+    Cow::Owned(GenericItem::TypeArg(match type_arg {
+        Cow::Borrowed(type_arg) => type_arg.clone(),
+        Cow::Owned(type_arg) => type_arg,
+    }))
+}
+
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
@@ -74,11 +81,9 @@ impl<'a> Generics<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 debug_assert_eq!(n, 0);
-                Cow::Owned(GenericItem::TypeArg(
-                    use_cached_simple_generic_type(db, file, *expr).into_owned(),
-                ))
+                generic_type_arg(use_cached_simple_generic_type(db, file, *expr))
             }
-            Self::SlicesWithClassTypes(file, slices) => Cow::Owned(GenericItem::TypeArg(
+            Self::SlicesWithClassTypes(file, slices) => generic_type_arg(
                 slices
                     .iter()
                     .nth(n)
@@ -88,9 +93,8 @@ impl<'a> Generics<'a> {
                         }
                         _ => unreachable!(),
                     })
-                    .unwrap()
-                    .into_owned(),
-            )),
+                    .unwrap(),
+            ),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n.into()) {
                     replace_class_vars!(db, g, type_var_generics)
@@ -175,14 +179,16 @@ impl<'a> Iterator for GenericsIterator<'a> {
                     return None;
                 }
                 self.ended = true;
-                Some(Cow::Owned(GenericItem::TypeArg(
-                    use_cached_simple_generic_type(self.db, file, *expr).into_owned(),
+                Some(generic_type_arg(use_cached_simple_generic_type(
+                    self.db, file, *expr,
                 )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Cow::Owned(GenericItem::TypeArg(
-                        use_cached_simple_generic_type(self.db, file, s.expression()).into_owned(),
+                    Some(generic_type_arg(use_cached_simple_generic_type(
+                        self.db,
+                        file,
+                        s.expression(),
                     )))
                 } else {
                     None

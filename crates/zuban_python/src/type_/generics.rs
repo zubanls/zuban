@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use crate::{
     params::matches_params_with_variance,
@@ -117,27 +117,6 @@ impl GenericItem {
         }
     }
 
-    pub fn expect_type_argument(&self) -> &Type {
-        match self {
-            Self::TypeArg(t) => t,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn expect_type_arguments(&self) -> &TypeArgs {
-        match self {
-            Self::TypeArgs(ts) => ts,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn expect_param_spec_arg(&self) -> &ParamSpecArg {
-        match self {
-            Self::ParamSpecArg(p) => p,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> GenericItem {
         match self {
             Self::TypeArg(t1) => {
@@ -180,6 +159,38 @@ impl GenericItem {
                 CallableParams::Any(cause) => Some(cause),
                 _ => None,
             },
+        }
+    }
+}
+
+pub(crate) trait GenericItemCowExt<'a> {
+    fn expect_type_argument(self) -> Cow<'a, Type>;
+    fn expect_type_arguments(self) -> Cow<'a, TypeArgs>;
+    fn expect_param_spec_arg(self) -> Cow<'a, ParamSpecArg>;
+}
+
+impl<'a> GenericItemCowExt<'a> for Cow<'a, GenericItem> {
+    fn expect_type_argument(self) -> Cow<'a, Type> {
+        match self {
+            Cow::Borrowed(GenericItem::TypeArg(t)) => Cow::Borrowed(t),
+            Cow::Owned(GenericItem::TypeArg(t)) => Cow::Owned(t),
+            _ => unreachable!(),
+        }
+    }
+
+    fn expect_type_arguments(self) -> Cow<'a, TypeArgs> {
+        match self {
+            Cow::Borrowed(GenericItem::TypeArgs(ts)) => Cow::Borrowed(ts),
+            Cow::Owned(GenericItem::TypeArgs(ts)) => Cow::Owned(ts),
+            _ => unreachable!(),
+        }
+    }
+
+    fn expect_param_spec_arg(self) -> Cow<'a, ParamSpecArg> {
+        match self {
+            Cow::Borrowed(GenericItem::ParamSpecArg(p)) => Cow::Borrowed(p),
+            Cow::Owned(GenericItem::ParamSpecArg(p)) => Cow::Owned(p),
+            _ => unreachable!(),
         }
     }
 }
