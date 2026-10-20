@@ -8,7 +8,7 @@ use super::{
 };
 use crate::prelude::*;
 use crate::{
-    matching::CheckedTypeRecursion,
+    matcher::CheckedTypeRecursion,
     type_::{ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
     type_helpers::TypeOrClass,
 };

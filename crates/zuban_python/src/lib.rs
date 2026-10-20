@@ -21,7 +21,6 @@ mod lines;
 mod lsp_utils;
 mod match_;
 mod matcher;
-mod matching;
 mod name;
 mod node_ref;
 mod params;
@@ -64,7 +63,7 @@ pub use name::{Name, NameSymbol, ValueName};
 pub use semantic_tokens::{SemanticToken, SemanticTokenProperties};
 
 use crate::{
-    file::File, goto::HeuristicDetail, matching::invalidate_matching_cache, prelude::*,
+    file::File, goto::HeuristicDetail, matcher::invalidate_matching_cache, prelude::*,
     select_files::all_typechecked_files,
 };
 

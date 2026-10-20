@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use utils::{AlreadySeen, FastHashSet};
 
 use crate::{
-    matching::MatcherFormatResult,
+    matcher::MatcherFormatResult,
     prelude::*,
     type_::{RecursiveTypeOrigin, TypeVarLikeName, TypeVarName},
 };

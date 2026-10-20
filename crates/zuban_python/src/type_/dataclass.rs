@@ -15,7 +15,7 @@ use crate::prelude::*;
 use crate::{
     arguments::{ArgKind, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     inferred::AttributeKind,
-    matching::calc_callable_type_vars,
+    matcher::calc_callable_type_vars,
     new_class,
     node_ref::KnownNodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,

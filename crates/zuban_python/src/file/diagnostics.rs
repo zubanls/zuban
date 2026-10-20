@@ -22,7 +22,7 @@ use crate::{
     },
     imports::ImportResult,
     inferred::{AttributeKind, infer_class_method},
-    matching::ReplaceSelfInMatcher,
+    matcher::ReplaceSelfInMatcher,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
     type_::{

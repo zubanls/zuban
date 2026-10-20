@@ -5,7 +5,7 @@ use crate::{
     arguments::{Arg, ArgIterator, ArgKind, InferredArg},
     file::FLOW_ANALYSIS,
     match_::{ArgumentIndexWithParam, SignatureMatch},
-    matching::{CalculatedTypeArgs, calc_callable_dunder_init_type_vars, calc_callable_type_vars},
+    matcher::{CalculatedTypeArgs, calc_callable_dunder_init_type_vars, calc_callable_type_vars},
     prelude::*,
     type_::{
         ComplexTypeGatherer, FunctionOverload, OnTypeError, PrettyCallableOptions, ReplaceSelf,

@@ -18,7 +18,7 @@ use crate::{
     getitem::SliceType,
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, MroIndex},
     match_::MismatchReason,
-    matching::{
+    matcher::{
         calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars,
     },
