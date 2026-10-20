@@ -23,7 +23,7 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::{Generics, GotType, OnTypeError};
+use super::Generics;
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     format_data::ParamsStyle,
@@ -34,9 +34,9 @@ use crate::{
         matches_params,
     },
     type_::{
-        ParamSpecArg, ParamType, ReplaceSelf, StarParamType, StarStarParamType, TupleUnpack,
-        TypeArgs, TypedDictGenerics, WithUnpack, add_param_spec_to_params,
-        match_tuple_type_arguments,
+        GotType, OnTypeError, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
+        StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
+        add_param_spec_to_params, match_tuple_type_arguments,
     },
     type_helpers::{Callable, FuncLike, Function},
     utils::join_with_commas,

@@ -9,11 +9,13 @@ use std::{
 
 use num_bigint::BigInt;
 
-use super::{ClassGenerics, CustomBehavior, GenericsList, utils::method_with_fallback};
+use super::{
+    ClassGenerics, CustomBehavior, GenericsList, OnTypeError, utils::method_with_fallback,
+};
 use crate::{
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
-    matching::{Generics, OnTypeError},
+    matching::Generics,
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
 };

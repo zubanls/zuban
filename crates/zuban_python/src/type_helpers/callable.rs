@@ -2,9 +2,9 @@ use std::borrow::Cow;
 
 use crate::{
     file::FLOW_ANALYSIS,
-    matching::{OnTypeError, calc_callable_type_vars},
+    matching::calc_callable_type_vars,
     prelude::*,
-    type_::{NeverCause, ParamType, ReplaceSelf},
+    type_::{NeverCause, OnTypeError, ParamType, ReplaceSelf},
 };
 
 #[derive(Debug, Copy, Clone)]

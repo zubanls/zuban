@@ -15,10 +15,11 @@ use crate::{
         namespace_import,
     },
     inferred::AttributeKind,
-    matching::{
-        ErrorTypes, GotType, LookupKind, OnLookupError, OnTypeError, calc_callable_type_vars,
+    matching::calc_callable_type_vars,
+    type_::{
+        ClassGenerics, DbBytes, ErrorTypes, GotType, Intersection, IteratorContent, LookupKind,
+        OnLookupError, OnTypeError, TupleUnpack,
     },
-    type_::{ClassGenerics, DbBytes, Intersection, IteratorContent, TupleUnpack},
     type_helpers::{
         Callable, ClassLookupOptions, Function, Instance, InstanceLookupOptions, LookupDetails,
         OverloadedFunction,

@@ -23,11 +23,10 @@ use crate::{
     },
     heuristic_infer::infer_heuristics_if_necessary,
     inference_state::Mode,
-    matching::LookupKind,
     name::{ModuleName, Name, NodeName, Range, TreeName},
     prelude::*,
     pytest::find_pytest_fixture_for_param,
-    type_::{TypeVarLikeName, TypeVarName, UnionType},
+    type_::{LookupKind, TypeVarLikeName, TypeVarName, UnionType},
     type_helpers::{Function, TypeOrClass},
     utils::is_file_with_python_ending,
 };

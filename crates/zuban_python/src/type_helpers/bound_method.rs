@@ -1,5 +1,5 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
-use crate::{matching::OnTypeError, prelude::*};
+use crate::{prelude::*, type_::OnTypeError};
 
 #[derive(Debug)]
 pub(crate) enum BoundMethodFunction<'a> {

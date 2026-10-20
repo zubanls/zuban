@@ -1,8 +1,6 @@
-use super::{
-    super::MismatchReason,
-    bound::{Bound, BoundKind},
-};
+use super::bound::{Bound, BoundKind};
 use crate::{
+    match_::MismatchReason,
     matching::matcher::bound::{BoundInfo, BoundOrigin},
     prelude::*,
     type_::GenericsList,

@@ -13,9 +13,8 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
     match_::MismatchReason,
-    matching::{ErrorStrs, LookupKind, OnTypeError},
     new_class,
-    type_::StarStarParamType,
+    type_::{ErrorStrs, LookupKind, OnTypeError, StarStarParamType},
     type_helpers::{Instance, InstanceLookupOptions, LookupDetails},
     utils::join_with_commas,
 };

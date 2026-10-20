@@ -1,5 +1,5 @@
 use super::Instance;
-use crate::{matching::OnTypeError, prelude::*};
+use crate::{prelude::*, type_::OnTypeError};
 
 pub(crate) fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,

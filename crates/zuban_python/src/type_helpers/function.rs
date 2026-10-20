@@ -16,8 +16,7 @@ use crate::{
     },
     inference_state::Mode,
     matching::{
-        CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher, calc_func_type_vars,
-        calc_untyped_func_type_vars,
+        CalculatedTypeArgs, ReplaceSelfInMatcher, calc_func_type_vars, calc_untyped_func_type_vars,
     },
     new_class,
     params::{
@@ -27,10 +26,10 @@ use crate::{
     prelude::*,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
-        ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, FunctionKind, FunctionOverload,
-        GenericClass, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
-        PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType, WrongPositionalCount,
-        replace_param_spec,
+        ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, ErrorStrs, FunctionKind,
+        FunctionOverload, GenericClass, InferredTypeGatherer, NeverCause, OnTypeError, ParamType,
+        PropertySetter, PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType,
+        WrongPositionalCount, replace_param_spec,
     },
     utils::is_magic_method,
 };

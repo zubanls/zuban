@@ -15,11 +15,12 @@ use crate::prelude::*;
 use crate::{
     arguments::{ArgKind, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     inferred::AttributeKind,
-    matching::{Generics, LookupKind, OnTypeError, calc_callable_type_vars},
+    matching::{Generics, calc_callable_type_vars},
     new_class,
     node_ref::KnownNodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::callable::add_any_params_to_params,
+    type_::{LookupKind, OnTypeError},
     type_helpers::{
         Callable, ClassLookupOptions, InstanceLookupOptions, LookupDetails, OverloadResult,
         OverloadedFunction, TypeOrClass,

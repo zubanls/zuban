@@ -22,13 +22,14 @@ use crate::{
     },
     imports::ImportResult,
     inferred::{AttributeKind, infer_class_method},
-    matching::{ErrorStrs, Generics, LookupKind, OnTypeError, ReplaceSelfInMatcher},
+    matching::{Generics, ReplaceSelfInMatcher},
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
     type_::{
-        ClassGenerics, FunctionKind, FunctionOverload, GenericsList, IterCause, LookupArgs,
-        NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
-        dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
+        ClassGenerics, ErrorStrs, FunctionKind, FunctionOverload, GenericsList, IterCause,
+        LookupArgs, LookupKind, NeverCause, OnTypeError, ParamType, StarParamType, TupleUnpack,
+        TypeVarVariance, dataclass_post_init_func, ensure_calculated_dataclass,
+        format_callable_params,
     },
     type_helpers::{
         Callable, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function, Instance,

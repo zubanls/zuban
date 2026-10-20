@@ -8,7 +8,7 @@ use crate::{
     database::ParentScope,
     file::File as _,
     inferred::AttributeKind,
-    matching::LookupKind,
+    type_::LookupKind,
     type_helpers::{
         ClassLookupOptions, Instance, InstanceLookupOptions, LookupDetails, TypeOrClass,
     },

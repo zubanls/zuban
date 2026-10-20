@@ -8,12 +8,14 @@ use crate::{
     file::{ORDERING_METHODS, on_argument_type_error},
     getitem::SliceType,
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, add_attribute_error},
-    matching::{ErrorStrs, LookupKind, OnTypeError},
     prelude::*,
-    type_::{FunctionKind, IterInfos, IteratorContent, PropertySetterType},
+    type_::{
+        ErrorStrs, FunctionKind, IterInfos, IteratorContent, LookupKind, OnTypeError,
+        PropertySetterType,
+    },
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive()]
 pub(crate) struct Instance<'a> {
     pub class: Class<'a>,
     inferred: Option<&'a Inferred>,

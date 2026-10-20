@@ -13,13 +13,12 @@ use crate::{
     getitem::Simple,
     inferred::UnionValue,
     match_::MismatchReason,
-    matching::{ErrorStrs, ErrorTypes, GotType},
     new_class,
     prelude::*,
     type_::{
-        InferredTypeGatherer, IterCause, IteratorContent, TupleUnpack, TypedDictGenerics,
-        UniqueInUnpackedUnionError, WithUnpack, check_typed_dict_call, infer_typed_dict_arg,
-        maybe_add_extra_keys_issue,
+        ErrorStrs, ErrorTypes, GotType, InferredTypeGatherer, IterCause, IteratorContent,
+        TupleUnpack, TypedDictGenerics, UniqueInUnpackedUnionError, WithUnpack,
+        check_typed_dict_call, infer_typed_dict_arg, maybe_add_extra_keys_issue,
     },
     utils::join_with_commas,
 };

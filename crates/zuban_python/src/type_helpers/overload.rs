@@ -6,11 +6,12 @@ use crate::{
     file::FLOW_ANALYSIS,
     match_::{ArgumentIndexWithParam, SignatureMatch},
     matching::{
-        CalculatedTypeArgs, Generics, OnTypeError, calc_callable_dunder_init_type_vars,
-        calc_callable_type_vars,
+        CalculatedTypeArgs, Generics, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
     },
     prelude::*,
-    type_::{ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf},
+    type_::{
+        ComplexTypeGatherer, FunctionOverload, OnTypeError, PrettyCallableOptions, ReplaceSelf,
+    },
 };
 
 #[derive(Debug)]

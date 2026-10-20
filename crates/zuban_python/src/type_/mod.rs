@@ -10,6 +10,7 @@ mod iterator;
 mod literal;
 mod lookup_result;
 mod matching;
+mod matching_utils;
 mod named_tuple;
 mod namespace;
 mod new_type;
@@ -32,14 +33,14 @@ use vfs::FileIndex;
 
 pub(crate) use self::{
     callable::*, custom_behavior::*, dataclass::*, enum_::*, generics::*, intersection::*,
-    iterator::*, literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*,
-    new_type::*, operations::*, recursive_type::*, replace::*, search::*, sentinel::*, tuple::*,
-    type_var_likes::*, typed_dict::*, union::*,
+    iterator::*, literal::*, lookup_result::*, matching::*, matching_utils::*, named_tuple::*,
+    namespace::*, new_type::*, operations::*, recursive_type::*, replace::*, search::*,
+    sentinel::*, tuple::*, type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{
     format_data::{AvoidRecursionFor, find_similar_types},
     match_::MismatchReason,
-    matching::{ErrorStrs, ErrorTypes, Generics, GotType},
+    matching::Generics,
     new_class,
     prelude::*,
     type_helpers::{Instance, MroIterator, TypeOrClass},

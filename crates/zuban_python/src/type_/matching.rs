@@ -2,14 +2,15 @@ use std::{borrow::Cow, sync::Arc};
 
 use utils::FastHashSet;
 
-use super::{ClassGenerics, FunctionOverload, UnionType, WithUnpack};
 use crate::prelude::*;
 use crate::{
     database::MetaclassState,
     match_::MismatchReason,
-    matching::{ErrorStrs, ErrorTypes, GotType, format_got_expected},
     params::matches_params,
-    type_::TupleUnpack,
+    type_::{
+        ClassGenerics, ErrorStrs, ErrorTypes, FunctionOverload, GotType, TupleUnpack, UnionType,
+        WithUnpack, format_got_expected,
+    },
     type_helpers::TypeOrClass,
 };
 

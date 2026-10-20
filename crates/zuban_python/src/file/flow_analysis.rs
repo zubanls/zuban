@@ -26,13 +26,13 @@ use crate::{
     file::{OtherDefinitionIterator, utils::TupleGatherer},
     getitem::SliceType,
     inferred::{UnionValue, add_attribute_error},
-    matching::{LookupKind, OnTypeError},
     new_class,
     prelude::*,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
         ClassGenerics, ComplexTypeGatherer, DbBytes, EnumKind, GenericClass, Intersection,
-        NeverCause, TupleUnpack, TypeGatherer, UnionType, WithUnpack, lookup_on_enum_instance,
+        LookupKind, NeverCause, OnTypeError, TupleUnpack, TypeGatherer, UnionType, WithUnpack,
+        lookup_on_enum_instance,
     },
     type_helpers::{
         Callable, ClassLookupOptions, FirstParamKind, Function, InstanceLookupOptions,
