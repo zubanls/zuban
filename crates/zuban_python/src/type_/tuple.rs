@@ -10,14 +10,14 @@ use std::{
 use num_bigint::BigInt;
 
 use super::{ClassGenerics, CustomBehavior, GenericsList, utils::method_with_fallback};
-use crate::prelude::*;
 use crate::{
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
-    matching::{Generics, IteratorContent, OnTypeError},
+    matching::{Generics, OnTypeError},
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
 };
+use crate::{prelude::*, type_::IteratorContent};
 
 thread_local! {
     static ARBITRARY_TUPLE: Arc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));

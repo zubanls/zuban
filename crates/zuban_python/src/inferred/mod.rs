@@ -16,12 +16,12 @@ use crate::{
         should_add_deprecated, use_cached_annotation_or_type_comment,
     },
     getitem::SliceType,
-    matching::{ErrorStrs, Generics, IteratorContent, LookupKind, OnLookupError, OnTypeError},
+    matching::{ErrorStrs, Generics, LookupKind, OnLookupError, OnTypeError},
     new_class,
     prelude::*,
     type_::{
         ClassGenerics, DbBytes, GenericClass, InferredTypeGatherer, IterCause, IterInfos,
-        LookupArgs, NeverCause, execute_tuple_class, execute_type_of_type,
+        IteratorContent, LookupArgs, NeverCause, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, FirstParamProperties, Function, LookupDetails,

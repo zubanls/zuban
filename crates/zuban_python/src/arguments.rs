@@ -9,9 +9,8 @@ use crate::{
     database::PointsBackup,
     getitem::SliceType,
     inference_state::Mode,
-    matching::{IteratorContent, UnpackedArgument},
     prelude::*,
-    type_::{IterCause, WithUnpack},
+    type_::{IterCause, IteratorContent, UnpackedArgument, WithUnpack},
 };
 
 pub(crate) trait Args<'db>: std::fmt::Debug {

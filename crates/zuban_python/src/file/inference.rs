@@ -26,10 +26,7 @@ use crate::{
         ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, NAME_DEF_TO_DEFAULTDICT_DIFF,
         UnionValue, add_attribute_error, specific_to_type,
     },
-    matching::{
-        ErrorStrs, ErrorTypes, Generics, IteratorContent, LookupKind, OnTypeError, TupleLenInfos,
-        format_got_expected,
-    },
+    matching::{ErrorStrs, ErrorTypes, Generics, LookupKind, OnTypeError, format_got_expected},
     new_class,
     node_ref::{KnownNodeRef, KnownPointLink},
     params::matches_simple_params,
@@ -37,8 +34,8 @@ use crate::{
     pytest::maybe_infer_pytest_param,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        IterCause, IterInfos, ParamType, StarParamType, StarStarParamType, Tuple, TupleUnpack,
-        UnionType, dataclass_converter_fields_lookup,
+        IterCause, IterInfos, IteratorContent, ParamType, StarParamType, StarStarParamType, Tuple,
+        TupleLenInfos, TupleUnpack, UnionType, dataclass_converter_fields_lookup,
     },
     type_helpers::{
         ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,

@@ -16,10 +16,9 @@ use crate::{
     },
     inferred::AttributeKind,
     matching::{
-        ErrorTypes, GotType, IteratorContent, LookupKind, OnLookupError, OnTypeError,
-        calc_callable_type_vars,
+        ErrorTypes, GotType, LookupKind, OnLookupError, OnTypeError, calc_callable_type_vars,
     },
-    type_::{ClassGenerics, DbBytes, Intersection, TupleUnpack},
+    type_::{ClassGenerics, DbBytes, Intersection, IteratorContent, TupleUnpack},
     type_helpers::{
         Callable, ClassLookupOptions, Function, Instance, InstanceLookupOptions, LookupDetails,
         OverloadedFunction,

@@ -6,6 +6,7 @@ mod dataclass;
 mod enum_;
 mod generics;
 mod intersection;
+mod iterator;
 mod literal;
 mod lookup_result;
 mod matching;
@@ -31,8 +32,8 @@ use vfs::FileIndex;
 
 pub(crate) use self::{
     callable::*, custom_behavior::*, dataclass::*, enum_::*, generics::*, intersection::*,
-    literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*, new_type::*,
-    operations::*, recursive_type::*, replace::*, search::*, sentinel::*, tuple::*,
+    iterator::*, literal::*, lookup_result::*, matching::*, named_tuple::*, namespace::*,
+    new_type::*, operations::*, recursive_type::*, replace::*, search::*, sentinel::*, tuple::*,
     type_var_likes::*, typed_dict::*, union::*,
 };
 use crate::{

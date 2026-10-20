@@ -6,9 +6,9 @@ use std::{
 use crate::{
     file::{check_multiple_inheritance, linearize_mro},
     getitem::SliceType,
-    matching::{IteratorContent, OnTypeError},
+    matching::OnTypeError,
     prelude::*,
-    type_::TypeGatherer,
+    type_::{IteratorContent, TypeGatherer},
     type_helpers::LookupDetails,
 };
 
