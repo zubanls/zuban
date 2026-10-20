@@ -7,7 +7,7 @@ use crate::{
     match_::{ArgumentIndexWithParam, SignatureMatch},
     matching::{
         CalculatedTypeArgs, Generics, OnTypeError, calc_callable_dunder_init_type_vars,
-        calc_callable_type_vars, replace_class_type_vars_in_callable,
+        calc_callable_type_vars,
     },
     prelude::*,
     type_::{ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf},
@@ -467,13 +467,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         }
                         c.type_vars = class.type_vars(i_s).clone();
                     } else {
-                        c = replace_class_type_vars_in_callable(
-                            i_s.db,
-                            callable,
-                            Some(&class),
-                            &|| None,
-                        )
-                        .unwrap_or_else(|| (**callable).clone());
+                        c = callable
+                            .replace_class_type_vars(i_s.db, Some(&class), &|| None)
+                            .unwrap_or_else(|| (**callable).clone());
                         if let Some(init_cls) = init_cls {
                             c.return_type = init_cls.as_type(i_s.db)
                         }
@@ -502,13 +498,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             // should be flagged when generating diagnostics. here we just
                             // try to not crash.
                             .unwrap_or_else(|| (**callable).clone());
-                        let mut callable = replace_class_type_vars_in_callable(
-                            i_s.db,
-                            &without_first_param,
-                            self.class.as_ref(),
-                            &|| Some(replace_self_type()),
-                        )
-                        .unwrap_or(without_first_param);
+                        let mut callable = without_first_param
+                            .replace_class_type_vars(i_s.db, self.class.as_ref(), &|| {
+                                Some(replace_self_type())
+                            })
+                            .unwrap_or(without_first_param);
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);

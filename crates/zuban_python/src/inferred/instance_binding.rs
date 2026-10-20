@@ -9,7 +9,7 @@ use crate::{
         attribute_kind::AttributeKind,
         binding_utils::{callable_into_inferred, proper_classmethod_callable},
     },
-    matching::{replace_class_type_vars, replace_class_type_vars_in_callable},
+    matching::replace_class_type_vars,
     prelude::*,
     type_::{FunctionKind, FunctionOverload, PropertySetter, PropertySetterType},
     type_helpers::{
@@ -745,10 +745,9 @@ fn create_signature_without_self_for_callable(
     let c = callable
         .remove_first_positional_param()
         .expect("Signatures without any params should have been filtered before");
-    let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| {
-        Some(instance.clone())
-    })
-    .unwrap_or(c);
+    let c = c
+        .replace_class_type_vars(i_s.db, Some(func_class), &|| Some(instance.clone()))
+        .unwrap_or(c);
     Some(matcher.remove_self_from_callable(i_s, c))
 }
 

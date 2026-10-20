@@ -11,9 +11,7 @@ pub(crate) use matcher::{
     calc_func_type_vars, calc_untyped_func_type_vars, invalidate_matching_cache,
 };
 
-pub(crate) use utils::{
-    maybe_replace_class_type_vars, replace_class_type_vars, replace_class_type_vars_in_callable,
-};
+pub(crate) use utils::{maybe_replace_class_type_vars, replace_class_type_vars};
 
 use crate::{
     arguments::Arg,

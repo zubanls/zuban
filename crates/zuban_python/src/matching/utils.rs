@@ -25,16 +25,3 @@ pub fn replace_class_type_vars<'x>(
         .map(Cow::Owned)
         .unwrap_or_else(|| Cow::Borrowed(t))
 }
-
-pub fn replace_class_type_vars_in_callable(
-    db: &Database,
-    callable: &CallableContent,
-    func_class: Option<&Class>,
-    as_self_instance: ReplaceSelf,
-) -> Option<CallableContent> {
-    callable.replace_type_var_likes_and_self(
-        db,
-        &mut |usage| func_class.and_then(|c| usage.maybe_class_generic(db, c)),
-        as_self_instance,
-    )
-}

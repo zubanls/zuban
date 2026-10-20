@@ -499,11 +499,24 @@ impl CallableContent {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> Option<CallableContent> {
+    ) -> Option<Self> {
         let replacer = &mut ReplaceTypeVarLikesHelper::new(db, callable, replace_self);
         replacer
             .replace_callable_without_rc(self)
             .or_else(|| self.replace_internal(replacer))
+    }
+
+    pub fn replace_class_type_vars(
+        &self,
+        db: &Database,
+        func_class: Option<&Class>,
+        as_self_instance: ReplaceSelf,
+    ) -> Option<Self> {
+        self.replace_type_var_likes_and_self(
+            db,
+            &mut |usage| func_class.and_then(|c| usage.maybe_class_generic(db, c)),
+            as_self_instance,
+        )
     }
 }
 
