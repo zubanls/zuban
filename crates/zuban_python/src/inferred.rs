@@ -21,8 +21,8 @@ use crate::{
     prelude::*,
     type_::{
         ClassGenerics, DbBytes, FunctionKind, FunctionOverload, GenericClass, GenericsList,
-        InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LookupArgs, NeverCause,
-        PropertySetter, PropertySetterType, execute_tuple_class, execute_type_of_type,
+        InferredTypeGatherer, IterCause, IterInfos, LookupArgs, NeverCause, PropertySetter,
+        PropertySetterType, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, FirstParamProperties, FuncLike as _, Function,
@@ -500,7 +500,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn maybe_literal(
         &'slf self,
         db: &'db Database,
-    ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
+    ) -> UnionValue<Literal, impl Iterator<Item = Literal> + 'slf> {
         let from_type = |t: &'slf Type| match t {
             Type::Union(t) => match t.iter().next() {
                 Some(Type::Literal(_)) => UnionValue::Multiple(t.iter().map_while(|t| match t {
@@ -516,13 +516,13 @@ impl<'db: 'slf, 'slf> Inferred {
             let node_ref = NodeRef::from_link(db, link);
             match node_ref.point().maybe_specific() {
                 Some(Specific::IntLiteral) => {
-                    return UnionValue::Single(DbLiteral {
+                    return UnionValue::Single(Literal {
                         kind: LiteralKind::Int(node_ref.expect_int().parse()),
                         implicit: true,
                     });
                 }
                 Some(Specific::StringLiteral) => {
-                    return UnionValue::Single(DbLiteral {
+                    return UnionValue::Single(Literal {
                         kind: LiteralKind::String(
                             DbString::from_python_string(
                                 node_ref.file_index(),
@@ -554,7 +554,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         callable: impl Fn(&BigInt) -> Option<Inferred>,
     ) -> Option<Inferred> {
-        let infer = |i_s: &InferenceState, literal: DbLiteral| {
+        let infer = |i_s: &InferenceState, literal: Literal| {
             if !matches!(literal.kind, LiteralKind::Int(_)) {
                 return None;
             }
@@ -581,7 +581,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         callable: impl Fn(&str) -> Option<Inferred>,
     ) -> Option<Inferred> {
-        let infer = |i_s: &InferenceState, literal: DbLiteral| {
+        let infer = |i_s: &InferenceState, literal: Literal| {
             if !matches!(literal.kind, LiteralKind::String(_)) {
                 return None;
             }
@@ -604,7 +604,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_bool_literal(&self, i_s: &InferenceState) -> Option<bool> {
-        if let Type::Literal(DbLiteral {
+        if let Type::Literal(Literal {
             kind: LiteralKind::Bool(b),
             ..
         }) = self.as_cow_type(i_s).as_ref()
@@ -616,7 +616,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_string_literal(&self, i_s: &InferenceState) -> Option<DbString> {
-        if let Type::Literal(DbLiteral {
+        if let Type::Literal(Literal {
             kind: LiteralKind::String(b),
             ..
         }) = self.as_cow_type(i_s).as_ref()
@@ -2937,11 +2937,11 @@ pub fn specific_to_type<'db>(
         Specific::Cycle | Specific::UntypedFunctionSelfAssignment => {
             Cow::Borrowed(&Type::Any(AnyCause::Todo))
         }
-        Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
+        Specific::IntLiteral => Cow::Owned(Type::Literal(Literal {
             kind: LiteralKind::Int(definition.expect_int().parse()),
             implicit: true,
         })),
-        Specific::StringLiteral => Cow::Owned(Type::Literal(DbLiteral {
+        Specific::StringLiteral => Cow::Owned(Type::Literal(Literal {
             kind: LiteralKind::String(
                 DbString::from_python_string(
                     definition.file_index(),
@@ -2951,11 +2951,11 @@ pub fn specific_to_type<'db>(
             ),
             implicit: true,
         })),
-        Specific::BoolLiteral => Cow::Owned(Type::Literal(DbLiteral {
+        Specific::BoolLiteral => Cow::Owned(Type::Literal(Literal {
             kind: LiteralKind::Bool(definition.as_code() == "True"),
             implicit: true,
         })),
-        Specific::BytesLiteral => Cow::Owned(Type::Literal(DbLiteral {
+        Specific::BytesLiteral => Cow::Owned(Type::Literal(Literal {
             kind: LiteralKind::Bytes(DbBytes::Link(definition.as_link())),
             implicit: true,
         })),
