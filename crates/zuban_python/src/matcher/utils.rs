@@ -3,12 +3,12 @@ pub(super) use utils::AlreadySeen;
 
 use parsa_python_cst::ParamKind;
 
-use super::{super::Generics, ReplaceSelfInMatcher, type_var_matcher::TypeVarMatcher};
+use super::{ReplaceSelfInMatcher, type_var_matcher::TypeVarMatcher};
 use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
     match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
-    matching::matcher::bound::BoundOrigin,
+    matcher::bound::BoundOrigin,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
@@ -18,7 +18,7 @@ use crate::{
         OnTypeError, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
         match_arbitrary_len_vs_unpack, match_unpack,
     },
-    type_helpers::{Callable, FuncLike, Function},
+    type_helpers::{Callable, FuncLike, Function, Generics},
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(

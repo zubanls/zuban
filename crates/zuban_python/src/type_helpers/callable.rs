@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     file::FLOW_ANALYSIS,
-    matching::calc_callable_type_vars,
+    matcher::calc_callable_type_vars,
     prelude::*,
     type_::{NeverCause, OnTypeError, ParamType, ReplaceSelf},
 };

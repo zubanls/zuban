@@ -4,7 +4,7 @@ use std::{
 };
 
 use super::GenericsList;
-use crate::{matching::Generics, prelude::*};
+use crate::{prelude::*, type_helpers::Generics};
 
 #[derive(Clone, Eq)]
 pub(crate) struct RecursiveType {

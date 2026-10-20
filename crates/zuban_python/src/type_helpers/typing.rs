@@ -2,12 +2,13 @@ use std::borrow::Cow;
 
 use crate::{
     arguments::{ArgKind, InferredArg},
-    matching::{CheckedTypeRecursion, Generics},
+    matcher::CheckedTypeRecursion,
     prelude::*,
     result_context::CouldBeALiteral,
     type_::{
         ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType, TypedDictGenerics,
     },
+    type_helpers::Generics,
     utils::join_with_commas,
 };
 

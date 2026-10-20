@@ -40,9 +40,9 @@ pub(crate) use self::{
 use crate::{
     format_data::{AvoidRecursionFor, find_similar_types},
     match_::MismatchReason,
-    matching::Generics,
     new_class,
     prelude::*,
+    type_helpers::Generics,
     type_helpers::{Instance, MroIterator, TypeOrClass},
     utils::join_with_commas,
 };

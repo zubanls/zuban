@@ -15,7 +15,7 @@ use crate::{
         namespace_import,
     },
     inferred::AttributeKind,
-    matching::calc_callable_type_vars,
+    matcher::calc_callable_type_vars,
     type_::{
         ClassGenerics, DbBytes, ErrorTypes, GotType, Intersection, IteratorContent, LookupKind,
         OnLookupError, OnTypeError, TupleUnpack,

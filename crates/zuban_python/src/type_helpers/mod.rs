@@ -2,6 +2,7 @@ mod bound_method;
 mod callable;
 mod class;
 mod function;
+mod generics;
 mod instance;
 mod overload;
 mod typing;
@@ -15,6 +16,7 @@ pub(crate) use class::{
 pub(crate) use function::{
     FirstParamKind, FirstParamProperties, Function, FunctionParam, GeneratorType, is_private,
 };
+pub(crate) use generics::Generics;
 pub(crate) use instance::{
     Instance, InstanceLookupOptions, LookupDetails, execute_isinstance, execute_issubclass,
     execute_super,

@@ -15,7 +15,7 @@ use crate::{
         on_argument_type_error, use_cached_param_annotation_type,
     },
     inference_state::Mode,
-    matching::{
+    matcher::{
         CalculatedTypeArgs, ReplaceSelfInMatcher, calc_func_type_vars, calc_untyped_func_type_vars,
     },
     new_class,

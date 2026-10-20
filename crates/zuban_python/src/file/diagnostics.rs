@@ -22,7 +22,7 @@ use crate::{
     },
     imports::ImportResult,
     inferred::{AttributeKind, infer_class_method},
-    matching::{Generics, ReplaceSelfInMatcher},
+    matcher::ReplaceSelfInMatcher,
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
     type_::{
@@ -32,8 +32,8 @@ use crate::{
         format_callable_params,
     },
     type_helpers::{
-        Callable, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function, Instance,
-        InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name,
+        Callable, ClassLookupOptions, FirstParamKind, FirstParamProperties, Function, Generics,
+        Instance, InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name,
         check_type_var_variance_validity_for_type, is_private,
     },
 };

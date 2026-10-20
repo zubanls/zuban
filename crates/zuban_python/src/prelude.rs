@@ -10,7 +10,7 @@ pub(crate) use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     match_::Match,
-    matching::Matcher,
+    matcher::Matcher,
     node_ref::NodeRef,
     recoverable_error,
     result_context::ResultContext,

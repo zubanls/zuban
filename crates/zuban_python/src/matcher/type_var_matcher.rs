@@ -1,7 +1,7 @@
 use super::bound::{Bound, BoundKind};
 use crate::{
     match_::MismatchReason,
-    matching::matcher::bound::{BoundInfo, BoundOrigin},
+    matcher::bound::{BoundInfo, BoundOrigin},
     prelude::*,
     type_::GenericsList,
     utils::join_with_commas,
