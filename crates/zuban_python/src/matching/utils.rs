@@ -10,7 +10,7 @@ pub fn maybe_replace_class_type_vars(
 ) -> Option<Type> {
     t.maybe_replace_type_var_likes_and_self(
         db,
-        &mut |usage| maybe_class_usage(db, attribute_class, &usage),
+        &mut |usage| usage.maybe_class_generic(db, attribute_class),
         self_instance,
     )
 }
@@ -34,16 +34,7 @@ pub fn replace_class_type_vars_in_callable(
 ) -> Option<CallableContent> {
     callable.replace_type_var_likes_and_self(
         db,
-        &mut |usage| func_class.and_then(|c| maybe_class_usage(db, c, &usage)),
+        &mut |usage| func_class.and_then(|c| usage.maybe_class_generic(db, c)),
         as_self_instance,
     )
-}
-
-pub fn maybe_class_usage(
-    db: &Database,
-    attribute_class: &Class,
-    usage: &TypeVarLikeUsage,
-) -> Option<Generic> {
-    (attribute_class.node_ref.as_link() == usage.in_definition())
-        .then(|| attribute_class.generics().nth_usage(db, usage).into_owned())
 }

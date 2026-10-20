@@ -1799,6 +1799,11 @@ impl TypeVarLikeUsage {
             TypeVarLikeUsage::ParamSpec(usage) => usage.param_spec.inferred_variance(db, class),
         }
     }
+
+    pub fn maybe_class_generic(&self, db: &Database, attribute_class: &Class) -> Option<Generic> {
+        (attribute_class.node_ref.as_link() == self.in_definition())
+            .then(|| attribute_class.generics().nth_usage(db, self).into_owned())
+    }
 }
 
 impl NodeRef<'_> {

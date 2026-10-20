@@ -7,7 +7,7 @@ use crate::{
     match_::{ArgumentIndexWithParam, SignatureMatch},
     matching::{
         CalculatedTypeArgs, Generics, OnTypeError, calc_callable_dunder_init_type_vars,
-        calc_callable_type_vars, maybe_class_usage, replace_class_type_vars_in_callable,
+        calc_callable_type_vars, replace_class_type_vars_in_callable,
     },
     prelude::*,
     type_::{ComplexTypeGatherer, FunctionOverload, PrettyCallableOptions, ReplaceSelf},
@@ -580,7 +580,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
                         return c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
-                            maybe_class_usage(i_s.db, &cls, &usage)
+                            usage.maybe_class_generic(i_s.db, &cls)
                         });
                     }
                     Cow::Borrowed(&c.return_type)

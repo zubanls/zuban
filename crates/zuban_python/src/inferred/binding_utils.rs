@@ -2,7 +2,7 @@ use std::{cell::RefCell, sync::Arc};
 
 use crate::{
     database::OverloadDefinition,
-    matching::{Generics, maybe_class_usage, replace_class_type_vars},
+    matching::{Generics, replace_class_type_vars},
     prelude::*,
     type_::{ClassGenerics, GenericsList},
     type_helpers::Callable,
@@ -160,7 +160,7 @@ pub(super) fn proper_classmethod_callable(
         i_s.db,
         &mut |mut usage| {
             let in_definition = usage.in_definition();
-            if let Some(result) = maybe_class_usage(i_s.db, func_class, &usage) {
+            if let Some(result) = usage.maybe_class_generic(i_s.db, func_class) {
                 // We need to remap again, because in generics of classes will be
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.

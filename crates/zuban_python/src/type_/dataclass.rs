@@ -16,8 +16,7 @@ use crate::{
     arguments::{ArgKind, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     inferred::AttributeKind,
     matching::{
-        Generics, LookupKind, OnTypeError, calc_callable_type_vars, maybe_class_usage,
-        replace_class_type_vars,
+        Generics, LookupKind, OnTypeError, calc_callable_type_vars, replace_class_type_vars,
     },
     new_class,
     node_ref::KnownNodeRef,
@@ -197,7 +196,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
             match &mut new_param.type_ {
                 ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => {
                     if let Some(new_t) = t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
-                        maybe_class_usage(db, &cls, &usage)
+                        usage.maybe_class_generic(db, &cls)
                     }) {
                         *t = new_t
                     }

@@ -21,7 +21,6 @@ use crate::{
     matching::{
         ErrorStrs, Generics, LookupKind, OnTypeError, calc_callable_dunder_init_type_vars,
         calc_callable_type_vars, calc_class_dunder_init_type_vars, format_got_expected,
-        maybe_class_usage,
     },
     prelude::*,
     type_::{
@@ -2798,7 +2797,7 @@ fn init_as_callable(
                     &mut |usage| {
                         if needs_type_var_remap
                             && let Some(func_class) = init_class
-                            && let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage)
+                            && let Some(result) = usage.maybe_class_generic(i_s.db, &func_class)
                         {
                             return Some(result);
                         }

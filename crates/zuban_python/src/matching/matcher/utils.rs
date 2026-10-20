@@ -12,7 +12,7 @@ use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
     match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
-    matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin, maybe_class_usage},
+    matching::{ErrorTypes, GotType, matcher::bound::BoundOrigin},
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
@@ -241,7 +241,7 @@ impl CalculatedTypeArgs {
                 i_s.db,
                 &mut |usage| {
                     if let Some(c) = class
-                        && let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage)
+                        && let Some(generic_item) = usage.maybe_class_generic(i_s.db, c)
                     {
                         return Some(generic_item);
                     }

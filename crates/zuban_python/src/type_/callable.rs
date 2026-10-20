@@ -7,7 +7,7 @@ use super::{TypeLikeInTypeVar, TypeVarKindInfos};
 use crate::prelude::*;
 use crate::{
     format_data::ParamsStyle,
-    matching::{Generics, maybe_class_usage},
+    matching::Generics,
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
@@ -832,7 +832,7 @@ impl CallableContent {
             &mut |usage| {
                 // The ? can happen for example if the return value is a Callable with its
                 // own type vars.
-                let result = maybe_class_usage(db, &attribute_class, &usage)?;
+                let result = usage.maybe_class_generic(db, &attribute_class)?;
                 if !needs_additional_remap {
                     return Some(result);
                 }

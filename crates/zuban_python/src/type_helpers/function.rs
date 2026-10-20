@@ -17,7 +17,7 @@ use crate::{
     inference_state::Mode,
     matching::{
         CalculatedTypeArgs, ErrorStrs, OnTypeError, ReplaceSelfInMatcher, calc_func_type_vars,
-        calc_untyped_func_type_vars, maybe_class_usage,
+        calc_untyped_func_type_vars,
     },
     new_class,
     params::{
@@ -1633,7 +1633,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
-                &mut |usage| maybe_class_usage(i_s.db, &func_class, &usage),
+                &mut |usage| usage.maybe_class_generic(i_s.db, &func_class),
                 &|| {
                     if let FirstParamProperties::Skip { to_self_instance } = options.first_param {
                         Some(to_self_instance())
