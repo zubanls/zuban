@@ -1,4 +1,7 @@
-mod binding;
+mod attribute_kind;
+mod binding_utils;
+mod class_binding;
+mod instance_binding;
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -30,7 +33,10 @@ use crate::{
     },
 };
 
-pub(crate) use binding::*;
+pub(crate) use attribute_kind::*;
+pub(crate) use binding_utils::infer_class_method;
+pub(crate) use class_binding::*;
+pub(crate) use instance_binding::*;
 
 pub const NAME_DEF_TO_DEFAULTDICT_DIFF: i64 = -1;
 

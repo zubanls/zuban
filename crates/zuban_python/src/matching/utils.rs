@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{
-    inferred::infer_class_method_on_instance, prelude::*, type_::ReplaceSelf,
-    type_helpers::Callable,
-};
+use crate::{prelude::*, type_::ReplaceSelf, type_helpers::Callable};
 
 pub fn maybe_replace_class_type_vars(
     db: &Database,
@@ -49,39 +46,6 @@ pub fn maybe_class_usage(
 ) -> Option<Generic> {
     (attribute_class.node_ref.as_link() == usage.in_definition())
         .then(|| attribute_class.generics().nth_usage(db, usage).into_owned())
-}
-
-pub fn create_signature_without_self_for_callable(
-    i_s: &InferenceState,
-    for_name: &str,
-    callable: &CallableContent,
-    instance: &Type,
-    func_class: &Class,
-    first_type: &Type,
-) -> Option<CallableContent> {
-    let c = Callable::new(callable, None);
-    let mut matcher = Matcher::new_callable_matcher(&c);
-    if !match_self_type(i_s, &mut matcher, instance, func_class, first_type) {
-        if for_name == "__new__" {
-            // For some things like @override checking of __new__, the self type of the signature
-            // is actually a classmethod and therefore special.
-            return infer_class_method_on_instance(i_s, instance, *func_class, callable);
-        }
-        debug!(
-            "Couldn't create signature without self for callable {} with instance {}",
-            callable.format(&FormatData::new_short(i_s.db)),
-            instance.format_short(i_s.db)
-        );
-        return None;
-    }
-    let c = callable
-        .remove_first_positional_param()
-        .expect("Signatures without any params should have been filtered before");
-    let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| {
-        Some(instance.clone())
-    })
-    .unwrap_or(c);
-    Some(matcher.remove_self_from_callable(i_s, c))
 }
 
 pub fn match_self_type(

@@ -12,9 +12,8 @@ pub(crate) use matcher::{
 };
 
 pub(crate) use utils::{
-    calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-    maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
-    replace_class_type_vars_in_callable,
+    calculate_property_return, match_self_type, maybe_class_usage, maybe_replace_class_type_vars,
+    replace_class_type_vars, replace_class_type_vars_in_callable,
 };
 
 use crate::{
