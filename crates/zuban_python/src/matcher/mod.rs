@@ -28,7 +28,6 @@ use crate::{
     format_data::ParamsStyle,
     match_::SignatureMatch,
     matcher::bound::BoundOrigin,
-    matching::Generics,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -38,7 +37,7 @@ use crate::{
         StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
         add_param_spec_to_params, match_tuple_type_arguments,
     },
-    type_helpers::{Callable, FuncLike, Function},
+    type_helpers::{Callable, FuncLike, Function, Generics},
     utils::join_with_commas,
 };
 

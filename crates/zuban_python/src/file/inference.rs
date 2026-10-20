@@ -26,7 +26,6 @@ use crate::{
         ApplyClassDescriptorsOrigin, AttributeKind, MroIndex, NAME_DEF_TO_DEFAULTDICT_DIFF,
         UnionValue, add_attribute_error, specific_to_type,
     },
-    matching::Generics,
     new_class,
     node_ref::{KnownNodeRef, KnownPointLink},
     params::matches_simple_params,
@@ -38,6 +37,7 @@ use crate::{
         ParamType, StarParamType, StarStarParamType, Tuple, TupleLenInfos, TupleUnpack, UnionType,
         dataclass_converter_fields_lookup, format_got_expected,
     },
+    type_helpers::Generics,
     type_helpers::{
         ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
         InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,

@@ -9,7 +9,6 @@ use crate::{
     arguments::{Arg, InferredArg},
     match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
     matcher::bound::BoundOrigin,
-    matching::Generics,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,
@@ -19,7 +18,7 @@ use crate::{
         OnTypeError, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
         match_arbitrary_len_vs_unpack, match_unpack,
     },
-    type_helpers::{Callable, FuncLike, Function},
+    type_helpers::{Callable, FuncLike, Function, Generics},
 };
 
 pub(crate) fn calc_callable_dunder_init_type_vars<'db: 'a, 'a>(

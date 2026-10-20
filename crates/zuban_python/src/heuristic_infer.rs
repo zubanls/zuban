@@ -28,7 +28,6 @@ use crate::{
     imports::{ImportResult, namespace_import},
     inference_state::Mode,
     inferred::AttributeKind,
-    matching::Generics,
     new_class,
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     prelude::*,
@@ -37,6 +36,7 @@ use crate::{
         GenericsList, InferredTypeGatherer, IterCause, IterInfos, IteratorContent, LookupKind,
         OnTypeError, TypedDictGenerics, TypedDictMember, TypedDictMembers,
     },
+    type_helpers::Generics,
     type_helpers::{FirstParamProperties, Function, FunctionParam, OverloadedFunction},
     utils::{is_magic_method, limit_length_for_debug},
 };

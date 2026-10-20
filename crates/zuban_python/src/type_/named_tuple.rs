@@ -7,8 +7,12 @@ use vfs::FileIndex;
 
 use super::{FunctionKind, ParamType, tuple::lookup_tuple_magic_methods};
 use crate::{
-    format_data::AvoidRecursionFor, getitem::SliceType, inferred::AttributeKind,
-    matching::Generics, new_class, type_::LookupKind, type_helpers::LookupDetails,
+    format_data::AvoidRecursionFor,
+    getitem::SliceType,
+    inferred::AttributeKind,
+    new_class,
+    type_::LookupKind,
+    type_helpers::{Generics, LookupDetails},
     utils::join_with_commas,
 };
 use crate::{prelude::*, type_::IteratorContent};

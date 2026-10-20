@@ -17,12 +17,12 @@ use crate::{
     },
     imports::{ImportResult, global_import},
     lines::BytePositionInfos,
-    matching::Generics,
     name::{ModuleName, Range, TreeName, process_docstring},
     params::Param,
     prelude::*,
     pytest::find_all_possible_pytest_fixtures,
     type_::{EnumMemberDefinition, FunctionKind, Namespace, ParamType},
+    type_helpers::Generics,
     type_helpers::{Function, TypeOrClass, is_private},
     utils::is_magic_method,
 };

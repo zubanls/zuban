@@ -19,7 +19,7 @@ use crate::{
     inferred::{ApplyClassDescriptorsOrigin, AttributeKind, FunctionOrOverload, MroIndex},
     match_::MismatchReason,
     matching::{
-        Generics, calc_callable_dunder_init_type_vars, calc_callable_type_vars,
+        calc_callable_dunder_init_type_vars, calc_callable_type_vars,
         calc_class_dunder_init_type_vars,
     },
     prelude::*,
@@ -29,7 +29,7 @@ use crate::{
         StarStarParamType, TypeArgs, TypeGatherer, TypeLikeInTypeVar, TypeVarIndex,
         TypeVarKindInfos, TypedDictGenerics, add_any_params_to_params, format_got_expected,
     },
-    type_helpers::FuncLike,
+    type_helpers::{FuncLike, Generics},
     utils::is_magic_method,
 };
 

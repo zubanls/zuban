@@ -2,10 +2,10 @@ use std::{cell::RefCell, sync::Arc};
 
 use crate::{
     database::OverloadDefinition,
-    matching::Generics,
     prelude::*,
     type_::{ClassGenerics, GenericsList},
     type_helpers::Callable,
+    type_helpers::Generics,
 };
 
 pub(super) fn infer_overloaded_class_method(

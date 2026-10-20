@@ -7,10 +7,10 @@ use super::{TypeLikeInTypeVar, TypeVarKindInfos};
 use crate::prelude::*;
 use crate::{
     format_data::ParamsStyle,
-    matching::Generics,
     params::{
         Param, WrappedParamType, WrappedStar, WrappedStarStar, params_have_self_type_after_self,
     },
+    type_helpers::Generics,
     type_helpers::TypeOrClass,
     utils::join_with_commas,
 };

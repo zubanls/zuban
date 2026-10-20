@@ -6,10 +6,10 @@ use vfs::FileIndex;
 use crate::{
     database::BaseClass,
     file::ClassInitializer,
-    matching::Generics,
     new_class,
     prelude::*,
     type_::{ClassGenerics, CustomBehavior, ParamType, TypeArgs, dataclasses_replace},
+    type_helpers::Generics,
     type_helpers::{FirstParamProperties, Function, Instance, cache_class_name},
 };
 

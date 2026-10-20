@@ -15,7 +15,7 @@ use super::{
 use crate::{
     getitem::{SliceType, SliceTypeContent},
     inferred::AttributeKind,
-    matching::Generics,
+    type_helpers::Generics,
     type_helpers::{ClassExecutionResult, Instance, LookupDetails, TypeOrClass},
     utils::{arc_slice_into_vec, join_with_commas},
 };

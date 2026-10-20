@@ -16,7 +16,6 @@ use crate::{
         should_add_deprecated, use_cached_annotation_or_type_comment,
     },
     getitem::SliceType,
-    matching::Generics,
     new_class,
     prelude::*,
     type_::{
@@ -24,6 +23,7 @@ use crate::{
         IterInfos, IteratorContent, LookupArgs, LookupKind, NeverCause, OnLookupError, OnTypeError,
         execute_tuple_class, execute_type_of_type,
     },
+    type_helpers::Generics,
     type_helpers::{
         BoundMethod, BoundMethodFunction, FirstParamProperties, Function, LookupDetails,
         OverloadedFunction, execute_assert_type, execute_cast, execute_isinstance,

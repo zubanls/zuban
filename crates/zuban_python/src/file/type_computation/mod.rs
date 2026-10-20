@@ -30,7 +30,6 @@ use crate::{
     file::flow_analysis::{DelayedConstraintVerification, DelayedDiagnostic},
     getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
     imports::{ImportResult, namespace_import},
-    matching::Generics,
     new_class,
     prelude::*,
     type_::{
@@ -41,6 +40,7 @@ use crate::{
         TypeVarVariance, TypedDictGenerics, UnionType, WithUnpack, add_any_params_to_params,
         add_param_spec_to_params,
     },
+    type_helpers::Generics,
     type_helpers::{Function, cache_class_name},
     utils::{EitherIterator, arc_slice_into_vec},
 };
