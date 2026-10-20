@@ -2,7 +2,7 @@ use std::{cell::RefCell, sync::Arc};
 
 use crate::{
     database::OverloadDefinition,
-    matching::{Generics, replace_class_type_vars},
+    matching::Generics,
     prelude::*,
     type_::{ClassGenerics, GenericsList},
     type_helpers::Callable,
@@ -97,7 +97,7 @@ pub(super) fn proper_classmethod_callable(
                 callable.params = CallableParams::Simple(Arc::from(vec));
                 let c = Callable::new(original_callable, None);
                 let mut matcher = Matcher::new_callable_matcher(&c);
-                let t = replace_class_type_vars(i_s.db, t, func_class, &|| Some(as_type()));
+                let t = t.replace_class_type_vars(i_s.db, func_class, &|| Some(as_type()));
                 // It feels weird to do this here, but this is just annoying currently
                 if !matches!(func_class.generics, Generics::Self_ { .. })
                     && !t

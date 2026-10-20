@@ -16,10 +16,7 @@ use crate::{
         should_add_deprecated, use_cached_annotation_or_type_comment,
     },
     getitem::SliceType,
-    matching::{
-        ErrorStrs, Generics, IteratorContent, LookupKind, OnLookupError, OnTypeError,
-        maybe_replace_class_type_vars,
-    },
+    matching::{ErrorStrs, Generics, IteratorContent, LookupKind, OnLookupError, OnTypeError},
     new_class,
     prelude::*,
     type_::{
@@ -406,7 +403,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         if attribute_class.needs_generic_remapping_for_attributes(i_s, &t)
                             && let Some(d) =
-                                maybe_replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                                t.maybe_replace_class_type_vars(i_s.db, attribute_class, &|| {
                                     Some(class.as_type(i_s.db))
                                 })
                         {
@@ -416,7 +413,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             } else if let Some(t) = definition.maybe_type()
-                && let Some(d) = maybe_replace_class_type_vars(i_s.db, t, attribute_class, &|| {
+                && let Some(d) = t.maybe_replace_class_type_vars(i_s.db, attribute_class, &|| {
                     Some(class.as_type(i_s.db))
                 })
             {

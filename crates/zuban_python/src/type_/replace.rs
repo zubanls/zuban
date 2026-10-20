@@ -298,6 +298,30 @@ impl Type {
         }
     }
 
+    pub fn replace_class_type_vars(
+        &self,
+        db: &Database,
+        attribute_class: &Class,
+        self_instance: ReplaceSelf,
+    ) -> Cow<'_, Self> {
+        self.maybe_replace_class_type_vars(db, attribute_class, self_instance)
+            .map(Cow::Owned)
+            .unwrap_or_else(|| Cow::Borrowed(self))
+    }
+
+    pub fn maybe_replace_class_type_vars(
+        &self,
+        db: &Database,
+        attribute_class: &Class,
+        self_instance: ReplaceSelf,
+    ) -> Option<Self> {
+        self.maybe_replace_type_var_likes_and_self(
+            db,
+            &mut |usage| usage.maybe_class_generic(db, attribute_class),
+            self_instance,
+        )
+    }
+
     pub fn maybe_erase_type_var_likes(
         &self,
         db: &Database,

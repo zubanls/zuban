@@ -15,9 +15,7 @@ use crate::prelude::*;
 use crate::{
     arguments::{ArgKind, CombinedArgs, KnownArgsWithCustomAddIssue, SimpleArgs},
     inferred::AttributeKind,
-    matching::{
-        Generics, LookupKind, OnTypeError, calc_callable_type_vars, replace_class_type_vars,
-    },
+    matching::{Generics, LookupKind, OnTypeError, calc_callable_type_vars},
     new_class,
     node_ref::KnownNodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
@@ -255,10 +253,9 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                     ParamType::Star(_) | ParamType::StarStar(_) => continue,
                     _ => unreachable!(),
                 };
-                *t = replace_class_type_vars(db, t, &cls, &|| {
-                    Some(Type::Dataclass(dataclass.clone()))
-                })
-                .into_owned();
+                *t = t
+                    .replace_class_type_vars(db, &cls, &|| Some(Type::Dataclass(dataclass.clone())))
+                    .into_owned();
                 let cloned_name = new_param.name.clone().unwrap();
                 let param_name = cloned_name.as_str(db);
                 if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {

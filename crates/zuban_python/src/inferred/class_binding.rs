@@ -10,7 +10,6 @@ use crate::{
             callable_into_inferred, infer_class_method, infer_overloaded_class_method,
         },
     },
-    matching::replace_class_type_vars,
     prelude::*,
     type_::{FunctionKind, FunctionOverload},
     type_helpers::{FirstParamProperties, Function, TypeOrClass},
@@ -305,23 +304,18 @@ impl<'db: 'slf, 'slf> Inferred {
         }
         let mut new = None;
         if attribute_class.needs_generic_remapping_for_attributes(i_s, t) {
-            new = Some(replace_class_type_vars(
-                i_s.db,
-                t,
-                &attribute_class,
-                &|| {
-                    Some({
-                        if let Some(as_type_type) = as_type_type {
-                            let Type::Type(t) = as_type_type() else {
-                                unreachable!()
-                            };
-                            (*t).clone()
-                        } else {
-                            class.as_type(i_s.db)
-                        }
-                    })
-                },
-            ));
+            new = Some(t.replace_class_type_vars(i_s.db, &attribute_class, &|| {
+                Some({
+                    if let Some(as_type_type) = as_type_type {
+                        let Type::Type(t) = as_type_type() else {
+                            unreachable!()
+                        };
+                        (*t).clone()
+                    } else {
+                        class.as_type(i_s.db)
+                    }
+                })
+            }));
             t = new.as_ref().unwrap();
         }
 

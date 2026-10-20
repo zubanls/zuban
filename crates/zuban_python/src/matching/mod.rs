@@ -1,6 +1,5 @@
 mod generics;
 mod matcher;
-mod utils;
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -10,8 +9,6 @@ pub(crate) use matcher::{
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
     calc_func_type_vars, calc_untyped_func_type_vars, invalidate_matching_cache,
 };
-
-pub(crate) use utils::{maybe_replace_class_type_vars, replace_class_type_vars};
 
 use crate::{
     arguments::Arg,

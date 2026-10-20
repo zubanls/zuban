@@ -9,7 +9,6 @@ use crate::{
         attribute_kind::AttributeKind,
         binding_utils::{callable_into_inferred, proper_classmethod_callable},
     },
-    matching::replace_class_type_vars,
     prelude::*,
     type_::{FunctionKind, FunctionOverload, PropertySetter, PropertySetterType},
     type_helpers::{
@@ -177,7 +176,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if !attribute_class.needs_generic_remapping_for_attributes(i_s, &t)
                             );
                             let t = if is_remapped {
-                                replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
+                                t.replace_class_type_vars(i_s.db, &attribute_class, &|| {
                                     Some(instance.clone())
                                 })
                             } else {
@@ -526,9 +525,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                         if attribute_class
                                             .needs_generic_remapping_for_attributes(i_s, t) =>
                                     {
-                                        let t = replace_class_type_vars(
+                                        let t = t.replace_class_type_vars(
                                             i_s.db,
-                                            t,
                                             &attribute_class,
                                             &|| Some(instance.clone()),
                                         );
@@ -625,12 +623,9 @@ impl<'db: 'slf, 'slf> Inferred {
 
         let mut new = None;
         if attribute_class.needs_generic_remapping_for_attributes(i_s, t) {
-            new = Some(replace_class_type_vars(
-                i_s.db,
-                t,
-                &attribute_class,
-                &|| Some(instance.clone()),
-            ));
+            new = Some(
+                t.replace_class_type_vars(i_s.db, &attribute_class, &|| Some(instance.clone())),
+            );
             t = new.as_ref().unwrap();
         }
 
@@ -759,7 +754,7 @@ pub fn match_self_type(
     first_type: &Type,
 ) -> bool {
     let expected =
-        replace_class_type_vars(i_s.db, first_type, func_class, &|| Some(instance.clone()));
+        first_type.replace_class_type_vars(i_s.db, func_class, &|| Some(instance.clone()));
     expected.is_super_type_of(i_s, matcher, instance).bool()
 }
 
@@ -785,9 +780,9 @@ pub fn calculate_property_return(
     {
         return Some(Type::Any(AnyCause::Unannotated));
     }
-    let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
-        Some(instance.clone())
-    });
+    let t = callable
+        .return_type
+        .replace_class_type_vars(i_s.db, func_class, &|| Some(instance.clone()));
 
     Some(if callable.type_vars.is_empty() {
         t.into_owned()
