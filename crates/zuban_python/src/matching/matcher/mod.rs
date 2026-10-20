@@ -466,12 +466,10 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class
                 && class.node_ref.as_link() == t1.in_definition
             {
-                let generic = class
+                let g = class
                     .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
-                let GenericItem::TypeArg(g) = generic.as_ref() else {
-                    unreachable!()
-                };
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
+                    .expect_type_argument();
                 debug!(
                     "Use class type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -486,12 +484,10 @@ impl<'a> Matcher<'a> {
             if let Some(func_class) =
                 self.maybe_func_class_for_usage(&TypeVarLikeUsage::TypeVar(t1.clone()))
             {
-                let generic = func_class
+                let g = func_class
                     .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()));
-                let GenericItem::TypeArg(g) = generic.as_ref() else {
-                    unreachable!()
-                };
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
+                    .expect_type_argument();
                 debug!(
                     "Use func type argument {:?} to match {:?}",
                     g.format_short(i_s.db),
@@ -672,10 +668,10 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class
                 && class.node_ref.as_link() == tvt.in_definition
             {
-                let generic = class.generics().nth_usage(i_s.db, &usage);
-                let GenericItem::TypeArgs(ts1) = generic.as_ref() else {
-                    unreachable!()
-                };
+                let ts1 = class
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .expect_type_arguments();
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -686,10 +682,10 @@ impl<'a> Matcher<'a> {
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
-                let generic = func_class.generics().nth_usage(i_s.db, &usage);
-                let GenericItem::TypeArgs(ts1) = generic.as_ref() else {
-                    unreachable!()
-                };
+                let ts1 = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .expect_type_arguments();
                 return match_tuple_type_arguments(
                     i_s,
                     &mut Matcher::default(),
@@ -748,10 +744,10 @@ impl<'a> Matcher<'a> {
             }
             let usage = &TypeVarLikeUsage::ParamSpec(p1.clone());
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
-                let generic = func_class.generics().nth_usage(i_s.db, usage);
-                let GenericItem::ParamSpecArg(ts1) = generic.as_ref() else {
-                    unreachable!()
-                };
+                let ts1 = func_class
+                    .generics()
+                    .nth_usage(i_s.db, usage)
+                    .expect_param_spec_arg();
                 return matches_params(
                     i_s,
                     &mut Matcher::default(),

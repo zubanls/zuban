@@ -1077,10 +1077,10 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
-        match self.generics().nth(db, nth).into_owned() {
-            GenericItem::TypeArg(t) => t,
-            _ => unreachable!(),
-        }
+        self.generics()
+            .nth(db, nth)
+            .expect_type_argument()
+            .into_owned()
     }
 
     pub fn nth_param_spec_usage(
@@ -1088,14 +1088,9 @@ impl<'db: 'a, 'a> Class<'a> {
         db: &'db Database,
         usage: &ParamSpecUsage,
     ) -> Cow<'_, ParamSpecArg> {
-        let generic = self
-            .generics()
-            .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
-        match generic {
-            Cow::Borrowed(GenericItem::ParamSpecArg(p)) => Cow::Borrowed(p),
-            Cow::Owned(GenericItem::ParamSpecArg(p)) => Cow::Owned(p),
-            _ => unreachable!(),
-        }
+        self.generics()
+            .nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()))
+            .expect_param_spec_arg()
     }
 
     pub fn mro_maybe_without_object(
