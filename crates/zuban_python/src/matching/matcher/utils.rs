@@ -142,7 +142,7 @@ fn calc_dunder_init_type_vars<'db: 'a, 'a>(
             | ClassGenerics::SlicesWithClassTypes(_)) => Some(GenericsList::new_generics(
                 Generics::from_class_generics(i_s.db, class.node_ref, &class_generics)
                     .iter(i_s.db)
-                    .map(|g| g.into_generic_item())
+                    .map(Cow::into_owned)
                     .collect(),
             )),
             ClassGenerics::None { .. } => None,

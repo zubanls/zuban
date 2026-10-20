@@ -1,17 +1,17 @@
-mod generic;
 mod generics;
 mod matcher;
 mod utils;
 
 use std::{borrow::Cow, sync::Arc};
 
-pub(crate) use generic::Generic;
 pub(crate) use generics::Generics;
 pub(crate) use matcher::{
     CalculatedTypeArgs, CheckedTypeRecursion, Matcher, MatcherFormatResult, ReplaceSelfInMatcher,
     calc_callable_dunder_init_type_vars, calc_callable_type_vars, calc_class_dunder_init_type_vars,
     calc_func_type_vars, calc_untyped_func_type_vars, invalidate_matching_cache,
 };
+
+pub(crate) type Generic<'a> = Cow<'a, GenericItem>;
 pub(crate) use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
     maybe_class_usage, maybe_replace_class_type_vars, replace_class_type_vars,
@@ -23,7 +23,7 @@ use crate::{
     format_data::find_similar_types,
     match_::MismatchReason,
     prelude::*,
-    type_::{InferredTypeGatherer, TupleUnpack, WithUnpack},
+    type_::{GenericItem, InferredTypeGatherer, TupleUnpack, WithUnpack},
     type_helpers::FuncLike,
 };
 

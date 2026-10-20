@@ -1,4 +1,5 @@
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
+use std::borrow::Cow;
 
 use super::Generic;
 use crate::{
@@ -7,11 +8,18 @@ use crate::{
     type_::{ClassGenerics, GenericItem, GenericsList},
 };
 
+fn generic_type_arg<'a>(type_arg: Cow<'a, Type>) -> Generic<'a> {
+    Cow::Owned(GenericItem::TypeArg(match type_arg {
+        Cow::Borrowed(type_arg) => type_arg.clone(),
+        Cow::Owned(type_arg) => type_arg,
+    }))
+}
+
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some((_, Generics::None)) => Generic::new($g),
-            Some((class_link, type_var_generics)) => Generic::owned(
+            None | Some((_, Generics::None)) => Cow::Borrowed($g),
+            Some((class_link, type_var_generics)) => Cow::Owned(
                 $g.replace_type_var_likes_and_self(
                     $db,
                     &mut |t| {
@@ -19,7 +27,7 @@ macro_rules! replace_class_vars {
                             if matches!(type_var_generics, Generics::NotDefinedYet { .. }) {
                                 t.as_default_or_any_generic_item($db)
                             } else {
-                                type_var_generics.nth_usage($db, &t).into_generic_item()
+                                type_var_generics.nth_usage($db, &t).into_owned()
                             }
                         })
                     },
@@ -73,9 +81,9 @@ impl<'a> Generics<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 debug_assert_eq!(n, 0);
-                Generic::TypeArg(use_cached_simple_generic_type(db, file, *expr))
+                generic_type_arg(use_cached_simple_generic_type(db, file, *expr))
             }
-            Self::SlicesWithClassTypes(file, slices) => Generic::TypeArg(
+            Self::SlicesWithClassTypes(file, slices) => generic_type_arg(
                 slices
                     .iter()
                     .nth(n)
@@ -96,9 +104,9 @@ impl<'a> Generics<'a> {
             }
             Self::NotDefinedYet { class_ref } => {
                 let type_var_like = &class_ref.use_cached_type_vars(db)[n];
-                Generic::owned(type_var_like.as_default_or_any_generic_item(db))
+                Cow::Owned(type_var_like.as_default_or_any_generic_item(db))
             }
-            Self::Self_ { class_ref } => Generic::owned(
+            Self::Self_ { class_ref } => Cow::Owned(
                 class_ref.use_cached_type_vars(db)[n]
                     .as_type_var_like_usage(n.into(), class_ref.as_link())
                     .into_generic_item(),
@@ -171,13 +179,13 @@ impl<'a> Iterator for GenericsIterator<'a> {
                     return None;
                 }
                 self.ended = true;
-                Some(Generic::TypeArg(use_cached_simple_generic_type(
+                Some(generic_type_arg(use_cached_simple_generic_type(
                     self.db, file, *expr,
                 )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Generic::TypeArg(use_cached_simple_generic_type(
+                    Some(generic_type_arg(use_cached_simple_generic_type(
                         self.db,
                         file,
                         s.expression(),
@@ -193,12 +201,12 @@ impl<'a> Iterator for GenericsIterator<'a> {
                 iterator,
                 definition,
             } => iterator.next().map(|(i, t)| {
-                Generic::owned(
+                Cow::Owned(
                     t.as_type_var_like_usage(i.into(), *definition)
                         .into_generic_item(),
                 )
             }),
-            GenericsIteratorItem::AnyTypeVars(type_var_likes) => Some(Generic::owned(
+            GenericsIteratorItem::AnyTypeVars(type_var_likes) => Some(Cow::Owned(
                 type_var_likes
                     .next()?
                     .as_default_or_any_generic_item(self.db),

@@ -28,7 +28,7 @@ use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     format_data::ParamsStyle,
     match_::SignatureMatch,
-    matching::{Generic, matcher::bound::BoundOrigin},
+    matching::matcher::bound::BoundOrigin,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
@@ -983,8 +983,8 @@ impl<'a> Matcher<'a> {
             }
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(format_data.db, usage);
-                let is_same = match (usage, &generic) {
-                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(t2)) => match t2.as_ref() {
+                let is_same = match (usage, generic.as_ref()) {
+                    (TypeVarLikeUsage::TypeVar(u1), GenericItem::TypeArg(t2)) => match t2 {
                         Type::TypeVar(u2) => u1 == u2,
                         _ => false,
                     },
@@ -1190,13 +1190,10 @@ impl<'a> Matcher<'a> {
         if let Some(c) = self.class
             && c.node_ref.as_link() == usage.in_definition()
         {
-            return Some(c.generics().nth_usage(db, &usage).into_generic_item());
+            return Some(c.generics().nth_usage(db, &usage).into_owned());
         }
         if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
-            let g = func_class
-                .generics()
-                .nth_usage(db, usage)
-                .into_generic_item();
+            let g = func_class.generics().nth_usage(db, usage).into_owned();
             // We want to make sure that we don't remap the func_class again (otherwise we
             // cause infinite recursions)
             let without_func_class = Self {
