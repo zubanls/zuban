@@ -9,10 +9,7 @@ use crate::{
         attribute_kind::AttributeKind,
         binding_utils::{callable_into_inferred, proper_classmethod_callable},
     },
-    matching::{
-        calculate_property_return, match_self_type, replace_class_type_vars,
-        replace_class_type_vars_in_callable,
-    },
+    matching::{replace_class_type_vars, replace_class_type_vars_in_callable},
     prelude::*,
     type_::{FunctionKind, FunctionOverload, PropertySetter, PropertySetterType},
     type_helpers::{
@@ -753,4 +750,51 @@ fn create_signature_without_self_for_callable(
     })
     .unwrap_or(c);
     Some(matcher.remove_self_from_callable(i_s, c))
+}
+
+pub fn match_self_type(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    instance: &Type,
+    func_class: &Class,
+    first_type: &Type,
+) -> bool {
+    let expected =
+        replace_class_type_vars(i_s.db, first_type, func_class, &|| Some(instance.clone()));
+    expected.is_super_type_of(i_s, matcher, instance).bool()
+}
+
+pub fn calculate_property_return(
+    i_s: &InferenceState,
+    instance: &Type,
+    func_class: &Class,
+    callable: &CallableContent,
+    avoid_inferring_return_types: bool,
+) -> Option<Type> {
+    let first_type = callable.first_positional_type()?;
+    let c = Callable::new(callable, None); // TODO is this correct?
+    let mut matcher = Matcher::new_callable_matcher(&c);
+    if callable.kind.had_first_self_or_class_annotation()
+        && !match_self_type(i_s, &mut matcher, instance, func_class, &first_type)
+    {
+        return None;
+    }
+
+    if avoid_inferring_return_types
+        && let Some(func) = callable.maybe_original_function(i_s.db)
+        && func.return_annotation().is_none()
+    {
+        return Some(Type::Any(AnyCause::Unannotated));
+    }
+    let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
+        Some(instance.clone())
+    });
+
+    Some(if callable.type_vars.is_empty() {
+        t.into_owned()
+    } else {
+        matcher
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
+            .into_owned()
+    })
 }
