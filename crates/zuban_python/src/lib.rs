@@ -20,6 +20,7 @@ mod inlay_hints;
 mod lines;
 mod lsp_utils;
 mod match_;
+mod matcher;
 mod matching;
 mod name;
 mod node_ref;

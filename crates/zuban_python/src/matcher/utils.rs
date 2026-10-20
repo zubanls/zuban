@@ -3,12 +3,13 @@ pub(super) use utils::AlreadySeen;
 
 use parsa_python_cst::ParamKind;
 
-use super::{super::Generics, ReplaceSelfInMatcher, type_var_matcher::TypeVarMatcher};
+use super::{ReplaceSelfInMatcher, type_var_matcher::TypeVarMatcher};
 use crate::prelude::*;
 use crate::{
     arguments::{Arg, InferredArg},
     match_::{ArgumentIndexWithParam, MismatchReason, SignatureMatch},
-    matching::matcher::bound::BoundOrigin,
+    matcher::bound::BoundOrigin,
+    matching::Generics,
     params::{
         InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
         WrappedStarStar,

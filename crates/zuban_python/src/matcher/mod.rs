@@ -23,12 +23,12 @@ use self::{
     type_var_matcher::CalculatingTypeArg,
 };
 
-use super::Generics;
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     format_data::ParamsStyle,
     match_::SignatureMatch,
-    matching::matcher::bound::BoundOrigin,
+    matcher::bound::BoundOrigin,
+    matching::Generics,
     params::{
         InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
         matches_params,
