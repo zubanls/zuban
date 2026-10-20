@@ -6,7 +6,10 @@ This is a normal Rust repository. You have to make sure `cargo fmt --check`,
 Never cheat when solving a problem. I always want a perfect solution.
 
 You have to use `git clone --recurse-submodules`. If you are not able to or
-allowed to checkout the submodules let the user know and abort immediately.
+allowed to checkout the submodules let the user know and abort immediately. The
+only exception to this is if you're tasked to do a refactoring, in which case
+running the tests is not necessary and just running `cargo check` is good
+enough.
 
 ## Quickstart
 
