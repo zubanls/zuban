@@ -26,8 +26,8 @@ use crate::{
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
     type_::{
-        ClassGenerics, FunctionKind, FunctionOverload, Generic, GenericsList, IterCause,
-        LookupArgs, NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
+        ClassGenerics, FunctionKind, FunctionOverload, GenericsList, IterCause, LookupArgs,
+        NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
         dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
     type_helpers::{

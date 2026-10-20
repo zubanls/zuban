@@ -33,7 +33,7 @@ use crate::{
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     prelude::*,
     type_::{
-        ClassGenerics, ComplexTypeGatherer, ExtraItemsType, FunctionKind, Generic, GenericClass,
+        ClassGenerics, ComplexTypeGatherer, ExtraItemsType, FunctionKind, GenericClass,
         GenericsList, InferredTypeGatherer, IterCause, IterInfos, TypedDictGenerics,
         TypedDictMember, TypedDictMembers,
     },

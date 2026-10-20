@@ -27,7 +27,7 @@ use crate::{
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
     prelude::*,
-    type_::{Generic, TupleUnpack, TypeVarManager},
+    type_::{TupleUnpack, TypeVarManager},
     type_helpers::cache_class_name,
 };
 

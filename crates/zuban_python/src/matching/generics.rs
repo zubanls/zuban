@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use crate::{
     file::use_cached_simple_generic_type,
     prelude::*,
-    type_::{ClassGenerics, Generic, GenericsList},
+    type_::{ClassGenerics, GenericsList},
 };
 
 fn generic_type_arg(type_arg: Cow<Type>) -> Cow<Generic> {

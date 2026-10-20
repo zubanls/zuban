@@ -20,9 +20,9 @@ use crate::{
     new_class,
     prelude::*,
     type_::{
-        ClassGenerics, DbBytes, FunctionKind, FunctionOverload, Generic, GenericClass,
-        GenericsList, InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LookupArgs,
-        NeverCause, PropertySetter, PropertySetterType, execute_tuple_class, execute_type_of_type,
+        ClassGenerics, DbBytes, FunctionKind, FunctionOverload, GenericClass, GenericsList,
+        InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LookupArgs, NeverCause,
+        PropertySetter, PropertySetterType, execute_tuple_class, execute_type_of_type,
     },
     type_helpers::{
         BoundMethod, BoundMethodFunction, Callable, FirstParamProperties, FuncLike as _, Function,

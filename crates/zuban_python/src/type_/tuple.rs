@@ -9,7 +9,7 @@ use std::{
 
 use num_bigint::BigInt;
 
-use super::{ClassGenerics, CustomBehavior, Generic, GenericsList, utils::method_with_fallback};
+use super::{ClassGenerics, CustomBehavior, GenericsList, utils::method_with_fallback};
 use crate::prelude::*;
 use crate::{
     getitem::{SliceType, SliceTypeContent},

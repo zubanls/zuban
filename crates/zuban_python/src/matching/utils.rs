@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    inferred::infer_class_method_on_instance,
-    prelude::*,
-    type_::{Generic, ReplaceSelf},
+    inferred::infer_class_method_on_instance, prelude::*, type_::ReplaceSelf,
     type_helpers::Callable,
 };
 

@@ -22,10 +22,7 @@ use crate::{
     prelude::*,
     python_state::PythonState,
     sys_path,
-    type_::{
-        DataclassTransformObj, FunctionKind, FunctionOverload, Generic, GenericsList,
-        TypeVarLikeName,
-    },
+    type_::{DataclassTransformObj, FunctionKind, FunctionOverload, GenericsList, TypeVarLikeName},
     type_helpers::Function,
     typeshed::typeshed_path_from_executable,
     utils::SymbolTable,

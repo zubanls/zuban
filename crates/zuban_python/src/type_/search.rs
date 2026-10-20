@@ -1,6 +1,6 @@
 use super::{
-    ClassGenerics, Generic, GenericClass, GenericsList, ParamType, StarParamType,
-    StarStarParamType, TupleUnpack, TypedDictGenerics,
+    ClassGenerics, GenericClass, GenericsList, ParamType, StarParamType, StarStarParamType,
+    TupleUnpack, TypedDictGenerics,
 };
 
 use crate::{prelude::*, type_::WithUnpack};

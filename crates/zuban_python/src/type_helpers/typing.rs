@@ -6,8 +6,7 @@ use crate::{
     prelude::*,
     result_context::CouldBeALiteral,
     type_::{
-        ClassGenerics, Generic, GenericClass, ParamType, StarParamType, StarStarParamType,
-        TypedDictGenerics,
+        ClassGenerics, GenericClass, ParamType, StarParamType, StarStarParamType, TypedDictGenerics,
     },
     utils::join_with_commas,
 };

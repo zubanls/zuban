@@ -25,9 +25,9 @@ use crate::{
     },
     prelude::*,
     type_::{
-        ClassGenerics, FunctionOverload, Generic, GenericClass, GenericsList, LookupArgs,
-        ParamSpecArg, ParamType, PrettyCallableOptions, StarParamType, StarStarParamType, TypeArgs,
-        TypeGatherer, TypeLikeInTypeVar, TypeVarIndex, TypeVarKindInfos, TypedDictGenerics,
+        ClassGenerics, FunctionOverload, GenericClass, GenericsList, LookupArgs, ParamSpecArg,
+        ParamType, PrettyCallableOptions, StarParamType, StarStarParamType, TypeArgs, TypeGatherer,
+        TypeLikeInTypeVar, TypeVarIndex, TypeVarKindInfos, TypedDictGenerics,
         add_any_params_to_params,
     },
     type_helpers::FuncLike,

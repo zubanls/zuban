@@ -6,7 +6,7 @@ use crate::{
     params::matches_params_with_variance,
     prelude::*,
     type_::{
-        Generic, ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
+        ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
         match_tuple_type_arguments,
     },
 };

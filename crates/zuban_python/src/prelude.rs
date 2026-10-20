@@ -16,7 +16,7 @@ pub(crate) use crate::{
     result_context::ResultContext,
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, Dataclass,
-        DbString, Enum, EnumMember, FormatStyle, GenericItemCowExt, Literal, LiteralKind,
+        DbString, Enum, EnumMember, FormatStyle, Generic, GenericItemCowExt, Literal, LiteralKind,
         LiteralValue, LookupResult, NamedTuple, NewType, ParamSpec, ParamSpecUsage, RecursiveType,
         ReplaceTypeVarLikes, SearchTypeVars, StringSlice, Tuple, TupleArgs, Type, TypeVar,
         TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTuple, TypeVarTupleUsage,

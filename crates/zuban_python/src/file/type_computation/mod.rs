@@ -34,7 +34,7 @@ use crate::{
     new_class,
     prelude::*,
     type_::{
-        CallableWithParent, ClassGenerics, DbBytes, Generic, GenericClass, GenericsList,
+        CallableWithParent, ClassGenerics, DbBytes, GenericClass, GenericsList,
         MaybeUnpackGatherer, Namespace, NeverCause, ParamSpecArg, ParamType, RecursiveTypeOrigin,
         Sentinel, StarParamType, StarStarParamType, Tuple, TupleUnpack, TypeArgs, TypeGatherer,
         TypeGuardInfo, TypeLikeInTypeVar, TypeVarKindInfos, TypeVarLikeName, TypeVarManager,

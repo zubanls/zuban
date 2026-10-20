@@ -18,9 +18,8 @@ use crate::{
         WrappedStarStar,
     },
     type_::{
-        CallableWithParent, ClassGenerics, Generic, GenericsList, MaybeUnpackGatherer,
-        ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager, match_arbitrary_len_vs_unpack,
-        match_unpack,
+        CallableWithParent, ClassGenerics, GenericsList, MaybeUnpackGatherer, ParamSpecTypeVars,
+        ReplaceSelf, TupleUnpack, TypeVarManager, match_arbitrary_len_vs_unpack, match_unpack,
     },
     type_helpers::{Callable, FuncLike, Function},
 };

@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{FunctionDef, NodeIndex, ParamKind};
 
-use super::{Generic, GenericsList, TupleUnpack, TypeArgs, WithUnpack};
+use super::{GenericsList, TupleUnpack, TypeArgs, WithUnpack};
 use crate::prelude::*;
 use crate::{
     database::ParentScope, file::TypeVarTupleDefaultOrigin, format_data::ParamsStyle,

@@ -28,7 +28,7 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, FunctionKind, FunctionOverload,
-        Generic, GenericClass, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
+        GenericClass, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
         PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType, WrongPositionalCount,
         replace_param_spec,
     },

@@ -1,9 +1,9 @@
 use std::{borrow::Cow, sync::Arc};
 
 use super::{
-    ClassGenerics, FunctionKind, FunctionOverload, Generic, GenericClass, GenericsList,
-    Intersection, ParamSpecArg, ParamSpecTypeVars, ParamType, PropertySetter, StarParamType,
-    StarStarParamType, TypeArgs, TypeGuardInfo, TypeVarManager, TypedDictGenerics, UnionType,
+    ClassGenerics, FunctionKind, FunctionOverload, GenericClass, GenericsList, Intersection,
+    ParamSpecArg, ParamSpecTypeVars, ParamType, PropertySetter, StarParamType, StarStarParamType,
+    TypeArgs, TypeGuardInfo, TypeVarManager, TypedDictGenerics, UnionType,
     callable::add_param_spec_to_params, type_var_likes::CallableId,
 };
 use crate::prelude::*;

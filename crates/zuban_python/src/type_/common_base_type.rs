@@ -3,8 +3,8 @@ use std::sync::Arc;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    ClassGenerics, Generic, GenericsList, ParamType, ParamTypeDetails, StarParamType,
-    StarStarParamType, TypeGuardInfo,
+    ClassGenerics, GenericsList, ParamType, ParamTypeDetails, StarParamType, StarStarParamType,
+    TypeGuardInfo,
 };
 use crate::prelude::*;
 use crate::{
