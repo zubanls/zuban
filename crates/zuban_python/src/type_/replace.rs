@@ -1,7 +1,7 @@
 use std::{borrow::Cow, sync::Arc};
 
 use super::{
-    ClassGenerics, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+    ClassGenerics, FunctionKind, FunctionOverload, Generic, GenericClass, GenericsList,
     Intersection, ParamSpecArg, ParamSpecTypeVars, ParamType, PropertySetter, StarParamType,
     StarStarParamType, TypeArgs, TypeGuardInfo, TypeVarManager, TypedDictGenerics, UnionType,
     callable::add_param_spec_to_params, type_var_likes::CallableId,
@@ -12,7 +12,7 @@ use crate::{
     utils::arc_slice_into_vec,
 };
 
-pub(crate) type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<GenericItem>;
+pub(crate) type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> Option<Generic>;
 pub(crate) type ReplaceSelf<'x> = &'x dyn Fn() -> Option<Type>;
 
 trait Replacer {
@@ -67,7 +67,7 @@ where
     fn replace_type_var_likes(
         &self,
         db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<Generic>,
     ) -> Cow<'_, Self>
     where
         Self: Clone,
@@ -82,7 +82,7 @@ where
     fn maybe_replace_type_var_likes(
         &self,
         db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Option<Generic>,
     ) -> Option<Self> {
         self.maybe_replace_type_var_likes_and_self(db, callable, &|| None)
     }
@@ -107,7 +107,7 @@ impl Type {
             usage
                 .as_type_var_like()
                 .is_untyped()
-                .then(|| GenericItem::TypeArg(Type::Any(AnyCause::Internal)))
+                .then(|| Generic::TypeArg(Type::Any(AnyCause::Internal)))
         })
     }
 
@@ -378,7 +378,7 @@ fn maybe_replace_iterable<
     None
 }
 
-impl GenericItem {
+impl Generic {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         match self {
             Self::TypeArg(t) => Some(Self::TypeArg(t.replace_internal(replacer)?)),
@@ -424,7 +424,7 @@ impl GenericItem {
     }
 }
 
-impl ReplaceTypeVarLikes for GenericItem {
+impl ReplaceTypeVarLikes for Generic {
     fn maybe_replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -722,8 +722,7 @@ fn replace_param_spec_internal(
     u: &ParamSpecUsage,
 ) -> CallableParams {
     let result = callable(TypeVarLikeUsage::ParamSpec(u.clone()));
-    let GenericItem::ParamSpecArg(mut new) =
-        result.unwrap_or_else(|| u.clone().into_generic_item())
+    let Generic::ParamSpecArg(mut new) = result.unwrap_or_else(|| u.clone().into_generic_item())
     else {
         unreachable!()
     };
@@ -761,7 +760,7 @@ fn replace_param_spec_inner_type_var_likes(
     mut usage: TypeVarLikeUsage,
     in_definition: PointLink,
     replace_data: (PointLink, usize),
-) -> Option<GenericItem> {
+) -> Option<Generic> {
     if usage.in_definition() != replace_data.0 {
         return None;
     }
@@ -955,15 +954,15 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                 }))
             }
             Type::TypeVar(tv) => match (self.callable)(TypeVarLikeUsage::TypeVar(tv.clone()))? {
-                GenericItem::TypeArg(t) => Some(Some({
+                Generic::TypeArg(t) => Some(Some({
                     if let Type::Any(AnyCause::Explicit) = t {
                         Type::Any(AnyCause::TypeVarReplacement)
                     } else {
                         t
                     }
                 })),
-                GenericItem::TypeArgs(_) => unreachable!(),
-                GenericItem::ParamSpecArg(_) => unreachable!(),
+                Generic::TypeArgs(_) => unreachable!(),
+                Generic::ParamSpecArg(_) => unreachable!(),
             },
             Type::Self_ => {
                 let replaced = (self.replace_self)()?;
@@ -979,8 +978,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
     }
 
     fn replace_type_var_tuple(&mut self, tvt: &TypeVarTupleUsage) -> Option<TupleArgs> {
-        let GenericItem::TypeArgs(new) =
-            (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))?
+        let Generic::TypeArgs(new) = (self.callable)(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))?
         else {
             unreachable!();
         };

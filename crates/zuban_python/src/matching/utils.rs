@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::{
     inferred::infer_class_method_on_instance,
     prelude::*,
-    type_::{GenericItem, ReplaceSelf},
+    type_::{Generic, ReplaceSelf},
     type_helpers::Callable,
 };
 
@@ -48,7 +48,7 @@ pub fn maybe_class_usage(
     db: &Database,
     attribute_class: &Class,
     usage: &TypeVarLikeUsage,
-) -> Option<GenericItem> {
+) -> Option<Generic> {
     (attribute_class.node_ref.as_link() == usage.in_definition())
         .then(|| attribute_class.generics().nth_usage(db, usage).into_owned())
 }

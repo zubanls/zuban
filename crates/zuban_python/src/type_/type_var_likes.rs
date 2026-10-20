@@ -7,7 +7,7 @@ use std::{
 
 use parsa_python_cst::{FunctionDef, NodeIndex, ParamKind};
 
-use super::{GenericItem, GenericsList, TupleUnpack, TypeArgs, WithUnpack};
+use super::{Generic, GenericsList, TupleUnpack, TypeArgs, WithUnpack};
 use crate::prelude::*;
 use crate::{
     database::ParentScope, file::TypeVarTupleDefaultOrigin, format_data::ParamsStyle,
@@ -683,14 +683,14 @@ impl TypeVarLike {
         }
     }
 
-    pub fn default(&self, db: &Database) -> Option<GenericItem> {
+    pub fn default(&self, db: &Database) -> Option<Generic> {
         match self {
-            TypeVarLike::TypeVar(tv) => tv.default(db).cloned().map(GenericItem::TypeArg),
-            TypeVarLike::TypeVarTuple(tvt) => tvt.default(db).cloned().map(GenericItem::TypeArgs),
+            TypeVarLike::TypeVar(tv) => tv.default(db).cloned().map(Generic::TypeArg),
+            TypeVarLike::TypeVarTuple(tvt) => tvt.default(db).cloned().map(Generic::TypeArgs),
             TypeVarLike::ParamSpec(p) => p
                 .default(db)
                 .cloned()
-                .map(|default| GenericItem::ParamSpecArg(ParamSpecArg::new(default, None))),
+                .map(|default| Generic::ParamSpecArg(ParamSpecArg::new(default, None))),
         }
     }
 
@@ -716,11 +716,11 @@ impl TypeVarLike {
         }
     }
 
-    fn replace_default_with_generic_item(&self, item: GenericItem) -> Self {
+    fn replace_default_with_generic_item(&self, item: Generic) -> Self {
         match self {
             TypeVarLike::TypeVar(tv) => {
                 let mut new_tv = tv.as_ref().clone();
-                let GenericItem::TypeArg(t) = item else {
+                let Generic::TypeArg(t) = item else {
                     unreachable!()
                 };
                 new_tv.default = Some(TypeLikeInTypeVar::new_known(t));
@@ -728,7 +728,7 @@ impl TypeVarLike {
             }
             TypeVarLike::TypeVarTuple(tvt) => {
                 let mut new_tvt = tvt.as_ref().clone();
-                let GenericItem::TypeArgs(ts) = item else {
+                let Generic::TypeArgs(ts) = item else {
                     unreachable!()
                 };
                 new_tvt.default = Some(TypeLikeInTypeVar::new_known(ts));
@@ -736,7 +736,7 @@ impl TypeVarLike {
             }
             TypeVarLike::ParamSpec(param_spec) => {
                 let mut new_p = param_spec.as_ref().clone();
-                let GenericItem::ParamSpecArg(pa) = item else {
+                let Generic::ParamSpecArg(pa) = item else {
                     unreachable!()
                 };
                 new_p.default = Some(TypeLikeInTypeVar::new_known(pa.params));
@@ -765,68 +765,64 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_any_generic_item(&self) -> GenericItem {
+    pub fn as_any_generic_item(&self) -> Generic {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
+            TypeVarLike::TypeVar(_) => Generic::TypeArg(Type::Any(AnyCause::Todo)),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
+                Generic::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
             }
             TypeVarLike::ParamSpec(_) => {
-                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+                Generic::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
             }
         }
     }
 
-    pub fn as_default_or_any_generic_item(&self, db: &Database) -> GenericItem {
+    pub fn as_default_or_any_generic_item(&self, db: &Database) -> Generic {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
                 Some(default) => {
-                    GenericItem::TypeArg(default.clone()).resolve_recursive_defaults_or_set_any(db)
+                    Generic::TypeArg(default.clone()).resolve_recursive_defaults_or_set_any(db)
                 }
-                None => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
+                None => Generic::TypeArg(Type::Any(AnyCause::Todo)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
                 Some(default) => {
-                    GenericItem::TypeArgs(default.clone()).resolve_recursive_defaults_or_set_any(db)
+                    Generic::TypeArgs(default.clone()).resolve_recursive_defaults_or_set_any(db)
                 }
                 None => {
-                    GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
+                    Generic::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
                 }
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
-                Some(default) => {
-                    GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
-                        .resolve_recursive_defaults_or_set_any(db)
-                }
-                None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
+                Some(default) => Generic::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                    .resolve_recursive_defaults_or_set_any(db),
+                None => Generic::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
             },
         }
     }
 
-    pub fn as_never_generic_item(&self, db: &Database) -> GenericItem {
+    pub fn as_never_generic_item(&self, db: &Database) -> Generic {
         match self {
             TypeVarLike::TypeVar(tv) => match tv.default(db) {
-                Some(default) => GenericItem::TypeArg(default.clone())
-                    .resolve_recursive_defaults_or_set_never(db),
+                Some(default) => {
+                    Generic::TypeArg(default.clone()).resolve_recursive_defaults_or_set_never(db)
+                }
                 // Untyped generics are not type params and should therefore simply be normal Any
-                None if tv.is_untyped() => GenericItem::TypeArg(Type::ERROR),
-                None => GenericItem::TypeArg(Type::Any(AnyCause::UnknownTypeParam)),
+                None if tv.is_untyped() => Generic::TypeArg(Type::ERROR),
+                None => Generic::TypeArg(Type::Any(AnyCause::UnknownTypeParam)),
             },
             TypeVarLike::TypeVarTuple(tvt) => match tvt.default(db) {
-                Some(default) => GenericItem::TypeArgs(default.clone())
-                    .resolve_recursive_defaults_or_set_never(db),
-                None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(
+                Some(default) => {
+                    Generic::TypeArgs(default.clone()).resolve_recursive_defaults_or_set_never(db)
+                }
+                None => Generic::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(
                     AnyCause::UnknownTypeParam,
                 ))),
             },
             TypeVarLike::ParamSpec(param_spec) => match param_spec.default(db) {
-                Some(default) => {
-                    GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
-                        .resolve_recursive_defaults_or_set_never(db)
-                }
-                None => {
-                    GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::UnknownTypeParam))
-                }
+                Some(default) => Generic::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                    .resolve_recursive_defaults_or_set_never(db),
+                None => Generic::ParamSpecArg(ParamSpecArg::new_any(AnyCause::UnknownTypeParam)),
             },
         }
     }
@@ -1591,8 +1587,8 @@ impl ParamSpecUsage {
         }
     }
 
-    pub fn into_generic_item(self) -> GenericItem {
-        GenericItem::ParamSpecArg(ParamSpecArg::new(
+    pub fn into_generic_item(self) -> Generic {
+        Generic::ParamSpecArg(ParamSpecArg::new(
             CallableParams::new_param_spec(self),
             None,
         ))
@@ -1673,18 +1669,18 @@ impl TypeVarLikeUsage {
         }
     }
 
-    pub fn as_any_generic_item(&self) -> GenericItem {
+    pub fn as_any_generic_item(&self) -> Generic {
         self.as_type_var_like().as_any_generic_item()
     }
 
-    pub fn as_default_or_any_generic_item(&self, db: &Database) -> GenericItem {
+    pub fn as_default_or_any_generic_item(&self, db: &Database) -> Generic {
         self.as_type_var_like().as_default_or_any_generic_item(db)
     }
 
-    pub fn into_generic_item(self) -> GenericItem {
+    pub fn into_generic_item(self) -> Generic {
         match self {
-            TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),
-            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArgs(TypeArgs {
+            TypeVarLikeUsage::TypeVar(usage) => Generic::TypeArg(Type::TypeVar(usage)),
+            TypeVarLikeUsage::TypeVarTuple(usage) => Generic::TypeArgs(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
                     before: Arc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage),
@@ -1695,15 +1691,15 @@ impl TypeVarLikeUsage {
         }
     }
 
-    pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> GenericItem {
+    pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> Generic {
         match self {
             TypeVarLikeUsage::TypeVar(mut usage) => {
                 usage.index = index;
-                GenericItem::TypeArg(Type::TypeVar(usage))
+                Generic::TypeArg(Type::TypeVar(usage))
             }
             TypeVarLikeUsage::TypeVarTuple(mut usage) => {
                 usage.index = index;
-                GenericItem::TypeArgs(TypeArgs {
+                Generic::TypeArgs(TypeArgs {
                     args: TupleArgs::WithUnpack(WithUnpack {
                         before: Arc::from([]),
                         unpack: TupleUnpack::TypeVarTuple(usage),
@@ -1713,7 +1709,7 @@ impl TypeVarLikeUsage {
             }
             TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;
-                GenericItem::ParamSpecArg(ParamSpecArg::new(
+                Generic::ParamSpecArg(ParamSpecArg::new(
                     CallableParams::new_param_spec(usage),
                     None,
                 ))

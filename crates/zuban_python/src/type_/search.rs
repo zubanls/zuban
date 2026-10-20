@@ -1,5 +1,5 @@
 use super::{
-    ClassGenerics, GenericClass, GenericItem, GenericsList, ParamType, StarParamType,
+    ClassGenerics, Generic, GenericClass, GenericsList, ParamType, StarParamType,
     StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 
@@ -80,9 +80,9 @@ impl SearchTypeVars for GenericsList {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
-                GenericItem::TypeArg(t) => t.search_type_vars(found_type_var),
-                GenericItem::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
-                GenericItem::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
+                Generic::TypeArg(t) => t.search_type_vars(found_type_var),
+                Generic::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
+                Generic::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
             }
         }
     }

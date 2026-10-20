@@ -6,7 +6,7 @@ use crate::{
     params::matches_params_with_variance,
     prelude::*,
     type_::{
-        GenericItem, ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
+        Generic, ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
         match_tuple_type_arguments,
     },
 };
@@ -138,7 +138,7 @@ impl Bound {
     pub(super) fn replace_type_var_likes(
         &self,
         db: &Database,
-        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<Generic>,
     ) -> Option<Self> {
         Some(match self {
             Self::Invariant(t) => Self::Invariant(t.replace_type_var_likes(db, on_type_var_like)?),
@@ -166,8 +166,8 @@ impl Bound {
         self,
         db: &Database,
         avoid_implicit_literals: bool,
-        on_uncalculated: impl FnOnce(Option<Type>) -> GenericItem,
-    ) -> GenericItem {
+        on_uncalculated: impl FnOnce(Option<Type>) -> Generic,
+    ) -> Generic {
         self.into_maybe_generic_item(db, avoid_implicit_literals, |t| Some(on_uncalculated(t)))
             .expect("Since we never return None in fallback, we should be able to unwrap")
     }
@@ -176,8 +176,8 @@ impl Bound {
         self,
         db: &Database,
         avoid_implicit_literals: bool,
-        on_uncalculated: impl FnOnce(Option<Type>) -> Option<GenericItem>,
-    ) -> Option<GenericItem> {
+        on_uncalculated: impl FnOnce(Option<Type>) -> Option<Generic>,
+    ) -> Option<Generic> {
         Some(match self {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => {
                 k.into_generic_item(db, avoid_implicit_literals)
@@ -346,7 +346,7 @@ impl BoundInfo {
     fn replace_type_var_likes(
         &self,
         db: &Database,
-        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<GenericItem>,
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> Option<Generic>,
     ) -> Option<Self> {
         Some(BoundInfo {
             kind: match &self.kind {
@@ -364,15 +364,15 @@ impl BoundInfo {
         })
     }
 
-    fn into_generic_item(self, db: &Database, avoid_implicit_literals: bool) -> GenericItem {
+    fn into_generic_item(self, db: &Database, avoid_implicit_literals: bool) -> Generic {
         match self.kind {
-            BoundKind::TypeVar(t) => GenericItem::TypeArg(if avoid_implicit_literals {
+            BoundKind::TypeVar(t) => Generic::TypeArg(if avoid_implicit_literals {
                 t.avoid_implicit_literal(db)
             } else {
                 t
             }),
-            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
-            BoundKind::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
+            BoundKind::TypeVarTuple(ts) => Generic::TypeArgs(TypeArgs::new(ts)),
+            BoundKind::ParamSpec(param_spec) => Generic::ParamSpecArg(ParamSpecArg {
                 params: param_spec,
                 type_vars: None,
             }),

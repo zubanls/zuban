@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parsa_python_cst::ParamKind;
 
 use super::{
-    ClassGenerics, GenericItem, GenericsList, ParamType, ParamTypeDetails, StarParamType,
+    ClassGenerics, Generic, GenericsList, ParamType, ParamTypeDetails, StarParamType,
     StarStarParamType, TypeGuardInfo,
 };
 use crate::prelude::*;
@@ -219,16 +219,16 @@ fn common_base_class_basic(
                         // like T[Any, int] & T[int, Any] should become T[Any, Any]
                         match matches {
                             Match::True { with_any: false } => {
-                                generics.push(GenericItem::TypeArg(inner_t1.into_owned()));
+                                generics.push(Generic::TypeArg(inner_t1.into_owned()));
                             }
                             Match::True { with_any: true } => {
-                                generics.push(GenericItem::TypeArg(inner_t2.into_owned()));
+                                generics.push(Generic::TypeArg(inner_t2.into_owned()));
                             }
                             _ => return None,
                         }
                     }
                     Variance::Covariant => {
-                        generics.push(GenericItem::TypeArg(inner_t1.common_base_type_internal(
+                        generics.push(Generic::TypeArg(inner_t1.common_base_type_internal(
                             i_s,
                             &inner_t2,
                             Some(checked_recursions),
@@ -236,7 +236,7 @@ fn common_base_class_basic(
                     }
                     Variance::Contravariant => {
                         if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
-                            generics.push(GenericItem::TypeArg(t));
+                            generics.push(Generic::TypeArg(t));
                         } else {
                             return None;
                         }
@@ -249,7 +249,7 @@ fn common_base_class_basic(
                 let new = ts1
                     .args
                     .common_base_type(i_s, &ts2.args, Some(checked_recursions));
-                generics.push(GenericItem::TypeArgs(TypeArgs::new(new)));
+                generics.push(Generic::TypeArgs(TypeArgs::new(new)));
             }
             TypeVarLike::ParamSpec(_) => {
                 let p1 = generic1.expect_param_spec_arg();
@@ -260,7 +260,7 @@ fn common_base_class_basic(
                 let new = p1
                     .params
                     .common_base_type(i_s, &p2.params, Some(checked_recursions))?;
-                generics.push(GenericItem::ParamSpecArg(ParamSpecArg::new(new, None)));
+                generics.push(Generic::ParamSpecArg(ParamSpecArg::new(new, None)));
             }
         }
     }

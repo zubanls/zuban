@@ -18,7 +18,7 @@ use crate::{
         WrappedStarStar,
     },
     type_::{
-        CallableWithParent, ClassGenerics, GenericItem, GenericsList, MaybeUnpackGatherer,
+        CallableWithParent, ClassGenerics, Generic, GenericsList, MaybeUnpackGatherer,
         ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager, match_arbitrary_len_vs_unpack,
         match_unpack,
     },
@@ -175,7 +175,7 @@ impl CalculatedTypeArgs {
             self.type_arguments = Some(if type_args.has_param_spec() {
                 let mut type_args = type_args.into_vec();
                 for type_arg in &mut type_args {
-                    if let GenericItem::ParamSpecArg(param_spec_arg) = type_arg {
+                    if let Generic::ParamSpecArg(param_spec_arg) = type_arg {
                         param_spec_arg.type_vars = Some(ParamSpecTypeVars {
                             type_vars: type_var_likes.clone(),
                             in_definition: self.in_definition,

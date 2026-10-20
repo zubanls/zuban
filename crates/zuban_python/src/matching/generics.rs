@@ -1,15 +1,14 @@
 use parsa_python_cst::{Expression, SliceContent, SliceIterator, Slices};
 use std::borrow::Cow;
 
-use super::Generic;
 use crate::{
     file::use_cached_simple_generic_type,
     prelude::*,
-    type_::{ClassGenerics, GenericItem, GenericsList},
+    type_::{ClassGenerics, Generic, GenericsList},
 };
 
-fn generic_type_arg<'a>(type_arg: Cow<'a, Type>) -> Generic<'a> {
-    Cow::Owned(GenericItem::TypeArg(match type_arg {
+fn generic_type_arg(type_arg: Cow<Type>) -> Cow<Generic> {
+    Cow::Owned(Generic::TypeArg(match type_arg {
         Cow::Borrowed(type_arg) => type_arg.clone(),
         Cow::Owned(type_arg) => type_arg,
     }))
@@ -73,11 +72,11 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn nth_usage(&self, db: &'a Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
+    pub fn nth_usage(&self, db: &'a Database, usage: &TypeVarLikeUsage) -> Cow<'a, Generic> {
         self.nth(db, usage.index().as_usize())
     }
 
-    pub fn nth(&self, db: &'a Database, n: usize) -> Generic<'a> {
+    pub fn nth(&self, db: &'a Database, n: usize) -> Cow<'a, Generic> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 debug_assert_eq!(n, 0);
@@ -157,7 +156,7 @@ impl<'a> GenericsIterator<'a> {
 enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
     GenericsList(
-        std::slice::Iter<'a, GenericItem>,
+        std::slice::Iter<'a, Generic>,
         Option<(PointLink, &'a Generics<'a>)>,
     ),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
@@ -170,7 +169,7 @@ enum GenericsIteratorItem<'a> {
 }
 
 impl<'a> Iterator for GenericsIterator<'a> {
-    type Item = Generic<'a>;
+    type Item = Cow<'a, Generic>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.item {

@@ -33,8 +33,8 @@ use crate::{
     params::{InferrableParam, InferrableParamIterator, Param as _, ParamArgument},
     prelude::*,
     type_::{
-        ClassGenerics, ComplexTypeGatherer, ExtraItemsType, FunctionKind, GenericClass,
-        GenericItem, GenericsList, InferredTypeGatherer, IterCause, IterInfos, TypedDictGenerics,
+        ClassGenerics, ComplexTypeGatherer, ExtraItemsType, FunctionKind, Generic, GenericClass,
+        GenericsList, InferredTypeGatherer, IterCause, IterInfos, TypedDictGenerics,
         TypedDictMember, TypedDictMembers,
     },
     type_helpers::{FirstParamProperties, Function, FunctionParam, OverloadedFunction},
@@ -1350,7 +1350,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             false,
                         )
                         .unwrap_or_else(Inferred::new_any_from_error);
-                        generics.push(GenericItem::TypeArg(found.into_type(&i_s)));
+                        generics.push(Generic::TypeArg(found.into_type(&i_s)));
                     }
                 });
                 debug!(
@@ -1358,7 +1358,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     generics
                         .iter()
                         .map(|g| match g {
-                            GenericItem::TypeArg(t) => t.format_short(i_s.db),
+                            Generic::TypeArg(t) => t.format_short(i_s.db),
                             _ => unreachable!(),
                         })
                         .collect::<Vec<_>>()

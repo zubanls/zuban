@@ -28,7 +28,7 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         ClassGenerics, ComplexTypeGatherer, DataclassTransformObj, FunctionKind, FunctionOverload,
-        GenericClass, GenericItem, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
+        Generic, GenericClass, InferredTypeGatherer, NeverCause, ParamType, PropertySetter,
         PropertySetterType, ReplaceSelf, StarParamType, StarStarParamType, WrongPositionalCount,
         replace_param_spec,
     },
@@ -2338,7 +2338,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             generics: ClassGenerics::List(generics),
                         }) => {
                             debug_assert_eq!(*link, db.python_state.dict_node_ref().as_link());
-                            let GenericItem::TypeArg(t) = &generics[1.into()] else {
+                            let Generic::TypeArg(t) = &generics[1.into()] else {
                                 unreachable!();
                             };
                             WrappedStarStar::ValueType(Some(Cow::Borrowed(t)))

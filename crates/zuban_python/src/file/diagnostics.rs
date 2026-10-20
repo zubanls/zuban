@@ -26,7 +26,7 @@ use crate::{
     params::{Param, WrappedParamType, WrappedStar, matches_params},
     prelude::*,
     type_::{
-        ClassGenerics, FunctionKind, FunctionOverload, GenericItem, GenericsList, IterCause,
+        ClassGenerics, FunctionKind, FunctionOverload, Generic, GenericsList, IterCause,
         LookupArgs, NeverCause, ParamType, StarParamType, TupleUnpack, TypeVarVariance,
         dataclass_post_init_func, ensure_calculated_dataclass, format_callable_params,
     },
@@ -3361,7 +3361,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                         .enumerate()
                         .map(|(j, tv_like)| {
                             if i == j {
-                                GenericItem::TypeArg(if is_upper {
+                                Generic::TypeArg(if is_upper {
                                     i_s.db.python_state.object_type()
                                 } else {
                                     Type::NEVER

@@ -23,7 +23,7 @@ use crate::{
     python_state::PythonState,
     sys_path,
     type_::{
-        DataclassTransformObj, FunctionKind, FunctionOverload, GenericItem, GenericsList,
+        DataclassTransformObj, FunctionKind, FunctionOverload, Generic, GenericsList,
         TypeVarLikeName,
     },
     type_helpers::Function,
@@ -998,7 +998,7 @@ impl TypeAlias {
         &self,
         db: &Database,
         remove_recursive_wrapper: bool,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> Generic,
     ) -> Cow<'_, Type> {
         if self.is_recursive() && !remove_recursive_wrapper {
             return Cow::Owned(Type::RecursiveType(Arc::new(RecursiveType::new(

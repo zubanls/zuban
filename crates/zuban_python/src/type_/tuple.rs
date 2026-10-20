@@ -9,9 +9,7 @@ use std::{
 
 use num_bigint::BigInt;
 
-use super::{
-    ClassGenerics, CustomBehavior, GenericItem, GenericsList, utils::method_with_fallback,
-};
+use super::{ClassGenerics, CustomBehavior, Generic, GenericsList, utils::method_with_fallback};
 use crate::prelude::*;
 use crate::{
     getitem::{SliceType, SliceTypeContent},
@@ -92,7 +90,7 @@ impl Tuple {
             debug!("Calculated tuple class generics: {}", t.format_short(db));
             self.currently_calculating_generics
                 .store(false, Ordering::Relaxed);
-            GenericsList::new_generics(Arc::new([GenericItem::TypeArg(t)]))
+            GenericsList::new_generics(Arc::new([Generic::TypeArg(t)]))
         })
     }
 
@@ -101,7 +99,7 @@ impl Tuple {
     }
 
     pub fn fallback_type(&self, db: &Database) -> &Type {
-        let GenericItem::TypeArg(t) = self.tuple_class_generics(db).nth(0.into()).unwrap() else {
+        let Generic::TypeArg(t) = self.tuple_class_generics(db).nth(0.into()).unwrap() else {
             unreachable!();
         };
         t
@@ -920,7 +918,7 @@ pub fn execute_tuple_class<'db>(
                 recoverable_error!("Expected a tuple with one type argument in typeshed");
                 return Inferred::new_any_from_error();
             };
-            let Some(GenericItem::TypeArg(t)) = generics_list.iter().next() else {
+            let Some(Generic::TypeArg(t)) = generics_list.iter().next() else {
                 recoverable_error!("Expected a tuple with one type argument in typeshed");
                 return Inferred::new_any_from_error();
             };

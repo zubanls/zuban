@@ -705,7 +705,7 @@ impl Type {
     ) -> bool {
         let has_any_callable_params = |list: &GenericsList| {
             list.iter().any(|generic| match generic {
-                GenericItem::ParamSpecArg(ParamSpecArg {
+                Generic::ParamSpecArg(ParamSpecArg {
                     params: CallableParams::Any(cause),
                     ..
                 }) => recheck(*cause),

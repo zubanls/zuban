@@ -64,7 +64,7 @@ macro_rules! new_class {
             $link,
             $crate::type_::ClassGenerics::List(
                 $crate::type_::GenericsList::new_generics(std::sync::Arc::new([
-                    $($crate::type_::GenericItem::TypeArg($arg)),*
+                    $($crate::type_::Generic::TypeArg($arg)),*
                 ]))
             )
         )

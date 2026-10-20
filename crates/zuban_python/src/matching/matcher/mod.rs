@@ -34,7 +34,7 @@ use crate::{
         matches_params,
     },
     type_::{
-        GenericItem, ParamSpecArg, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
+        Generic, ParamSpecArg, ParamType, ReplaceSelf, StarParamType, StarStarParamType,
         TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack, add_param_spec_to_params,
         match_tuple_type_arguments,
     },
@@ -984,7 +984,7 @@ impl<'a> Matcher<'a> {
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(format_data.db, usage);
                 let is_same = match (usage, generic.as_ref()) {
-                    (TypeVarLikeUsage::TypeVar(u1), GenericItem::TypeArg(t2)) => match t2 {
+                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(t2)) => match t2 {
                         Type::TypeVar(u2) => u1 == u2,
                         _ => false,
                     },
@@ -1072,7 +1072,7 @@ impl<'a> Matcher<'a> {
                     && tv_usage.type_var.is_self_name()
                     && let TypeVarKind::Bound(bound) = tv_usage.type_var.kind(db)
                     {
-                        GenericItem::TypeArg(bound.clone())
+                        Generic::TypeArg(bound.clone())
                     } else {
                         usage.as_any_generic_item()
                     },
@@ -1132,7 +1132,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         t: &'x Type,
         for_context: bool,
-        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem>,
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<Generic>,
         replace_self: ReplaceSelf,
     ) -> Cow<'x, Type> {
         t.replace_type_var_likes_and_self(
@@ -1153,7 +1153,7 @@ impl<'a> Matcher<'a> {
         &self,
         db: &Database,
         usage: TypeVarLikeUsage,
-    ) -> Option<GenericItem> {
+    ) -> Option<Generic> {
         self.as_usage_closure(db, false, |_| None)(usage)
     }
 
@@ -1161,8 +1161,8 @@ impl<'a> Matcher<'a> {
         &'b self,
         db: &'b Database,
         for_context: bool,
-        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b,
-    ) -> impl Fn(TypeVarLikeUsage) -> Option<GenericItem> + 'b {
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<Generic> + 'b,
+    ) -> impl Fn(TypeVarLikeUsage) -> Option<Generic> + 'b {
         move |usage| {
             if let Some(i) = self.find_responsible_type_var_matcher_index(
                 usage.in_definition(),
@@ -1186,7 +1186,7 @@ impl<'a> Matcher<'a> {
         &self,
         db: &Database,
         usage: &TypeVarLikeUsage,
-    ) -> Option<GenericItem> {
+    ) -> Option<Generic> {
         if let Some(c) = self.class
             && c.node_ref.as_link() == usage.in_definition()
         {
@@ -1201,16 +1201,16 @@ impl<'a> Matcher<'a> {
                 ..Self::default()
             };
             return Some(match g {
-                GenericItem::TypeArg(t) => GenericItem::TypeArg(
+                Generic::TypeArg(t) => Generic::TypeArg(
                     without_func_class
                         .replace_type_var_likes_for_nested_context(db, &t)
                         .into_owned(),
                 ),
-                GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                Generic::TypeArgs(ts) => Generic::TypeArgs(TypeArgs::new(
                     without_func_class
                         .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
                 )),
-                GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
+                Generic::ParamSpecArg(p) => Generic::ParamSpecArg(
                     without_func_class
                         .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
                 ),
@@ -1558,7 +1558,7 @@ impl<'a> Matcher<'a> {
                             return Some(
                                 match cycles.free_type_var_likes[free_type_var_index].clone() {
                                     TypeVarLike::TypeVar(type_var) => {
-                                        GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
+                                        Generic::TypeArg(Type::TypeVar(TypeVarUsage {
                                             type_var,
                                             index,
                                             in_definition,
@@ -1566,7 +1566,7 @@ impl<'a> Matcher<'a> {
                                         }))
                                     }
                                     TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                        GenericItem::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(
+                                        Generic::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(
                                             WithUnpack::with_empty_before_and_after(
                                                 TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
                                                     type_var_tuple,
@@ -1578,7 +1578,7 @@ impl<'a> Matcher<'a> {
                                         )))
                                     }
                                     TypeVarLike::ParamSpec(param_spec) => {
-                                        GenericItem::ParamSpecArg(ParamSpecArg {
+                                        Generic::ParamSpecArg(ParamSpecArg {
                                             params: CallableParams::new_param_spec(
                                                 ParamSpecUsage {
                                                     param_spec,
@@ -1929,9 +1929,10 @@ impl<'a> Matcher<'a> {
             .calculating_type_args
             .into_iter()
             .map(|c| {
-                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, false, |_| {
-                    GenericItem::TypeArg(Type::Any(AnyCause::Todo))
-                }) else {
+                let Generic::TypeArg(g) = c
+                    .type_
+                    .into_generic_item(db, false, |_| Generic::TypeArg(Type::Any(AnyCause::Todo)))
+                else {
                     unreachable!();
                 };
                 g
@@ -1951,7 +1952,7 @@ impl<'a> Matcher<'a> {
             .into_iter()
             .zip(type_vars.iter())
             .map(|(c, type_var_like)| {
-                let GenericItem::TypeArg(t) = c.into_generic_item(db, type_var_like, true) else {
+                let Generic::TypeArg(t) = c.into_generic_item(db, type_var_like, true) else {
                     unreachable!();
                 };
                 t

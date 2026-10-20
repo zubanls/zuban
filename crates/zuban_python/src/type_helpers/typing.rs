@@ -6,7 +6,7 @@ use crate::{
     prelude::*,
     result_context::CouldBeALiteral,
     type_::{
-        ClassGenerics, GenericClass, GenericItem, ParamType, StarParamType, StarStarParamType,
+        ClassGenerics, Generic, GenericClass, ParamType, StarParamType, StarStarParamType,
         TypedDictGenerics,
     },
     utils::join_with_commas,
@@ -425,11 +425,11 @@ impl Type {
             g1.iter(db)
                 .zip(g2.iter(db))
                 .all(|(g1, g2)| match (g1.as_ref(), g2.as_ref()) {
-                    (GenericItem::TypeArg(t1), GenericItem::TypeArg(t2)) => eq(t1, t2),
-                    (GenericItem::TypeArgs(ts1), GenericItem::TypeArgs(ts2)) => {
+                    (Generic::TypeArg(t1), Generic::TypeArg(t2)) => eq(t1, t2),
+                    (Generic::TypeArgs(ts1), Generic::TypeArgs(ts2)) => {
                         tuple_args_eq(&ts1.args, &ts2.args)
                     }
-                    (GenericItem::ParamSpecArg(p1), GenericItem::ParamSpecArg(p2)) => {
+                    (Generic::ParamSpecArg(p1), Generic::ParamSpecArg(p2)) => {
                         p1.type_vars == p2.type_vars && params_eq(&p1.params, &p2.params)
                     }
                     _ => false,

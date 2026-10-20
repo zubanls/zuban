@@ -27,7 +27,7 @@ use crate::{
     getitem::{SliceOrSimple, SliceType},
     imports::ImportResult,
     prelude::*,
-    type_::{GenericItem, TupleUnpack, TypeVarManager},
+    type_::{Generic, TupleUnpack, TypeVarManager},
     type_helpers::cache_class_name,
 };
 
@@ -1236,14 +1236,14 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
             Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
                 rec.generics.as_ref().is_some_and(|generics| {
                     let has_direct_type_var_like = generics.iter().any(|g| match g {
-                        GenericItem::TypeArg(t) => matches!(t, Type::TypeVar(_)),
-                        GenericItem::TypeArgs(ts) => match &ts.args {
+                        Generic::TypeArg(t) => matches!(t, Type::TypeVar(_)),
+                        Generic::TypeArgs(ts) => match &ts.args {
                             TupleArgs::WithUnpack(w) => {
                                 matches!(w.unpack, TupleUnpack::TypeVarTuple(_))
                             }
                             _ => false,
                         },
-                        GenericItem::ParamSpecArg(p) => p.params.maybe_param_spec().is_some(),
+                        Generic::ParamSpecArg(p) => p.params.maybe_param_spec().is_some(),
                     });
                     !has_direct_type_var_like && generics.has_type_vars()
                 })

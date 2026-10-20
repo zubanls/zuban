@@ -34,7 +34,7 @@ use crate::{
     new_class,
     prelude::*,
     type_::{
-        CallableWithParent, ClassGenerics, DbBytes, GenericClass, GenericItem, GenericsList,
+        CallableWithParent, ClassGenerics, DbBytes, Generic, GenericClass, GenericsList,
         MaybeUnpackGatherer, Namespace, NeverCause, ParamSpecArg, ParamType, RecursiveTypeOrigin,
         Sentinel, StarParamType, StarStarParamType, Tuple, TupleUnpack, TypeArgs, TypeGatherer,
         TypeGuardInfo, TypeLikeInTypeVar, TypeVarKindInfos, TypeVarLikeName, TypeVarManager,
@@ -1817,7 +1817,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
         alias: &TypeAlias,
-    ) -> Vec<GenericItem> {
+    ) -> Vec<Generic> {
         let mut generics = vec![];
         self.calculate_type_arguments(
             slice_type,
@@ -1980,7 +1980,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         iterator: SliceTypeIterator,
         class_name: StringSlice,
         type_var_likes: &TypeVarLikes,
-        generics: &mut Vec<GenericItem>,
+        generics: &mut Vec<Generic>,
     ) {
         self.calculate_type_arguments(
             slice_type,
@@ -2005,7 +2005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         class: Class,
         slice_type: SliceType,
-        generics: &mut Vec<GenericItem>,
+        generics: &mut Vec<Generic>,
         iterator: &mut SliceTypeIterator,
         tvs: &TypeVarLikes,
         primary: Option<Primary>,
@@ -2060,9 +2060,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
-                        generics.push(GenericItem::TypeArg(self.compute_slice_type(slice_content)));
+                        generics.push(Generic::TypeArg(self.compute_slice_type(slice_content)));
                     }
-                    generics.push(GenericItem::TypeArg(
+                    generics.push(Generic::TypeArg(
                         self.as_type(t, slice_content.as_node_ref()),
                     ));
                     return None;
@@ -2090,7 +2090,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn calculate_type_arguments(
         &mut self,
         slice_type: SliceType,
-        generics: &mut Vec<GenericItem>,
+        generics: &mut Vec<Generic>,
         iterator: SliceTypeIterator,
         type_var_likes: &TypeVarLikes,
         name: StringSlice,
@@ -2106,7 +2106,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_var_iterator = type_var_likes.iter().take(expected).skip(generics.len());
         let mut is_single_param_spec = false;
         let db = self.i_s.db;
-        let resolve_default = |generics: &[GenericItem], g: GenericItem| {
+        let resolve_default = |generics: &[Generic], g: Generic| {
             g.maybe_replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
@@ -2131,9 +2131,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         given += 1;
                         self.check_constraints(type_var, node_ref, |_| t.clone(), name);
-                        GenericItem::TypeArg(t)
+                        Generic::TypeArg(t)
                     } else if let Some(default) = type_var.default(db) {
-                        resolve_default(generics, GenericItem::TypeArg(default.clone()))
+                        resolve_default(generics, Generic::TypeArg(default.clone()))
                     } else {
                         break;
                     }
@@ -2148,9 +2148,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 if let Some((from, t)) = type_args.next_type_argument_back(self) {
                                     given += 1;
                                     self.check_constraints(type_var, from, |_| t.clone(), name);
-                                    GenericItem::TypeArg(t)
+                                    Generic::TypeArg(t)
                                 } else if let Some(default) = type_var.default(db) {
-                                    resolve_default(generics, GenericItem::TypeArg(default.clone()))
+                                    resolve_default(generics, Generic::TypeArg(default.clone()))
                                 } else {
                                     break 'outer;
                                 }
@@ -2161,11 +2161,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     has_type_var_tuple && param_spec.has_default(),
                                 ) {
                                     given += 1;
-                                    GenericItem::ParamSpecArg(spec)
+                                    Generic::ParamSpecArg(spec)
                                 } else if let Some(default) = param_spec.default(db) {
                                     resolve_default(
                                         generics,
-                                        GenericItem::ParamSpecArg(ParamSpecArg::new(
+                                        Generic::ParamSpecArg(ParamSpecArg::new(
                                             default.clone(),
                                             None,
                                         )),
@@ -2187,9 +2187,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     generics.insert(
                         insertion_index,
                         if let Some(default) = tvt.default(db).filter(|_| args.empty_not_explicit) {
-                            resolve_default(generics, GenericItem::TypeArgs(default.clone()))
+                            resolve_default(generics, Generic::TypeArgs(default.clone()))
                         } else {
-                            GenericItem::TypeArgs(TypeArgs { args: args.args })
+                            Generic::TypeArgs(TypeArgs { args: args.args })
                         },
                     );
                     break;
@@ -2202,14 +2202,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let params =
                             self.calculate_simplified_param_spec_generics(&mut slice_type.iter());
                         is_single_param_spec = true;
-                        GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
+                        Generic::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
                         given += 1;
-                        GenericItem::ParamSpecArg(spec)
+                        Generic::ParamSpecArg(spec)
                     } else if let Some(default) = param_spec.default(db) {
                         resolve_default(
                             generics,
-                            GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None)),
+                            Generic::ParamSpecArg(ParamSpecArg::new(default.clone(), None)),
                         )
                     } else {
                         break;

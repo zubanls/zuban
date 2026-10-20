@@ -41,7 +41,7 @@ impl TypeArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum GenericItem {
+pub(crate) enum Generic {
     TypeArg(Type),
     // For TypeVarTuple
     TypeArgs(TypeArgs),
@@ -49,7 +49,7 @@ pub(crate) enum GenericItem {
     ParamSpecArg(ParamSpecArg),
 }
 
-impl GenericItem {
+impl Generic {
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
             Self::TypeArg(t) => Some(t.format(format_data)),
@@ -117,7 +117,7 @@ impl GenericItem {
         }
     }
 
-    pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> GenericItem {
+    pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> Generic {
         match self {
             Self::TypeArg(t1) => {
                 let Self::TypeArg(t2) = other else {
@@ -169,27 +169,27 @@ pub(crate) trait GenericItemCowExt<'a> {
     fn expect_param_spec_arg(self) -> Cow<'a, ParamSpecArg>;
 }
 
-impl<'a> GenericItemCowExt<'a> for Cow<'a, GenericItem> {
+impl<'a> GenericItemCowExt<'a> for Cow<'a, Generic> {
     fn expect_type_argument(self) -> Cow<'a, Type> {
         match self {
-            Cow::Borrowed(GenericItem::TypeArg(t)) => Cow::Borrowed(t),
-            Cow::Owned(GenericItem::TypeArg(t)) => Cow::Owned(t),
+            Cow::Borrowed(Generic::TypeArg(t)) => Cow::Borrowed(t),
+            Cow::Owned(Generic::TypeArg(t)) => Cow::Owned(t),
             _ => unreachable!(),
         }
     }
 
     fn expect_type_arguments(self) -> Cow<'a, TypeArgs> {
         match self {
-            Cow::Borrowed(GenericItem::TypeArgs(ts)) => Cow::Borrowed(ts),
-            Cow::Owned(GenericItem::TypeArgs(ts)) => Cow::Owned(ts),
+            Cow::Borrowed(Generic::TypeArgs(ts)) => Cow::Borrowed(ts),
+            Cow::Owned(Generic::TypeArgs(ts)) => Cow::Owned(ts),
             _ => unreachable!(),
         }
     }
 
     fn expect_param_spec_arg(self) -> Cow<'a, ParamSpecArg> {
         match self {
-            Cow::Borrowed(GenericItem::ParamSpecArg(p)) => Cow::Borrowed(p),
-            Cow::Owned(GenericItem::ParamSpecArg(p)) => Cow::Owned(p),
+            Cow::Borrowed(Generic::ParamSpecArg(p)) => Cow::Borrowed(p),
+            Cow::Owned(Generic::ParamSpecArg(p)) => Cow::Owned(p),
             _ => unreachable!(),
         }
     }
@@ -232,23 +232,23 @@ impl ClassGenerics {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct GenericsList(Arc<[GenericItem]>);
+pub(crate) struct GenericsList(Arc<[Generic]>);
 
 impl GenericsList {
-    pub fn new_generics(parts: Arc<[GenericItem]>) -> Self {
+    pub fn new_generics(parts: Arc<[Generic]>) -> Self {
         debug_assert!(!parts.is_empty());
         Self(parts)
     }
 
-    pub fn generics_from_vec(parts: Vec<GenericItem>) -> Self {
+    pub fn generics_from_vec(parts: Vec<Generic>) -> Self {
         Self::new_generics(Arc::from(parts))
     }
 
-    pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericItem> {
+    pub fn nth(&self, index: TypeVarIndex) -> Option<&Generic> {
         self.0.get(index.0 as usize)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, GenericItem> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Generic> {
         self.0.iter()
     }
 
@@ -257,8 +257,7 @@ impl GenericsList {
     }
 
     pub fn has_param_spec(&self) -> bool {
-        self.iter()
-            .any(|g| matches!(g, GenericItem::ParamSpecArg(_)))
+        self.iter().any(|g| matches!(g, Generic::ParamSpecArg(_)))
     }
 
     pub fn has_type_vars(&self) -> bool {
@@ -267,13 +266,13 @@ impl GenericsList {
         result
     }
 
-    pub fn into_vec(self) -> Vec<GenericItem> {
+    pub fn into_vec(self) -> Vec<Generic> {
         arc_slice_into_vec(self.0)
     }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
-    type Output = GenericItem;
+    type Output = Generic;
 
     fn index(&self, index: TypeVarIndex) -> &Self::Output {
         &self.0[index.0 as usize]

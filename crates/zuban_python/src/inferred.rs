@@ -20,7 +20,7 @@ use crate::{
     new_class,
     prelude::*,
     type_::{
-        ClassGenerics, DbBytes, FunctionKind, FunctionOverload, GenericClass, GenericItem,
+        ClassGenerics, DbBytes, FunctionKind, FunctionOverload, Generic, GenericClass,
         GenericsList, InferredTypeGatherer, IterCause, IterInfos, Literal as DbLiteral, LookupArgs,
         NeverCause, PropertySetter, PropertySetterType, execute_tuple_class, execute_type_of_type,
     },
@@ -421,7 +421,7 @@ impl<'db: 'slf, 'slf> Inferred {
         for generic in generics.iter() {
             if !matches!(
                 generic,
-                GenericItem::TypeArg(Type::Any(AnyCause::UnknownTypeParam))
+                Generic::TypeArg(Type::Any(AnyCause::UnknownTypeParam))
             ) {
                 return None;
             }
@@ -2823,7 +2823,7 @@ fn proper_classmethod_callable(
             } else if in_definition == callable_defined_at {
                 if let Some(u) = &class_method_type_var_usage {
                     return if u.index == usage.index() {
-                        Some(GenericItem::TypeArg(get_class_method_class()))
+                        Some(Generic::TypeArg(get_class_method_class()))
                     } else {
                         usage.add_to_index(-1);
                         Some(usage.into_generic_item())

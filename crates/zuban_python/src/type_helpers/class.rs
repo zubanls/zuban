@@ -25,7 +25,7 @@ use crate::{
     },
     prelude::*,
     type_::{
-        ClassGenerics, FunctionOverload, GenericClass, GenericItem, GenericsList, LookupArgs,
+        ClassGenerics, FunctionOverload, Generic, GenericClass, GenericsList, LookupArgs,
         ParamSpecArg, ParamType, PrettyCallableOptions, StarParamType, StarStarParamType, TypeArgs,
         TypeGatherer, TypeLikeInTypeVar, TypeVarIndex, TypeVarKindInfos, TypedDictGenerics,
         add_any_params_to_params,
@@ -912,7 +912,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             debug_assert!(
                                                 tv.in_definition.file == self.node_ref.file_index()
                                             );
-                                            return Some(GenericItem::TypeArg(Type::Self_));
+                                            return Some(Generic::TypeArg(Type::Self_));
                                         }
                                     }
                                     None
@@ -1576,7 +1576,7 @@ impl<'db: 'a, 'a> Class<'a> {
             })
             .unwrap_or_default();
         let find_type = |name| {
-            Some(GenericItem::TypeArg({
+            Some(Generic::TypeArg({
                 let mut result = if let Some(known_type) = &known_type {
                     known_type.as_ref().clone()
                 } else {
@@ -1599,7 +1599,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .iter()
             .enumerate()
             .map(|(i, entry)| {
-                if let GenericItem::TypeArg(t) = entry
+                if let Generic::TypeArg(t) = entry
                     && matches!(t, Type::Any(AnyCause::UnknownTypeParam))
                 {
                     if i == 0
@@ -2356,14 +2356,12 @@ pub(crate) fn check_type_var_variance_validity_for_type(
     let with_object_t = base_t.maybe_replace_type_var_likes(i_s.db, &mut |usage| {
         if usage.index() == type_var_index && usage.in_definition() == in_definition {
             Some(match usage {
-                TypeVarLikeUsage::TypeVar(_) => {
-                    GenericItem::TypeArg(i_s.db.python_state.object_type())
-                }
+                TypeVarLikeUsage::TypeVar(_) => Generic::TypeArg(i_s.db.python_state.object_type()),
                 TypeVarLikeUsage::TypeVarTuple(_) => {
                     let Type::Tuple(tup) = &i_s.db.python_state.tuple_of_obj else {
                         unreachable!();
                     };
-                    GenericItem::TypeArgs(TypeArgs::new(tup.args.clone()))
+                    Generic::TypeArgs(TypeArgs::new(tup.args.clone()))
                 }
                 TypeVarLikeUsage::ParamSpec(_) => {
                     let params = CallableParams::new_simple(Arc::new([
@@ -2374,7 +2372,7 @@ pub(crate) fn check_type_var_variance_validity_for_type(
                             StarStarParamType::ValueType(i_s.db.python_state.object_type()),
                         )),
                     ]));
-                    GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
+                    Generic::ParamSpecArg(ParamSpecArg::new(params, None))
                 }
             })
         } else {

@@ -5,7 +5,7 @@ use super::{
 use crate::{
     matching::matcher::bound::{BoundInfo, BoundOrigin},
     prelude::*,
-    type_::{GenericItem, GenericsList},
+    type_::{Generic, GenericsList},
     utils::join_with_commas,
 };
 
@@ -223,14 +223,14 @@ impl CalculatingTypeArg {
         db: &Database,
         type_var_like: &TypeVarLike,
         avoid_implicit_literals: bool,
-    ) -> GenericItem {
+    ) -> Generic {
         if self.uninferrable {
             return type_var_like.as_any_generic_item();
         }
         self.type_
             .into_generic_item(db, avoid_implicit_literals, |fallback| {
                 if let Some(fallback) = fallback {
-                    GenericItem::TypeArg(fallback)
+                    Generic::TypeArg(fallback)
                 } else {
                     type_var_like.as_never_generic_item(db)
                 }
