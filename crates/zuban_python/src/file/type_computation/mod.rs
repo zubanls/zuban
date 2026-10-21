@@ -8,10 +8,8 @@ mod new_type;
 mod type_var_likes;
 mod typed_dict;
 
-pub(crate) use alias::{TypeDocs, assignment_type_node_ref};
-pub(crate) use class::{
-    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS, linearize_mro,
-};
+pub(crate) use alias::*;
+pub(crate) use class::*;
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
 use std::{borrow::Cow, cell::Cell, sync::Arc};
