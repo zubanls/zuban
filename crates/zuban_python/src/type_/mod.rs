@@ -4,6 +4,7 @@ mod common_sub_type;
 mod custom_behavior;
 mod dataclass;
 mod enum_;
+mod equal_type;
 mod generics;
 mod intersection;
 mod iterator;
