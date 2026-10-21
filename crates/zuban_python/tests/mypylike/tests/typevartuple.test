@@ -402,6 +402,6 @@ def empty() -> None: ...
 
 run(fn1)
 run(fn2)
-run(fn3)  # E: 
+run(fn3)  # E: Argument 1 to "run" has incompatible type "def fn3(x: bytes, *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
 run(fn4)
 run(empty)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"

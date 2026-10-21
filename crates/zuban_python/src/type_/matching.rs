@@ -1402,34 +1402,36 @@ fn match_unpack_internal(
                 matches &= check_type(matcher, t1, t2, -(i as isize) - 1)
             }
 
+            let matches_arbitrary_len_unpack = || false;
+            let len_before_1 = with_unpack1.before.len();
+            let len_before_2 = with_unpack2.before.len();
+            if len_before_1 > len_before_2 && !matches_arbitrary_len_unpack() {
+                debug!("Unpack mismatch because of different lengths");
+                if let Some(on_mismatch) = on_mismatch {
+                    on_mismatch(
+                        ErrorTypes {
+                            matcher: Some(matcher),
+                            reason: &MismatchReason::None,
+                            expected: &with_unpack1.before[len_before_2],
+                            got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
+                        },
+                        len_before_1 as isize,
+                    );
+                    if let Some(on_too_few_args) = on_too_few_args {
+                        on_too_few_args()
+                    }
+                }
+                return Match::new_false();
+            } else if with_unpack1.after.len() > with_unpack2.after.len() {
+                debug!("Unpack mismatch because one side is too short");
+                if let Some(on_too_few_args) = on_too_few_args {
+                    on_too_few_args()
+                }
+                return Match::new_false();
+            }
+
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt1) => {
-                    let len_before_1 = with_unpack1.before.len();
-                    let len_before_2 = with_unpack2.before.len();
-                    if len_before_1 > len_before_2 {
-                        debug!("Unpack mismatch because of different lengths");
-                        if let Some(on_mismatch) = on_mismatch {
-                            on_mismatch(
-                                ErrorTypes {
-                                    matcher: Some(matcher),
-                                    reason: &MismatchReason::None,
-                                    expected: &with_unpack1.before[len_before_2],
-                                    got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
-                                },
-                                len_before_1 as isize,
-                            );
-                            if let Some(on_too_few_args) = on_too_few_args {
-                                on_too_few_args()
-                            }
-                        }
-                        return Match::new_false();
-                    } else if with_unpack1.after.len() > with_unpack2.after.len() {
-                        debug!("Unpack mismatch because one side is too short");
-                        if let Some(on_too_few_args) = on_too_few_args {
-                            on_too_few_args()
-                        }
-                        return Match::new_false();
-                    }
                     matches &= check_type_var_tuple(
                         matcher,
                         tvt1,

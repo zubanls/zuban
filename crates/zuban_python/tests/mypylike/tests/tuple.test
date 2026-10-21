@@ -655,3 +655,16 @@ d.__hash__  # E: Invalid self argument "tuple[int, list[int]]" to attribute func
 h1: Hashable = b
 h2: Hashable = d  # E: Incompatible types in assignment (expression has type "tuple[int, list[int]]", variable has type "Hashable") \
                   # N: Invalid self argument "tuple[int, list[int]]" to attribute function "__hash__" with type "Callable[[tuple[Hashable, ...]], int]"
+
+[case unpack_tuple_with_arbitrary_len]
+from typing import Unpack
+
+def f(x: tuple[str, Unpack[tuple[int, ...]], int]):
+    a: tuple[Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[Unpack[Tuple[int, ...]], int]")
+    b: tuple[str, Unpack[tuple[int, ...]], int] = x
+    c: tuple[str, float, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, float, Unpack[Tuple[int, ...]], int]")
+    d: tuple[float, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[float, Unpack[Tuple[int, ...]], int]")
+    e: tuple[str, int, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, int, Unpack[Tuple[int, ...]], int]")
+    f: tuple[str, Unpack[tuple[int, ...]], int, int]  = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, Unpack[Tuple[int, ...]], int, int]")
+    g: tuple[str, Unpack[tuple[int, ...]]]  = x
+    h: tuple[str, Unpack[tuple[int, ...]], bytes]  = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, Unpack[Tuple[int, ...]], bytes]")
