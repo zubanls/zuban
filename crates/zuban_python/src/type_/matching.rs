@@ -1402,27 +1402,53 @@ fn match_unpack_internal(
                 matches &= check_type(matcher, t1, t2, -(i as isize) - 1)
             }
 
-            let matches_arbitrary_len_unpack = || false;
-            let len_before_1 = with_unpack1.before.len();
-            let len_before_2 = with_unpack2.before.len();
-            if len_before_1 > len_before_2 && !matches_arbitrary_len_unpack() {
+            let len_before1 = with_unpack1.before.len();
+            let len_before2 = with_unpack2.before.len();
+            let len_after1 = with_unpack1.after.len();
+            let len_after2 = with_unpack2.after.len();
+
+            let mut matches_arbitrary_len_unpack_with_same_types = || match &with_unpack1.unpack {
+                TupleUnpack::TypeVarTuple(_) => false,
+                TupleUnpack::ArbitraryLen(_) => {
+                    let min_len1 = len_before1 + len_after1;
+                    let min_len2 = len_before2 + len_after2;
+                    if min_len1 > min_len2 {
+                        return false;
+                    }
+
+                    // Check before entries that might be satisfied from the after side
+                    for (i, t2) in with_unpack2.after.iter().skip(len_after1).rev().enumerate() {
+                        for t1 in with_unpack1.before.iter().skip(len_before2).rev() {
+                            matches &= check_type(matcher, t1, t2, -(i as isize));
+                        }
+                    }
+                    // Check after entries that might be satisfied from the before side
+                    for (i, t2) in with_unpack2.before.iter().skip(len_before1).enumerate() {
+                        for t1 in with_unpack1.after.iter().rev().skip(len_after2).rev() {
+                            matches &= check_type(matcher, t1, t2, i as isize);
+                        }
+                    }
+                    matches.bool()
+                }
+            };
+            if len_before1 > len_before2 && !matches_arbitrary_len_unpack_with_same_types() {
                 debug!("Unpack mismatch because of different lengths");
                 if let Some(on_mismatch) = on_mismatch {
                     on_mismatch(
                         ErrorTypes {
                             matcher: Some(matcher),
                             reason: &MismatchReason::None,
-                            expected: &with_unpack1.before[len_before_2],
+                            expected: &with_unpack1.before[len_before2],
                             got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
                         },
-                        len_before_1 as isize,
+                        len_before1 as isize,
                     );
                     if let Some(on_too_few_args) = on_too_few_args {
                         on_too_few_args()
                     }
                 }
                 return Match::new_false();
-            } else if with_unpack1.after.len() > with_unpack2.after.len() {
+            } else if len_after1 > len_after2 && !matches_arbitrary_len_unpack_with_same_types() {
                 debug!("Unpack mismatch because one side is too short");
                 if let Some(on_too_few_args) = on_too_few_args {
                     on_too_few_args()
