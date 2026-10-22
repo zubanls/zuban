@@ -7,10 +7,11 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet},
+    iter::Peekable,
 };
 use utils::AlreadySeen;
 
-use crate::prelude::*;
+use crate::{prelude::*, type_::MaybeUnpackGatherer};
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -706,6 +707,23 @@ impl<'a> Matcher<'a> {
             TupleArgs::FixedLen(_) => false,
         }
         .into()
+    }
+
+    pub fn match_unpack_against_params<'db: 'x, 'x, P: Param<'x>>(
+        &mut self,
+        i_s: &InferenceState<'db, '_>,
+        tuple: &Tuple,
+        params: &mut Peekable<impl Iterator<Item = P>>,
+        variance: Variance,
+    ) -> Option<Match> {
+        let param_args = gather_unpack_args(i_s.db, params)?;
+        Some(match_tuple_type_arguments(
+            i_s,
+            self,
+            &tuple.args,
+            &param_args,
+            variance,
+        ))
     }
 
     pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>, I: Iterator<Item = P2>>(
@@ -2008,6 +2026,36 @@ impl fmt::Debug for Matcher<'_> {
             .field("match_reverse", &self.match_reverse)
             .finish()
     }
+}
+
+fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
+    db: &'db Database,
+    params: &mut Peekable<impl Iterator<Item = P>>,
+) -> Option<TupleArgs> {
+    let mut gatherer = MaybeUnpackGatherer::default();
+    while let Some(next) = params.peek() {
+        match next.specific(db) {
+            WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
+                let t2 = t2
+                    .map(|t2| t2.into_owned())
+                    .unwrap_or(Type::Any(AnyCause::Unannotated));
+                gatherer.add_type(t2)
+            }
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
+                .add_tuple_args(&tup.args)
+                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => gatherer
+                .add_unpack(TupleUnpack::ArbitraryLen(
+                    t.map(|t| t.into_owned())
+                        .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                ))
+                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
+            _ => break,
+        }
+        params.next();
+    }
+    Some(gatherer.into_tuple_args())
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash, PartialOrd, Ord)]
