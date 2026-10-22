@@ -8,6 +8,14 @@ use crate::{prelude::*, type_::WithUnpack, type_helpers::Generics};
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);
     fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool;
+    fn search_type_vars_with_condition<C: FnMut(TypeVarLikeUsage) -> bool>(
+        &self,
+        condition: &mut C,
+    ) -> bool {
+        let mut result = false;
+        self.search_type_vars(&mut |usage| result |= condition(usage));
+        result
+    }
 }
 
 impl SearchTypeVars for Type {

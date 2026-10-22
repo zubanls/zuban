@@ -785,13 +785,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut is_final = false;
         let i_s = self.i_s;
         let uses_class_generics = |class: Class, t: &Type| {
-            let mut uses_class_generics = false;
-            t.search_type_vars(&mut |usage| {
-                if usage.in_definition() == class.node_ref.as_link() {
-                    uses_class_generics = true
-                }
-            });
-            uses_class_generics
+            t.search_type_vars_with_condition(&mut |usage| {
+                usage.in_definition() == class.node_ref.as_link()
+            })
         };
         let mut type_ = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),

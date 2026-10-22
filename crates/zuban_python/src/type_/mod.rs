@@ -691,9 +691,7 @@ impl Type {
     }
 
     pub fn has_type_vars(&self) -> bool {
-        let mut result = false;
-        self.search_type_vars(&mut |_| result = true);
-        result
+        self.search_type_vars_with_condition(&mut |_| true)
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
