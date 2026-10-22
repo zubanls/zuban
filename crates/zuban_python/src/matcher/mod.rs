@@ -716,7 +716,9 @@ impl<'a> Matcher<'a> {
         params: &mut Peekable<impl Iterator<Item = P>>,
         variance: Variance,
     ) -> Option<Match> {
-        let param_args = gather_unpack_args(i_s.db, params)?;
+        let args = self.replace_type_var_likes_for_unknown_type_vars(i_s.db, &tuple.args);
+        dbg!(tuple, &self, &args);
+        let param_args = gather_unpack_args(i_s.db, &args, params)?;
         Some(match_tuple_type_arguments(
             i_s,
             self,
@@ -1106,11 +1108,14 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    pub fn replace_type_var_likes_for_unknown_type_vars<'x>(
+    pub fn replace_type_var_likes_for_unknown_type_vars<
+        'x,
+        T: ReplaceTypeVarLikes + Clone + SearchTypeVars,
+    >(
         &self,
         db: &Database,
-        t: &'x Type,
-    ) -> Cow<'x, Type> {
+        t: &'x T,
+    ) -> Cow<'x, T> {
         self.replace_type_var_likes(
             db,
             t,
@@ -2008,16 +2013,33 @@ impl fmt::Debug for Matcher<'_> {
 
 fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     db: &'db Database,
+    for_tuple: &TupleArgs,
     params: &mut Peekable<impl Iterator<Item = P>>,
 ) -> Option<TupleArgs> {
     let mut gatherer = MaybeUnpackGatherer::default();
+    let mut first_positional_default = None;
+    let mut last_positional_default = 0;
+    let mut tuple_iterator = match for_tuple {
+        TupleArgs::FixedLen(items) => Some(items.iter()),
+        _ => None,
+    };
+    let mut counter = 0;
     while let Some(next) = params.peek() {
         match next.specific(db) {
             WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
+                let needs_next = tuple_iterator.as_mut().is_none_or(|it| it.next().is_some());
+                if next.has_default() {
+                    last_positional_default = counter;
+                    if first_positional_default.is_none() {
+                        first_positional_default = Some(counter)
+                    }
+                }
                 let t2 = t2
                     .map(|t2| t2.into_owned())
                     .unwrap_or(Type::Any(AnyCause::Unannotated));
-                gatherer.add_type(t2)
+                if !next.has_default() || needs_next {
+                    gatherer.add_type(t2)
+                }
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
                 .add_tuple_args(&tup.args)
@@ -2031,7 +2053,11 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
             _ => break,
         }
+        counter += 1;
         params.next();
+    }
+    if let Some(first_positional_default) = first_positional_default {
+        //
     }
     Some(gatherer.into_tuple_args())
 }

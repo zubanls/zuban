@@ -7,9 +7,8 @@ use crate::{
     format_data::ParamsStyle,
     prelude::*,
     type_::{
-        MaybeUnpackGatherer, ParamType, StarParamType, StarStarParamType, TupleUnpack,
-        TypedDictMember, WithUnpack, empty_types, match_arbitrary_len_vs_unpack,
-        match_tuple_type_arguments,
+        ParamType, StarParamType, StarStarParamType, TupleUnpack, TypedDictMember, WithUnpack,
+        empty_types, match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
     },
 };
 

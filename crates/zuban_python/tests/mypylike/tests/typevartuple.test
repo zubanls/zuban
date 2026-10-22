@@ -395,9 +395,10 @@ def run(fn: Callable[[Unpack[tuple[int, ...]], str], None]): ...
 
 def fn1(*args: *tuple[Unpack[tuple[int, ...]], str]): ...
 def fn2(*args: *tuple[Unpack[tuple[int, ...]], str | None]): ...
-def fn3(x: bytes, *args: *tuple[Unpack[tuple[int, ...]], str]): ...
-def fn4(x: bytes = b"", *args: *tuple[Unpack[tuple[int, ...]], str]): ...
-def fn5(x: bytes = b"", y: bytes = b"", z: bytes = b"", *args: *tuple[Unpack[tuple[int, ...]], str]): ...
+def fn3(x: int, *args: *tuple[Unpack[tuple[int, ...]], str]): ...
+def fn4(x: int = 1, *args: *tuple[Unpack[tuple[int, ...]], str]): ...
+def fn5(x: bytes = b"", *args: *tuple[Unpack[tuple[int, ...]], str]): ...
+def fn6(x: int = 1, y: int = 1, z: int = 1, *args: *tuple[Unpack[tuple[int, ...]], str]): ...
 
 def empty() -> None: ...
 
@@ -405,5 +406,63 @@ run(fn1)
 run(fn2)
 run(fn3)  # E: Argument 1 to "run" has incompatible type "def fn3(x: bytes, *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
 run(fn4)
-run(fn5)
+run(fn5)  # E: Argument 1 to "run" has incompatible type "def fn5(x: bytes = ..., *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+run(fn6)
 run(empty)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+
+[case unpacked_arbitrary_len_defs_optional_arg2]
+from typing import Callable, Unpack
+
+def run(fn: Callable[[Unpack[tuple[int, str]]], None]): ...
+
+def fn1(*args: *tuple[int, str]) -> None: ...
+def fn2(x: int, y: str) -> None: ...
+def fn3(x: int, *args: str) -> None: ...
+def fn4(x: str, y: str) -> None: ...
+def fn5(x: int, y: str = "") -> None: ...
+def fn6(x: int, y: str, z: bytes = b"") -> None: ...
+def fn7(x: int, y: str, z: bytes) -> None: ...
+def fn8(x: int, y: str, z: bytes = b"", a: float = 1.0) -> None: ...
+
+run(fn1)
+run(fn2)
+run(fn3)
+run(fn4)  # E: Argument 1 to "run" has incompatible type "Callable[[str, str], None]"; expected "Callable[[int, str], None]"
+run(fn5)
+run(fn6)
+run(fn7)  # E: Argument 1 to "run" has incompatible type "Callable[[int, str, bytes], None]"; expected "Callable[[int, str], None]"
+run(fn8)
+
+[case unpacked_type_var_tuple_different_order]
+# From GH #518
+from typing import Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def run(
+    tup: tuple[*Ts],
+    fn: Callable[[Unpack[Ts]], object],
+) -> object:
+    return fn(*tup)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+run((), opt1)
+run((None,), opt1)
+run((1,), opt1)  # E: Argument 2 to "run" has incompatible type "Callable[[None], None]"; expected "def (int) -> object"
+run((), opt2)
+run((1,), opt2)
+run((), opt3)  # E: Argument 2 to "run" has incompatible type "Callable[[int | None], None]"; expected "def () -> object"
+run((1,), opt3)
+run((), empty)
+run((1,), empty)  # E: Argument 2 to "run" has incompatible type "Callable[[], None]"; expected "def (int) -> object"
