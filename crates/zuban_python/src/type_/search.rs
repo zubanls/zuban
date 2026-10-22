@@ -225,9 +225,7 @@ impl SearchTypeVars for CallableParams {
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
                 | ParamType::Star(StarParamType::ArbitraryLen(t))
-                | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                    t.find_in_type(db, check)
-                }
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(db, check),
                 ParamType::Star(StarParamType::UnpackedTuple(t)) => {
                     Type::Tuple(t.clone()).find_in_type(db, check)
                 }

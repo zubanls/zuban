@@ -328,7 +328,6 @@ impl CallableParams {
         };
         params.last()?.type_.maybe_param_spec()
     }
-
 }
 
 // This probably shouldn't be used too much, it's just a helper function
