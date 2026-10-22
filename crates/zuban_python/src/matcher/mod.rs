@@ -1072,11 +1072,14 @@ impl<'a> Matcher<'a> {
         callable
     }
 
-    pub fn replace_type_var_likes_for_nested_context<'x>(
+    pub fn replace_type_var_likes_for_nested_context<
+        'x,
+        T: ReplaceTypeVarLikes + Clone + SearchTypeVars,
+    >(
         &self,
         db: &Database,
-        t: &'x Type,
-    ) -> Cow<'x, Type> {
+        t: &'x T,
+    ) -> Cow<'x, T> {
         self.replace_type_var_likes(
             db,
             t,
@@ -1103,33 +1106,6 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
-        &self,
-        db: &Database,
-        ts: TupleArgs,
-    ) -> TupleArgs {
-        ts.maybe_replace_type_var_likes(
-            db,
-            &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
-        )
-        .unwrap_or(ts)
-    }
-
-    pub fn replace_type_var_likes_for_nested_context_in_param_spec(
-        &self,
-        db: &Database,
-        p: ParamSpecArg,
-    ) -> ParamSpecArg {
-        p.params
-            .maybe_replace_type_var_likes_and_self(
-                db,
-                &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
-                &|| None,
-            )
-            .map(|p| ParamSpecArg::new(p, None))
-            .unwrap_or(p)
-    }
-
     pub fn replace_type_var_likes_for_unknown_type_vars<'x>(
         &self,
         db: &Database,
@@ -1144,14 +1120,14 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    fn replace_type_var_likes<'x>(
+    fn replace_type_var_likes<'x, T: ReplaceTypeVarLikes + Clone + SearchTypeVars>(
         &self,
         db: &Database,
-        t: &'x Type,
+        t: &'x T,
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<Generic>,
         replace_self: ReplaceSelf,
-    ) -> Cow<'x, Type> {
+    ) -> Cow<'x, T> {
         t.replace_type_var_likes_and_self(
             db,
             &mut self.as_usage_closure(
@@ -1225,12 +1201,14 @@ impl<'a> Matcher<'a> {
                 ),
                 Generic::TypeArgs(ts) => Generic::TypeArgs(TypeArgs::new(
                     without_func_class
-                        .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
+                        .replace_type_var_likes_for_nested_context(db, &ts.args)
+                        .into_owned(),
                 )),
-                Generic::ParamSpecArg(p) => Generic::ParamSpecArg(
-                    without_func_class
-                        .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
-                ),
+                Generic::ParamSpecArg(p) => Generic::ParamSpecArg(ParamSpecArg::new(
+                    self.replace_type_var_likes_for_nested_context(db, &p.params)
+                        .into_owned(),
+                    None,
+                )),
             });
         }
         None
