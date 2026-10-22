@@ -690,10 +690,6 @@ impl Type {
         }
     }
 
-    pub fn has_type_vars(&self) -> bool {
-        self.search_type_vars_with_condition(&mut |_| true)
-    }
-
     pub fn has_any(&self, db: &Database) -> bool {
         self.has_any_internal(db, &mut Vec::new(), &|_| true)
     }

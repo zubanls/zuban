@@ -248,10 +248,6 @@ impl GenericsList {
         self.iter().any(|g| matches!(g, Generic::ParamSpecArg(_)))
     }
 
-    pub fn has_type_vars(&self) -> bool {
-        self.search_type_vars_with_condition(&mut |_| true)
-    }
-
     pub fn into_vec(self) -> Vec<Generic> {
         arc_slice_into_vec(self.0)
     }
