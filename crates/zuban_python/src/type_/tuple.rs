@@ -540,14 +540,6 @@ impl WithUnpack {
         .into()
     }
 
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.before.iter().any(|t| t.find_in_type(db, check))
-            || match &self.unpack {
-                TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::ArbitraryLen(t) => t.find_in_type(db, check),
-            }
-            || self.before.iter().any(|t| t.find_in_type(db, check))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -574,14 +566,6 @@ impl TupleArgs {
 
     pub fn is_empty(&self) -> bool {
         matches!(self, TupleArgs::FixedLen(fixed) if fixed.is_empty())
-    }
-
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        match self {
-            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
-            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
-            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
-        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

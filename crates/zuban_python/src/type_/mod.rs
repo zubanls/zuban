@@ -786,56 +786,6 @@ impl Type {
         self.find_in_type(db, &mut |t| matches!(t, Type::Self_))
     }
 
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        if check(self) {
-            return true;
-        }
-        let mut search_in_generic_class = |c: &GenericClass| {
-            Generics::from_class_generics(db, ClassNodeRef::from_link(db, c.link), &c.generics)
-                .iter(db)
-                .any(|generic| generic.find_in_type(db, check))
-        };
-
-        match self {
-            Self::Class(c) => search_in_generic_class(c),
-            Self::Dataclass(d) => search_in_generic_class(&d.class),
-            Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
-            Self::FunctionOverload(o) => o.iter_functions().any(|c| c.find_in_type(db, check)),
-            Self::Type(t) => t.find_in_type(db, check),
-            Self::Tuple(tup) => tup.args.find_in_type(db, check),
-            Self::Callable(content) => content.find_in_type(db, check),
-            Self::RecursiveType(recursive) => match &recursive.generics {
-                Some(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
-                None => false,
-            },
-            Self::TypedDict(d) => {
-                (match &d.generics {
-                    TypedDictGenerics::Generics(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
-                    TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
-                }) || {
-                    let Ok(members) = d.members_if_ready(db) else {
-                        // This is a bit unfortunate, but TypedDicts can be unfinished
-                        return false;
-                    };
-                    if let Some(extra) = &members.extra_items
-                        && extra.t.find_in_type(db, check)
-                    {
-                        return true;
-                    }
-                    members
-                        .named
-                        .iter()
-                        .any(|t| t.type_.find_in_type(db, check))
-                }
-            }
-            Self::Intersection(intersection) => intersection
-                .iter_entries()
-                .any(|t| t.find_in_type(db, check)),
-            Self::TypeForm(tf) => tf.find_in_type(db, check),
-            _ => false,
-        }
-    }
-
     pub fn has_any_with_unknown_type_params(&self, db: &Database) -> bool {
         self.has_any_internal(db, &mut Vec::new(), &|cause| {
             cause == AnyCause::UnknownTypeParam
