@@ -138,18 +138,6 @@ impl Generic {
         }
     }
 
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        match self {
-            Self::TypeArg(t) => t.find_in_type(db, check),
-            Self::TypeArgs(ts) => match &ts.args {
-                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
-                TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
-                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
-            },
-            Self::ParamSpecArg(a) => a.params.find_in_type(db, check),
-        }
-    }
-
     pub fn maybe_any(&self) -> Option<AnyCause> {
         match self {
             Self::TypeArg(Type::Any(cause)) => Some(*cause),

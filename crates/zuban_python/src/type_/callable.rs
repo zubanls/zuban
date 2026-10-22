@@ -329,12 +329,6 @@ impl CallableParams {
         params.last()?.type_.maybe_param_spec()
     }
 
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        match self {
-            Self::Simple(params) => any_for_each_type_like(params, |t| t.find_in_type(db, check)),
-            Self::Any(_) => false,
-        }
-    }
 }
 
 // This probably shouldn't be used too much, it's just a helper function
@@ -582,14 +576,6 @@ impl CallableContent {
 
     pub fn has_self_type(&self, db: &Database) -> bool {
         self.find_in_type(db, &mut |t| matches!(t, Type::Self_))
-    }
-
-    pub fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.guard
-            .as_ref()
-            .is_some_and(|guard| guard.type_.find_in_type(db, check))
-            || self.return_type.find_in_type(db, check)
-            || self.params.find_in_type(db, check)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {

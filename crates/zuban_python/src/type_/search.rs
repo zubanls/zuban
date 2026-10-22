@@ -1,12 +1,13 @@
 use super::{
-    ClassGenerics, GenericClass, GenericsList, ParamType, StarParamType, StarStarParamType,
-    TupleUnpack, TypedDictGenerics,
+    ClassGenerics, Generic, GenericClass, GenericsList, ParamType, StarParamType,
+    StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 
-use crate::{prelude::*, type_::WithUnpack};
+use crate::{prelude::*, type_::WithUnpack, type_helpers::Generics};
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool;
 }
 
 impl SearchTypeVars for Type {
@@ -74,17 +75,66 @@ impl SearchTypeVars for Type {
             Self::TypeForm(tf) => tf.search_type_vars(found_type_var),
         }
     }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        if check(self) {
+            return true;
+        }
+        let mut search_in_generic_class = |c: &GenericClass| {
+            Generics::from_class_generics(db, ClassNodeRef::from_link(db, c.link), &c.generics)
+                .iter(db)
+                .any(|generic| generic.find_in_type(db, check))
+        };
+
+        match self {
+            Self::Class(c) => search_in_generic_class(c),
+            Self::Dataclass(d) => search_in_generic_class(&d.class),
+            Self::Union(u) => u.iter().any(|t| t.find_in_type(db, check)),
+            Self::FunctionOverload(o) => o.iter_functions().any(|c| c.find_in_type(db, check)),
+            Self::Type(t) => t.find_in_type(db, check),
+            Self::Tuple(tup) => tup.args.find_in_type(db, check),
+            Self::Callable(content) => content.find_in_type(db, check),
+            Self::RecursiveType(recursive) => match &recursive.generics {
+                Some(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
+                None => false,
+            },
+            Self::TypedDict(d) => d.find_in_type(db, check),
+            Self::Intersection(intersection) => intersection
+                .iter_entries()
+                .any(|t| t.find_in_type(db, check)),
+            Self::TypeForm(tf) => tf.find_in_type(db, check),
+            _ => false,
+        }
+    }
+}
+
+impl SearchTypeVars for Generic {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        match self {
+            Self::TypeArg(t) => t.search_type_vars(found_type_var),
+            Self::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
+            Self::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
+        }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            Self::TypeArg(t) => t.find_in_type(db, check),
+            Self::TypeArgs(ts) => ts.args.find_in_type(db, check),
+            Self::ParamSpecArg(a) => a.params.find_in_type(db, check),
+        }
+    }
 }
 
 impl SearchTypeVars for GenericsList {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         for g in self.iter() {
-            match g {
-                Generic::TypeArg(t) => t.search_type_vars(found_type_var),
-                Generic::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
-                Generic::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
-            }
+            g.search_type_vars(found_type_var);
         }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.iter().any(|g| g.find_in_type(db, check))
     }
 }
 
@@ -98,6 +148,14 @@ impl SearchTypeVars for TupleArgs {
             }
             TupleArgs::ArbitraryLen(t) => t.search_type_vars(found_type_var),
             TupleArgs::WithUnpack(w) => w.search_type_vars(found_type_var),
+        }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
         }
     }
 }
@@ -116,6 +174,15 @@ impl SearchTypeVars for WithUnpack {
         for t in self.after.iter() {
             t.search_type_vars(found_type_var)
         }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.before.iter().any(|t| t.find_in_type(db, check))
+            || match &self.unpack {
+                TupleUnpack::TypeVarTuple(_) => false,
+                TupleUnpack::ArbitraryLen(t) => t.find_in_type(db, check),
+            }
+            || self.after.iter().any(|t| t.find_in_type(db, check))
     }
 }
 
@@ -150,6 +217,29 @@ impl SearchTypeVars for CallableParams {
             Self::Any(_) => (),
         }
     }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
+                ParamType::PositionalOnly(t)
+                | ParamType::PositionalOrKeyword(t)
+                | ParamType::KeywordOnly(t)
+                | ParamType::Star(StarParamType::ArbitraryLen(t))
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
+                    t.find_in_type(db, check)
+                }
+                ParamType::Star(StarParamType::UnpackedTuple(t)) => {
+                    Type::Tuple(t.clone()).find_in_type(db, check)
+                }
+                ParamType::Star(StarParamType::ParamSpecArgs(_))
+                | ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
+                    Type::TypedDict(t.clone()).find_in_type(db, check)
+                }
+            }),
+            Self::Any(_) => false,
+        }
+    }
 }
 
 impl SearchTypeVars for CallableContent {
@@ -160,12 +250,40 @@ impl SearchTypeVars for CallableContent {
             guard.type_.search_type_vars(found_type_var)
         }
     }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.guard
+            .as_ref()
+            .is_some_and(|guard| guard.type_.find_in_type(db, check))
+            || self.return_type.find_in_type(db, check)
+            || self.params.find_in_type(db, check)
+    }
 }
 
 impl SearchTypeVars for TypedDict {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         if let TypedDictGenerics::Generics(list) = &self.generics {
             list.search_type_vars(found_type_var)
+        }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        (match &self.generics {
+            TypedDictGenerics::Generics(gs) => gs.iter().any(|g| g.find_in_type(db, check)),
+            TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+        }) || {
+            let Ok(members) = self.members_if_ready(db) else {
+                return false;
+            };
+            if let Some(extra) = &members.extra_items
+                && extra.t.find_in_type(db, check)
+            {
+                return true;
+            }
+            members
+                .named
+                .iter()
+                .any(|t| t.type_.find_in_type(db, check))
         }
     }
 }
