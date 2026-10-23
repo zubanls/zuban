@@ -14,6 +14,187 @@ use crate::{
     type_helpers::TypeOrClass,
 };
 
+pub(crate) trait Matching {
+    fn is_super_type_of(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match;
+    fn is_same_type(&self, i_s: &InferenceState, matcher: &mut Matcher, value_type: &Self)
+    -> Match;
+
+    fn is_sub_type_of(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
+    }
+
+    fn matches(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        match variance {
+            Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
+            Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
+            Variance::Contravariant => self.is_sub_type_of(i_s, matcher, value_type),
+        }
+    }
+
+    fn is_simple_sub_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
+        self.is_sub_type_of(i_s, &mut Matcher::default(), value_type)
+    }
+    fn is_simple_super_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
+        self.is_super_type_of(i_s, &mut Matcher::default(), value_type)
+    }
+    fn is_simple_same_type(&self, i_s: &InferenceState, value_type: &Self) -> Match {
+        self.is_same_type(i_s, &mut Matcher::default(), value_type)
+    }
+    fn simple_matches(&self, i_s: &InferenceState, value_type: &Self, variance: Variance) -> Match {
+        self.matches(i_s, &mut Matcher::default(), value_type, variance)
+    }
+}
+
+impl Matching for Type {
+    fn is_same_type(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
+        let result = m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Invariant));
+        if cfg!(feature = "zuban_debug") {
+            let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
+            debug!("Match invariant {got} ≡ {expected} -> {result:?}");
+        }
+        result
+    }
+
+    fn is_super_type_of(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        // 1. Check if the type is part of the mro.
+        let debug_message_for_result = |result| {
+            if cfg!(feature = "zuban_debug") {
+                let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
+                debug!("Match covariant {got} :> {expected} -> {result:?}",)
+            }
+        };
+
+        if !matches!(
+            self,
+            Type::Class(_)
+                | Type::Tuple(_)
+                | Type::Dataclass(_)
+                | Type::TypedDict(_)
+                | Type::NamedTuple(_)
+        ) {
+            let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
+            if !matches!(
+                m,
+                Match::False {
+                    reason: MismatchReason::None,
+                    similar: false
+                }
+            ) {
+                debug_message_for_result(&m);
+                return m;
+            }
+            let result =
+                m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant));
+            debug_message_for_result(&result);
+            return result;
+        }
+
+        let mut m = Match::new_false();
+        let mut mro = value_type.mro(i_s.db);
+        // Protocols contain no object in its MRO, therefore we add that here.
+        mro.returned_object = false;
+
+        for (i, t2) in mro {
+            m = match t2 {
+                TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
+                    Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
+                    None => {
+                        // Performance might be slow here, since it allocates. However we have
+                        // already excluded literal/None matching above and this therefore doesn't
+                        // happen that often.
+                        let t2 = c2.as_type(i_s.db);
+                        self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
+                    }
+                },
+                TypeOrClass::Type(t2) => {
+                    self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
+                }
+            };
+            if !matches!(
+                m,
+                Match::False {
+                    reason: MismatchReason::None,
+                    similar: false
+                }
+            ) {
+                if let Match::False {
+                    reason: reason @ MismatchReason::ConstraintMismatch { .. },
+                    ..
+                } = &mut m
+                    && i.0 != 0
+                {
+                    // If the constraint matched previously, but doesn't anymore, because we
+                    // have a non-matching super class, the constraint was actually fine, but
+                    // there were other issues.
+                    *reason = MismatchReason::None;
+                }
+                debug_message_for_result(&m);
+                return m;
+            }
+        }
+        let result = m
+            .or(|| {
+                // Check if it is a class with a protocol
+                if let Some(class1) = self.maybe_class(i_s.db)
+                    && class1.is_protocol(i_s.db)
+                {
+                    let value_type = if let Type::Literal(l) = value_type {
+                        // If there are literals involved, we can simply check protocols without
+                        // the literals. This makes cases much better where we need to check 100+
+                        // literals, where we can simply use the cache in this case.
+                        //
+                        // Note: This could in theory be a problem if typeshed ever adds some
+                        // method that returns Self on a literal. This is probably unlikely,
+                        // because I don't know of such a method, but in that case we might need to
+                        // change this.
+                        Cow::Owned(l.fallback_type(i_s.db))
+                    } else {
+                        Cow::Borrowed(value_type)
+                    };
+                    matcher.avoid_structural_matching_recursion(
+                        i_s.db,
+                        self,
+                        &value_type,
+                        |matcher| class1.check_protocol_match(i_s, matcher, &value_type),
+                    )
+                } else {
+                    Match::new_false()
+                }
+            })
+            .or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant))
+            .or(|| self.check_promotion(i_s, matcher, value_type));
+        debug_message_for_result(&result);
+        result
+    }
+}
+
 impl Type {
     fn matches_internal(
         &self,
@@ -276,140 +457,6 @@ impl Type {
         }
     }
 
-    pub fn is_sub_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
-    }
-
-    pub fn is_simple_sub_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_sub_type_of(i_s, &mut Matcher::default(), value_type)
-    }
-
-    pub fn is_simple_super_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_super_type_of(i_s, &mut Matcher::default(), value_type)
-    }
-
-    pub fn is_super_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        // 1. Check if the type is part of the mro.
-        let debug_message_for_result = |result| {
-            if cfg!(feature = "zuban_debug") {
-                let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
-                debug!("Match covariant {got} :> {expected} -> {result:?}",)
-            }
-        };
-
-        if !matches!(
-            self,
-            Type::Class(_)
-                | Type::Tuple(_)
-                | Type::Dataclass(_)
-                | Type::TypedDict(_)
-                | Type::NamedTuple(_)
-        ) {
-            let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
-            if !matches!(
-                m,
-                Match::False {
-                    reason: MismatchReason::None,
-                    similar: false
-                }
-            ) {
-                debug_message_for_result(&m);
-                return m;
-            }
-            let result =
-                m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant));
-            debug_message_for_result(&result);
-            return result;
-        }
-
-        let mut m = Match::new_false();
-        let mut mro = value_type.mro(i_s.db);
-        // Protocols contain no object in its MRO, therefore we add that here.
-        mro.returned_object = false;
-
-        for (i, t2) in mro {
-            m = match t2 {
-                TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
-                    Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
-                    None => {
-                        // Performance might be slow here, since it allocates. However we have
-                        // already excluded literal/None matching above and this therefore doesn't
-                        // happen that often.
-                        let t2 = c2.as_type(i_s.db);
-                        self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
-                    }
-                },
-                TypeOrClass::Type(t2) => {
-                    self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
-                }
-            };
-            if !matches!(
-                m,
-                Match::False {
-                    reason: MismatchReason::None,
-                    similar: false
-                }
-            ) {
-                if let Match::False {
-                    reason: reason @ MismatchReason::ConstraintMismatch { .. },
-                    ..
-                } = &mut m
-                    && i.0 != 0
-                {
-                    // If the constraint matched previously, but doesn't anymore, because we
-                    // have a non-matching super class, the constraint was actually fine, but
-                    // there were other issues.
-                    *reason = MismatchReason::None;
-                }
-                debug_message_for_result(&m);
-                return m;
-            }
-        }
-        let result = m
-            .or(|| {
-                // Check if it is a class with a protocol
-                if let Some(class1) = self.maybe_class(i_s.db)
-                    && class1.is_protocol(i_s.db)
-                {
-                    let value_type = if let Type::Literal(l) = value_type {
-                        // If there are literals involved, we can simply check protocols without
-                        // the literals. This makes cases much better where we need to check 100+
-                        // literals, where we can simply use the cache in this case.
-                        //
-                        // Note: This could in theory be a problem if typeshed ever adds some
-                        // method that returns Self on a literal. This is probably unlikely,
-                        // because I don't know of such a method, but in that case we might need to
-                        // change this.
-                        Cow::Owned(l.fallback_type(i_s.db))
-                    } else {
-                        Cow::Borrowed(value_type)
-                    };
-                    matcher.avoid_structural_matching_recursion(
-                        i_s.db,
-                        self,
-                        &value_type,
-                        |matcher| class1.check_protocol_match(i_s, matcher, &value_type),
-                    )
-                } else {
-                    Match::new_false()
-                }
-            })
-            .or(|| self.check_other_side(i_s, matcher, value_type, Variance::Covariant))
-            .or(|| self.check_promotion(i_s, matcher, value_type));
-        debug_message_for_result(&result);
-        result
-    }
-
     fn check_promotion(
         &self,
         i_s: &InferenceState,
@@ -466,48 +513,6 @@ impl Type {
             .or(|| self.check_class_promotion(i_s, matcher, cls_node_ref))
         } else {
             Match::new_false()
-        }
-    }
-
-    pub fn is_simple_same_type(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_same_type(i_s, &mut Matcher::default(), value_type)
-    }
-
-    pub fn is_same_type(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
-        let result = m.or(|| self.check_other_side(i_s, matcher, value_type, Variance::Invariant));
-        if cfg!(feature = "zuban_debug") {
-            let ErrorStrs { got, expected } = format_got_expected(i_s.db, self, value_type);
-            debug!("Match invariant {got} ≡ {expected} -> {result:?}");
-        }
-        result
-    }
-
-    pub fn simple_matches(
-        &self,
-        i_s: &InferenceState,
-        value_type: &Self,
-        variance: Variance,
-    ) -> Match {
-        self.matches(i_s, &mut Matcher::default(), value_type, variance)
-    }
-
-    pub fn matches(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-        variance: Variance,
-    ) -> Match {
-        match variance {
-            Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
-            Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
-            Variance::Contravariant => self.is_sub_type_of(i_s, matcher, value_type),
         }
     }
 
