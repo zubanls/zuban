@@ -3271,7 +3271,9 @@ impl<'db> ImportFrom<'db> {
         // import_from_targets:
         //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
         for node in self.node.iter_children().skip(3) {
-            if node.is_type(Nonterminal(import_from_targets)) {
+            if node.is_type(Nonterminal(import_from_targets))
+                || node.is_type(Nonterminal(import_from_named_targets))
+            {
                 let first = node.nth_child(0);
                 if first.is_leaf() && first.as_code() == "*" {
                     return ImportFromTargets::Star(Keyword::new(first));
@@ -3287,7 +3289,9 @@ impl<'db> ImportFrom<'db> {
 
     pub fn insertion_point_for_new_name(&self, new_name: &str) -> InsertionPointForImportFrom {
         for node in self.node.iter_children().skip(3) {
-            if node.is_type(Nonterminal(import_from_targets)) {
+            if node.is_type(Nonterminal(import_from_targets))
+                || node.is_type(Nonterminal(import_from_named_targets))
+            {
                 let first = node.nth_child(0);
                 if first.as_code() == "(" {
                     let second_last = node
@@ -3442,7 +3446,12 @@ pub enum DottedPatternNameContent<'db> {
 
 impl<'db> ImportName<'db> {
     pub fn iter_dotted_as_names(&self) -> DottedAsNameIterator<'db> {
-        DottedAsNameIterator(self.node.nth_child(1).iter_children())
+        let index = if self.node.nth_child(0).as_code() == "lazy" {
+            2
+        } else {
+            1
+        };
+        DottedAsNameIterator(self.node.nth_child(index).iter_children())
     }
 }
 
@@ -4654,6 +4663,7 @@ impl<'db> NameDef<'db> {
                     | single_target
                     | import_from_as_name
                     | import_from_targets
+                    | import_from_named_targets
                     | dotted_as_names
                     | dotted_as_name
             )
