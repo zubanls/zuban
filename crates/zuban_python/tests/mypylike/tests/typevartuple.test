@@ -348,13 +348,13 @@ def empty() -> None:
 
 run(opt1)
 run(opt1, None)
-run(opt1, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[None]"
+run(opt1, 1)  # E: Argument 1 to "run" has incompatible type "Callable[[None], None]"; expected "def (int) -> object"
 run(opt2)
 run(opt2, 1)
-run(opt3)  # E: Too few arguments for "run"
+run(opt3)  # E: Argument 1 to "run" has incompatible type "Callable[[int | None], None]"; expected "def () -> object"
 run(opt3, 1)
 run(empty)
-run(empty, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[()]"
+run(empty, 1)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "def (int) -> object"
 
 [case unpacked_type_var_tuple_class_optional_arg]
 from typing import Callable, Unpack, TypeVarTuple

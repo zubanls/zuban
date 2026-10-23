@@ -3,9 +3,10 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
+use parsa_python_cst::ParamKind;
 use std::{
     borrow::Cow,
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
     iter::Peekable,
 };
@@ -716,9 +717,39 @@ impl<'a> Matcher<'a> {
         params: &mut Peekable<impl Iterator<Item = P>>,
         variance: Variance,
     ) -> Option<Match> {
-        let args = self.replace_type_var_likes_for_unknown_type_vars(i_s.db, &tuple.args);
-        dbg!(tuple, &self, &args);
-        let param_args = gather_unpack_args(i_s.db, &args, params)?;
+        let has_uncalculated_type_var_tuple = Cell::new(false);
+        let args = self.replace_type_var_likes(
+            i_s.db,
+            &tuple.args,
+            false,
+            |usage| {
+                if matches!(usage, TypeVarLikeUsage::TypeVarTuple(_)) {
+                    has_uncalculated_type_var_tuple.set(true)
+                }
+                Some(usage.as_type_var_like().as_never_generic_item(i_s.db))
+            },
+            &|| None,
+        );
+        let param_args = if has_uncalculated_type_var_tuple.get() {
+            let mut positional_params: Vec<P> = vec![];
+            while let Some(p) = params.next_if(|p| {
+                matches!(
+                    p.kind(i_s.db),
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword | ParamKind::Star
+                )
+            }) {
+                positional_params.push(p)
+            }
+            // We don't need to delay inference for params without defaults, because in that case
+            // the length of the tuple should always be correct.
+            if positional_params.iter().any(|p| p.has_default()) {
+                todo!()
+            } else {
+                gather_unpack_args(i_s.db, &args, &mut positional_params.into_iter().peekable())?
+            }
+        } else {
+            gather_unpack_args(i_s.db, &args, params)?
+        };
         Some(match_tuple_type_arguments(
             i_s,
             self,
