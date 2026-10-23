@@ -5,10 +5,7 @@ use crate::{
     format_data::ParamsStyle,
     params::matches_params_with_variance,
     prelude::*,
-    type_::{
-        ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
-        match_tuple_type_arguments,
-    },
+    type_::{ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -464,7 +461,7 @@ impl BoundKind {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.matches(i_s, matcher, t2, variance),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                match_tuple_type_arguments(i_s, matcher, tup1, tup2, variance)
+                tup1.matches(i_s, matcher, tup2, variance)
             }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
                 matches_params_with_variance(i_s, matcher, params1, params2, variance)

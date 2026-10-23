@@ -15,49 +15,38 @@ use crate::{
 };
 
 pub(crate) trait Matching {
-    fn is_super_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match;
-    fn is_same_type(&self, i_s: &InferenceState, matcher: &mut Matcher, value_type: &Self)
-    -> Match;
+    fn is_super_type_of(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match;
+    fn is_same_type(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match;
 
-    fn is_sub_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
+    fn is_sub_type_of(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match {
+        matcher.match_reverse(|matcher| other.is_super_type_of(i_s, matcher, self))
     }
 
     fn matches(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        value_type: &Self,
+        other: &Self,
         variance: Variance,
     ) -> Match {
         match variance {
-            Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
-            Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
-            Variance::Contravariant => self.is_sub_type_of(i_s, matcher, value_type),
+            Variance::Covariant => self.is_super_type_of(i_s, matcher, other),
+            Variance::Invariant => self.is_same_type(i_s, matcher, other),
+            Variance::Contravariant => self.is_sub_type_of(i_s, matcher, other),
         }
     }
 
-    fn is_simple_sub_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_sub_type_of(i_s, &mut Matcher::default(), value_type)
+    fn is_simple_sub_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
+        self.is_sub_type_of(i_s, &mut Matcher::default(), other)
     }
-    fn is_simple_super_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_super_type_of(i_s, &mut Matcher::default(), value_type)
+    fn is_simple_super_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
+        self.is_super_type_of(i_s, &mut Matcher::default(), other)
     }
-    fn is_simple_same_type(&self, i_s: &InferenceState, value_type: &Self) -> Match {
-        self.is_same_type(i_s, &mut Matcher::default(), value_type)
+    fn is_simple_same_type(&self, i_s: &InferenceState, other: &Self) -> Match {
+        self.is_same_type(i_s, &mut Matcher::default(), other)
     }
-    fn simple_matches(&self, i_s: &InferenceState, value_type: &Self, variance: Variance) -> Match {
-        self.matches(i_s, &mut Matcher::default(), value_type, variance)
+    fn simple_matches(&self, i_s: &InferenceState, other: &Self, variance: Variance) -> Match {
+        self.matches(i_s, &mut Matcher::default(), other, variance)
     }
 }
 
@@ -263,18 +252,14 @@ impl Type {
             }
             Type::Never(_) => matches!(value_type, Type::Never(_)).into(),
             Type::Tuple(t1) => match value_type {
-                Type::Tuple(t2) => {
-                    match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
-                        .similar_if_false()
-                }
-                Type::NamedTuple(t2) => match_tuple_type_arguments(
-                    i_s,
-                    matcher,
-                    &t1.args,
-                    &t2.as_tuple().args,
-                    variance,
-                )
-                .similar_if_false(),
+                Type::Tuple(t2) => t1
+                    .args
+                    .matches(i_s, matcher, &t2.args, variance)
+                    .similar_if_false(),
+                Type::NamedTuple(t2) => t1
+                    .args
+                    .matches(i_s, matcher, &t2.as_tuple().args, variance)
+                    .similar_if_false(),
                 Type::ParamSpecArgs(_) => t1.args.maybe_any().is_some().into(),
                 _ => Match::new_false(),
             },
@@ -1164,83 +1149,98 @@ impl Type {
     }
 }
 
-pub fn match_tuple_type_arguments(
-    i_s: &InferenceState,
-    matcher: &mut Matcher,
-    tup1: &TupleArgs,
-    tup2: &TupleArgs,
-    variance: Variance,
-) -> Match {
-    let m = if variance == Variance::Contravariant {
-        matcher.match_reverse(|matcher| {
-            match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
-        })
-    } else {
+impl Matching for TupleArgs {
+    fn is_same_type(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        self.matches_with_variance(i_s, matcher, value_type, Variance::Invariant)
+    }
+
+    fn is_super_type_of(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        self.matches_with_variance(i_s, matcher, value_type, Variance::Covariant)
+    }
+}
+
+impl TupleArgs {
+    fn matches_with_variance(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        other: &Self,
+        variance: Variance,
+    ) -> Match {
         debug_assert_ne!(variance, Variance::Contravariant);
-        let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
-        if !m.bool()
+        let m = self.matches_internal(i_s, matcher, other, variance);
+        let m = if !m.bool()
             && matcher.has_type_var_matcher()
             && matches!(
-                tup2,
+                other,
                 TupleArgs::WithUnpack(WithUnpack {
                     unpack: TupleUnpack::TypeVarTuple(_),
                     ..
                 })
-            )
-        {
+            ) {
             m.or(|| {
                 matcher.match_reverse(|matcher| {
-                    match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+                    other.matches_internal(i_s, matcher, self, variance.invert())
                 })
             })
         } else {
             m
-        }
-    };
-    debug!(
-        "Matched tuples {} against {}: {m:?}",
-        tup1.format(&FormatData::new_short(i_s.db)),
-        tup2.format(&FormatData::new_short(i_s.db))
-    );
-    m
-}
+        };
+        debug!(
+            "Matched tuples {} against {}: {m:?}",
+            self.format(&FormatData::new_short(i_s.db)),
+            other.format(&FormatData::new_short(i_s.db))
+        );
+        m
+    }
 
-fn match_tuple_type_arguments_internal(
-    i_s: &InferenceState,
-    matcher: &mut Matcher,
-    tup1: &TupleArgs,
-    tup2: &TupleArgs,
-    variance: Variance,
-) -> Match {
-    use TupleArgs::*;
-    match (tup1, tup2) {
-        (FixedLen(ts1), FixedLen(ts2)) => {
-            if ts1.len() == ts2.len() {
-                let mut matches = Match::new_true();
-                for (t1, t2) in ts1.iter().zip(ts2.iter()) {
-                    matches &= t1.matches(i_s, matcher, t2, variance);
+    fn matches_internal(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        other: &TupleArgs,
+        variance: Variance,
+    ) -> Match {
+        use TupleArgs::*;
+        match (self, other) {
+            (FixedLen(ts1), FixedLen(ts2)) => {
+                if ts1.len() == ts2.len() {
+                    let mut matches = Match::new_true();
+                    for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                        matches &= t1.matches(i_s, matcher, t2, variance);
+                    }
+                    matches
+                } else {
+                    Match::new_false()
                 }
-                matches
-            } else {
-                Match::new_false()
             }
-        }
-        (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => {
-            match_unpack_internal(i_s, matcher, unpack, tup2, variance, None, None)
-        }
-        (ArbitraryLen(t1), WithUnpack(u2)) => {
-            match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
-        }
-        (FixedLen(_), WithUnpack(_)) => Match::new_false(),
-        (FixedLen(_), ArbitraryLen(t2)) => Match::from_bool_into_any_match(t2.is_any()),
-        (ArbitraryLen(t1), FixedLen(ts2)) => {
-            if variance == Variance::Invariant {
-                return matches!(t1.as_ref(), Type::Any(_)).into();
+            (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
+            (WithUnpack(unpack), _) => {
+                match_unpack_internal(i_s, matcher, unpack, other, variance, None, None)
             }
-            ts2.iter()
-                .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
-                .into()
+            (ArbitraryLen(t1), WithUnpack(u2)) => {
+                match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
+            }
+            (FixedLen(_), WithUnpack(_)) => Match::new_false(),
+            (FixedLen(_), ArbitraryLen(t2)) => Match::from_bool_into_any_match(t2.is_any()),
+            (ArbitraryLen(t1), FixedLen(ts2)) => {
+                if variance == Variance::Invariant {
+                    return matches!(t1.as_ref(), Type::Any(_)).into();
+                }
+                ts2.iter()
+                    .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
+                    .into()
+            }
         }
     }
 }

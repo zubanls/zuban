@@ -37,7 +37,7 @@ use crate::{
     type_::{
         GotType, OnTypeError, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
         StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
-        add_param_spec_to_params, match_tuple_type_arguments,
+        add_param_spec_to_params,
     },
     type_helpers::{Callable, FuncLike, Function, Generics},
     utils::join_with_commas,
@@ -673,13 +673,9 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &usage)
                     .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+                return ts1
+                    .args
+                    .matches(i_s, &mut Matcher::default(), &args2, variance);
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
@@ -687,13 +683,9 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &usage)
                     .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+                return ts1
+                    .args
+                    .matches(i_s, &mut Matcher::default(), &args2, variance);
             }
         }
         match args2 {
@@ -750,13 +742,7 @@ impl<'a> Matcher<'a> {
         } else {
             gather_unpack_args(i_s.db, &args, params)?
         };
-        Some(match_tuple_type_arguments(
-            i_s,
-            self,
-            &tuple.args,
-            &param_args,
-            variance,
-        ))
+        Some(tuple.args.matches(i_s, self, &param_args, variance))
     }
 
     pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>, I: Iterator<Item = P2>>(

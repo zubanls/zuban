@@ -8,7 +8,7 @@ use crate::{
     prelude::*,
     type_::{
         ParamType, StarParamType, StarStarParamType, TupleUnpack, TypedDictMember, WithUnpack,
-        empty_types, match_arbitrary_len_vs_unpack, match_tuple_type_arguments,
+        empty_types, match_arbitrary_len_vs_unpack,
     },
 };
 
@@ -575,10 +575,9 @@ fn matches_simple_params_part2<
                 WrappedParamType::Star(WrappedStar::UnpackedTuple(tup1))
                     if params1.next().is_none() =>
                 {
-                    matches &= match_tuple_type_arguments(
+                    matches &= tup1.args.matches(
                         i_s,
                         matcher,
-                        &tup1.args,
                         &TupleArgs::FixedLen(empty_types()),
                         variance,
                     );

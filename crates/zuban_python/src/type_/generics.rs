@@ -3,10 +3,7 @@ use std::{borrow::Cow, sync::Arc};
 use crate::{
     params::matches_params_with_variance,
     prelude::*,
-    type_::{
-        TypeVarIndex, format_callable_params, format_params_as_param_spec,
-        match_tuple_type_arguments,
-    },
+    type_::{TypeVarIndex, format_callable_params, format_params_as_param_spec},
     utils::{arc_slice_into_vec, join_with_commas},
 };
 
@@ -85,9 +82,7 @@ impl Generic {
                 _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
-                Self::TypeArgs(ts2) => {
-                    match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
-                }
+                Self::TypeArgs(ts2) => ts1.args.matches(i_s, matcher, &ts2.args, variance),
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(p1) => match other {
