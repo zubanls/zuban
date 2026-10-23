@@ -1489,6 +1489,17 @@ pub(crate) enum WrappedStarStar<'a> {
     UnpackTypedDict(Arc<TypedDict>),
 }
 
+impl<'a> WrappedParamType<'a> {
+    pub fn expect_positional_type(&self) -> &Type {
+        match &self {
+            Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => {
+                t.as_deref().unwrap_or(&Type::Any(AnyCause::Unannotated))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl ParamArgument<'_, '_> {
     pub fn is_lambda_argument(&self) -> bool {
         match self {

@@ -1160,33 +1160,40 @@ impl Matching for TypeArgs {
         self.args.is_same_type(i_s, matcher, &value_type.args)
     }
 
-    fn is_super_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        self.args.is_super_type_of(i_s, matcher, &value_type.args)
+    fn is_super_type_of(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match {
+        if let Some(first_positional_default) = self.first_positional_default
+            && let TupleArgs::FixedLen(ts1) = &self.args
+            && let TupleArgs::FixedLen(ts2) = &other.args
+            && first_positional_default <= ts2.len()
+            && ts2.len() <= ts1.len()
+        {
+            // This is a special case. A TypeVarTuple may have been formed by matching against a
+            // callable. In that case there might be multiple valid tuple lengths and the inferred
+            // type arguments from the callable may just be default params.
+            let mut matches = Match::new_true();
+            for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                matches &= t1.is_super_type_of(i_s, matcher, t2);
+            }
+            debug!(
+                "Matched tuples (with first_positional_default={first_positional_default}) \
+                 {} against {}: {matches:?}",
+                self.args.format(&FormatData::new_short(i_s.db)),
+                other.args.format(&FormatData::new_short(i_s.db))
+            );
+            matches
+        } else {
+            self.args.is_super_type_of(i_s, matcher, &other.args)
+        }
     }
 }
 
 impl Matching for TupleArgs {
-    fn is_same_type(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        self.matches_with_variance(i_s, matcher, value_type, Variance::Invariant)
+    fn is_same_type(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match {
+        self.matches_with_variance(i_s, matcher, other, Variance::Invariant)
     }
 
-    fn is_super_type_of(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Self,
-    ) -> Match {
-        self.matches_with_variance(i_s, matcher, value_type, Variance::Covariant)
+    fn is_super_type_of(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match {
+        self.matches_with_variance(i_s, matcher, other, Variance::Covariant)
     }
 }
 

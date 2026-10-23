@@ -722,27 +722,58 @@ impl<'a> Matcher<'a> {
             },
             &|| None,
         );
-        let param_args = if has_uncalculated_type_var_tuple.get() {
+        let param_args = if let TupleArgs::WithUnpack(with_unpack) = &tuple.args
+            && let TupleUnpack::TypeVarTuple(tvt) = &with_unpack.unpack
+            && with_unpack.after.is_empty()
+            && let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
+                tvt.in_definition,
+                tvt.temporary_matcher_id,
+            ) {
             let mut positional_params: Vec<P> = vec![];
-            while let Some(p) = params.next_if(|p| {
-                matches!(
-                    p.kind(i_s.db),
-                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword | ParamKind::Star
-                )
+            let mut known_positional_count = 0;
+            let mut no_default_count = 0;
+            while let Some(p) = params.next_if(|p| match p.kind(i_s.db) {
+                ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                    known_positional_count += 1;
+                    if !p.has_default() {
+                        no_default_count += 1;
+                    }
+                    true
+                }
+                ParamKind::Star => true,
+                _ => false,
             }) {
                 positional_params.push(p)
             }
-            // We don't need to delay inference for params without defaults, because in that case
-            // the length of the tuple should always be correct.
-            if positional_params.iter().any(|p| p.has_default()) {
-                todo!()
-            } else {
-                gather_unpack_args(i_s.db, &args, &mut positional_params.into_iter().peekable())?
+            if with_unpack.before.len() < known_positional_count
+                && no_default_count != known_positional_count
+            {
+                // There are default params and some of them might not be necessary as a type
+                // argument. Therefore we gather the defaults as part of the type arguments in this
+                // special case and save it as well as the tuple information so it can be used
+                // downstream when matching this specific tuple.
+                let mut matches = Match::new_true();
+                let mut positional_params = positional_params.into_iter();
+                for (match_t, param) in with_unpack.before.iter().zip(positional_params.by_ref()) {
+                    matches &= match_t.matches(
+                        i_s,
+                        self,
+                        param.specific(i_s.db).expect_positional_type(),
+                        variance,
+                    );
+                }
+                let tv_matcher = &mut self.type_var_matchers[matcher_index];
+                let found = gather_unpack_args(i_s.db, &args, &mut positional_params.peekable())?;
+                matches &= tv_matcher.calculating_type_args[tvt.index.as_usize()]
+                    .merge(i_s, Bound::new_type_args(found, variance));
+                return Some(matches);
             }
+            // Just fall back to gathering the params
+            gather_unpack_args(i_s.db, &args, &mut positional_params.into_iter().peekable())?
         } else {
             gather_unpack_args(i_s.db, &args, params)?
         };
-        Some(tuple.args.matches(i_s, self, &param_args, variance))
+        Some(tuple.args.matches(i_s, self, &param_args.args, variance))
     }
 
     pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>, I: Iterator<Item = P2>>(
@@ -2032,7 +2063,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     db: &'db Database,
     for_tuple: &TupleArgs,
     params: &mut Peekable<impl Iterator<Item = P>>,
-) -> Option<TupleArgs> {
+) -> Option<TypeArgs> {
     let mut gatherer = MaybeUnpackGatherer::default();
     let mut first_positional_default = None;
     let mut last_positional_default = 0;
@@ -2054,9 +2085,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                 let t2 = t2
                     .map(|t2| t2.into_owned())
                     .unwrap_or(Type::Any(AnyCause::Unannotated));
-                if !next.has_default() || needs_next {
-                    gatherer.add_type(t2)
-                }
+                gatherer.add_type(t2)
             }
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
                 .add_tuple_args(&tup.args)
@@ -2076,7 +2105,10 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
     if let Some(first_positional_default) = first_positional_default {
         //
     }
-    Some(gatherer.into_tuple_args())
+    Some(TypeArgs {
+        args: gatherer.into_tuple_args(),
+        first_positional_default,
+    })
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash, PartialOrd, Ord)]
