@@ -406,9 +406,7 @@ impl Generic {
     fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
         match self {
             Self::TypeArg(t) => Some(Self::TypeArg(t.replace_internal(replacer)?)),
-            Self::TypeArgs(ta) => Some(Self::TypeArgs(TypeArgs {
-                args: ta.args.replace_internal(replacer)?,
-            })),
+            Self::TypeArgs(ta) => Some(Self::TypeArgs(ta.replace_internal(replacer)?)),
             Self::ParamSpecArg(param_spec_arg) => Some(Self::ParamSpecArg(
                 param_spec_arg.replace_internal(replacer)?,
             )),
@@ -806,6 +804,30 @@ fn replace_param_spec_inner_type_var_likes(
         (usage.index().as_usize() + replace_data.1).into(),
     );
     Some(usage.into_generic_item())
+}
+
+impl ReplaceTypeVarLikes for TypeArgs {
+    fn maybe_replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<Self> {
+        self.replace_internal(&mut ReplaceTypeVarLikesHelper::new(
+            db,
+            callable,
+            replace_self,
+        ))
+    }
+}
+
+impl TypeArgs {
+    fn replace_internal(&self, replacer: &mut impl Replacer) -> Option<Self> {
+        Some(Self {
+            args: self.args.replace_internal(replacer)?,
+            first_positional_default: self.first_positional_default,
+        })
+    }
 }
 
 impl TupleArgs {

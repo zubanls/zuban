@@ -1680,13 +1680,13 @@ impl TypeVarLikeUsage {
     pub fn into_generic_item(self) -> Generic {
         match self {
             TypeVarLikeUsage::TypeVar(usage) => Generic::TypeArg(Type::TypeVar(usage)),
-            TypeVarLikeUsage::TypeVarTuple(usage) => Generic::TypeArgs(TypeArgs {
-                args: TupleArgs::WithUnpack(WithUnpack {
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                Generic::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(WithUnpack {
                     before: Arc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage),
                     after: Arc::from([]),
-                }),
-            }),
+                })))
+            }
             TypeVarLikeUsage::ParamSpec(usage) => usage.into_generic_item(),
         }
     }
@@ -1699,13 +1699,11 @@ impl TypeVarLikeUsage {
             }
             TypeVarLikeUsage::TypeVarTuple(mut usage) => {
                 usage.index = index;
-                Generic::TypeArgs(TypeArgs {
-                    args: TupleArgs::WithUnpack(WithUnpack {
-                        before: Arc::from([]),
-                        unpack: TupleUnpack::TypeVarTuple(usage),
-                        after: Arc::from([]),
-                    }),
-                })
+                Generic::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(WithUnpack {
+                    before: Arc::from([]),
+                    unpack: TupleUnpack::TypeVarTuple(usage),
+                    after: Arc::from([]),
+                })))
             }
             TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;

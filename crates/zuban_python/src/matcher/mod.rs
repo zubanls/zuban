@@ -647,13 +647,13 @@ impl<'a> Matcher<'a> {
                     type_var_index: tvt.index.as_usize(),
                 },
                 |found_type_var| args2.search_type_vars(found_type_var),
-                || Bound::new_type_args(args2.clone(), variance),
+                || Bound::new_type_args(TypeArgs::new(args2.clone()), variance),
             ) {
                 return Match::new_true();
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let m = tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .merge(i_s, Bound::new_type_args(args2, variance));
+                .merge(i_s, Bound::new_type_args(TypeArgs::new(args2), variance));
             debug!(
                 "Generics after changing {:?} (#{}/{}) are now: [{}]",
                 tvt.type_var_tuple.format(&FormatData::new_short(i_s.db)),
@@ -1221,11 +1221,11 @@ impl<'a> Matcher<'a> {
                         .replace_type_var_likes_for_nested_context(db, &t)
                         .into_owned(),
                 ),
-                Generic::TypeArgs(ts) => Generic::TypeArgs(TypeArgs::new(
+                Generic::TypeArgs(ts) => Generic::TypeArgs(
                     without_func_class
-                        .replace_type_var_likes_for_nested_context(db, &ts.args)
+                        .replace_type_var_likes_for_nested_context(db, &ts)
                         .into_owned(),
-                )),
+                ),
                 Generic::ParamSpecArg(p) => Generic::ParamSpecArg(ParamSpecArg::new(
                     self.replace_type_var_likes_for_nested_context(db, &p.params)
                         .into_owned(),
@@ -1493,7 +1493,7 @@ impl<'a> Matcher<'a> {
                             temporary_matcher_id: 0,
                         }))
                     }
-                    TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(
+                    TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(TypeArgs::new(
                         TupleArgs::WithUnpack(WithUnpack::with_empty_before_and_after(
                             TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
                                 type_var_tuple: tvt,
@@ -1502,7 +1502,7 @@ impl<'a> Matcher<'a> {
                                 temporary_matcher_id: 0,
                             }),
                         )),
-                    ),
+                    )),
                     TypeVarLike::ParamSpec(param_spec) => {
                         let usage = ParamSpecUsage {
                             param_spec,

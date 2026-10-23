@@ -10,21 +10,42 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeArgs {
     pub args: TupleArgs,
+    // If the type args are
+    pub first_positional_default: Option<usize>,
 }
 
 impl TypeArgs {
-    pub fn new(args: TupleArgs) -> Self {
-        Self { args }
-    }
-
-    pub fn new_arbitrary_from_error() -> Self {
-        TypeArgs {
-            args: TupleArgs::new_arbitrary_from_error(),
+    fn new_internal(args: TupleArgs, first_positional_default: Option<usize>) -> Self {
+        Self {
+            args,
+            first_positional_default,
         }
     }
 
+    pub fn new(args: TupleArgs) -> Self {
+        Self::new_internal(args, None)
+    }
+
+    pub fn new_arbitrary_from_error() -> Self {
+        Self::new_internal(TupleArgs::new_arbitrary_from_error(), None)
+    }
+
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleArgs::ArbitraryLen(Arc::new(arg)))
+        Self::new_internal(TupleArgs::ArbitraryLen(Arc::new(arg)), None)
+    }
+
+    pub fn with_max_first_positional_default(
+        &self,
+        other: &TypeArgs,
+        merge: impl FnOnce(&TupleArgs, &TupleArgs) -> TupleArgs,
+    ) -> Self {
+        Self {
+            args: merge(&self.args, &other.args),
+            first_positional_default: self
+                .first_positional_default
+                .zip(self.first_positional_default)
+                .map(|(t1, t2)| t1.max(t2)),
+        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
@@ -124,7 +145,9 @@ impl Generic {
                 let Self::TypeArgs(ts2) = other else {
                     unreachable!()
                 };
-                Self::TypeArgs(TypeArgs::new(ts1.args.merge_matching_parts(db, &ts2.args)))
+                Self::TypeArgs(ts1.with_max_first_positional_default(ts2, |ts1, ts2| {
+                    ts1.merge_matching_parts(db, ts2)
+                }))
             }
             // TODO This is not correct, we could try to merge, but is it really important? It's
             // not a big issue that Any is returned here, because this is only for fallbacks in case

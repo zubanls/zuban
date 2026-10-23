@@ -3,6 +3,7 @@ use std::{borrow::Cow, sync::Arc};
 use utils::FastHashSet;
 
 use crate::prelude::*;
+use crate::type_::TypeArgs;
 use crate::{
     database::MetaclassState,
     match_::MismatchReason,
@@ -1146,6 +1147,26 @@ impl Type {
             return Match::new_false();
         }
         matches
+    }
+}
+
+impl Matching for TypeArgs {
+    fn is_same_type(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        self.args.is_same_type(i_s, matcher, &value_type.args)
+    }
+
+    fn is_super_type_of(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Self,
+    ) -> Match {
+        self.args.is_super_type_of(i_s, matcher, &value_type.args)
     }
 }
 

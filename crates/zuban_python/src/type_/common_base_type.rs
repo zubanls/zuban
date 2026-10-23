@@ -9,7 +9,7 @@ use super::{
 use crate::prelude::*;
 use crate::{
     matcher::CheckedTypeRecursion,
-    type_::{ParamSpecArg, TupleUnpack, TypeArgs, WithUnpack},
+    type_::{ParamSpecArg, TupleUnpack, WithUnpack},
     type_helpers::TypeOrClass,
 };
 
@@ -246,10 +246,11 @@ fn common_base_class_basic(
             TypeVarLike::TypeVarTuple(_) => {
                 let ts1 = generic1.expect_type_arguments();
                 let ts2 = generic2.expect_type_arguments();
-                let new = ts1
-                    .args
-                    .common_base_type(i_s, &ts2.args, Some(checked_recursions));
-                generics.push(Generic::TypeArgs(TypeArgs::new(new)));
+                generics.push(Generic::TypeArgs(
+                    ts1.with_max_first_positional_default(&ts2, |ts1, ts2| {
+                        ts1.common_base_type(i_s, ts2, Some(checked_recursions))
+                    }),
+                ));
             }
             TypeVarLike::ParamSpec(_) => {
                 let p1 = generic1.expect_param_spec_arg();

@@ -2183,7 +2183,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if let Some(default) = tvt.default(db).filter(|_| args.empty_not_explicit) {
                             resolve_default(generics, Generic::TypeArgs(default.clone()))
                         } else {
-                            Generic::TypeArgs(TypeArgs { args: args.args })
+                            Generic::TypeArgs(TypeArgs::new(args.args))
                         },
                     );
                     break;

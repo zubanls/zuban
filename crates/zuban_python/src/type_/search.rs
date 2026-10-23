@@ -3,7 +3,11 @@ use super::{
     StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 
-use crate::{prelude::*, type_::WithUnpack, type_helpers::Generics};
+use crate::{
+    prelude::*,
+    type_::{TypeArgs, WithUnpack},
+    type_helpers::Generics,
+};
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);
@@ -125,7 +129,7 @@ impl SearchTypeVars for Generic {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::TypeArg(t) => t.search_type_vars(found_type_var),
-            Self::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
+            Self::TypeArgs(ts) => ts.search_type_vars(found_type_var),
             Self::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
         }
     }
@@ -148,6 +152,28 @@ impl SearchTypeVars for GenericsList {
 
     fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.iter().any(|g| g.find_in_type(db, check))
+    }
+}
+
+impl SearchTypeVars for TypeArgs {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        match &self.args {
+            TupleArgs::FixedLen(ts) => {
+                for t in ts.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
+            TupleArgs::ArbitraryLen(t) => t.search_type_vars(found_type_var),
+            TupleArgs::WithUnpack(w) => w.search_type_vars(found_type_var),
+        }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match &self.args {
+            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
+        }
     }
 }
 
