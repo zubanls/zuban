@@ -1259,7 +1259,9 @@ impl TupleArgs {
             (ArbitraryLen(t1), WithUnpack(u2)) => {
                 match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
             }
-            (FixedLen(_), WithUnpack(_)) => Match::new_false(),
+            (FixedLen(ts1), WithUnpack(w2)) => {
+                match_fixed_len_vs_unpack(i_s, matcher, ts1, w2, variance)
+            }
             (FixedLen(_), ArbitraryLen(t2)) => Match::from_bool_into_any_match(t2.is_any()),
             (ArbitraryLen(t1), FixedLen(ts2)) => {
                 if variance == Variance::Invariant {
@@ -1270,6 +1272,46 @@ impl TupleArgs {
                     .into()
             }
         }
+    }
+}
+
+fn match_fixed_len_vs_unpack(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    ts1: &[Type],
+    with_unpack2: &WithUnpack,
+    variance: Variance,
+) -> Match {
+    let mut ts1 = ts1.iter();
+    match &with_unpack2.unpack {
+        TupleUnpack::TypeVarTuple(tvt) => {
+            if (with_unpack2.before.len() + with_unpack2.after.len()) > ts1.len() {
+                debug!(
+                    "Unpack mismatch because there was a fixed len vs. with_unpack and one side is too short"
+                );
+                Match::new_false();
+            }
+            let mut matches = Match::new_true();
+            for (t1, t2) in with_unpack2.before.iter().zip(ts1.by_ref()) {
+                matches &= t1.matches(i_s, matcher, t2, variance)
+            }
+            for (t1, t2) in with_unpack2.after.iter().rev().zip(ts1.by_ref().rev()) {
+                matches &= t1.matches(i_s, matcher, t2, variance);
+            }
+            matches &= matcher.match_reverse(|matcher| {
+                check_type_var_tuple(
+                    i_s,
+                    matcher,
+                    with_unpack2,
+                    tvt,
+                    TupleArgs::FixedLen(ts1.cloned().collect()),
+                    variance.invert(),
+                    None,
+                )
+            });
+            matches
+        }
+        TupleUnpack::ArbitraryLen(_) => Match::new_false(),
     }
 }
 
