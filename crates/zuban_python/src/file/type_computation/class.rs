@@ -1632,11 +1632,12 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                         && let Type::Class(c) = &base.type_
                     {
                         let class = c.class(db);
-                        if class
-                            .class_storage
-                            .class_symbol_table
-                            .lookup_symbol(name)
-                            .is_some()
+                        if let Some(node_index) =
+                            class.class_storage.class_symbol_table.lookup_symbol(name)
+                            && !class
+                                .class_storage
+                                .abstract_attributes
+                                .contains(&node_index)
                         {
                             return;
                         }

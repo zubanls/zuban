@@ -2802,6 +2802,22 @@ from io import StringIO
 
 StringIO()
 
+[case abstractmethod_needs_implementation_in_nested_inheritance]
+# From GH #630
+from abc import ABC, abstractmethod
+
+class Base(ABC):
+    @abstractmethod
+    def m(self) -> None: ...
+
+class Mid(Base): ...
+
+class Leaf(Mid): ...
+
+Base()  # E: Cannot instantiate abstract class "Base" with abstract attribute "m"
+Mid()   # E: Cannot instantiate abstract class "Mid" with abstract attribute "m"
+Leaf()  # E: Cannot instantiate abstract class "Leaf" with abstract attribute "m"
+
 [case no_crash_on_decorated_classmethod]
 # From GH #464
 import model as pa
