@@ -103,7 +103,7 @@ impl Generic {
                 _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
-                Self::TypeArgs(ts2) => ts1.args.matches(i_s, matcher, &ts2.args, variance),
+                Self::TypeArgs(ts2) => ts1.matches(i_s, matcher, ts2, variance),
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(p1) => match other {

@@ -360,6 +360,8 @@ run(empty, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expe
 from typing import Callable, Unpack, TypeVarTuple
 
 class X[*Ts]:
+    x: tuple[*Ts]  # Ensure invariant inference
+
     def __init__(self, *args: *Ts):
         self.args = args
 
@@ -388,7 +390,54 @@ X(1).run(opt3)
 X().run(empty)
 X(1).run(empty)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[], None]"; expected "def (int) -> None"
 
-[case unpacked_type_var_tuple_class_optional_arg2]
+x: X[int] = X(1)
+y: X[int, int] = X(1)  # E: Argument 1 to "X" has incompatible type "tuple[int]"; expected "tuple[int, int]"
+z: X[()] = X(1)  # E: Argument 1 to "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+[case unpacked_type_var_tuple_class_optional_arg2_invariant]
+from typing import Callable, Unpack, TypeVarTuple
+
+class X[*Ts]:
+    x: tuple[*Ts]  # Ensure invariant inference
+
+    def __init__(self, fn: Callable[[Unpack[Ts]], None]):
+        self.fn = fn
+
+    def run(self, *args: *Ts):
+        self.fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+X(opt1).run()  # E: Too few arguments for "run" of "X"
+X(opt1).run(None)
+X(opt1).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[None]"
+X(opt2).run()  # E: Too few arguments for "run" of "X"
+X(opt2).run(1)
+X(opt3).run()  # E: Too few arguments for "run" of "X"
+X(opt3).run(1)
+X(empty).run()
+X(empty).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+x: X[None] = X(opt1)
+y: X[int, int] = X(opt1)  # E: Argument 1 to "X" has incompatible type "Callable[[None], None]"; expected "def (int, int) -> None"
+z: X[()] = X(opt1)
+
+k = X(opt1)
+a: X[None] = k
+b: X[int, int] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[int, int]")
+c: X[()] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[()]")
+
+[case unpacked_type_var_tuple_class_optional_arg2_contravariant]
 from typing import Callable, Unpack, TypeVarTuple
 
 class X[*Ts]:
@@ -419,6 +468,15 @@ X(opt3).run()  # E: Too few arguments for "run" of "X"
 X(opt3).run(1)
 X(empty).run()
 X(empty).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+x: X[None] = X(opt1)
+y: X[int, int] = X(opt1)  # E: Argument 1 to "X" has incompatible type "Callable[[None], None]"; expected "def (int, int) -> None"
+z: X[()] = X(opt1)
+
+k = X(opt1)
+a: X[None] = k
+b: X[int, int] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[int, int]")
+c: X[()] = k
 
 [case unpacked_arbitrary_len_defs_optional_arg]
 from typing import Callable, Unpack, Any
