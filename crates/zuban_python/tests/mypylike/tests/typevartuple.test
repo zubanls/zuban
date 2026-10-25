@@ -356,7 +356,7 @@ run(opt3, 1)
 run(empty)
 run(empty, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[()]"
 
-[case unpacked_type_var_tuple_class_optional_arg]
+[case unpacked_type_var_tuple_class_optional_arg1]
 from typing import Callable, Unpack, TypeVarTuple
 
 class X[*Ts]:
@@ -380,13 +380,45 @@ def empty() -> None:
 
 X().run(opt1)
 X(None).run(opt1)
-X(1).run(opt1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[None]"
+X(1).run(opt1)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[None], None]"; expected "def (int) -> None"
 X().run(opt2)
 X(1).run(opt2)
-X().run(opt3)  # E: Too few arguments for "run"
+X().run(opt3)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[int | None], None]"; expected "def () -> None"
 X(1).run(opt3)
 X().run(empty)
-X(1).run(empty)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[()]"
+X(1).run(empty)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[], None]"; expected "def (int) -> None"
+
+[case unpacked_type_var_tuple_class_optional_arg2]
+from typing import Callable, Unpack, TypeVarTuple
+
+class X[*Ts]:
+    def __init__(self, fn: Callable[[Unpack[Ts]], None]):
+        self.fn = fn
+
+    def run(self, *args: *Ts):
+        self.fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+X(opt1).run()  # E: Too few arguments for "run" of "X"
+X(opt1).run(None)
+X(opt1).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[None]"
+X(opt2).run()  # E: Too few arguments for "run" of "X"
+X(opt2).run(1)
+X(opt3).run()  # E: Too few arguments for "run" of "X"
+X(opt3).run(1)
+X(empty).run()
+X(empty).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[()]"
 
 [case unpacked_arbitrary_len_defs_optional_arg]
 from typing import Callable, Unpack, Any

@@ -393,9 +393,6 @@ testInstanceMethodBoundOnClass
 testMethodMakeBoundIncremental
 testMethodMakeBoundFineGrained
 
-# Tuple Unpack matching
-unpacked_type_var_tuple_class_optional_arg
-
 # --------------------------- Not first release ---------------------------
 
 # --disallow-any-generics
