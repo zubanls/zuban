@@ -2071,7 +2071,6 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
 ) -> Option<TypeArgs> {
     let mut gatherer = MaybeUnpackGatherer::default();
     let mut first_positional_default = None;
-    let mut last_positional_default = 0;
     let mut tuple_iterator = match for_tuple {
         TupleArgs::FixedLen(items) => Some(items.iter()),
         _ => None,
@@ -2086,7 +2085,6 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                     break;
                 }
                 if next.has_default() {
-                    last_positional_default = counter;
                     if first_positional_default.is_none() {
                         first_positional_default = Some(counter)
                     }
@@ -2112,9 +2110,6 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
         }
         counter += 1;
         params.next();
-    }
-    if let Some(first_positional_default) = first_positional_default {
-        //
     }
     Some(TypeArgs {
         args: gatherer.into_tuple_args(),
