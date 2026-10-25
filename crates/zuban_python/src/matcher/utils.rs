@@ -16,7 +16,7 @@ use crate::{
     type_::{
         CallableWithParent, ClassGenerics, ErrorTypes, GenericsList, GotType, MaybeUnpackGatherer,
         OnTypeError, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
-        match_arbitrary_len_vs_unpack, match_unpack,
+        match_arbitrary_len_vs_unpack,
     },
     type_helpers::{Callable, FuncLike, Function, Generics},
 };
@@ -1034,10 +1034,8 @@ pub(crate) fn match_arguments_against_params<
                 };
 
                 let mut gatherer = MaybeUnpackGatherer::default();
-                let context_args = matcher.replace_type_var_likes_for_nested_context_in_tuple_args(
-                    i_s.db,
-                    expected.args.clone(),
-                );
+                let context_args =
+                    matcher.replace_type_var_likes_for_nested_context(i_s.db, &expected.args);
                 for (i, arg) in args.iter().enumerate() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         let maybe_err = match arg.infer(&mut ResultContext::ValueExpected) {
@@ -1068,7 +1066,7 @@ pub(crate) fn match_arguments_against_params<
                         // The context might not be correct, because there might have been a star
                         // arg and we would therefore need negative indexing. But since this only
                         // affects the context it might not be that urgent to change it.
-                        let context_t = match &context_args {
+                        let context_t = match context_args.as_ref() {
                             TupleArgs::ArbitraryLen(t) => Some(t.as_ref()),
                             TupleArgs::FixedLen(ts) => ts.get(i),
                             TupleArgs::WithUnpack(with_unpack) => with_unpack.before.get(i),
@@ -1085,10 +1083,9 @@ pub(crate) fn match_arguments_against_params<
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
                         let actual = gatherer.into_tuple_args();
-                        let match_ = match_unpack(
+                        let match_ = with_unpack.is_super_type_of_tuple(
                             i_s,
                             matcher,
-                            with_unpack,
                             &actual,
                             Variance::Covariant,
                             Some(&|mut error_types: ErrorTypes, index: isize| {

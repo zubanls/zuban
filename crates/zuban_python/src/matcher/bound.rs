@@ -5,10 +5,7 @@ use crate::{
     format_data::ParamsStyle,
     params::matches_params_with_variance,
     prelude::*,
-    type_::{
-        ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack,
-        match_tuple_type_arguments,
-    },
+    type_::{ParamSpecArg, ParamType, StarStarParamType, TupleUnpack, TypeArgs, WithUnpack},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -37,7 +34,7 @@ pub(crate) enum BoundOrigin {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum BoundKind {
     TypeVar(Type),
-    TypeVarTuple(TupleArgs),
+    TypeVarTuple(TypeArgs),
     ParamSpec(CallableParams),
 }
 
@@ -48,7 +45,7 @@ impl Default for Bound {
 }
 
 impl Bound {
-    pub fn new_type_args(ts: TupleArgs, variance: Variance) -> Self {
+    pub fn new_type_args(ts: TypeArgs, variance: Variance) -> Self {
         Self::new(BoundKind::TypeVarTuple(ts).into(), variance)
     }
 
@@ -210,7 +207,7 @@ impl Bound {
                 {
                     true
                 }
-                BoundKind::TypeVarTuple(tuple_args) => match tuple_args {
+                BoundKind::TypeVarTuple(tuple_args) => match &tuple_args.args {
                     TupleArgs::WithUnpack(t) if t.before.is_empty() && t.after.is_empty() => {
                         matches!(
                             &t.unpack,
@@ -371,7 +368,7 @@ impl BoundInfo {
             } else {
                 t
             }),
-            BoundKind::TypeVarTuple(ts) => Generic::TypeArgs(TypeArgs::new(ts)),
+            BoundKind::TypeVarTuple(ts) => Generic::TypeArgs(ts),
             BoundKind::ParamSpec(param_spec) => Generic::ParamSpecArg(ParamSpecArg {
                 params: param_spec,
                 type_vars: None,
@@ -384,9 +381,9 @@ impl BoundKind {
     pub fn new_any(tv: &TypeVarLike, cause: AnyCause) -> Self {
         match tv {
             TypeVarLike::TypeVar(_) => Self::TypeVar(Type::Any(cause)),
-            TypeVarLike::TypeVarTuple(_) => {
-                Self::TypeVarTuple(TupleArgs::ArbitraryLen(Arc::new(Type::Any(cause))))
-            }
+            TypeVarLike::TypeVarTuple(_) => Self::TypeVarTuple(TypeArgs::new(
+                TupleArgs::ArbitraryLen(Arc::new(Type::Any(cause))),
+            )),
             TypeVarLike::ParamSpec(_) => Self::ParamSpec(CallableParams::Any(cause)),
         }
     }
@@ -394,7 +391,7 @@ impl BoundKind {
     fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         match &self {
             Self::TypeVar(bound) => bound.format(format_data),
-            Self::TypeVarTuple(ts) => ts.format(format_data),
+            Self::TypeVarTuple(ts) => ts.args.format(format_data),
             Self::ParamSpec(p) => p.format(format_data, style),
         }
     }
@@ -439,7 +436,7 @@ impl BoundKind {
         match self {
             Self::TypeVar(Type::Any(cause)) => Some(*cause),
             Self::TypeVar(_) => None,
-            Self::TypeVarTuple(ts) => ts.maybe_any(),
+            Self::TypeVarTuple(ts) => ts.args.maybe_any(),
             Self::ParamSpec(params) => match params {
                 CallableParams::Any(cause) => Some(*cause),
                 _ => None,
@@ -464,7 +461,7 @@ impl BoundKind {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.matches(i_s, matcher, t2, variance),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                match_tuple_type_arguments(i_s, matcher, tup1, tup2, variance)
+                tup1.matches(i_s, matcher, tup2, variance)
             }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
                 matches_params_with_variance(i_s, matcher, params1, params2, variance)
@@ -500,7 +497,7 @@ impl BoundOrigin {
     }
 }
 
-impl TupleArgs {
+impl TypeArgs {
     fn simplified_union_for_type_var_tuple(
         &self,
         i_s: &InferenceState,
@@ -509,7 +506,7 @@ impl TupleArgs {
         if self == other {
             return Some(self.clone());
         }
-        Some(match (self, other) {
+        Some(TypeArgs::new(match (&self.args, &other.args) {
             (TupleArgs::FixedLen(ts1), TupleArgs::FixedLen(ts2)) if ts1.len() == ts2.len() => {
                 TupleArgs::FixedLen(
                     ts1.iter()
@@ -564,10 +561,10 @@ impl TupleArgs {
                 })
             }
             (TupleArgs::FixedLen(_) | TupleArgs::ArbitraryLen(_), TupleArgs::FixedLen(_) | TupleArgs::ArbitraryLen(_)) => TupleArgs::ArbitraryLen(Arc::new(
-                self.simplified_union_of_tuple_entries(i_s)
-                    .simplified_union(i_s, &other.simplified_union_of_tuple_entries(i_s)),
+                self.args.simplified_union_of_tuple_entries(i_s)
+                    .simplified_union(i_s, &other.args.simplified_union_of_tuple_entries(i_s)),
             )),
             _ => return None
-        })
+        }))
     }
 }

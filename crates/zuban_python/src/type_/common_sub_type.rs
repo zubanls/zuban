@@ -5,7 +5,7 @@ use utils::FastHashSet;
 
 use super::{ParamType, StarParamType, StarStarParamType, TypeGuardInfo};
 use crate::prelude::*;
-use crate::type_::{self, ComplexTypeGatherer, TupleUnpack};
+use crate::type_::{self, ComplexTypeGatherer, TupleUnpack, TypeArgs};
 
 impl Type {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
@@ -58,6 +58,21 @@ impl Type {
                 }
             }
         }
+    }
+}
+
+impl TypeArgs {
+    pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
+        Some(Self {
+            args: self.args.common_sub_type(i_s, &other.args)?,
+            first_positional_default: match (
+                self.first_positional_default,
+                other.first_positional_default,
+            ) {
+                (Some(x), Some(y)) => Some(x.min(y)),
+                (x, y) => x.or(y),
+            },
+        })
     }
 }
 

@@ -788,7 +788,7 @@ pub fn calculate_property_return(
         t.into_owned()
     } else {
         matcher
-            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
+            .replace_type_var_likes_for_unknown_type_vars(i_s.db, t.as_ref())
             .into_owned()
     })
 }

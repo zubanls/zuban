@@ -321,3 +321,237 @@ def test_function() -> Iterator[Any]:
     if data is None:
         return
     yield from iter(data)
+
+[case unpacked_type_var_tuple_defs_optional_arg]
+# From GH #518
+from typing import Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def run(
+    fn: Callable[[Unpack[Ts]], object],
+    *args: Unpack[Ts],
+) -> object:
+    return fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+run(opt1)
+run(opt1, None)
+run(opt1, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[None]"
+run(opt2)
+run(opt2, 1)
+run(opt3)  # E: Too few arguments for "run"
+run(opt3, 1)
+run(empty)
+run(empty, 1)  # E: Argument 2 to "run" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+[case unpacked_type_var_tuple_class_optional_arg1]
+from typing import Callable, Unpack, TypeVarTuple
+
+class X[*Ts]:
+    x: tuple[*Ts]  # Ensure invariant inference
+
+    def __init__(self, *args: *Ts):
+        self.args = args
+
+    def run(self, fn: Callable[[Unpack[Ts]], None]):
+        fn(*self.args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+X().run(opt1)
+X(None).run(opt1)
+X(1).run(opt1)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[None], None]"; expected "def (int) -> None"
+X().run(opt2)
+X(1).run(opt2)
+X().run(opt3)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[int | None], None]"; expected "def () -> None"
+X(1).run(opt3)
+X().run(empty)
+X(1).run(empty)  # E: Argument 1 to "run" of "X" has incompatible type "Callable[[], None]"; expected "def (int) -> None"
+
+x: X[int] = X(1)
+y: X[int, int] = X(1)  # E: Argument 1 to "X" has incompatible type "tuple[int]"; expected "tuple[int, int]"
+z: X[()] = X(1)  # E: Argument 1 to "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+[case unpacked_type_var_tuple_class_optional_arg2_invariant]
+from typing import Callable, Unpack, TypeVarTuple
+
+class X[*Ts]:
+    x: tuple[*Ts]  # Ensure invariant inference
+
+    def __init__(self, fn: Callable[[Unpack[Ts]], None]):
+        self.fn = fn
+
+    def run(self, *args: *Ts):
+        self.fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+X(opt1).run()  # E: Too few arguments for "run" of "X"
+X(opt1).run(None)
+X(opt1).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[None]"
+X(opt2).run()  # E: Too few arguments for "run" of "X"
+X(opt2).run(1)
+X(opt3).run()  # E: Too few arguments for "run" of "X"
+X(opt3).run(1)
+X(empty).run()
+X(empty).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+x: X[None] = X(opt1)
+y: X[int, int] = X(opt1)  # E: Argument 1 to "X" has incompatible type "Callable[[None], None]"; expected "def (int, int) -> None"
+z: X[()] = X(opt1)
+
+k = X(opt1)
+a: X[None] = k
+b: X[int, int] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[int, int]")
+c: X[()] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[()]")
+
+[case unpacked_type_var_tuple_class_optional_arg2_contravariant]
+from typing import Callable, Unpack, TypeVarTuple
+
+class X[*Ts]:
+    def __init__(self, fn: Callable[[Unpack[Ts]], None]):
+        self.fn = fn
+
+    def run(self, *args: *Ts):
+        self.fn(*args)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+X(opt1).run()  # E: Too few arguments for "run" of "X"
+X(opt1).run(None)
+X(opt1).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[None]"
+X(opt2).run()  # E: Too few arguments for "run" of "X"
+X(opt2).run(1)
+X(opt3).run()  # E: Too few arguments for "run" of "X"
+X(opt3).run(1)
+X(empty).run()
+X(empty).run(1)  # E: Argument 1 to "run" of "X" has incompatible type "tuple[int]"; expected "tuple[()]"
+
+x: X[None] = X(opt1)
+y: X[int, int] = X(opt1)  # E: Argument 1 to "X" has incompatible type "Callable[[None], None]"; expected "def (int, int) -> None"
+z: X[()] = X(opt1)
+
+k = X(opt1)
+a: X[None] = k
+b: X[int, int] = k  # E: Incompatible types in assignment (expression has type "X[None]", variable has type "X[int, int]")
+c: X[()] = k
+
+[case unpacked_arbitrary_len_defs_optional_arg]
+from typing import Callable, Unpack, Any
+
+def run(fn: Callable[[Unpack[tuple[int, ...]], str], None]): ...
+
+def fn1(*args: *tuple[Unpack[tuple[int, ...]], str]) -> Any: ...
+def fn2(*args: *tuple[Unpack[tuple[int, ...]], str | None]) -> Any: ...
+def fn3(x: int, *args: *tuple[Unpack[tuple[int, ...]], str]) -> Any: ...
+def fn4(x: int = 1, *args: *tuple[Unpack[tuple[int, ...]], str]) -> Any: ...
+def fn5(x: bytes = b"", *args: *tuple[Unpack[tuple[int, ...]], str]) -> Any: ...
+def fn6(x: int = 1, y: int = 1, z: int = 1, *args: *tuple[Unpack[tuple[int, ...]], str]) -> Any: ...
+
+def empty() -> None: ...
+
+run(fn1)
+run(fn2)
+run(fn3)  # E: Argument 1 to "run" has incompatible type "def fn3(x: int, *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+run(fn4)  # E: Argument 1 to "run" has incompatible type "def fn4(x: int = ..., *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+run(fn5)  # E: Argument 1 to "run" has incompatible type "def fn5(x: bytes = ..., *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+run(fn6)  # E: Argument 1 to "run" has incompatible type "def fn6(x: int = ..., y: int = ..., z: int = ..., *args: Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> Any"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+run(empty)  # E: Argument 1 to "run" has incompatible type "Callable[[], None]"; expected "def (*Unpack[tuple[Unpack[Tuple[int, ...]], str]]) -> None"
+
+[case unpacked_arbitrary_len_defs_optional_arg2]
+from typing import Callable, Unpack
+
+def run(fn: Callable[[Unpack[tuple[int, str]]], None]): ...
+
+def fn1(*args: *tuple[int, str]) -> None: ...
+def fn2(x: int, y: str) -> None: ...
+def fn3(x: int, *args: str) -> None: ...
+def fn4(x: str, y: str) -> None: ...
+def fn5(x: int, y: str = "") -> None: ...
+def fn6(x: int, y: str, z: bytes = b"") -> None: ...
+def fn7(x: int, y: str, z: bytes) -> None: ...
+def fn8(x: int, y: str, z: bytes = b"", a: float = 1.0) -> None: ...
+
+run(fn1)
+run(fn2)
+run(fn3)
+run(fn4)  # E: Argument 1 to "run" has incompatible type "Callable[[str, str], None]"; expected "Callable[[int, str], None]"
+run(fn5)
+run(fn6)
+run(fn7)  # E: Argument 1 to "run" has incompatible type "Callable[[int, str, bytes], None]"; expected "Callable[[int, str], None]"
+run(fn8)
+
+[case unpacked_type_var_tuple_different_order]
+from typing import Callable, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def run(
+    tup: tuple[*Ts],
+    fn: Callable[[Unpack[Ts]], object],
+) -> object:
+    return fn(*tup)
+
+def opt1(arg: None = None) -> None:
+    return None
+
+def opt2(arg: int | None = None) -> None:
+    return None
+
+def opt3(arg: int | None) -> None:
+    return None
+
+def empty() -> None:
+    return None
+
+run((), opt1)
+run((None,), opt1)
+run((1,), opt1)  # E: Argument 2 to "run" has incompatible type "Callable[[None], None]"; expected "def (int) -> object"
+run((), opt2)
+run((1,), opt2)
+run((), opt3)  # E: Argument 2 to "run" has incompatible type "Callable[[int | None], None]"; expected "def () -> object"
+run((1,), opt3)
+run((), empty)
+run((1,), empty)  # E: Argument 2 to "run" has incompatible type "Callable[[], None]"; expected "def (int) -> object"

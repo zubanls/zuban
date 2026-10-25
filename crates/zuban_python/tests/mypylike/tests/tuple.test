@@ -655,3 +655,54 @@ d.__hash__  # E: Invalid self argument "tuple[int, list[int]]" to attribute func
 h1: Hashable = b
 h2: Hashable = d  # E: Incompatible types in assignment (expression has type "tuple[int, list[int]]", variable has type "Hashable") \
                   # N: Invalid self argument "tuple[int, list[int]]" to attribute function "__hash__" with type "Callable[[tuple[Hashable, ...]], int]"
+
+[case unpack_tuple_with_arbitrary_len_different_types]
+from typing import Unpack
+
+def f(x: tuple[str, Unpack[tuple[int, ...]], int]):
+    a: tuple[Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[Unpack[Tuple[int, ...]], int]")
+    b: tuple[str, Unpack[tuple[int, ...]], int] = x
+    c: tuple[str, float, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, float, Unpack[Tuple[int, ...]], int]")
+    d: tuple[float, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[float, Unpack[Tuple[int, ...]], int]")
+    e: tuple[str, int, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, int, Unpack[Tuple[int, ...]], int]")
+    f: tuple[str, Unpack[tuple[int, ...]], int, int]  = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, Unpack[Tuple[int, ...]], int, int]")
+    g: tuple[str, Unpack[tuple[int, ...]]]  = x
+    h: tuple[str, Unpack[tuple[int, ...]], bytes]  = x  # E: Incompatible types in assignment (expression has type "tuple[str, Unpack[Tuple[int, ...]], int]", variable has type "tuple[str, Unpack[Tuple[int, ...]], bytes]")
+
+[case unpack_tuple_with_arbitrary_len_same_types]
+from typing import Unpack
+
+def f(x: tuple[int, Unpack[tuple[int, ...]], int]):
+    a: tuple[Unpack[tuple[int, ...]], int] = x
+    b: tuple[int, Unpack[tuple[int, ...]]] = x
+
+    c: tuple[Unpack[tuple[int, ...]], int, int] = x
+    d: tuple[int, int, Unpack[tuple[int, ...]]] = x
+
+    e: tuple[Unpack[tuple[int, ...]], int, int, int] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[Unpack[Tuple[int, ...]], int, int, int]")
+    f: tuple[int, int, int, Unpack[tuple[int, ...]]] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[int, int, int, Unpack[Tuple[int, ...]]]")
+
+    g: tuple[int, Unpack[tuple[int, ...]], int, int] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[int, Unpack[Tuple[int, ...]], int, int]")
+    h: tuple[int, int, Unpack[tuple[int, ...]], int] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[int, int, Unpack[Tuple[int, ...]], int]")
+
+    i: tuple[Unpack[tuple[int, ...]], str, int] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[Unpack[Tuple[int, ...]], str, int]")
+    j: tuple[int, str, Unpack[tuple[int, ...]]] = x  # E: Incompatible types in assignment (expression has type "tuple[int, Unpack[Tuple[int, ...]], int]", variable has type "tuple[int, str, Unpack[Tuple[int, ...]]]")
+
+[case unpack_tuple_with_arbitrary_len_type_var]
+from typing import Unpack, assert_type, Any
+
+def check[T](x: tuple[int, Unpack[tuple[T, ...]], int]) -> T: ...
+def f(
+    a: tuple[Unpack[tuple[int, ...]], int],
+    b: tuple[int, Unpack[tuple[int, ...]]],
+    c: tuple[Unpack[tuple[int, ...]], int, int],
+    d: tuple[int, int, Unpack[tuple[int, ...]]],
+    e: tuple[Unpack[tuple[int, ...]], int, int, int],
+    f: tuple[int, int, int, Unpack[tuple[int, ...]]],
+):
+    assert_type(check(a), Any)  # E: Argument 1 to "check" has incompatible type "tuple[Unpack[Tuple[int, ...]], int]"; expected "tuple[int, Unpack[Tuple[Never, ...]], int]"
+    assert_type(check(b), Any)  # E: Argument 1 to "check" has incompatible type "tuple[int, Unpack[Tuple[int, ...]]]"; expected "tuple[int, Unpack[Tuple[Never, ...]], int]"
+    assert_type(check(c), int)
+    assert_type(check(d), int)
+    assert_type(check(e), int)
+    assert_type(check(f), int)

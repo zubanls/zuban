@@ -4,6 +4,7 @@ mod common_sub_type;
 mod custom_behavior;
 mod dataclass;
 mod enum_;
+mod equal_type;
 mod generics;
 mod intersection;
 mod iterator;
@@ -687,12 +688,6 @@ impl Type {
             Self::TypeForm(t) => format!("TypeForm[{}]", t.format(format_data)).into(),
             Self::Sentinel(s) => s.format(format_data),
         }
-    }
-
-    pub fn has_type_vars(&self) -> bool {
-        let mut result = false;
-        self.search_type_vars(&mut |_| result = true);
-        result
     }
 
     pub fn has_any(&self, db: &Database) -> bool {

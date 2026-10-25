@@ -3,11 +3,28 @@ use super::{
     StarStarParamType, TupleUnpack, TypedDictGenerics,
 };
 
-use crate::{prelude::*, type_::WithUnpack, type_helpers::Generics};
+use crate::{
+    prelude::*,
+    type_::{TypeArgs, WithUnpack},
+    type_helpers::Generics,
+};
 
 pub(crate) trait SearchTypeVars {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C);
     fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool;
+
+    fn search_type_vars_with_condition<C: FnMut(TypeVarLikeUsage) -> bool>(
+        &self,
+        condition: &mut C,
+    ) -> bool {
+        let mut result = false;
+        self.search_type_vars(&mut |usage| result |= condition(usage));
+        result
+    }
+
+    fn has_type_vars(&self) -> bool {
+        self.search_type_vars_with_condition(&mut |_| true)
+    }
 }
 
 impl SearchTypeVars for Type {
@@ -112,7 +129,7 @@ impl SearchTypeVars for Generic {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::TypeArg(t) => t.search_type_vars(found_type_var),
-            Self::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
+            Self::TypeArgs(ts) => ts.search_type_vars(found_type_var),
             Self::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
         }
     }
@@ -135,6 +152,28 @@ impl SearchTypeVars for GenericsList {
 
     fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.iter().any(|g| g.find_in_type(db, check))
+    }
+}
+
+impl SearchTypeVars for TypeArgs {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        match &self.args {
+            TupleArgs::FixedLen(ts) => {
+                for t in ts.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
+            TupleArgs::ArbitraryLen(t) => t.search_type_vars(found_type_var),
+            TupleArgs::WithUnpack(w) => w.search_type_vars(found_type_var),
+        }
+    }
+
+    fn find_in_type(&self, db: &Database, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match &self.args {
+            TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(db, check)),
+            TupleArgs::ArbitraryLen(t) => t.find_in_type(db, check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(db, check),
+        }
     }
 }
 

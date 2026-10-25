@@ -8,10 +8,8 @@ mod new_type;
 mod type_var_likes;
 mod typed_dict;
 
-pub(crate) use alias::{TypeDocs, assignment_type_node_ref};
-pub(crate) use class::{
-    CLASS_TO_CLASS_INFO_DIFFERENCE, ClassInitializer, ClassNodeRef, ORDERING_METHODS, linearize_mro,
-};
+pub(crate) use alias::*;
+pub(crate) use class::*;
 pub(crate) use function::{FuncNodeRef, FuncParent};
 
 use std::{borrow::Cow, cell::Cell, sync::Arc};
@@ -787,13 +785,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut is_final = false;
         let i_s = self.i_s;
         let uses_class_generics = |class: Class, t: &Type| {
-            let mut uses_class_generics = false;
-            t.search_type_vars(&mut |usage| {
-                if usage.in_definition() == class.node_ref.as_link() {
-                    uses_class_generics = true
-                }
-            });
-            uses_class_generics
+            t.search_type_vars_with_condition(&mut |usage| {
+                usage.in_definition() == class.node_ref.as_link()
+            })
         };
         let mut type_ = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
@@ -2189,7 +2183,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if let Some(default) = tvt.default(db).filter(|_| args.empty_not_explicit) {
                             resolve_default(generics, Generic::TypeArgs(default.clone()))
                         } else {
-                            Generic::TypeArgs(TypeArgs { args: args.args })
+                            Generic::TypeArgs(TypeArgs::new(args.args))
                         },
                     );
                     break;

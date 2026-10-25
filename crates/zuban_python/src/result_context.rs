@@ -56,7 +56,7 @@ impl<'a> ResultContext<'a, '_> {
             }
             Self::Known { type_, .. } | Self::KnownLambdaReturn(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
-                let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
+                let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, *type_);
                 Some(callable(&t))
             }
             Self::ValueExpected

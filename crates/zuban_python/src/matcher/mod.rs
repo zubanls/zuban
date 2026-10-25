@@ -3,14 +3,16 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
+use parsa_python_cst::ParamKind;
 use std::{
     borrow::Cow,
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{HashMap, HashSet},
+    iter::Peekable,
 };
 use utils::AlreadySeen;
 
-use crate::prelude::*;
+use crate::{prelude::*, type_::MaybeUnpackGatherer};
 use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
@@ -35,7 +37,7 @@ use crate::{
     type_::{
         GotType, OnTypeError, ParamSpecArg, ParamType, ReplaceSelf, StarParamType,
         StarStarParamType, TupleUnpack, TypeArgs, TypedDictGenerics, WithUnpack,
-        add_param_spec_to_params, match_tuple_type_arguments,
+        add_param_spec_to_params,
     },
     type_helpers::{Callable, FuncLike, Function, Generics},
     utils::join_with_commas,
@@ -645,13 +647,13 @@ impl<'a> Matcher<'a> {
                     type_var_index: tvt.index.as_usize(),
                 },
                 |found_type_var| args2.search_type_vars(found_type_var),
-                || Bound::new_type_args(args2.clone(), variance),
+                || Bound::new_type_args(TypeArgs::new(args2.clone()), variance),
             ) {
                 return Match::new_true();
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let m = tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .merge(i_s, Bound::new_type_args(args2, variance));
+                .merge(i_s, Bound::new_type_args(TypeArgs::new(args2), variance));
             debug!(
                 "Generics after changing {:?} (#{}/{}) are now: [{}]",
                 tvt.type_var_tuple.format(&FormatData::new_short(i_s.db)),
@@ -671,13 +673,9 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &usage)
                     .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+                return ts1
+                    .args
+                    .matches(i_s, &mut Matcher::default(), &args2, variance);
             }
             // If we're in a class context, we must also be in a method.
             if let Some(func_class) = self.maybe_func_class_for_usage(&usage) {
@@ -685,13 +683,9 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &usage)
                     .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+                return ts1
+                    .args
+                    .matches(i_s, &mut Matcher::default(), &args2, variance);
             }
         }
         match args2 {
@@ -706,6 +700,85 @@ impl<'a> Matcher<'a> {
             TupleArgs::FixedLen(_) => false,
         }
         .into()
+    }
+
+    pub fn match_unpack_against_params<'db: 'x, 'x, P: Param<'x>>(
+        &mut self,
+        i_s: &InferenceState<'db, '_>,
+        tuple: &Tuple,
+        params: &mut Peekable<impl Iterator<Item = P>>,
+        variance: Variance,
+    ) -> Option<Match> {
+        let has_uncalculated_type_var_tuple = Cell::new(false);
+        let param_args = if let TupleArgs::WithUnpack(with_unpack) = &tuple.args
+            && let TupleUnpack::TypeVarTuple(tvt) = &with_unpack.unpack
+            && with_unpack.after.is_empty()
+        {
+            let mut positional_params: Vec<P> = vec![];
+            let mut known_positional_count = 0;
+            let mut no_default_count = 0;
+            while let Some(p) = params.next_if(|p| match p.kind(i_s.db) {
+                ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                    known_positional_count += 1;
+                    if !p.has_default() {
+                        no_default_count += 1;
+                    }
+                    true
+                }
+                ParamKind::Star => true,
+                _ => false,
+            }) {
+                positional_params.push(p)
+            }
+            if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
+                tvt.in_definition,
+                tvt.temporary_matcher_id,
+            ) {
+                if with_unpack.before.len() < known_positional_count
+                    && no_default_count != known_positional_count
+                {
+                    // There are default params and some of them might not be necessary as a type
+                    // argument. Therefore we gather the defaults as part of the type arguments in this
+                    // special case and save it as well as the tuple information so it can be used
+                    // downstream when matching this specific tuple.
+                    let mut matches = Match::new_true();
+                    let mut positional_params = positional_params.into_iter();
+                    for (match_t, param) in
+                        with_unpack.before.iter().zip(positional_params.by_ref())
+                    {
+                        matches &= match_t.matches(
+                            i_s,
+                            self,
+                            param.specific(i_s.db).expect_positional_type(),
+                            variance,
+                        );
+                    }
+                    let tv_matcher = &mut self.type_var_matchers[matcher_index];
+                    let found =
+                        gather_unpack_args(i_s.db, &tuple.args, &mut positional_params.peekable())?;
+                    matches &= tv_matcher.calculating_type_args[tvt.index.as_usize()]
+                        .merge(i_s, Bound::new_type_args(found, variance));
+                    return Some(matches);
+                }
+            }
+            let args = self.replace_type_var_likes(
+                i_s.db,
+                &tuple.args,
+                false,
+                |usage| {
+                    if matches!(usage, TypeVarLikeUsage::TypeVarTuple(_)) {
+                        has_uncalculated_type_var_tuple.set(true)
+                    }
+                    Some(usage.as_type_var_like().as_never_generic_item(i_s.db))
+                },
+                &|| None,
+            );
+            // Just fall back to gathering the params
+            gather_unpack_args(i_s.db, &args, &mut positional_params.into_iter().peekable())?
+        } else {
+            gather_unpack_args(i_s.db, &tuple.args, params)?
+        };
+        Some(tuple.args.matches(i_s, self, &param_args.args, variance))
     }
 
     pub fn match_or_add_param_spec<'db: 'x, 'x, P2: Param<'x>, I: Iterator<Item = P2>>(
@@ -1054,11 +1127,14 @@ impl<'a> Matcher<'a> {
         callable
     }
 
-    pub fn replace_type_var_likes_for_nested_context<'x>(
+    pub fn replace_type_var_likes_for_nested_context<
+        'x,
+        T: ReplaceTypeVarLikes + Clone + SearchTypeVars,
+    >(
         &self,
         db: &Database,
-        t: &'x Type,
-    ) -> Cow<'x, Type> {
+        t: &'x T,
+    ) -> Cow<'x, T> {
         self.replace_type_var_likes(
             db,
             t,
@@ -1085,38 +1161,14 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    pub fn replace_type_var_likes_for_nested_context_in_tuple_args(
+    pub fn replace_type_var_likes_for_unknown_type_vars<
+        'x,
+        T: ReplaceTypeVarLikes + Clone + SearchTypeVars,
+    >(
         &self,
         db: &Database,
-        ts: TupleArgs,
-    ) -> TupleArgs {
-        ts.maybe_replace_type_var_likes(
-            db,
-            &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
-        )
-        .unwrap_or(ts)
-    }
-
-    pub fn replace_type_var_likes_for_nested_context_in_param_spec(
-        &self,
-        db: &Database,
-        p: ParamSpecArg,
-    ) -> ParamSpecArg {
-        p.params
-            .maybe_replace_type_var_likes_and_self(
-                db,
-                &mut self.as_usage_closure(db, true, |usage| Some(usage.as_any_generic_item())),
-                &|| None,
-            )
-            .map(|p| ParamSpecArg::new(p, None))
-            .unwrap_or(p)
-    }
-
-    pub fn replace_type_var_likes_for_unknown_type_vars<'x>(
-        &self,
-        db: &Database,
-        t: &'x Type,
-    ) -> Cow<'x, Type> {
+        t: &'x T,
+    ) -> Cow<'x, T> {
         self.replace_type_var_likes(
             db,
             t,
@@ -1126,14 +1178,14 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    fn replace_type_var_likes<'x>(
+    fn replace_type_var_likes<'x, T: ReplaceTypeVarLikes + Clone + SearchTypeVars>(
         &self,
         db: &Database,
-        t: &'x Type,
+        t: &'x T,
         for_context: bool,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> Option<Generic>,
         replace_self: ReplaceSelf,
-    ) -> Cow<'x, Type> {
+    ) -> Cow<'x, T> {
         t.replace_type_var_likes_and_self(
             db,
             &mut self.as_usage_closure(
@@ -1205,14 +1257,16 @@ impl<'a> Matcher<'a> {
                         .replace_type_var_likes_for_nested_context(db, &t)
                         .into_owned(),
                 ),
-                Generic::TypeArgs(ts) => Generic::TypeArgs(TypeArgs::new(
+                Generic::TypeArgs(ts) => Generic::TypeArgs(
                     without_func_class
-                        .replace_type_var_likes_for_nested_context_in_tuple_args(db, ts.args),
-                )),
-                Generic::ParamSpecArg(p) => Generic::ParamSpecArg(
-                    without_func_class
-                        .replace_type_var_likes_for_nested_context_in_param_spec(db, p),
+                        .replace_type_var_likes_for_nested_context(db, &ts)
+                        .into_owned(),
                 ),
+                Generic::ParamSpecArg(p) => Generic::ParamSpecArg(ParamSpecArg::new(
+                    self.replace_type_var_likes_for_nested_context(db, &p.params)
+                        .into_owned(),
+                    None,
+                )),
             });
         }
         None
@@ -1475,7 +1529,7 @@ impl<'a> Matcher<'a> {
                             temporary_matcher_id: 0,
                         }))
                     }
-                    TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(
+                    TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(TypeArgs::new(
                         TupleArgs::WithUnpack(WithUnpack::with_empty_before_and_after(
                             TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
                                 type_var_tuple: tvt,
@@ -1484,7 +1538,7 @@ impl<'a> Matcher<'a> {
                                 temporary_matcher_id: 0,
                             }),
                         )),
-                    ),
+                    )),
                     TypeVarLike::ParamSpec(param_spec) => {
                         let usage = ParamSpecUsage {
                             param_spec,
@@ -2008,6 +2062,59 @@ impl fmt::Debug for Matcher<'_> {
             .field("match_reverse", &self.match_reverse)
             .finish()
     }
+}
+
+fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
+    db: &'db Database,
+    for_tuple: &TupleArgs,
+    params: &mut Peekable<impl Iterator<Item = P>>,
+) -> Option<TypeArgs> {
+    let mut gatherer = MaybeUnpackGatherer::default();
+    let mut first_positional_default = None;
+    let mut tuple_iterator = match for_tuple {
+        TupleArgs::FixedLen(items) => Some(items.iter()),
+        _ => None,
+    };
+    let mut counter = 0;
+    while let Some(next) = params.peek() {
+        match next.specific(db) {
+            WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
+                let needs_next = tuple_iterator.as_mut().is_none_or(|it| it.next().is_some());
+                if !needs_next && next.has_default() {
+                    first_positional_default = None;
+                    break;
+                }
+                if next.has_default() {
+                    if first_positional_default.is_none() {
+                        first_positional_default = Some(counter)
+                    }
+                }
+                let t2 = t2
+                    .map(|t2| t2.into_owned())
+                    .unwrap_or(Type::Any(AnyCause::Unannotated));
+                if !next.has_default() || needs_next {
+                    gatherer.add_type(t2)
+                }
+            }
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => gatherer
+                .add_tuple_args(&tup.args)
+                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => gatherer
+                .add_unpack(TupleUnpack::ArbitraryLen(
+                    t.map(|t| t.into_owned())
+                        .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                ))
+                .expect("There shouldn't ever be an unpack after an unpack"),
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(_)) => return None,
+            _ => break,
+        }
+        counter += 1;
+        params.next();
+    }
+    Some(TypeArgs {
+        args: gatherer.into_tuple_args(),
+        first_positional_default,
+    })
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash, PartialOrd, Ord)]
