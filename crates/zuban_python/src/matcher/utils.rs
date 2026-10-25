@@ -16,7 +16,7 @@ use crate::{
     type_::{
         CallableWithParent, ClassGenerics, ErrorTypes, GenericsList, GotType, MaybeUnpackGatherer,
         OnTypeError, ParamSpecTypeVars, ReplaceSelf, TupleUnpack, TypeVarManager,
-        match_arbitrary_len_vs_unpack, match_unpack,
+        match_arbitrary_len_vs_unpack,
     },
     type_helpers::{Callable, FuncLike, Function, Generics},
 };
@@ -1083,10 +1083,9 @@ pub(crate) fn match_arguments_against_params<
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
                         let actual = gatherer.into_tuple_args();
-                        let match_ = match_unpack(
+                        let match_ = with_unpack.match_unpack(
                             i_s,
                             matcher,
-                            with_unpack,
                             &actual,
                             Variance::Covariant,
                             Some(&|mut error_types: ErrorTypes, index: isize| {
