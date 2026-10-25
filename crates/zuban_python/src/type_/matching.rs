@@ -1254,7 +1254,7 @@ impl TupleArgs {
             }
             (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
             (WithUnpack(unpack), _) => {
-                unpack.match_unpack_internal(i_s, matcher, other, variance, None, None)
+                unpack.is_super_type_of_tuple_part2(i_s, matcher, other, variance, None, None)
             }
             (ArbitraryLen(t1), WithUnpack(u2)) => {
                 match_arbitrary_len_vs_unpack(i_s, matcher, t1, u2, variance)
@@ -1347,7 +1347,7 @@ pub fn match_arbitrary_len_vs_unpack(
 type OnMismatch<'x> = &'x dyn Fn(ErrorTypes, isize);
 
 impl WithUnpack {
-    pub fn match_unpack(
+    pub fn is_super_type_of_tuple(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -1357,7 +1357,14 @@ impl WithUnpack {
         on_too_few_args: Option<&dyn Fn()>,
     ) -> Match {
         debug_assert!(!matcher.is_matching_reverse());
-        self.match_unpack_internal(i_s, matcher, tup2, variance, on_mismatch, on_too_few_args)
+        self.is_super_type_of_tuple_part2(
+            i_s,
+            matcher,
+            tup2,
+            variance,
+            on_mismatch,
+            on_too_few_args,
+        )
     }
 
     fn check_type_var_tuple(
@@ -1387,7 +1394,7 @@ impl WithUnpack {
         m
     }
 
-    fn match_unpack_internal(
+    fn is_super_type_of_tuple_part2(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
