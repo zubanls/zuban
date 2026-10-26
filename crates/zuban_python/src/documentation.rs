@@ -34,7 +34,10 @@ impl<'project> Document<'project> {
     ) -> Option<DocumentationResult<'_>> {
         let db = &self.project.db;
 
-        let mut resolver = GotoResolver::new(document, GotoGoal::Indifferent, |n: ValueName| {
+        let mut name_origin = NameOrigin::Other;
+
+        let cloned_doc = document.clone();
+        let mut resolver = GotoResolver::new(cloned_doc, GotoGoal::Indifferent, |n: ValueName| {
             match &n.type_ {
                 Type::Self_ => {
                     if let Some(cls) = i_s.current_class() {
@@ -59,6 +62,7 @@ impl<'project> Document<'project> {
                     }
                 }
                 Type::FunctionOverload(overload) => {
+                    name_origin = NameOrigin::Overload;
                     // Overloads can have multiple docstrings, just show them all.
                     let implementation = || {
                         let first_func = overload
@@ -85,7 +89,14 @@ impl<'project> Document<'project> {
                         .collect();
                     docs.join("\n\n")
                 }
-                _ => n.name.documentation().to_string(),
+                t => {
+                    if let Type::Callable(c) = t
+                        && !c.type_vars.is_empty()
+                    {
+                        name_origin = NameOrigin::GenericFunction;
+                    }
+                    n.name.documentation().to_string()
+                }
             }
         });
         let (inf, mut results) = resolver.infer_definition(Some(HeuristicDetail::Deep));
@@ -117,7 +128,7 @@ impl<'project> Document<'project> {
                         union
                             .entries
                             .iter()
-                            .filter(|entry| previous_formatting.insert(entry.format_short(i_s.db)))
+                            .filter(|entry| previous_formatting.insert(entry.format_short(db)))
                             .cloned(),
                     );
                     *t = keep_entries.into_type();
@@ -144,7 +155,7 @@ impl<'project> Document<'project> {
                                     i_s.find_parent_type_var(&tvl)
                                 {
                                     let in_definition = usage.in_definition();
-                                    let definition = NodeRef::from_link(i_s.db, in_definition);
+                                    let definition = NodeRef::from_link(db, in_definition);
                                     // The definition is just a hint where the TypeVar is defined.
                                     // It's no guarantuee that there are always a class or
                                     // function.
@@ -153,11 +164,11 @@ impl<'project> Document<'project> {
                                         doc += &format!("Bound in class `{}`", class_ref.name());
                                         let variance = usage.inferred_variance(
                                             db,
-                                            &Class::from_undefined_generics(i_s.db, in_definition),
+                                            &Class::from_undefined_generics(db, in_definition),
                                         );
                                         doc += &format!(
                                             "\n\n`{}` is `{}`",
-                                            usage.name(i_s.db),
+                                            usage.name(db),
                                             variance.name().to_lowercase()
                                         );
                                         if matches!(usage.variance(), TypeVarVariance::Inferred) {
@@ -168,7 +179,7 @@ impl<'project> Document<'project> {
                                         doc += &format!(
                                             "Bound in function `{}`",
                                             FuncNodeRef::from_node_ref(definition)
-                                                .qualified_name(i_s.db)
+                                                .qualified_name(db)
                                         );
                                     }
                                 }
@@ -269,9 +280,9 @@ impl<'project> Document<'project> {
         }
         results.retain(|doc| !doc.is_empty());
 
-        let docs = results.join("\n\n");
+        let results_to_string = |results: Vec<String>| results.join("\n\n");
         let documentation = if only_docstrings {
-            docs
+            results_to_string(results)
         } else {
             let mut out = String::default();
             out += "```python\n";
@@ -294,9 +305,26 @@ impl<'project> Document<'project> {
                             type_formatted.drain(type_formatted.len() - 1..);
                         }
                     }
+                    ["function"] => {
+                        if matches!(
+                            name_origin,
+                            NameOrigin::GenericFunction | NameOrigin::Overload
+                        ) && let Some(primary) = name.maybe_left_of_primary()
+                        {
+                            let result = document.infer_primary(primary);
+                            results.push(format!(
+                                "The {} return type is {}",
+                                match name_origin {
+                                    NameOrigin::Overload => "overload",
+                                    _ => "chosen",
+                                },
+                                result.format_short(i_s)
+                            ))
+                        }
+                    }
                     [
-                        "function" | "property" | "type" | "type alias" | "TypeVar"
-                        | "TypeVarTuple" | "ParamSpec" | "module",
+                        "property" | "type" | "type alias" | "TypeVar" | "TypeVarTuple"
+                        | "ParamSpec" | "module",
                     ] => (),
                     _ => {
                         if known_kind.is_none() {
@@ -310,7 +338,7 @@ impl<'project> Document<'project> {
             out += "\n```";
             if !results.is_empty() {
                 out += "\n---\n";
-                out += &docs;
+                out += &results_to_string(results);
             }
             out
         };
@@ -319,6 +347,12 @@ impl<'project> Document<'project> {
             on_symbol_range,
         })
     }
+}
+
+enum NameOrigin {
+    Other,
+    GenericFunction,
+    Overload,
 }
 
 fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) -> Box<str> {

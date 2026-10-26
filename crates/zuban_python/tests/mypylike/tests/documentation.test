@@ -231,7 +231,7 @@ f(1)
 [out]
 __main__.py:6:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
 __main__.py:10:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
-__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
+__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```\n---\nThe overload return type is int"
 
 [case docs_on_property_setter_deleter_no_crash]
 class X:
@@ -1480,9 +1480,9 @@ def f3(a: int | str) -> int | str:
     """ help4 """
 
 [out]
-__main__.py:4:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str\n    def f1(a: int | str) -> int | str)\n```\n---\nhelp1"
-__main__.py:6:documentation -> "```python\n(function) Overload(\n    def f2(a: int) -> int\n    def f2(a: int | str) -> int | str)\n```\n---\nhelp2"
-__main__.py:8:documentation -> "```python\n(function) Overload(\n    def f3(a: int) -> int\n    def f3(a: int | str) -> int | str)\n```\n---\nhelp3\n\nhelp4"
+__main__.py:5:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str\n    def f1(a: int | str) -> int | str)\n```\n---\nhelp1"
+__main__.py:7:documentation -> "```python\n(function) Overload(\n    def f2(a: int) -> int\n    def f2(a: int | str) -> int | str)\n```\n---\nhelp2"
+__main__.py:9:documentation -> "```python\n(function) Overload(\n    def f3(a: int) -> int\n    def f3(a: int | str) -> int | str)\n```\n---\nhelp3\n\nhelp4"
 
 [case documentation_for_overload_in_normal_file]
 import m
@@ -1547,3 +1547,96 @@ __main__.py:6:documentation -> "```python\n(function) Overload(\n    def f2(a: i
 __main__.py:8:documentation -> "```python\n(function) Overload(\n    def f3(a: int) -> int\n    def f3(a: int | str) -> int | str)\n```\n---\nhelp3\n\nhelp4"
 __main__.py:10:documentation -> "```python\n(function) Overload(\n    def f4(a: int) -> int\n    def f4(a: int | str) -> int | str)\n```\n---\nhelp5\n\nhelp6\n\nhelp7"
 __main__.py:12:documentation -> "```python\n(function) Overload(\n    def f5(a: int) -> int\n    def f5(a: int | str) -> int | str)\n```\n---\nhelp8\n\nhelp9"
+
+[case documentation_for_call_result_should_not_be_shown_unless_generic_same_file]
+# flags: --mode default
+from typing import Any
+
+def f() -> int:
+    """
+    hello
+    """
+    return 1
+
+#? --codepoint-column 0 documentation
+f()
+
+def g[T](x: T) -> list[T]: ...
+
+#? --codepoint-column 0 documentation
+g(2)
+
+def h():
+    return undefined_return()
+
+def undefined_return() -> Any: ...
+
+#? --codepoint-column 0 documentation
+h()
+
+[out]
+__main__.py:11:documentation -> "```python\n(function) def f() -> int\n```\n---\nhello"
+__main__.py:16:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is list[int]"
+__main__.py:24:documentation -> "```python\n(function) def h() -> Any\n```"
+
+[case documentation_for_call_result_should_not_be_shown_unless_generic_different_file]
+import m
+
+#? --codepoint-column 3 documentation
+m.f()
+
+#? --codepoint-column 3 documentation
+m.g(2)
+
+#? --codepoint-column 3 documentation
+m.h()
+
+[file m.py]
+from typing import Any
+# flags: --mode default
+def f() -> int:
+    """
+    hello
+    """
+    return 1
+
+def g[T](x: T) -> list[T]: ...
+
+def h():
+    return undefined_return()
+
+def undefined_return() -> Any: ...
+
+[out]
+__main__.py:4:documentation -> "```python\n(function) def f() -> int\n```\n---\nhello"
+__main__.py:7:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is list[int]"
+__main__.py:10:documentation -> "```python\n(function) def h() -> Any\n```"
+
+[case documentation_for_overload_calls_show_call_result]
+from typing import overload, Any
+
+@overload
+def f1(a: int) -> int: ...
+@overload
+def f1(a: str) -> str:
+    """ help """
+def f1(a): ...
+
+def f(union: int | str, any: Any) -> None:
+    #? documentation
+    f1(1)
+    #? --codepoint-column 4 documentation
+    f1(1)
+    #? --codepoint-column 4 documentation
+    f1("")
+    #? --codepoint-column 4 documentation
+    f1(union)
+    #? --codepoint-column 4 documentation
+    f1(any)
+
+[out]
+__main__.py:12:documentation -> "```python\n(class) int\n```"
+__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is int"
+__main__.py:16:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is str"
+__main__.py:18:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is int | str"
+__main__.py:20:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is Any"
