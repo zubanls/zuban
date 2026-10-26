@@ -231,7 +231,7 @@ f(1)
 [out]
 __main__.py:6:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
 __main__.py:10:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```"
-__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```\n---\nThe overload return type is int"
+__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f(x: int) -> int\n    def f(x: str) -> str)\n```\n---\nThe overload return type is `int`"
 
 [case docs_on_property_setter_deleter_no_crash]
 class X:
@@ -1576,7 +1576,7 @@ h()
 
 [out]
 __main__.py:11:documentation -> "```python\n(function) def f() -> int\n```\n---\nhello"
-__main__.py:16:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is list[int]"
+__main__.py:16:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is `list[int]`"
 __main__.py:24:documentation -> "```python\n(function) def h() -> Any\n```"
 
 [case documentation_for_call_result_should_not_be_shown_unless_generic_different_file]
@@ -1609,7 +1609,7 @@ def undefined_return() -> Any: ...
 
 [out]
 __main__.py:4:documentation -> "```python\n(function) def f() -> int\n```\n---\nhello"
-__main__.py:7:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is list[int]"
+__main__.py:7:documentation -> "```python\n(function) def [T] g(x: T) -> list[T]\n```\n---\nThe chosen return type is `list[int]`"
 __main__.py:10:documentation -> "```python\n(function) def h() -> Any\n```"
 
 [case documentation_for_overload_calls_show_call_result]
@@ -1636,7 +1636,7 @@ def f(union: int | str, any: Any) -> None:
 
 [out]
 __main__.py:12:documentation -> "```python\n(class) int\n```"
-__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is int"
-__main__.py:16:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is str"
-__main__.py:18:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is int | str"
-__main__.py:20:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is Any"
+__main__.py:14:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `int`"
+__main__.py:16:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `str`"
+__main__.py:18:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `int | str`"
+__main__.py:20:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `Any`"

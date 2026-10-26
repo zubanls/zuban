@@ -313,7 +313,7 @@ impl<'project> Document<'project> {
                         {
                             let result = document.infer_primary(primary);
                             results.push(format!(
-                                "The {} return type is {}",
+                                "The {} return type is `{}`",
                                 match name_origin {
                                     NameOrigin::Overload => "overload",
                                     _ => "chosen",
