@@ -630,3 +630,48 @@ fn publish_diagnostics(with_symlinks: bool) {
 pub(super) fn fails_too_much_on_linux_and_github_actions() -> bool {
     cfg!(target_os = "linux") && std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true")
 }
+
+#[test]
+#[serial]
+fn rename_imported_file_multiple_times_including_case_change() {
+    // From GH #613
+    let server = Project::with_fixture(
+        r#"
+        [file pyproject.toml]
+        [file tst/__init__.py]
+        [file tst/a.py]
+        A = 42
+        "#,
+    )
+    .into_server();
+    let revealed = ["Revealed type is \"builtins.int\""];
+    let missing_a = vec![
+        "Cannot find implementation or library stub for module named \"tst.a\"",
+        "Revealed type is \"Any\"",
+    ];
+    let check = || server.diagnostics_for_file("tst/b.py");
+
+    server.open_in_memory_file("tst/b.py", "from .a import A\nreveal_type(A)\n");
+
+    assert_eq!(check(), revealed, "initially");
+
+    tracing::info!("a -> anon");
+    server.rename_file_and_wait("tst/a.py", "tst/anon.py");
+    assert_eq!(check(), missing_a, "after a -> anon");
+
+    tracing::info!("anon -> a");
+    server.rename_file_and_wait("tst/anon.py", "tst/a.py");
+    assert_eq!(check(), revealed, "after anon -> a");
+
+    tracing::info!("a -> A");
+    server.rename_file_and_wait("tst/a.py", "tst/A.py");
+    assert_eq!(check(), missing_a, "after a -> A");
+
+    tracing::info!("A -> anon");
+    server.rename_file_and_wait("tst/A.py", "tst/anon.py");
+    assert_eq!(check(), missing_a, "after A -> anon");
+
+    tracing::info!("anon -> a");
+    server.rename_file_and_wait("tst/anon.py", "tst/a.py");
+    assert_eq!(check(), revealed, "after anon -> a again");
+}
