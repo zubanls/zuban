@@ -81,10 +81,13 @@ impl<'x> WorkspacesBuilder<'x> {
             .expect("There should always be a workspace")
     }
 
-    pub fn path_is_contained_in_type_checking_folder(&self, path: &NormalizedPath) -> bool {
-        self.items
-            .iter()
-            .any(|workspace| path.as_ref().starts_with(workspace.root_path.as_ref()))
+    pub fn path_is_relevant_part_in_type_checking_folder(
+        &self,
+        case_sensitive: bool,
+        path: &PathWithScheme,
+    ) -> bool {
+        strip_shortest_path_in_workspace(self.handler, &*self.items, case_sensitive, path)
+            .is_some_and(|(workspace, _)| workspace.kind == WorkspaceKind::TypeChecking)
     }
 }
 
@@ -134,18 +137,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &'path PathWithScheme,
     ) -> Option<(Arc<Workspace>, &'path str)> {
-        let mut shortest: Option<(Arc<Workspace>, &'path str)> = None;
-        for workspace in self.items.load().iter() {
-            if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
-                if shortest
-                    .as_ref()
-                    .is_none_or(|(_, shortest)| shortest.len() > p.len())
-                {
-                    shortest = Some((workspace.clone(), p))
-                }
-            }
-        }
-        shortest
+        strip_shortest_path_in_workspace(vfs, &*self.items.load(), case_sensitive, path)
     }
 
     pub fn load(&self) -> LoadedWorkspaces {
@@ -413,6 +405,26 @@ impl LoadedWorkspaces {
             .filter(|x| x.is_type_checked())
             .map(|x| &x.entries)
     }
+}
+
+fn strip_shortest_path_in_workspace<'path>(
+    vfs: &dyn VfsHandler,
+    workspaces: &[Arc<Workspace>],
+    case_sensitive: bool,
+    path: &'path PathWithScheme,
+) -> Option<(Arc<Workspace>, &'path str)> {
+    let mut shortest: Option<(Arc<Workspace>, &'path str)> = None;
+    for workspace in workspaces.iter() {
+        if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
+            if shortest
+                .as_ref()
+                .is_none_or(|(_, shortest)| shortest.len() > p.len())
+            {
+                shortest = Some((workspace.clone(), p))
+            }
+        }
+    }
+    shortest
 }
 
 #[derive(Debug, Clone)]

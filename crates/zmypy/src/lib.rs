@@ -1673,4 +1673,33 @@ mod tests {
             [r#"y.py:1: error: Cannot resolve name "a" (possible cyclic definition)  [misc]"#]
         );
     }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn pth_file_in_site_packages_no_type_check() {
+        // From GH #628
+        let fixture = format!(
+            r#"
+            [file venv/bin/python]
+
+            [file venv/pyvenv.cfg]
+            include-system-site-packages = false
+            version = 3.14.0
+
+            [file venv/lib/python3.12/site-packages/pthfile.pth]
+            no_check
+            [file venv/lib/python3.12/site-packages/no_check/error.py]
+            x: int = "this should not be checked!"
+
+            [file pyproject.toml]
+
+            [file check.py]
+            1()
+            "#
+        );
+        let test_dir = test_utils::write_files_from_fixture(&fixture, false);
+
+        let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(ds, [r#"check.py:1: error: "int" not callable  [operator]"#]);
+    }
 }
