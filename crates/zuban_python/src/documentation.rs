@@ -32,6 +32,8 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
         i_s: &InferenceState,
     ) -> Option<DocumentationResult<'_>> {
+        let db = &self.project.db;
+
         let mut resolver = GotoResolver::new(document, GotoGoal::Indifferent, |n: ValueName| {
             match &n.type_ {
                 Type::Self_ => {
@@ -56,6 +58,33 @@ impl<'project> Document<'project> {
                         "".into()
                     }
                 }
+                Type::FunctionOverload(overload) => {
+                    // Overloads can have multiple docstrings, just show them all.
+                    let implementation = || {
+                        let first_func = overload
+                            .iter_functions()
+                            .next()?
+                            .maybe_original_func_node_ref(db)?;
+                        Some(
+                            &first_func
+                                .maybe_overload()?
+                                .implementation
+                                .as_ref()?
+                                .callable,
+                        )
+                    };
+                    let docs: Vec<_> = overload
+                        .iter_functions()
+                        .map(|f| f.as_ref())
+                        .chain(implementation().into_iter())
+                        .filter_map(|c| {
+                            let func = c.maybe_original_func_def(db)?;
+                            let doc = func.name().clean_docstring();
+                            (!doc.is_empty()).then_some(doc)
+                        })
+                        .collect();
+                    docs.join("\n\n")
+                }
                 _ => n.name.documentation().to_string(),
             }
         });
@@ -65,7 +94,6 @@ impl<'project> Document<'project> {
             return None;
         };
 
-        let db = &self.project.db;
         let mut overwritten_results = vec![];
 
         let mut known_kind = None;
@@ -300,7 +328,7 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
             &FormatData::new_short(db),
             PrettyCallableOptions {
                 try_to_format_default: Some(&|db, name| {
-                    let func = c.maybe_original_function(db)?;
+                    let func = c.maybe_original_func_def(db)?;
                     func.params()
                         .iter()
                         .find(|param| param.name_def().as_code() == name)

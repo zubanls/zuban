@@ -4,6 +4,7 @@ use parsa_python_cst::{FunctionDef, ParamKind};
 use vfs::FileIndex;
 
 use super::{TypeLikeInTypeVar, TypeVarKindInfos};
+use crate::file::FuncNodeRef;
 use crate::prelude::*;
 use crate::{
     format_data::ParamsStyle,
@@ -465,7 +466,12 @@ impl CallableContent {
         )
     }
 
-    pub fn maybe_original_function<'db>(&self, db: &'db Database) -> Option<FunctionDef<'db>> {
+    pub fn maybe_original_func_node_ref<'db>(&self, db: &'db Database) -> Option<FuncNodeRef<'db>> {
+        let node = NodeRef::from_link(db, self.defined_at);
+        Some(FuncNodeRef::new(node.file, node.maybe_function()?))
+    }
+
+    pub fn maybe_original_func_def<'db>(&self, db: &'db Database) -> Option<FunctionDef<'db>> {
         NodeRef::from_link(db, self.defined_at).maybe_function()
     }
 
@@ -721,7 +727,7 @@ impl CallableContent {
     pub fn is_typed_and_annotated_result(&self, db: &Database) -> bool {
         self.is_typed_result()
             && self
-                .maybe_original_function(db)
+                .maybe_original_func_def(db)
                 .is_none_or(|f| f.return_annotation().is_some())
     }
 

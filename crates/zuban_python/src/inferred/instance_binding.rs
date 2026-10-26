@@ -490,7 +490,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s.db.python_state.any_callable_from_error.clone()
                             });
                             if avoid_inferring_return_types
-                                && let Some(func) = new_c.maybe_original_function(i_s.db)
+                                && let Some(func) = new_c.maybe_original_func_def(i_s.db)
                                 && func.return_annotation().is_none()
                             {
                                 let mut new = new_c.as_ref().clone();
@@ -569,7 +569,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let is_final = c.is_final;
                         return Some(result.map(|mut c| {
                             if avoid_inferring_return_types
-                                && let Some(func) = c.maybe_original_function(i_s.db)
+                                && let Some(func) = c.maybe_original_func_def(i_s.db)
                                 && func.return_annotation().is_none()
                             {
                                 c.return_type = Type::Any(AnyCause::Unannotated);
@@ -583,7 +583,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     FunctionKind::Staticmethod => {
                         let mut t = t.clone();
                         if avoid_inferring_return_types
-                            && let Some(func) = c.maybe_original_function(i_s.db)
+                            && let Some(func) = c.maybe_original_func_def(i_s.db)
                             && func.return_annotation().is_none()
                             && let Type::Callable(c) = &t
                         {
@@ -775,7 +775,7 @@ pub fn calculate_property_return(
     }
 
     if avoid_inferring_return_types
-        && let Some(func) = callable.maybe_original_function(i_s.db)
+        && let Some(func) = callable.maybe_original_func_def(i_s.db)
         && func.return_annotation().is_none()
     {
         return Some(Type::Any(AnyCause::Unannotated));
