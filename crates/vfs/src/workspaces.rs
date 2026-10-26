@@ -128,7 +128,7 @@ impl Workspaces {
         }
     }
 
-    fn strip_short_path_in_workspace<'path>(
+    fn strip_shortest_path_in_workspace<'path>(
         &self,
         vfs: &dyn VfsHandler,
         case_sensitive: bool,
@@ -158,7 +158,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> Option<DirOrFile> {
-        self.strip_short_path_in_workspace(vfs, case_sensitive, path)
+        self.strip_shortest_path_in_workspace(vfs, case_sensitive, path)
             .and_then(|(workspace, rest)| workspace.entries.search_path(vfs, self, rest))
             .or_else(|| {
                 self.load().iter().find_map(|workspace| {
@@ -241,7 +241,7 @@ impl Workspaces {
         code: &str,
     ) -> AddedFile {
         if let Some((workspace, rest)) =
-            self.strip_short_path_in_workspace(vfs, case_sensitive, path)
+            self.strip_shortest_path_in_workspace(vfs, case_sensitive, path)
         {
             return ensure_dirs_and_file(
                 Parent::Workspace(Arc::downgrade(&workspace)),
