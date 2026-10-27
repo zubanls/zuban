@@ -42,12 +42,13 @@ pub trait VfsHandler: Sync + Send {
         parent: Parent,
     ) -> Entries;
 
-    fn read_and_watch_entry(
+    fn read_and_watch_entry_for_invalidation(
         &self,
         workspaces: &[Arc<Workspace>],
         path: &str,
         parent: Parent,
         replace_name: &str,
+        recheck_case: bool,
     ) -> Option<DirectoryEntry>;
 
     fn separator(&self) -> char {

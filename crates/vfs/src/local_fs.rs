@@ -131,12 +131,13 @@ impl<T: Fn(InvalidatedInMemoryFile) + Sync + Send> VfsHandler for LocalFS<T> {
         Entries::new(entries)
     }
 
-    fn read_and_watch_entry(
+    fn read_and_watch_entry_for_invalidation(
         &self,
         workspaces: &[Arc<Workspace>],
         path: &str,
         parent: Parent,
         replace_name: &str,
+        recheck_case: bool,
     ) -> Option<DirectoryEntry> {
         let metadata = match std::fs::symlink_metadata(path) {
             Ok(metadata) => metadata,
@@ -145,6 +146,51 @@ impl<T: Fn(InvalidatedInMemoryFile) + Sync + Send> VfsHandler for LocalFS<T> {
                 return None;
             }
         };
+        if cfg!(any(
+            target_os = "macos",
+            target_os = "windows",
+            target_os = "ios"
+        )) && recheck_case
+        {
+            // Since these systems are case insensitive we need to recheck if we match the
+            // replace_name. Otherwise we would add entries to the invalidation that are not
+            // wanted.
+            let parent = Path::new(path).parent();
+            debug_assert!(parent.is_some());
+            if let Some(path) = parent {
+                let replace_name_exists_in_dir = || {
+                    for entry in match std::fs::read_dir(path) {
+                        Ok(entries) => entries,
+                        Err(err) => {
+                            tracing::warn!(
+                                "While rechecking availability(1) of {path:?}, got {err}"
+                            );
+                            return false;
+                        }
+                    } {
+                        match entry {
+                            Ok(dir_entry) => {
+                                if dir_entry.file_name() == replace_name {
+                                    return true;
+                                }
+                            }
+                            Err(err) => {
+                                tracing::warn!(
+                                    "While rechecking availability(2) of {path:?}, got {err}"
+                                )
+                            }
+                        }
+                    }
+                    false
+                };
+                if !replace_name_exists_in_dir() {
+                    tracing::info!(
+                        "File {replace_name:?} for path {path:?} exists with difference case"
+                    );
+                    return None;
+                }
+            }
+        }
         let resolved = if metadata.is_dir() {
             self.watch(path);
             ResolvedFileType::Directory

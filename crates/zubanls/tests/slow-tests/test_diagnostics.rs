@@ -667,9 +667,13 @@ fn rename_imported_file_multiple_times_including_case_change() {
     server.rename_file_and_wait("tst/a.py", "tst/A.py");
     assert_eq!(check(), missing_a, "after a -> A");
 
-    tracing::info!("A -> anon");
-    server.rename_file_and_wait("tst/A.py", "tst/anon.py");
-    assert_eq!(check(), missing_a, "after A -> anon");
+    tracing::info!("A -> a");
+    server.rename_file_and_wait("tst/A.py", "tst/a.py");
+    assert_eq!(check(), revealed, "after A -> a");
+
+    tracing::info!("a -> anon");
+    server.rename_file_and_wait("tst/a.py", "tst/anon.py");
+    assert_eq!(check(), missing_a, "after a -> anon");
 
     tracing::info!("anon -> a");
     server.rename_file_and_wait("tst/anon.py", "tst/a.py");

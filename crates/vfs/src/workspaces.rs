@@ -264,11 +264,15 @@ impl Workspaces {
     ) -> Option<DirectoryEntry> {
         for workspace in self.items.load().iter() {
             if workspace.kind == WorkspaceKind::Fallback {
-                let dir_entry = vfs.read_and_watch_entry(
+                tracing::debug!("Try to ensure fallback for {path:?}");
+                let dir_entry = vfs.read_and_watch_entry_for_invalidation(
                     &*self.items.load(),
+                    // We want this to not be case sensitive, this is a fallback and should
+                    // be read if possible.
                     &path.path,
                     Parent::Workspace(Arc::downgrade(workspace)),
                     &path.path,
+                    false,
                 )?;
                 // We just use the full entry as a name, this is not supposed to be looked up by
                 // anything. It's just a fallback so we have a node to store the entry.
