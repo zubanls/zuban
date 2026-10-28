@@ -771,6 +771,21 @@ class C:
 assert_type(C.p, PropertyLike)
 assert_type(C().p, int)
 
+[case protocol_overloading_matching2]
+# From GH #373, part2
+from typing import Protocol, Self, overload
+
+class PropertyLike(Protocol):
+    @overload
+    def __get__[T](self, owner: type[T]) -> Self:
+        ...
+
+    @overload
+    def __get__(self): ...
+
+    def __get__[T](self, owner: type[T]):  # E: Overloaded function implementation does not accept all possible parameters of signature 2
+        return self
+
 [case callable_protocol_dunder_add_is_callable]
 # From GH #375
 from typing import Any, Protocol, type_check_only
