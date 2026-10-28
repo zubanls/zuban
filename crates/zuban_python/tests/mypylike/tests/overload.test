@@ -1530,3 +1530,16 @@ def check(pat1: Pattern[str]) -> None:
     pat2 = re.compile("x")
     ret2 = pat2.match()  # type: ignore
     assert_type(ret1, list[str] | None)
+
+[case invalid_overload_definitions_no_crash]
+# From GH #574
+class C:
+    @property
+    def f(self):
+        pass
+
+    f: int  # type: ignore
+
+    @f  # E: Only supported top decorators are "@f.setter" and "@f.deleter"
+    def f(self):
+        pass
