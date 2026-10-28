@@ -22,9 +22,6 @@ jobs:
           - macos-latest
           - ubuntu-24.04
           - windows-2022
-        exclude:
-          # Avoid Mac here for now, because the CI is costly (10x of linux)
-          - os: ${{ !inputs.all_tests && 'macos-latest' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:

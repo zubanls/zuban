@@ -716,11 +716,12 @@ impl<F: VfsFile> Vfs<F> {
                     );
                     return;
                 }
-                let new_entry = self.handler.read_and_watch_entry(
+                let new_entry = self.handler.read_and_watch_entry_for_invalidation(
                     &*self.workspaces.items.load(),
                     path,
                     parent.clone(),
                     replace_name,
+                    true,
                 );
                 match new_entry {
                     Some(new_entry) => {
