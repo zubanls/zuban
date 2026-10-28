@@ -1815,7 +1815,7 @@ impl NodeRef<'_> {
         {
             debug!("Replace type vars because of invalid defaults");
             // The type var defaults might have invalid cycles. In that case we have to replace the
-            // type vars again with the correct type vars.
+            // type vars again with the corrected type vars.
             self.insert_complex(ComplexPoint::TypeVarLikes(new), Locality::Todo);
         }
     }

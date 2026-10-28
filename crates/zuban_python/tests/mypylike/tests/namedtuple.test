@@ -253,3 +253,10 @@ from collections import namedtuple
 
 NamedTuple[1]  # E: Type application is only supported for generic classes
 namedtuple[1]  # E: Type application is only supported for generic classes
+
+[case no_crash_with_recursive_named_tuple]
+from typing import NamedTuple, Hashable
+
+class C(NamedTuple):
+  some_node: Hashable
+  children: tuple['C', ...]
