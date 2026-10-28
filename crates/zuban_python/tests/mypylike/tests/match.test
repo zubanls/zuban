@@ -543,3 +543,43 @@ def f(x: int | tuple[int, int] | None) -> float | None:
             return bits / 8.0 / seconds
         case _:
             assert_never(x)
+
+[case dataclass_match_args]
+# Copied from conformance tests (dataclasses_match_args.py), slightly modified
+from dataclasses import dataclass, KW_ONLY
+from typing import assert_type, Literal, Any
+
+kwargs: dict[str, Any] = dict()
+
+@dataclass(match_args=True)
+class DC1:
+    x: int
+    _: KW_ONLY
+    y: str
+assert_type(DC1.__match_args__, tuple[Literal['x']])
+assert_type(DC1(**kwargs).__match_args__, tuple[Literal['x']])
+
+@dataclass
+class DC2:
+    x: int
+assert_type(DC2.__match_args__, tuple[Literal['x']])
+assert_type(DC2(**kwargs).__match_args__, tuple[Literal['x']])
+
+@dataclass(match_args=True, init=False)
+class DC3:
+    x: int = 0
+assert_type(DC3.__match_args__, tuple[Literal['x']])
+assert_type(DC3(**kwargs).__match_args__, tuple[Literal['x']])
+
+@dataclass(match_args=False)
+class DC4:
+    x: int
+DC4.__match_args__  # E: "type[DC4]" has no attribute "__match_args__"
+DC4(**kwargs).__match_args__  # E: "DC4" has no attribute "__match_args__"
+
+@dataclass(match_args=True)
+class DC5:
+    __match_args__ = ()
+    x: int
+assert_type(DC5.__match_args__, tuple[()])
+assert_type(DC5(**kwargs).__match_args__, tuple[()])

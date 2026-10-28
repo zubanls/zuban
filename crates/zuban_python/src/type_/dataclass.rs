@@ -1109,17 +1109,24 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             LookupResult::UnknownName(Inferred::new_none()),
             AttributeKind::Attribute,
         );
-    } else if name == "__match_args__" && dataclass.options.match_args {
-        let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
-        LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
     } else {
-        dataclass.class(i_s.db).lookup(
-            i_s,
-            name,
-            ClassLookupOptions::new(&add_issue)
-                .with_kind(kind)
-                .with_as_type_type(&|| Type::Type(in_type.clone())),
-        )
+        dataclass
+            .class(i_s.db)
+            .lookup(
+                i_s,
+                name,
+                ClassLookupOptions::new(&add_issue)
+                    .with_kind(kind)
+                    .with_as_type_type(&|| Type::Type(in_type.clone())),
+            )
+            .or_else(|| {
+                if name == "__match_args__" && dataclass.options.match_args {
+                    let (lookup, attr_kind) = dunder_match_args_tuple(dataclass.clone(), i_s);
+                    LookupDetails::new(Type::Dataclass(dataclass.clone()), lookup, attr_kind)
+                } else {
+                    LookupDetails::none()
+                }
+            })
     }
 }
 
