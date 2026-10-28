@@ -2986,3 +2986,13 @@ reveal_type(i1)  # N: Revealed type is "__main__.OrderedItemsView@8"
 # TODO it feels like we don't want to leak the type vars here.
 reveal_type(iter(i1))  # N: Revealed type is "typing.Iterator[K]"
 reveal_type(iter(i2))  # N: Revealed type is "typing.Iterator[K]"
+
+[case classes_type_var_as_protocol_with_recursive_type_matching]
+# From GH #582
+from typing import Protocol
+
+class P(Protocol):
+    a: int
+
+class C[T: P = C]:  # E: TypeVar default must be a subtype of the bound type
+    pass

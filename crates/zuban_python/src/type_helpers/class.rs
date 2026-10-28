@@ -313,6 +313,14 @@ impl<'db: 'a, 'a> Class<'a> {
         matcher: &mut Matcher,
         other: &Type,
     ) -> Match {
+        if other.is_calculating(i_s.db) {
+            // Recursive types might not be ready yet while calculating the classes, see also
+            // no_crash_with_recursive_named_tuple
+            debug!(
+                "Abort protocol matching against calculating recursive type, returning Match::false"
+            );
+            return Match::new_false();
+        }
         // Since protocols can cause access of narrowing information, we should make sure that
         // there is no narrowing information from potentially other files. Also the frames might be
         // borrowed, so avoid that scenario.
