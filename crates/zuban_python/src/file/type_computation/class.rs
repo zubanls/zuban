@@ -654,7 +654,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 if base.is_direct_base
                     && let Type::Class(c) = &mut base.type_
                 {
-                    let base_class = c.class(db);
+                    let base_class = c.node_ref(db);
                     let base_type_vars = base_class.type_vars(i_s);
                     if base_type_vars.has_from_untyped_params() {
                         self.type_vars_node_ref().insert_complex(
@@ -2111,8 +2111,12 @@ pub fn linearize_mro_and_return_linearizable(
         .map(|t| {
             let mut additional_type = None;
             let super_classes = if let Some(cls) = base_class(db, t) {
-                if matches!(t, Type::Tuple(_) | Type::NamedTuple(_)) {
-                    additional_type = Some(cls.as_type(db));
+                match t {
+                    Type::Tuple(tup) => additional_type = Some(tup.class(db).as_type(db)),
+                    Type::NamedTuple(nt) => {
+                        additional_type = Some(nt.as_tuple_ref().class(db).as_type(db))
+                    }
+                    _ => (),
                 }
                 let cached_class_infos = cls.use_cached_class_infos(db);
                 cached_class_infos.mro.as_ref()
@@ -2210,12 +2214,11 @@ pub fn linearize_mro_and_return_linearizable(
     (mro.into_boxed_slice(), linearizable)
 }
 
-fn base_class<'x>(db: &'x Database, t: &'x Type) -> Option<Class<'x>> {
+fn base_class<'x>(db: &'x Database, t: &'x Type) -> Option<ClassNodeRef<'x>> {
     Some(match &t {
-        Type::Class(c) => c.class(db),
-        Type::Dataclass(d) => d.class.class(db),
-        Type::Tuple(tup) => tup.class(db),
-        Type::NamedTuple(nt) => nt.as_tuple_ref().class(db),
+        Type::Class(c) => c.node_ref(db),
+        Type::Dataclass(d) => d.class.node_ref(db),
+        Type::Tuple(_) | Type::NamedTuple(_) => db.python_state.tuple_node_ref(),
         _ => return None,
     })
 }
