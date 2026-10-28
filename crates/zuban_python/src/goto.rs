@@ -288,7 +288,8 @@ impl<'db, T> PositionalDocument<'db, T> {
                 )
             {
                 let n = Function::new_with_unknown_parent(self.db, saved)
-                    .original_func_for_overload()?;
+                    .original_func_for_overload()?
+                    .0;
                 return n.maybe_inferred(i_s);
             }
             result
