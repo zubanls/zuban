@@ -1530,3 +1530,122 @@ def check(pat1: Pattern[str]) -> None:
     pat2 = re.compile("x")
     ret2 = pat2.match()  # type: ignore
     assert_type(ret1, list[str] | None)
+
+[case overloaded_method_alias_on_instance]
+from typing import overload
+
+class Base:
+    @overload
+    def original(self, value: int) -> int: ...
+    @overload
+    def original(self, value: str) -> str: ...
+    def original(self, value: int | str) -> int | str:
+        return value
+
+class Derived(Base):
+    alias = Base.original
+
+reveal_type(Derived().alias(1))  # N: Revealed type is "int"
+reveal_type(Derived().alias("value"))  # N: Revealed type is "str"
+reveal_type(Derived.alias(Derived(), 1))  # N: Revealed type is "int"
+
+[case overloaded_method_alias_filters_receiver]
+# flags: --python-version 3.12
+from typing import overload
+
+class Box[T]:
+    @overload
+    def original(self: Box[int], value: int) -> int: ...
+    @overload
+    def original(self: Box[str], value: str) -> str: ...
+    def original(self, value: int | str) -> int | str:
+        return value
+    alias = original
+
+reveal_type(Box[int]().alias(1))  # N: Revealed type is "int"
+reveal_type(Box[str]().alias("value"))  # N: Revealed type is "str"
+Box[int]().alias("wrong")  # E: Argument 1 to "original" of "Box" has incompatible type "str"; expected "int"
+
+[case generic_overloaded_method_alias_on_instance]
+# flags: --python-version 3.12
+from collections.abc import Callable
+from typing import overload
+
+class Base:
+    @overload
+    def original[T](self, cls: type[T]) -> T: ...
+    @overload
+    def original[T](self, cls: Callable[..., T]) -> T: ...
+    def original(self, cls: Callable[..., object]) -> object:
+        return cls()
+
+class Derived(Base):
+    alias = Base.original
+
+reveal_type(Derived().alias(int))  # N: Revealed type is "int"
+reveal_type(Derived().alias(str))  # N: Revealed type is "str"
+reveal_type(Derived.alias(Derived(), int))  # N: Revealed type is "int"
+
+bound = Derived().alias
+reveal_type(bound(int))  # N: Revealed type is "int"
+def make_string() -> str:
+    return "value"
+reveal_type(bound(make_string))  # N: Revealed type is "str"
+
+[case overloaded_method_alias_preserves_self_and_keywords]
+from typing import Self, overload
+
+class Base:
+    @overload
+    def original(self, value: int, *, copy: bool = False) -> Self: ...
+    @overload
+    def original(self, value: str, *, copy: bool = False) -> str: ...
+    def original(self, value: int | str, *, copy: bool = False) -> Self | str:
+        return self if isinstance(value, int) else value
+
+class Derived(Base):
+    alias = Base.original
+
+reveal_type(Derived().alias(1, copy=True))  # N: Revealed type is "__main__.Derived"
+reveal_type(Derived().alias("value"))  # N: Revealed type is "str"
+
+[case overloaded_evaluated_classmethod_alias]
+from typing import overload
+
+class Base:
+    @overload
+    @classmethod
+    def original(cls, value: int) -> int: ...
+    @overload
+    @classmethod
+    def original(cls, value: str) -> str: ...
+    @classmethod
+    def original(cls, value: int | str) -> int | str:
+        return value
+
+class Derived(Base):
+    alias = Base.original
+
+reveal_type(Derived().alias(1))  # N: Revealed type is "int"
+reveal_type(Derived.alias("value"))  # N: Revealed type is "str"
+
+[case overloaded_staticmethod_alias]
+from typing import overload
+
+class Base:
+    @overload
+    @staticmethod
+    def original(value: int) -> int: ...
+    @overload
+    @staticmethod
+    def original(value: str) -> str: ...
+    @staticmethod
+    def original(value: int | str) -> int | str:
+        return value
+    alias = original
+
+class Derived(Base):
+    pass
+
+reveal_type(Derived().alias(1))  # N: Revealed type is "int"
+reveal_type(Derived().alias("value"))  # N: Revealed type is "str"

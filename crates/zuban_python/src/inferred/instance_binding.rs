@@ -612,6 +612,53 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
             }
+            Type::FunctionOverload(overload) => {
+                let first = overload.iter_functions().next().unwrap();
+                if matches!(first.kind, FunctionKind::Function { .. })
+                    && (!i_s.db.mypy_compatible()
+                        && first.params.maybe_param_spec().is_none()
+                        && attribute_class.maybe_dataclass(i_s.db).is_none()
+                        || !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod))
+                {
+                    let bound: Vec<_> = overload
+                        .iter_functions()
+                        .filter_map(|callable| {
+                            let first_type = callable.first_positional_type()?;
+                            let mut bound = create_signature_without_self_for_callable(
+                                i_s,
+                                for_name,
+                                callable,
+                                &instance,
+                                &attribute_class,
+                                &first_type,
+                            )?;
+                            if avoid_inferring_return_types
+                                && let Some(func) = bound.maybe_original_func_def(i_s.db)
+                                && func.return_annotation().is_none()
+                            {
+                                bound.return_type = Type::Any(AnyCause::Unannotated);
+                            }
+                            Some(Arc::new(bound))
+                        })
+                        .collect();
+                    let inferred = match bound.len() {
+                        0 => {
+                            add_invalid_self_arg(first);
+                            Inferred::new_any_from_error()
+                        }
+                        1 => Inferred::from_type(Type::Callable(bound.into_iter().next().unwrap())),
+                        _ => Inferred::from_type(Type::FunctionOverload(FunctionOverload::new(
+                            bound.into_iter().collect(),
+                        ))),
+                    };
+                    return Some(Some((
+                        inferred,
+                        AttributeKind::DefMethod {
+                            is_final: first.is_final,
+                        },
+                    )));
+                }
+            }
             Type::CustomBehavior(custom) => {
                 return Some(Some((
                     Inferred::from_type(Type::CustomBehavior(custom.bind(Arc::new(instance)))),
