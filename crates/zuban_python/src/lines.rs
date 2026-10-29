@@ -68,9 +68,7 @@ impl NewlineIndices {
             };
             let start = if line == 0 { 0 } else { lines[line - 1] };
             let mut line_code = &code[start as usize..*next_line_start as usize - 1];
-            if cfg!(windows)
-                && let Some(l) = line_code.strip_suffix('\r')
-            {
+            if let Some(l) = line_code.strip_suffix('\r') {
                 line_code = l
             }
             Ok((start, line_code))
@@ -151,9 +149,7 @@ impl NewlineIndices {
                 let Some(mut result) = code.get(previous..line_index - 1) else {
                     panic!("Wanted to access {previous}..{line_index} for code {code:?}");
                 };
-                if cfg!(windows)
-                    && let Some(l) = result.strip_suffix('\r')
-                {
+                if let Some(l) = result.strip_suffix('\r') {
                     result = l
                 }
                 previous = line_index;
@@ -296,6 +292,12 @@ mod tests {
         assert!(line_column_utf8_to_byte(code, 1, 1).is_err());
         assert_eq!(line_column_utf8_to_byte(code, 1, 2).unwrap().byte, 4);
         assert_eq!(line_column_utf8_to_byte(code, 1, 3).unwrap().byte, 4);
+    }
+
+    #[test]
+    fn test_newline_and_carriage_return_with_positions_out_of_range() {
+        assert_eq!(line_column_utf8_to_byte("a\nb", 0, 8).unwrap().byte, 1);
+        assert_eq!(line_column_utf8_to_byte("a\r\nb", 0, 8).unwrap().byte, 1);
     }
 
     #[test]
