@@ -272,55 +272,30 @@ impl<'code> PositionInfos<'code> {
 mod tests {
     use super::*;
 
+    fn line_column_utf8_to_byte(
+        code: &str,
+        line: usize,
+        column: usize,
+    ) -> anyhow::Result<BytePositionInfos> {
+        let indices = NewlineIndices::new();
+        indices.line_column_to_byte(code, InputPosition::Utf8Bytes { line, column })
+    }
+
     #[test]
     fn test_newline_indices_no_line() {
-        let indices = NewlineIndices::new();
         let code = "ä";
-        assert!(indices.lines(code).is_empty());
-        assert_eq!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 2 })
-                .unwrap()
-                .byte,
-            2
-        );
-        assert_eq!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 3 })
-                .unwrap()
-                .byte,
-            2
-        );
-        assert!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 0, column: 1 })
-                .is_err()
-        );
+        assert!(NewlineIndices::new().lines(code).is_empty());
+        assert!(line_column_utf8_to_byte(code, 0, 1).is_err());
+        assert_eq!(line_column_utf8_to_byte(code, 0, 2).unwrap().byte, 2);
+        assert_eq!(line_column_utf8_to_byte(code, 0, 3).unwrap().byte, 2);
     }
 
     #[test]
     fn test_newline_indices_without_ending_newlines() {
-        let indices = NewlineIndices::new();
         let code = "x\nä";
-        assert_eq!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 2 })
-                .unwrap()
-                .byte,
-            4
-        );
-        assert_eq!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 3 })
-                .unwrap()
-                .byte,
-            4
-        );
-        assert!(
-            indices
-                .line_column_to_byte(code, InputPosition::Utf8Bytes { line: 1, column: 1 })
-                .is_err()
-        );
+        assert!(line_column_utf8_to_byte(code, 1, 1).is_err());
+        assert_eq!(line_column_utf8_to_byte(code, 1, 2).unwrap().byte, 4);
+        assert_eq!(line_column_utf8_to_byte(code, 1, 3).unwrap().byte, 4);
     }
 
     #[test]
