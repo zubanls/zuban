@@ -298,6 +298,14 @@ mod tests {
     fn test_newline_and_carriage_return_with_positions_out_of_range() {
         assert_eq!(line_column_utf8_to_byte("a\nb", 0, 8).unwrap().byte, 1);
         assert_eq!(line_column_utf8_to_byte("a\r\nb", 0, 8).unwrap().byte, 1);
+
+        assert_eq!(line_column_utf8_to_byte("\nb", 0, 8).unwrap().byte, 0);
+        assert_eq!(line_column_utf8_to_byte("\r\nb", 0, 8).unwrap().byte, 0);
+
+        assert_eq!(line_column_utf8_to_byte("\n\n", 0, 8).unwrap().byte, 0);
+        assert_eq!(line_column_utf8_to_byte("\r\n\r\n", 0, 8).unwrap().byte, 0);
+        assert_eq!(line_column_utf8_to_byte("\nb\n", 1, 8).unwrap().byte, 2);
+        assert_eq!(line_column_utf8_to_byte("\r\nb\r\n", 1, 8).unwrap().byte, 3);
     }
 
     #[test]

@@ -29,7 +29,7 @@ __main__.py:15:infer -> m.py:2:4:m.f
 
 [case goto_with_bytes]
 import dataclasses
-#? --nth-utf8-byte 47 goto
+#? --nth-utf8-byte 53 goto
 
 dataclasses
 
