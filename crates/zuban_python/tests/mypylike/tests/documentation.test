@@ -1640,3 +1640,43 @@ __main__.py:14:documentation -> "```python\n(function) Overload(\n    def f1(a: 
 __main__.py:16:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `str`"
 __main__.py:18:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `int | str`"
 __main__.py:20:documentation -> "```python\n(function) Overload(\n    def f1(a: int) -> int\n    def f1(a: str) -> str)\n```\n---\nhelp\n\nThe overload return type is `Any`"
+
+[case variable_docstrings]
+# From GH #636
+class A:
+    var1: int
+    """help1"""
+
+var2: str
+r'''help2'''
+
+type alias = int
+'help3'
+
+#? documentation
+var2
+#? documentation
+A.var1
+#? documentation
+alias
+
+var3 = 1; var4 = 1; "help4"
+"help5"
+#? documentation
+var3
+#? documentation
+var4
+
+var6 = 1;
+"help6"
+
+#? documentation
+var6
+
+[out]
+__main__.py:13:documentation -> "```python\n(variable) var2: str\n```\n---\nhelp2"
+__main__.py:15:documentation -> "```python\n(variable) var1: int\n```\n---\nhelp1"
+__main__.py:17:documentation -> "```python\n(type alias) alias = int\n```\n---\nhelp3"
+__main__.py:22:documentation -> "```python\n(variable) var3: int\n```"
+__main__.py:24:documentation -> "```python\n(variable) var4: int\n```"
+__main__.py:30:documentation -> "```python\n(variable) var6: int\n```\n---\nhelp6"

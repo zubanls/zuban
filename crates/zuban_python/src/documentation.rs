@@ -146,7 +146,7 @@ impl<'project> Document<'project> {
             if let Name::TreeName(n) = n
                 && let Some(name_def) = n.cst_name.name_def()
             {
-                let mut format_type_docs = |docs| {
+                let mut format_type_docs = |docs, overwritten_results: &mut Vec<_>| {
                     if !only_docstrings {
                         type_formatted = match &docs {
                             TypeDocs::TypeVarLike(tvl) => {
@@ -226,21 +226,29 @@ impl<'project> Document<'project> {
 
                 match name_def.expect_type() {
                     TypeLike::Assignment(assignment) => {
+                        let cleaned = n.cst_name.clean_docstring();
+                        if !cleaned.is_empty() {
+                            overwritten_results.push(cleaned.into());
+                        }
                         if let Some(type_docs) = n
                             .file
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_assignment(assignment)
                         {
-                            return format_type_docs(type_docs);
+                            return format_type_docs(type_docs, &mut overwritten_results);
                         }
                     }
                     TypeLike::TypeAlias(type_alias) => {
+                        let cleaned = n.cst_name.clean_docstring();
+                        if !cleaned.is_empty() {
+                            overwritten_results.push(cleaned.into());
+                        }
                         if let Some(type_docs) = n
                             .file
                             .name_resolution_for_types(&InferenceState::new(db, n.file))
                             .documentation_for_type_alias(type_alias)
                         {
-                            return format_type_docs(type_docs);
+                            return format_type_docs(type_docs, &mut overwritten_results);
                         }
                     }
                     TypeLike::Function(func) => {
@@ -260,7 +268,10 @@ impl<'project> Document<'project> {
                         if let Some(ComplexPoint::TypeVarLike(tvl)) =
                             NodeRef::new(n.file, type_param.name_def().index()).maybe_complex()
                         {
-                            return format_type_docs(TypeDocs::TypeVarLike(tvl.clone()));
+                            return format_type_docs(
+                                TypeDocs::TypeVarLike(tvl.clone()),
+                                &mut overwritten_results,
+                            );
                         } else {
                             recoverable_error!("Expected a type param to have a saved TypeVarLike")
                         }

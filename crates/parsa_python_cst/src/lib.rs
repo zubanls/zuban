@@ -1006,15 +1006,43 @@ impl<'db> Name<'db> {
     pub fn clean_docstring(&self) -> Cow<'db, str> {
         let docstr = |n: &Self| {
             let name_def_ = n.name_def()?;
-            let strings_ = if let Some(func) = name_def_.maybe_name_of_func() {
-                func.docstring()
-            } else {
-                name_def_.maybe_name_of_class()?.docstring()
+            let strings_ = match name_def_.expect_type() {
+                TypeLike::Function(func) => func.docstring(),
+                TypeLike::ClassDef(class) => class.docstring(),
+                TypeLike::Assignment(assign) => maybe_docstr_strings_on_next_line(assign.node),
+                TypeLike::TypeAlias(alias) => maybe_docstr_strings_on_next_line(alias.node),
+                _ => return None,
             };
             strings_?.clean_docstring()
         };
         docstr(self).unwrap_or(Cow::Borrowed(""))
     }
+}
+
+fn maybe_docstr_strings_on_next_line(node: PyNode) -> Option<Strings> {
+    let simple_stmts_ = node.parent()?.parent()?;
+    debug_assert_eq!(simple_stmts_.type_(), Nonterminal(simple_stmts));
+    let next_stmt = simple_stmts_.parent()?.next_sibling()?;
+    if !next_stmt.is_type(Nonterminal(stmt)) {
+        return None;
+    }
+    let next_simples = next_stmt.nth_child(0);
+    if !next_simples.is_type(Nonterminal(simple_stmts)) {
+        return None;
+    }
+    let mut iterator = next_simples.iter_children();
+    let first_simple_stmt = iterator.next()?;
+    if iterator.take(3).count() > 2 {
+        return None;
+    }
+    let result = match StmtLikeContent::from_simple_stmt(first_simple_stmt) {
+        StmtLikeContent::StarExpressions(s) => s.maybe_simple_expression()?.maybe_string(),
+        _ => None,
+    };
+    if result.is_some() && simple_stmts_.iter_children().take(4).count() > 3 {
+        return None;
+    }
+    result
 }
 
 #[derive(Debug)]
