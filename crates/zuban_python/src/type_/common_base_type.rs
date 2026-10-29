@@ -373,7 +373,7 @@ fn common_base_for_callables(
     c2: &CallableContent,
     checked_recursions: CheckedTypeRecursion,
 ) -> Type {
-    if !c1.kind.is_same_base_kind(&c2.kind) {
+    if c1.receiver_bound != c2.receiver_bound || !c1.kind.is_same_base_kind(&c2.kind) {
         return i_s.db.python_state.function_type();
     }
     if let Some(params) = c1
@@ -381,6 +381,7 @@ fn common_base_for_callables(
         .common_base_type(i_s, &c2.params, Some(checked_recursions))
     {
         Type::Callable(Arc::new(CallableContent {
+            receiver_bound: c1.receiver_bound,
             name: None,
             class_name: None,
             defined_at: c1.defined_at,

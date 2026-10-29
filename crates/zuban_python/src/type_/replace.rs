@@ -136,6 +136,7 @@ impl Type {
                 let new = self.0.type_vars_for_callable(c);
                 (new != c.type_vars).then(|| {
                     Arc::new(CallableContent {
+                        receiver_bound: c.receiver_bound,
                         name: c.name.clone(),
                         class_name: c.class_name,
                         defined_at: c.defined_at,
@@ -488,6 +489,7 @@ impl CallableContent {
         }
         let (params, _) = new_param_data.unwrap_or_else(|| (self.params.clone(), None));
         Some(CallableContent {
+            receiver_bound: self.receiver_bound,
             name: self.name.clone(),
             class_name: self.class_name,
             defined_at: self.defined_at,
@@ -977,6 +979,7 @@ impl<'db, 'a> ReplaceTypeVarLikesHelper<'db, 'a> {
                 .into_owned()
         }
         Some(CallableContent {
+            receiver_bound: c.receiver_bound,
             name: c.name.clone(),
             class_name: c.class_name,
             defined_at: c.defined_at,

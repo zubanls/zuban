@@ -1082,6 +1082,7 @@ impl<'a> Matcher<'a> {
         i_s: &InferenceState,
         mut callable: CallableContent,
     ) -> CallableContent {
+        callable.receiver_bound = true;
         // Since self was removed, there is no self without annotation anymore.
         callable
             .kind

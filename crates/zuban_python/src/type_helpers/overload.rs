@@ -503,6 +503,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 Some(replace_self_type())
                             })
                             .unwrap_or(without_first_param);
+                        callable.receiver_bound = true;
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);

@@ -187,7 +187,7 @@ fn common_sub_type_for_callables(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> Arc<CallableContent> {
-    if c1.kind != c2.kind {
+    if c1.receiver_bound != c2.receiver_bound || c1.kind != c2.kind {
         debug!("TODO when a callable kind does not match should there still be a subtype?");
         return i_s.db.python_state.any_callable_from_error.clone();
     }
@@ -195,6 +195,7 @@ fn common_sub_type_for_callables(
         && let Some(params) = c1.params.common_sub_type(i_s, &c2.params)
     {
         return Arc::new(CallableContent {
+            receiver_bound: c1.receiver_bound,
             name: None,
             class_name: None,
             defined_at: c1.defined_at,

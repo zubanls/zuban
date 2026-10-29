@@ -1649,3 +1649,50 @@ class Derived(Base):
 
 reveal_type(Derived().alias(1))  # N: Revealed type is "int"
 reveal_type(Derived().alias("value"))  # N: Revealed type is "str"
+
+[case overloaded_bound_builtin_alias_on_class]
+# flags: --mode default
+class Environment:
+    concat = "".join
+
+parts: list[str] = ["a"]
+reveal_type(Environment().concat(parts))  # N: Revealed type is "str"
+reveal_type(Environment.concat(parts))  # N: Revealed type is "str"
+Environment().concat([1])  # E: Argument 1 to "join" of "str" has incompatible type "list[int]"; expected "Iterable[LiteralString]"
+
+[case overloaded_bound_user_method_alias_on_class]
+from typing import overload
+
+class Source:
+    @overload
+    def original(self, value: int) -> int: ...
+    @overload
+    def original(self, value: str) -> str: ...
+    def original(self, value: int | str) -> int | str:
+        return value
+
+class Target:
+    alias = Source().original
+
+reveal_type(Target().alias(1))  # N: Revealed type is "int"
+reveal_type(Target.alias("value"))  # N: Revealed type is "str"
+
+[case overloaded_bound_filtered_alias_on_class]
+# flags: --python-version 3.12
+from typing import overload
+
+class Box[T]:
+    @overload
+    def original(self: Box[int], value: int) -> int: ...
+    @overload
+    def original(self: Box[str], value: str) -> str: ...
+    def original(self, value: int | str) -> int | str:
+        return value
+    alias = original
+
+class Target:
+    alias = Box[int]().alias
+
+reveal_type(Target().alias(1))  # N: Revealed type is "int"
+reveal_type(Target.alias(1))  # N: Revealed type is "int"
+Target().alias("wrong")  # E: Argument 1 to "original" of "Box" has incompatible type "str"; expected "int"

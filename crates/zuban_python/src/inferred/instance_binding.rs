@@ -465,14 +465,15 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 match &c.kind {
                     FunctionKind::Function { .. }
-                        if !i_s.db.mypy_compatible()
+                        if !c.receiver_bound
+                            && (!i_s.db.mypy_compatible()
                             // ParamSpecs are bound and can only be used from self
                             && c.params.maybe_param_spec().is_none()
                             && attribute_class.maybe_dataclass(i_s.db).is_none()
-                            || !matches!(
-                                apply_descriptors_kind,
-                                ApplyDescriptorsKind::NoBoundMethod
-                            ) =>
+                                || !matches!(
+                                    apply_descriptors_kind,
+                                    ApplyDescriptorsKind::NoBoundMethod
+                                )) =>
                     {
                         debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
                         if let Some(f) = c.first_positional_type() {
@@ -623,6 +624,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     let bound: Vec<_> = overload
                         .iter_functions()
                         .filter_map(|callable| {
+                            if callable.receiver_bound {
+                                return Some(callable.clone());
+                            }
                             let first_type = callable.first_positional_type()?;
                             let mut bound = create_signature_without_self_for_callable(
                                 i_s,
