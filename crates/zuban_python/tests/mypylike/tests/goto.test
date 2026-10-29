@@ -637,13 +637,13 @@ from m import foo
 #? goto --prefer-stubs --doc-is "hello"
 foo
 from m import foo
-#? goto --doc-is "hello"
 
+#? --add-lines 1 goto --doc-is "hello"
 #? goto --prefer-stubs --follow-imports --doc-is "hello"
 foo
 from m import foo
-#? goto --follow-imports --doc-is "hello"
 
+#? --add-lines 1 goto --follow-imports --doc-is "hello"
 #? infer --prefer-stubs --doc-is "hello"
 foo
 from m import foo
@@ -660,9 +660,9 @@ def foo():
 def foo(): ...
 [out]
 __main__.py:3:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
-__main__.py:6:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
+__main__.py:8:goto -> Doc for __main__.foo did not match: "" does not contain "hello"
 __main__.py:8:goto -> Doc for m.foo matched
-__main__.py:11:goto -> Doc for m.foo matched
+__main__.py:13:goto -> Doc for m.foo matched
 __main__.py:13:infer -> Doc for m.foo matched
 __main__.py:16:infer -> Doc for m.foo matched
 

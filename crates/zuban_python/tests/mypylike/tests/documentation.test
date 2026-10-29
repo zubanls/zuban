@@ -1680,3 +1680,18 @@ __main__.py:17:documentation -> "```python\n(type alias) alias = int\n```\n---\n
 __main__.py:22:documentation -> "```python\n(variable) var3: int\n```"
 __main__.py:24:documentation -> "```python\n(variable) var4: int\n```"
 __main__.py:30:documentation -> "```python\n(variable) var6: int\n```\n---\nhelp6"
+
+[case comment_docstrings]
+var = 1
+#? documentation
+# foo
+var
+
+undefined = 1
+#? --codepoint-column 3 documentation
+# var
+undefined = 2
+
+[out]
+__main__.py:3:documentation -> No docs found
+__main__.py:8:documentation -> No docs found

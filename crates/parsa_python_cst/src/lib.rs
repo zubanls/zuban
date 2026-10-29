@@ -215,6 +215,9 @@ impl Tree {
         {
             right = n;
         }
+        if left.start() > position {
+            return (scope_for_node(left), GotoNode::None);
+        }
         // From now on left is the node we're passing.
         if left.index != right.index {
             use TerminalType::*;
