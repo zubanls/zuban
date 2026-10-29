@@ -265,10 +265,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .iter_functions()
                                     .any(|c| c.kind.had_first_self_or_class_annotation());
                                 if has_self_arguments {
-                                    let results: Vec<_> = o
-                                        .iter_functions()
-                                        .filter_map(|callable| {
-                                            match kind {
+                                    let results: Vec<_> =
+                                        o.iter_functions()
+                                            .filter_map(|callable| {
+                                                match kind {
                                                 FunctionKind::Function { .. } => {
                                                     if let Some(t) =
                                                         callable.first_positional_type()
@@ -296,9 +296,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 FunctionKind::Staticmethod
                                                 | FunctionKind::Property { .. } => unreachable!(),
                                             }
-                                            .map(Arc::new)
-                                        })
-                                        .collect();
+                                            .map(|mut callable| {
+                                                callable.receiver_bound = true;
+                                                Arc::new(callable)
+                                            })
+                                            })
+                                            .collect();
                                     match results.len() {
                                         0 => {
                                             let overload = OverloadedFunction::new(
@@ -636,6 +639,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 &attribute_class,
                                 &first_type,
                             )?;
+                            bound.receiver_bound = true;
                             if avoid_inferring_return_types
                                 && let Some(func) = bound.maybe_original_func_def(i_s.db)
                                 && func.return_annotation().is_none()
