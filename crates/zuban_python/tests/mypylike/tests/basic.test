@@ -1730,6 +1730,48 @@ open([])  # zuban: ignore[call-overload]
 __main__:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 __main__:4: note: Error code "assignment" not covered by "type: ignore[asdf]" comment
 
+[case type_ignore_on_non_first_line_of_multiline_issue]
+def f(x: int) -> None: ...
+# Issues on single tokens only respect ignores on the line of that token
+f(
+    "a"  # type: ignore[arg-type]
+)
+f(
+    "b"  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)  # type: ignore[arg-type]
+# Issues that span multiple lines respect an ignore on any of their lines
+open(
+    []  # type: ignore[call-overload]
+)
+open(
+    []
+)  # type: ignore[call-overload]
+
+[case multiple_error_codes_in_type_ignore]
+# The conventional syntax for ignoring multiple error codes on one line
+a: int = ""  # type: ignore[foo, assignment]
+b: int = ""  # type: ignore[assignment,foo]
+# The note about non-covered error codes quotes the full bracket content
+c: int = ""  # type: ignore[foo, bar] # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+             # N: Error code "assignment" not covered by "type: ignore[foo, bar]" comment
+
+[case multiple_type_ignore_comments_on_one_line]
+# Multiple ignore comments of the same kind on one line are not really defined
+# (use the comma syntax instead). Like in Mypy, the leftmost one wins and the
+# rest is treated as prose.
+a: int = ""  # type: ignore[assignment] # type: ignore[foo]
+b: int = ""  # type: ignore # type: ignore[foo]
+c: int = ""  # type: ignore[foo] # type: ignore[assignment] # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+             # N: Error code "assignment" not covered by "type: ignore[foo]" comment
+d: int = ""  # type: ignore[foo] # type: ignore # E: Incompatible types in assignment (expression has type "str", variable has type "int") \
+             # N: Error code "assignment" not covered by "type: ignore[foo]" comment
+# One "type: ignore" and one "zuban: ignore" can be combined though, see the
+# case type_ignore_multiple_ignores (GH #331)
+e: int = ""  # type: ignore[foo] # zuban: ignore[assignment]
+# Unlike in Mypy, an ignore comment after a non-ignore comment still counts,
+# also because a `#` may appear within a string on the same line
+f: int = ""  # some comment # type: ignore[assignment]
+
 [case try_except_attribute_error_non_lookups_allowed]
 # flags: --check-untyped-defs
 def union() -> int | str: ...
