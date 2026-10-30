@@ -34,6 +34,7 @@ use crate::{
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ALIAS_TYPE_CACHE_OFFSET: u32 = 1;
 
+#[derive(Debug)]
 pub enum TypeDocs<'file> {
     TypeVarLike(TypeVarLike),
     TypeAlias(&'file TypeAlias),

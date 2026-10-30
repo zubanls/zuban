@@ -1695,3 +1695,31 @@ undefined = 2
 [out]
 __main__.py:3:documentation -> No docs found
 __main__.py:8:documentation -> No docs found
+
+[case narrowed_partial_variable_docs]
+# flags: --only-language-server --mode default
+# From GH #640
+
+var = None
+var = "hoo"
+#? --codepoint-column 5 documentation
+if var:
+    pass
+#? documentation
+var
+
+var2 = 1
+var2 = None
+#? documentation
+var2
+
+var3 = list[int]
+var3 = str
+#? documentation
+var3
+
+[out]
+__main__.py:7:documentation -> "```python\n(variable) var: str\n```"
+__main__.py:10:documentation -> "```python\n(variable) var: str\n```"
+__main__.py:15:documentation -> "```python\n(variable) var2: None\n```"
+__main__.py:20:documentation -> "```python\n(variable) var3: str\n```"

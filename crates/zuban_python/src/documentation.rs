@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use parsa_python_cst::{GotoNode, TypeLike};
+use parsa_python_cst::{GotoNode, NameParent, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
@@ -141,6 +141,20 @@ impl<'project> Document<'project> {
             s
         };
 
+        let was_narrowed = resolver.infos.node.on_name().is_some_and(|name| {
+            match name.parent() {
+                NameParent::Atom(atom) => {
+                    // This feels a bit weird, but is probably a good heuristic. Atom normally
+                    // does not define types themselves, but in case of narrowing this is pretty
+                    // much always the case. For now I don't know about a better signal.
+                    NodeRef::new(resolver.infos.file, atom.index())
+                        .maybe_type()
+                        .is_some()
+                }
+                _ => false,
+            }
+        });
+
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
             if let Name::TreeName(n) = n
@@ -230,10 +244,13 @@ impl<'project> Document<'project> {
                         if !cleaned.is_empty() {
                             overwritten_results.push(cleaned.into());
                         }
-                        if let Some(type_docs) = n
-                            .file
-                            .name_resolution_for_types(&InferenceState::new(db, n.file))
-                            .documentation_for_assignment(assignment)
+                        // Narrowed assignments should not overwrite the docs, because they might
+                        // be different types now.
+                        if !was_narrowed
+                            && let Some(type_docs) = n
+                                .file
+                                .name_resolution_for_types(&InferenceState::new(db, n.file))
+                                .documentation_for_assignment(assignment)
                         {
                             return format_type_docs(type_docs, &mut overwritten_results);
                         }
