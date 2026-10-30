@@ -1713,7 +1713,9 @@ var2 = None
 #? documentation
 var2
 
+#? --codepoint-column 0 documentation
 var3 = list[int]
+#? --codepoint-column 0 documentation
 var3 = str
 #? documentation
 var3
@@ -1722,4 +1724,6 @@ var3
 __main__.py:7:documentation -> "```python\n(variable) var: str\n```"
 __main__.py:10:documentation -> "```python\n(variable) var: str\n```"
 __main__.py:15:documentation -> "```python\n(variable) var2: None\n```"
-__main__.py:20:documentation -> "```python\n(variable) var3: str\n```"
+__main__.py:18:documentation -> "```python\n(type alias) var3 = list[int]\n```"
+__main__.py:20:documentation -> "```python\n(type alias) var3 = list[int]\n```"
+__main__.py:22:documentation -> "```python\n(variable) var3: type[str]\n```"

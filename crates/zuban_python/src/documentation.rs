@@ -412,15 +412,17 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
         .into(),
         Type::Callable(c) => format_callable(c),
         Type::Type(inner) => {
-            let mut out = inner.format_short(db).into_string();
             if let Some(CallableLike::Callable(callable)) =
                 t.maybe_callable(&InferenceState::new_in_unknown_file(db))
             {
+                let mut out = inner.format_short(db).into_string();
                 let formatted = format_callable(&callable);
                 out += "(";
                 out += formatted.split_once('(').unwrap().1;
+                out.into_boxed_str()
+            } else {
+                t.format_short(db)
             }
-            out.into_boxed_str()
         }
         Type::Module(m) => {
             let mut s = db.loaded_python_file(*m).qualified_name(db);
