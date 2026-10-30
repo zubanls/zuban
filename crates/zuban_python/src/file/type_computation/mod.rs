@@ -2146,6 +2146,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 } else if let Some(default) = type_var.default(db) {
                                     resolve_default(generics, Generic::TypeArg(default.clone()))
                                 } else {
+                                    debug!("Backward search for type arg unsuccessful");
                                     break 'outer;
                                 }
                             }
@@ -2165,6 +2166,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         )),
                                     )
                                 } else {
+                                    debug!("Backward search for ParamSpec unsuccessful");
                                     break 'outer;
                                 }
                             }
