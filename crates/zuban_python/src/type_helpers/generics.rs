@@ -98,10 +98,7 @@ impl<'a> Generics<'a> {
                 if let Some(g) = list.nth(n.into()) {
                     replace_class_vars!(db, g, type_var_generics)
                 } else {
-                    unreachable!(
-                        "Generic list {list:?} given, but item {:?} was requested",
-                        n
-                    );
+                    unreachable!("Generic list {list:?} given, but item {n:?} was requested");
                 }
             }
             Self::NotDefinedYet { class_ref } => {
@@ -113,7 +110,7 @@ impl<'a> Generics<'a> {
                     .as_type_var_like_usage(n.into(), class_ref.as_link())
                     .into_generic_item(),
             ),
-            Self::None => unreachable!("No generics given, but {:?} was requested", n),
+            Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
     }
 

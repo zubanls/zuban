@@ -2227,7 +2227,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mismatch = if has_type_var_tuple {
             given < expected - default_count
         } else if default_count > 0 {
-            expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
+            expected_minimum = Some(expected - default_count);
             !((expected - default_count) <= given && given <= expected)
         } else {
             given != expected
