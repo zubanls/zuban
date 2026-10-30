@@ -87,6 +87,20 @@ impl Type {
             }
             (Type::Callable(c1), Type::Callable(c2)) => c1.overlaps(i_s, matcher, c2),
             (Type::Tuple(t1), Type::Tuple(t2)) => t1.args.overlaps(i_s, matcher, &t2.args),
+            (Type::NamedTuple(t1), Type::NamedTuple(t2)) => {
+                t1.as_tuple()
+                    .args
+                    .overlaps(i_s, matcher, &t2.as_tuple().args)
+            }
+            (Type::NamedTuple(nt), Type::Tuple(tup)) | (Type::Tuple(tup), Type::NamedTuple(nt)) => {
+                nt.as_tuple().args.overlaps(i_s, matcher, &tup.args)
+            }
+            (t_tup @ Type::Tuple(_), Type::Class(cls))
+            | (Type::Class(cls), t_tup @ Type::Tuple(_))
+                if let Some(nt) = cls.class(i_s.db).maybe_named_tuple_base(i_s.db) =>
+            {
+                t_tup.overlaps(i_s, matcher, &Type::NamedTuple(nt))
+            }
             _ => {
                 self.is_sub_type_of(i_s, matcher, other).bool()
                     || self.is_super_type_of(i_s, matcher, other).bool()
