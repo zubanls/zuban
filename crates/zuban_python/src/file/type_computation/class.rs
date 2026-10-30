@@ -1613,6 +1613,10 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         class_kind: &ClassKind,
         mro: &[BaseClass],
     ) -> Box<[PointLink]> {
+        if matches!(class_kind, ClassKind::TypedDict) {
+            return Default::default();
+        }
+
         let mut result = vec![];
         for &n in self.class_storage.abstract_attributes.iter() {
             result.push(PointLink::new(self.node_ref.file_index(), n))
@@ -1629,17 +1633,18 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             {
                 for (i, base) in mro.iter().enumerate() {
                     if mro_index != i
-                        && let Type::Class(c) = &base.type_
+                        && let Some(class) = &base.type_.inner_generic_class_with_db(db)
                     {
-                        let class = c.class(db);
                         if let Some(node_index) =
                             class.class_storage.class_symbol_table.lookup_symbol(name)
-                            && !class
+                        {
+                            if !class
                                 .class_storage
                                 .abstract_attributes
                                 .contains(&node_index)
-                        {
-                            return;
+                            {
+                                return;
+                            }
                         }
                     }
                 }
@@ -1647,8 +1652,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
             }
         };
         for (i, base) in mro.iter().enumerate() {
-            if let Type::Class(c) = &base.type_ {
-                let class = c.class(db);
+            if let Some(class) = &base.type_.inner_generic_class_with_db(db) {
                 let class_infos = class.use_cached_class_infos(db);
                 if base.is_direct_base {
                     for &link in class_infos.abstract_attributes.iter() {
@@ -1660,7 +1664,8 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                             if !protocol_member.is_abstract {
                                 continue;
                             }
-                            let link = PointLink::new(c.link.file, protocol_member.name_index);
+                            let link =
+                                PointLink::new(class.file.file_index, protocol_member.name_index);
                             let name = class
                                 .node_ref
                                 .file
