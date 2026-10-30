@@ -45,3 +45,17 @@ class C2(Sequence, NamedTuple):  # E: NamedTuple should be a single base \
                                  # E: Cannot determine consistent method resolution order (MRO) for "C2"
     def m(self):
         pass
+
+[case no_crash_on_weird_type_var_tuple_param_spec_combination]
+# From GH #645
+from collections.abc import Callable
+
+class C[*Ts, **P, T]:
+    fn: Callable[P, None]
+
+x: C[None, [None], *NotImplemented]  # zuban: ignore
+x.fn
+y: C[None, [None], int]
+y.fn
+z: C[None, *tuple[int, str]]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "*tuple[int, str]"
+z.fn
