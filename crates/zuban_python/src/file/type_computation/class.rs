@@ -2203,6 +2203,7 @@ pub fn linearize_mro_and_return_linearizable(
                     type_.t.format_short(db)
                 );
                 linearizable = false;
+                allowed_to_use += 1;
                 // Here we know that we have issues and only add the type if it's not already
                 // there.
                 if mro.iter().any(|b| &b.type_ == type_.t.as_ref()) {

@@ -27,3 +27,21 @@ class C:
 class C[**T]:
     def __class_getitem__(cls, *args: T.args):  # E: ParamSpec must have "*args" typed as "T.args" and "**kwargs" typed as "T.kwargs"
         pass
+
+[case no_crash_on_named_tuple_base_class]
+# From GH #644
+from typing import NamedTuple, Sequence
+
+def f():
+    pass
+
+class C(Sequence, NamedTuple, f):  # E: NamedTuple should be a single base \
+                                   # E: Invalid base class "f" \
+                                   # E: Cannot determine consistent method resolution order (MRO) for "C"
+    def m(self):
+        pass
+
+class C2(Sequence, NamedTuple):  # E: NamedTuple should be a single base \
+                                 # E: Cannot determine consistent method resolution order (MRO) for "C2"
+    def m(self):
+        pass
