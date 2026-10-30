@@ -18,6 +18,9 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let document = self.positional_document(position)?;
+        if document.position.column_out_of_bounds {
+            return Ok(None);
+        }
         let _indent = debug_indent();
         Ok(with_i_s_non_self(
             document.db,

@@ -1727,3 +1727,20 @@ __main__.py:15:documentation -> "```python\n(variable) var2: None\n```"
 __main__.py:18:documentation -> "```python\n(type alias) var3 = list[int]\n```"
 __main__.py:20:documentation -> "```python\n(type alias) var3 = list[int]\n```"
 __main__.py:22:documentation -> "```python\n(variable) var3: type[str]\n```"
+
+[case docs_on_variable_out_of_range]
+var = 1
+
+#? --add-lines 1 --codepoint-column 3 documentation
+#? --codepoint-column 4 documentation
+var
+
+#? --codepoint-column 1000 documentation
+var
+
+#? documentation
+[out]
+__main__.py:5:documentation -> "```python\n(variable) var: int\n```"
+__main__.py:5:documentation -> No docs found
+__main__.py:8:documentation -> No docs found
+__main__.py:11:documentation -> No docs found

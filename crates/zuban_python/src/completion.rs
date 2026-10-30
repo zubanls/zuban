@@ -61,6 +61,7 @@ impl<'db> PositionalDocument<'db, CompletionInfo<'db>> {
                 cursor_position,
             }
             .fix_for_invalid_columns(),
+            position: cursor_position,
         };
         doc.ensure_scope_diagnostics();
         debug!(
