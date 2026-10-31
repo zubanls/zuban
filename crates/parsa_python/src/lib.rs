@@ -225,7 +225,7 @@ create_grammar!(
 
     class_pattern: dotted_pattern_name "(" param_patterns? ")"
     param_patterns:
-          ",".(pattern !"=")+ [",".(keyword_pattern)+] ","?
+          ",".(pattern !"=")+ ["," [",".(keyword_pattern)+ ","?]]
         | ",".(keyword_pattern)+ ","?
     keyword_pattern: Name "=" pattern
     dotted_pattern_name: [dotted_pattern_name "."] Name

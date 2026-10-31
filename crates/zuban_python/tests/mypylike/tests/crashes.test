@@ -59,3 +59,10 @@ y: C[None, [None], int]
 y.fn
 z: C[None, *tuple[int, str]]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "*tuple[int, str]"
 z.fn
+
+[case no_crash_on_match_invalid_syntax]
+# From GH #647
+match '':  # E: Invalid syntax
+    case str(Z x=0, y=0):
+        pass  # E: Invalid syntax
+pass  # E: Invalid syntax
