@@ -227,6 +227,10 @@ parametrize_snapshots!(
                 pass
             case B(a=1, b=2):
                 pass
+            case B(1, b=2,):
+                pass
+            case B(1,):
+                pass
         ");
     match_negative_number: dedent(r#"
         match a:
