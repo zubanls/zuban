@@ -2480,15 +2480,15 @@ impl<'a> TypeOrClass<'a> {
     #[inline]
     pub fn maybe_class(&self) -> Option<Class<'a>> {
         match self {
-            TypeOrClass::Class(c) => Some(*c),
-            TypeOrClass::Type(_) => None,
+            Self::Class(c) => Some(*c),
+            Self::Type(_) => None,
         }
     }
 
     pub fn as_base_class<'x>(&'x self, db: &'x Database, cls: &Class<'x>) -> Option<Class<'x>> {
         match self {
-            TypeOrClass::Class(c) => Some(*c),
-            TypeOrClass::Type(t) => match t.as_ref() {
+            Self::Class(c) => Some(*c),
+            Self::Type(t) => match t.as_ref() {
                 Type::Dataclass(d) => Some(d.as_base_class(db, cls.generics)),
                 _ => None,
             },
@@ -2496,11 +2496,11 @@ impl<'a> TypeOrClass<'a> {
     }
 
     pub fn is_object(&self, db: &Database) -> bool {
-        matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.object_node_ref())
+        matches!(self, Self::Class(c) if c.node_ref == db.python_state.object_node_ref())
     }
 
     pub fn is_bare_type(&self, db: &Database) -> bool {
-        matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.bare_type_node_ref())
+        matches!(self, Self::Class(c) if c.node_ref == db.python_state.bare_type_node_ref())
     }
 
     pub fn is_frozen_dataclass(&self) -> bool {
@@ -2514,33 +2514,33 @@ impl<'a> TypeOrClass<'a> {
     }
     pub fn originates_in_builtins_or_typing(&self, db: &Database) -> bool {
         match self {
-            TypeOrClass::Class(c) => {
+            Self::Class(c) => {
                 let class_file_index = c.node_ref.file_index();
                 class_file_index == db.python_state.builtins().file_index
                     || c.node_ref.file_index() == db.python_state.typing().file_index
             }
-            TypeOrClass::Type(_) => true,
+            Self::Type(_) => true,
         }
     }
 
     pub fn as_type(&self, db: &Database) -> Type {
         match self {
-            TypeOrClass::Class(c) => c.as_type(db),
-            TypeOrClass::Type(t) => t.clone().into_owned(),
+            Self::Class(c) => c.as_type(db),
+            Self::Type(t) => t.clone().into_owned(),
         }
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
         match self {
-            TypeOrClass::Class(c) => c.is_protocol(db),
-            TypeOrClass::Type(_) => false,
+            Self::Class(c) => c.is_protocol(db),
+            Self::Type(_) => false,
         }
     }
 
     pub fn defined_at(&self) -> Option<PointLink> {
         Some(match self {
-            TypeOrClass::Class(c) => c.node_ref.as_link(),
-            TypeOrClass::Type(t) => match t.as_ref() {
+            Self::Class(c) => c.node_ref.as_link(),
+            Self::Type(t) => match t.as_ref() {
                 Type::Dataclass(dc) => dc.class.link,
                 Type::TypedDict(td) => td.defined_at,
                 Type::Enum(enum_) => enum_.defined_at,
