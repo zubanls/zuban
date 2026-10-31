@@ -241,7 +241,7 @@ impl<'file> Slices<'file> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum SliceOrSimple<'file> {
     Simple(Simple<'file>),
     Slice(Slice<'file>),

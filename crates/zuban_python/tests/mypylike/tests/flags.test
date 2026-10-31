@@ -160,6 +160,19 @@ def generate_arg(value: U):
     if isinstance(value, MutableMapping) and value.get("class") in ("File",):  # E: Non-overlapping container check (element type: "MutableMapping[str, U] | None", container item type: "str")
         pass
 
+[case strict_equality_for_named_tuples]
+# flags: --strict-equality
+# From GH #642
+from typing import NamedTuple
+
+class Info(NamedTuple):
+  a: int
+  b: int | None
+
+def f(i: Info) -> None:
+  assert i == (0, None)
+  assert i == (0, 1)
+
 [case files_in_mypy_ini]
 [file a.py]
 1()  # E: "int" not callable

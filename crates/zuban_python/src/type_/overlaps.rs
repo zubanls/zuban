@@ -41,89 +41,71 @@ impl Type {
         // In mypy this is called `is_overlapping_types` and it basically ignores variance and a
         // lot of other concepts to tell use whether two types have any relationship at all.
         // e.g. list[A | B] and list[B | C] overlap.
-        match self {
-            Type::Union(union) => {
-                return union.iter().any(|t| t.overlaps(i_s, matcher, other));
+        match (self, other) {
+            (Type::Union(union), _) => union.iter().any(|t| t.overlaps(i_s, matcher, other)),
+            (Type::Intersection(intersection1), _) => intersection1
+                .iter_entries()
+                .any(|t| t.overlaps(i_s, matcher, other)),
+            (_, Type::Union(union_type2)) => {
+                union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
             }
-            Type::Intersection(intersection1) => {
-                return intersection1
-                    .iter_entries()
-                    .any(|t| t.overlaps(i_s, matcher, other));
+            (_, Type::Intersection(intersection2)) => intersection2
+                .iter_entries()
+                .any(|t| self.overlaps(i_s, matcher, t)),
+            (Type::Any(_), _) | (_, Type::Any(_)) => return true,
+            (Type::TypeVar(tv), other_t) | (other_t, Type::TypeVar(tv))
+                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) =>
+            {
+                b.overlaps(i_s, matcher, other_t)
             }
-            _ => (),
+            (Type::Self_, other_t) | (other_t, Type::Self_)
+                if let Some(self_t) = i_s.current_type() =>
+            {
+                other_t.overlaps_internal(i_s, matcher, &self_t)
+            }
+            (Type::Class(c1), Type::Class(c2))
+                if let Some(result) =
+                    overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db)) =>
+            {
+                result
+            }
+            (t, t_td @ Type::TypedDict(td)) | (t_td @ Type::TypedDict(td), t)
+                if td.overlaps(i_s, matcher, t_td, t) =>
+            {
+                true
+            }
+            (Type::Literal(literal1), Type::Literal(literal2)) => {
+                literal1.value(i_s.db) == literal2.value(i_s.db)
+            }
+            (Type::Literal(literal), t) | (t, Type::Literal(literal)) => {
+                t.overlaps(i_s, matcher, &literal.fallback_type(i_s.db))
+            }
+            (Type::Type(type_t), other_t) | (other_t, Type::Type(type_t))
+                if type_t.overlaps_type_of_type_against_other(i_s, matcher, other_t) =>
+            {
+                true
+            }
+            (Type::Callable(c1), Type::Callable(c2)) => c1.overlaps(i_s, matcher, c2),
+            (Type::Tuple(t1), Type::Tuple(t2)) => t1.args.overlaps(i_s, matcher, &t2.args),
+            (Type::NamedTuple(t1), Type::NamedTuple(t2)) => {
+                t1.as_tuple()
+                    .args
+                    .overlaps(i_s, matcher, &t2.as_tuple().args)
+            }
+            (Type::NamedTuple(nt), Type::Tuple(tup)) | (Type::Tuple(tup), Type::NamedTuple(nt)) => {
+                nt.as_tuple().args.overlaps(i_s, matcher, &tup.args)
+            }
+            (t_tup @ Type::Tuple(_), Type::Class(cls))
+            | (Type::Class(cls), t_tup @ Type::Tuple(_))
+                if let Some(nt) = cls.class(i_s.db).maybe_named_tuple_base(i_s.db) =>
+            {
+                t_tup.overlaps(i_s, matcher, &Type::NamedTuple(nt))
+            }
+            _ => {
+                self.is_sub_type_of(i_s, matcher, other).bool()
+                    || self.is_super_type_of(i_s, matcher, other).bool()
+            }
         }
-
-        match other {
-            Type::Union(union_type2) => {
-                return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t));
-            }
-            Type::Intersection(intersection2) => {
-                return intersection2
-                    .iter_entries()
-                    .any(|t| self.overlaps(i_s, matcher, t));
-            }
-            Type::Any(_) => return true, // This is a fallback
-            Type::TypedDict(td) if td.overlaps(i_s, matcher, other, self) => return true,
-            Type::Literal(literal2) => {
-                return match self {
-                    Type::Literal(literal1) => literal1.value(i_s.db) == literal2.value(i_s.db),
-                    _ => self.overlaps(i_s, matcher, &literal2.fallback_type(i_s.db)),
-                };
-            }
-            Type::TypeVar(tv) => {
-                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
-                    return self.overlaps(i_s, matcher, b);
-                }
-            }
-            Type::Type(t2) if t2.overlaps_type_of_type_against_other(i_s, matcher, self) => {
-                return true;
-            }
-            Type::Self_ => {
-                if let Some(t) = i_s.current_type() {
-                    return self.overlaps_internal(i_s, matcher, &t);
-                }
-            }
-            _ => (),
-        }
-
-        match self {
-            Type::Class(c1) => {
-                if let Type::Class(c2) = other
-                    && let Some(result) =
-                        overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
-                {
-                    return result;
-                }
-            }
-            Type::Type(t1) => return t1.overlaps_type_of_type_against_other(i_s, matcher, other),
-            Type::Callable(c1) => {
-                if let Type::Callable(c2) = other {
-                    return c1.overlaps(i_s, matcher, c2);
-                }
-            }
-            Type::Literal(literal1) => {
-                return literal1.fallback_type(i_s.db).overlaps(i_s, matcher, other);
-            }
-            Type::Tuple(t1) => {
-                if let Type::Tuple(t2) = other {
-                    return t1.args.overlaps(i_s, matcher, &t2.args);
-                }
-            }
-            Type::TypeVar(tv) => {
-                if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) {
-                    return b.overlaps(i_s, matcher, other);
-                }
-            }
-            Type::TypedDict(td) => return td.overlaps(i_s, matcher, self, other),
-            Type::Self_ => {
-                if let Some(t) = i_s.current_type() {
-                    return t.overlaps_internal(i_s, matcher, other);
-                }
-            }
-            _ => (),
-        };
-        self.is_sub_type_of(i_s, matcher, other).bool()
-            || self.is_super_type_of(i_s, matcher, other).bool()
     }
 
     fn overlaps_type_of_type_against_other(

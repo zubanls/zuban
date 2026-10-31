@@ -2242,7 +2242,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     return Some(named_tuple.clone());
                 }
             }
-            unreachable!()
+            recoverable_error!(
+                "Did not find a NamedTuple for class {} even though the kind was NamedTuple",
+                self.qualified_name(db),
+            )
         }
         None
     }

@@ -31,6 +31,7 @@ impl<'db> PositionalDocument<'db, SignatureInfo<'db>> {
             file,
             scope,
             node: SignatureInfo { base, args },
+            position: cursor_position,
         };
         doc.ensure_scope_diagnostics();
         debug!(

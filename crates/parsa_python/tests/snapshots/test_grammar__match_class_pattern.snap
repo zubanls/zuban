@@ -1,12 +1,11 @@
 ---
 source: crates/parsa_python/tests/test_grammar.rs
-assertion_line: 43
-expression: tree_to_string(tree)
-snapshot_kind: text
+assertion_line: 57
+expression: tree_to_string(& tree)
 ---
-file: 0-136
- stmt: 1-136
-  match_stmt: 1-136
+file: 0-199
+ stmt: 1-199
+  match_stmt: 1-199
    Keyword: 1-6 "match"
    subject_expr: 7-8
     named_expression: 7-8
@@ -96,7 +95,7 @@ file: 0-136
          Keyword: 96-100 "pass"
        Newline: 100-101 "\n"
      Dedent: 105-105 ""
-   case_block: 105-136
+   case_block: 105-140
     Keyword: 105-109 "case"
     pattern: 110-121
      class_pattern: 110-121
@@ -121,7 +120,7 @@ file: 0-136
            Number: 119-120 "2"
       Keyword: 120-121 ")"
     Keyword: 121-122 ":"
-    block: 122-136
+    block: 122-140
      Newline: 122-123 "\n"
      Indent: 131-131 ""
      stmt: 131-136
@@ -130,6 +129,64 @@ file: 0-136
         pass_stmt: 131-135
          Keyword: 131-135 "pass"
        Newline: 135-136 "\n"
-     Dedent: 136-136 ""
-   Dedent: 136-136 ""
- Endmarker: 136-136 ""
+     Dedent: 140-140 ""
+   case_block: 140-174
+    Keyword: 140-144 "case"
+    pattern: 145-155
+     class_pattern: 145-155
+      dotted_pattern_name: 145-146
+       Name: 145-146 "B"
+      Keyword: 146-147 "("
+      param_patterns: 147-154
+       pattern: 147-148
+        literal_pattern: 147-148
+         signed_number: 147-148
+          Number: 147-148 "1"
+       Keyword: 148-149 ","
+       keyword_pattern: 150-153
+        Name: 150-151 "b"
+        Keyword: 151-152 "="
+        pattern: 152-153
+         literal_pattern: 152-153
+          signed_number: 152-153
+           Number: 152-153 "2"
+       Keyword: 153-154 ","
+      Keyword: 154-155 ")"
+    Keyword: 155-156 ":"
+    block: 156-174
+     Newline: 156-157 "\n"
+     Indent: 165-165 ""
+     stmt: 165-170
+      simple_stmts: 165-170
+       simple_stmt: 165-169
+        pass_stmt: 165-169
+         Keyword: 165-169 "pass"
+       Newline: 169-170 "\n"
+     Dedent: 174-174 ""
+   case_block: 174-199
+    Keyword: 174-178 "case"
+    pattern: 179-184
+     class_pattern: 179-184
+      dotted_pattern_name: 179-180
+       Name: 179-180 "B"
+      Keyword: 180-181 "("
+      param_patterns: 181-183
+       pattern: 181-182
+        literal_pattern: 181-182
+         signed_number: 181-182
+          Number: 181-182 "1"
+       Keyword: 182-183 ","
+      Keyword: 183-184 ")"
+    Keyword: 184-185 ":"
+    block: 185-199
+     Newline: 185-186 "\n"
+     Indent: 194-194 ""
+     stmt: 194-199
+      simple_stmts: 194-199
+       simple_stmt: 194-198
+        pass_stmt: 194-198
+         Keyword: 194-198 "pass"
+       Newline: 198-199 "\n"
+     Dedent: 199-199 ""
+   Dedent: 199-199 ""
+ Endmarker: 199-199 ""

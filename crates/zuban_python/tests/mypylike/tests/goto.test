@@ -68,7 +68,7 @@ str
 __main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
 __main__.py:7:goto -> __main__.py:2:0:__main__.a
 __main__.py:10:goto -> error: Column 1 is not a valid char boundary on line "ä𐍈ä"
-__main__.py:14:goto -> __main__.py:2:0:__main__.a
+__main__.py:14:goto -> ()
 
 [case goto_with_utf16_code_units]
 ä𐍈ä = 1
@@ -87,7 +87,7 @@ str
 [out]
 __main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
 __main__.py:7:goto -> __main__.py:2:0:__main__.a
-__main__.py:11:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> ()
 
 [case goto_with_codepoint_column]
 ä𐍈ä = 1
@@ -110,8 +110,8 @@ str
 [out]
 __main__.py:4:goto -> __main__.py:1:0:__main__.ä𐍈ä
 __main__.py:7:goto -> __main__.py:2:0:__main__.a
-__main__.py:11:goto -> __main__.py:2:0:__main__.a
-__main__.py:15:goto -> __main__.py:2:0:__main__.a
+__main__.py:11:goto -> ()
+__main__.py:15:goto -> ()
 
 [case goto_on_stub_package_both]
 # pkgs: typedpkg, typedpkg-stubs
@@ -1474,3 +1474,28 @@ __main__.py:40:goto -> ()
 __main__.py:43:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
 __main__.py:45:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c
 __main__.py:47:goto -> ns_pkg_untyped/b/c.py:1:0:ns_pkg_untyped.b.c.c_var
+
+[case goto_variable_out_of_range]
+var = 1
+
+#? --add-lines 1 --codepoint-column 3 goto
+#? --codepoint-column 4 goto
+var
+
+#? --codepoint-column 1000 goto
+var
+
+#? --codepoint-column 1000 infer
+var
+
+#? --codepoint-column 1000 references
+var
+
+#? goto
+[out]
+__main__.py:5:goto -> __main__.py:1:0:__main__.var
+__main__.py:5:goto -> ()
+__main__.py:8:goto -> ()
+__main__.py:11:infer -> ()
+__main__.py:14:references -> ()
+__main__.py:17:goto -> ()

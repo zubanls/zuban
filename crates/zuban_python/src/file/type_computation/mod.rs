@@ -2146,14 +2146,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 } else if let Some(default) = type_var.default(db) {
                                     resolve_default(generics, Generic::TypeArg(default.clone()))
                                 } else {
+                                    debug!("Backward search for type arg unsuccessful");
                                     break 'outer;
                                 }
                             }
                             TypeVarLike::ParamSpec(param_spec) => {
-                                if let Some(spec) = type_args.next_param_spec_back(
-                                    self,
-                                    has_type_var_tuple && param_spec.has_default(),
-                                ) {
+                                if let Some(spec) =
+                                    type_args.next_param_spec_back(self, param_spec.has_default())
+                                {
                                     given += 1;
                                     Generic::ParamSpecArg(spec)
                                 } else if let Some(default) = param_spec.default(db) {
@@ -2165,6 +2165,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         )),
                                     )
                                 } else {
+                                    debug!("Backward search for ParamSpec unsuccessful");
                                     break 'outer;
                                 }
                             }
@@ -2225,7 +2226,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mismatch = if has_type_var_tuple {
             given < expected - default_count
         } else if default_count > 0 {
-            expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
+            expected_minimum = Some(expected - default_count);
             !((expected - default_count) <= given && given <= expected)
         } else {
             given != expected
@@ -4910,17 +4911,32 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn next_param_spec_back(
         &mut self,
         type_computation: &mut TypeComputation,
-        abort_when_type_is_found: bool,
+        param_spec_has_default: bool,
     ) -> Option<ParamSpecArg> {
-        if abort_when_type_is_found {
-            // This is a type
+        if param_spec_has_default
+            && self.current_unpack_reverse.is_none()
+            && self.reverse_already_analyzed.is_none()
+        {
             let mut new_iterator = self.clone();
             let (_, result) = new_iterator.next_back(type_computation)?;
+            // In the case where we receive a type here it's probably just a type that should be
+            // part of a previous generic/TypeVarTuple.
             let slice = result.err()?;
             type_computation.calculate_callable_params_optional(slice, true, false)?;
         }
-        let (_, result) = self.next_back(type_computation)?;
-        let slice = result.err()?;
+        let (node_ref, result) = self.next_back(type_computation)?;
+        let Err(slice) = result else {
+            type_computation.add_issue(
+                node_ref,
+                IssueKind::InvalidParamSpecGenerics {
+                    got: Box::from(node_ref.as_code()),
+                },
+            );
+            return Some(ParamSpecArg::new(
+                CallableParams::Any(AnyCause::FromError),
+                None,
+            ));
+        };
         let params = type_computation.calculate_callable_params(slice, true, false);
         Some(ParamSpecArg::new(params, None))
     }

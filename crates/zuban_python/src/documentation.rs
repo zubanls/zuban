@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use parsa_python_cst::{GotoNode, TypeLike};
+use parsa_python_cst::{GotoNode, NameParent, TypeLike};
 
 use crate::{
     Document, GotoGoal, InputPosition, Name, ValueName,
@@ -18,6 +18,9 @@ impl<'project> Document<'project> {
         only_docstrings: bool,
     ) -> anyhow::Result<Option<DocumentationResult<'_>>> {
         let document = self.positional_document(position)?;
+        if document.position.column_out_of_bounds {
+            return Ok(None);
+        }
         let _indent = debug_indent();
         Ok(with_i_s_non_self(
             document.db,
@@ -141,6 +144,20 @@ impl<'project> Document<'project> {
             s
         };
 
+        let was_narrowed = resolver.infos.node.on_name().is_some_and(|name| {
+            match name.parent() {
+                NameParent::Atom(atom) => {
+                    // This feels a bit weird, but is probably a good heuristic. Atom normally
+                    // does not define types themselves, but in case of narrowing this is pretty
+                    // much always the case. For now I don't know about a better signal.
+                    NodeRef::new(resolver.infos.file, atom.index())
+                        .maybe_type()
+                        .is_some()
+                }
+                _ => false,
+            }
+        });
+
         let resolver = GotoResolver::new(resolver.infos, GotoGoal::Indifferent, |n: Name| {
             let kind = n.origin_kind();
             if let Name::TreeName(n) = n
@@ -230,10 +247,13 @@ impl<'project> Document<'project> {
                         if !cleaned.is_empty() {
                             overwritten_results.push(cleaned.into());
                         }
-                        if let Some(type_docs) = n
-                            .file
-                            .name_resolution_for_types(&InferenceState::new(db, n.file))
-                            .documentation_for_assignment(assignment)
+                        // Narrowed assignments should not overwrite the docs, because they might
+                        // be different types now.
+                        if !was_narrowed
+                            && let Some(type_docs) = n
+                                .file
+                                .name_resolution_for_types(&InferenceState::new(db, n.file))
+                                .documentation_for_assignment(assignment)
                         {
                             return format_type_docs(type_docs, &mut overwritten_results);
                         }
@@ -395,15 +415,17 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
         .into(),
         Type::Callable(c) => format_callable(c),
         Type::Type(inner) => {
-            let mut out = inner.format_short(db).into_string();
             if let Some(CallableLike::Callable(callable)) =
                 t.maybe_callable(&InferenceState::new_in_unknown_file(db))
             {
+                let mut out = inner.format_short(db).into_string();
                 let formatted = format_callable(&callable);
                 out += "(";
                 out += formatted.split_once('(').unwrap().1;
+                out.into_boxed_str()
+            } else {
+                t.format_short(db)
             }
-            out.into_boxed_str()
         }
         Type::Module(m) => {
             let mut s = db.loaded_python_file(*m).qualified_name(db);

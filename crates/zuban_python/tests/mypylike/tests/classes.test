@@ -2818,6 +2818,28 @@ Base()  # E: Cannot instantiate abstract class "Base" with abstract attribute "m
 Mid()   # E: Cannot instantiate abstract class "Mid" with abstract attribute "m"
 Leaf()  # E: Cannot instantiate abstract class "Leaf" with abstract attribute "m"
 
+[case abstractmethod_yet_another_case]
+# From GH #641
+from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
+
+class Base(metaclass=ABCMeta):
+  @abstractmethod
+  def foo(self) -> None: ...
+
+class Sub(Base):
+  @abstractmethod
+  def bar(self) -> None: ...
+
+@dataclass
+class Impl(Base):
+  def foo(self) -> None: ...
+
+class Both(Impl, Sub):
+  def bar(self) -> None: ...
+
+Both()
+
 [case no_crash_on_decorated_classmethod]
 # From GH #464
 import model as pa

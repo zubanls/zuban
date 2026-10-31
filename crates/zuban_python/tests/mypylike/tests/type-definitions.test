@@ -925,7 +925,7 @@ from typing import Any
 class C[T, *Ts, **P]:
     pass
 
-C[*C]  # E: Bad number of arguments, expected: at least 2, given: 1 \
+C[*C]  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "*C" \
        # E: "C[Any, Unpack[Tuple[Any, ...]], [*Any, **Any]]" cannot be unpacked (must be tuple or TypeVarTuple)
 C[int, *tuple[Any, ...]]  # E: Invalid callable params
 

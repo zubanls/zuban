@@ -23,6 +23,7 @@ use crate::{
     },
     heuristic_infer::infer_heuristics_if_necessary,
     inference_state::Mode,
+    lines::BytePositionInfos,
     name::{ModuleName, Name, NodeName, Range, TreeName},
     prelude::*,
     pytest::find_pytest_fixture_for_param,
@@ -45,6 +46,7 @@ pub(crate) struct PositionalDocument<'db, T> {
     pub db: &'db Database,
     pub file: &'db PythonFile,
     pub scope: Scope<'db>,
+    pub position: BytePositionInfos,
     pub node: T,
 }
 
@@ -58,6 +60,7 @@ where
             file: self.file,
             scope: self.scope,
             node: self.node.clone(),
+            position: self.position,
         }
     }
 }
@@ -76,6 +79,7 @@ impl<'db> PositionalDocument<'db, GotoNode<'db>> {
             file,
             scope,
             node,
+            position,
         };
         if std::cfg!(debug_assertions) && !matches!(pos, InputPosition::NthUTF8Byte(_)) {
             debug!(
@@ -420,6 +424,9 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
     }
 
     pub fn goto(mut self, follow_imports: bool) -> Vec<T> {
+        if self.infos.position.column_out_of_bounds {
+            return Default::default();
+        }
         let _indent = debug_indent();
         if let GotoNode::Name(name) = self.infos.node
             && let Some(name_def) = name.name_def()
@@ -779,6 +786,9 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
 
     pub fn references(mut self, goal: ReferencesGoal, include_declarations: bool) -> Vec<T> {
         debug!("Calculate references for {:?}", self.infos.node);
+        if self.infos.position.column_out_of_bounds {
+            return vec![];
+        }
         let Some(on_name) = self.infos.node.on_name() else {
             return vec![];
         };
@@ -1050,6 +1060,15 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         &mut self,
         use_heuristics: Option<HeuristicDetail>,
     ) -> (FullyInferred, Vec<T>) {
+        let return_any = || FullyInferred {
+            typed: Inferred::new_any_from_error(),
+            heuristic: None,
+        };
+
+        if self.infos.position.column_out_of_bounds {
+            return (return_any(), Default::default());
+        }
+
         let mut result = vec![];
         let file = self.infos.file;
         let db = self.infos.db;
@@ -1059,10 +1078,7 @@ impl<'db, C: for<'a> FnMut(ValueName<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 .infos
                 .infer_position_maybe_with_heuristics(i_s, use_heuristics)
             else {
-                return FullyInferred {
-                    typed: Inferred::new_any_from_error(),
-                    heuristic: None,
-                };
+                return return_any();
             };
             let inf_ref = inf.heuristic.as_ref().unwrap_or(&inf.typed);
             for type_ in inf_ref.as_cow_type(i_s).iter_with_unpacked_unions(db) {
