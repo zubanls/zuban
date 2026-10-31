@@ -1741,7 +1741,7 @@ def f(x: Any):
         reveal_type(x)  # N: Revealed type is "def [T] (c: T) -> __main__.Super[T]"
 
     if isinstance(x, Super):
-        reveal_type(x) # N: Revealed type is "__main__.Super"
+        reveal_type(x) # N: Revealed type is "__main__.Super[Any]"
         x.attr
         reveal_type(x.base_attr)  # N: Revealed type is "list[Any]"
 
@@ -2324,7 +2324,7 @@ class IterableList(list[str]):
 
 def check(records_iter: Iterator[str]) -> None:
     assert isinstance(records_iter, (list, tuple))
-    reveal_type(records_iter)  # N: Revealed type is "<subclass of "typing.Iterator[str]" and "list"> | <subclass of "typing.Iterator[str]" and "tuple[Any, ...]">"
+    reveal_type(records_iter)  # N: Revealed type is "<subclass of "typing.Iterator[str]" and "list[Any]"> | <subclass of "typing.Iterator[str]" and "tuple[Any, ...]">"
 
 check(IterableList())
 

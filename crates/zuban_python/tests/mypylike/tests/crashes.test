@@ -66,3 +66,32 @@ match '':  # E: Invalid syntax
     case str(Z x=0, y=0):
         pass  # E: Invalid syntax
 pass  # E: Invalid syntax
+
+[case no_crash_generic_dataclasses_with_inheritance]
+# From GH #643
+from dataclasses import dataclass
+from typing import overload
+
+@dataclass
+class C[T](list[T]):
+    @overload
+    def create(self) -> str:
+        pass
+
+    @overload
+    def create(self, x: int) -> int:
+        pass
+
+    def create(self, x: int = 1):
+        pass
+
+class D:
+    def m(self):
+        if isinstance(self, E):
+            pass
+
+    def create(self):
+        pass
+
+class E[T](C[T]):
+    pass

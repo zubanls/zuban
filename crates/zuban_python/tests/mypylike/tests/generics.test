@@ -1272,7 +1272,7 @@ from typing import Iterator, TypeVar, Iterable, Self
 T = TypeVar('T')
 
 class container(Iterable[T]):
-    def __new__(cls, sequence: list[T], /) -> Iterable[T]: ...  # E: Incompatible return type for "__new__" (returns "Iterable[T]", but must return a subtype of "container")
+    def __new__(cls, sequence: list[T], /) -> Iterable[T]: ...  # E: Incompatible return type for "__new__" (returns "Iterable[T]", but must return a subtype of "container[Any]")
     def __iter__(self) -> Iterator[T]: ...
 
 def foo(x: list[int]) -> None:

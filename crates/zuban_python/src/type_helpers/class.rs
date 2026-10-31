@@ -1187,6 +1187,10 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        self.format_with_from_type(format_data, false)
+    }
+
+    pub fn format_with_from_type(&self, format_data: &FormatData, from_type: bool) -> Box<str> {
         let mut result = match format_data.style {
             FormatStyle::Short if !format_data.should_format_qualified(self.node_ref.as_link()) => {
                 self.name().to_owned()
@@ -1196,8 +1200,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_var_likes = self.type_vars(&InferenceState::new(format_data.db, self.file));
         // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
         if !type_var_likes.is_empty()
-            && !matches!(self.generics, Generics::NotDefinedYet { .. })
             && !type_var_likes.has_from_untyped_params()
+            && !(matches!(self.generics, Generics::NotDefinedYet { .. }) && from_type)
         {
             // Returns something like [str] or [List[int], Set[Any]]
             let strings: Vec<_> = self
@@ -1250,12 +1254,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_var_likes = self.type_vars(&InferenceState::new(db, self.file));
         match type_var_likes.is_empty() {
             false => match self.generics() {
-                Generics::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
-                    type_var_likes
-                        .iter()
-                        .map(|t| t.as_default_or_any_generic_item(db))
-                        .collect(),
-                )),
+                Generics::NotDefinedYet { .. } => ClassGenerics::NotDefinedYet,
                 Generics::ExpressionWithClassType(file, expr) => {
                     ClassGenerics::ExpressionWithClassType(PointLink::new(
                         file.file_index,
@@ -2639,6 +2638,10 @@ fn apply_generics_to_base_class<'a>(
                 }
                 ClassGenerics::None { .. } => {
                     Class::from_position(ClassNodeRef::from_link(db, c.link), generics, None)
+                }
+                ClassGenerics::NotDefinedYet => {
+                    let class_ref = ClassNodeRef::from_link(db, c.link);
+                    Class::from_position(class_ref, Generics::NotDefinedYet { class_ref }, None)
                 }
                 _ => unreachable!(
                     "{}",

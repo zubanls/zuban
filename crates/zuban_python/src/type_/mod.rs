@@ -604,7 +604,15 @@ impl Type {
                 _ => Box::from("overloaded function"),
             },
             Self::TypeVar(t) => format_data.format_type_var(t),
-            Self::Type(type_) => format!("type[{}]", type_.format(format_data)).into(),
+            Self::Type(type_) => {
+                let inner = if let Type::Class(c) = &**type_ {
+                    c.class(format_data.db)
+                        .format_with_from_type(format_data, true)
+                } else {
+                    type_.format(format_data)
+                };
+                format!("type[{inner}]",).into()
+            }
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
             Self::Any(_) => Box::from("Any"),
