@@ -58,7 +58,15 @@ impl<'db: 'slf, 'slf> Inferred {
             TypeOrClass::Class(class) => class,
             TypeOrClass::Type(t) => match t {
                 Cow::Borrowed(Type::Dataclass(d)) => d.class(i_s.db),
-                _ => unreachable!("{t:?}"),
+                _ => unreachable!(
+                    "Instance {:?} has unresolvable class {:?} of method, details: {}: {t:?}",
+                    instance.format_short(i_s.db),
+                    t.format_short(i_s.db),
+                    match t {
+                        Cow::Owned(_) => "Owned",
+                        Cow::Borrowed(_) => "Borrowed",
+                    }
+                ),
             },
         }
     }
