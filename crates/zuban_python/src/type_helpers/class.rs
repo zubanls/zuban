@@ -844,7 +844,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .skip(super_count)
         {
             let (_, result) = c.lookup_symbol(i_s, name);
-            if !matches!(result, LookupResult::None) {
+            if result.is_some() {
                 return match &c {
                     // TODO why?
                     TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => bind(
