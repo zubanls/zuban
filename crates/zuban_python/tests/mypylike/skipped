@@ -11,7 +11,6 @@ type_alias_used_as_an_invalid_type_definition
 
 completion_no_wrong_range_in_strings
 
-testIssubclassBuiltins
 testIssubclasDestructuringUnions1
 testIssubclasDestructuringUnions2
 testIssubclasDestructuringUnions3

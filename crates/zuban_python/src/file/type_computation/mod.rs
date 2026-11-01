@@ -504,7 +504,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::TypeAliasWithAppliedGenerics(_) => CalculatedBaseClass::TypeAliasSyntax,
             _ => {
-                let type_ = self.as_type(calculated, NodeRef::new(self.file, expr.index()));
+                let mut type_ = self.as_type(calculated, NodeRef::new(self.file, expr.index()));
+                if let Type::Class(c) = &mut type_
+                    && c.generics == ClassGenerics::NotDefinedYet
+                {
+                    // Avoid Any generics and state them explicitly to make lookups easier
+                    c.generics = ClassGenerics::List(GenericsList::new_generics(
+                        c.node_ref(self.i_s.db)
+                            .use_cached_type_vars(self.i_s.db)
+                            .iter()
+                            .map(|t| t.as_default_or_any_generic_item(self.i_s.db))
+                            .collect(),
+                    ))
+                }
                 self.compute_base_class_for_type(expr, type_)
             }
         }
