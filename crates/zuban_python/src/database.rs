@@ -562,6 +562,7 @@ pub(crate) enum Specific {
     TypingTypeGuard,
     TypingTypeIs,
     TypingTypeForm,
+    TypingDisjointBase,
     BuiltinsSentinel,
     RevealTypeFunction,
     AssertTypeFunction,

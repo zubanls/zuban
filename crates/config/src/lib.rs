@@ -160,7 +160,7 @@ impl Settings {
 
     pub fn python_version_or_default(&self) -> PythonVersion {
         self.python_version
-            .unwrap_or_else(|| PythonVersion::new(3, 14))
+            .unwrap_or_else(|| PythonVersion::new(3, 15))
     }
 
     pub fn apply_python_executable(

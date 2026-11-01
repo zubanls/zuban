@@ -1790,6 +1790,7 @@ pub fn specific_to_type<'db>(
             Cow::Owned(i_s.db.python_state.object_type())
         }
         Specific::RevealTypeFunction => Cow::Owned(i_s.db.python_state.reveal_type(i_s.db)),
+        Specific::TypingDisjointBase => Cow::Owned(i_s.db.python_state.disjoint_base(i_s.db)),
         Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => {
             Cow::Owned(Type::Type(Arc::new(i_s.db.python_state.new_type_type())))

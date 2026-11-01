@@ -1357,7 +1357,7 @@ func(OTHER)
 
 x = "asdf"
 A = sentinel(x)  # E: Sentinel expects a single positional argument that is a string literal
-reveal_type(sentinel(""))  # N: Revealed type is "typing_extensions.sentinel"
+reveal_type(sentinel(""))  # N: Revealed type is "sentinel"
 
 [case sentinels_are_sentinel_instances]
 from typing import Protocol
@@ -1369,10 +1369,17 @@ class HasName(Protocol):
 MISSING = sentinel("MISSING")
 
 def func(x: sentinel, y: Sentinel, z: HasName) -> None:
-    reveal_type(x)  # N: Revealed type is "typing_extensions.sentinel"
-    reveal_type(y)  # N: Revealed type is "typing_extensions.sentinel"
+    reveal_type(x)  # N: Revealed type is "sentinel"
+    reveal_type(y)  # N: Revealed type is "sentinel"
 
 func(MISSING, MISSING, MISSING)
 func(1, MISSING, MISSING)  # E: Argument 1 to "func" has incompatible type "int"; expected "sentinel"
 reveal_type(MISSING.__name__)  # N: Revealed type is "str"
 x: int = MISSING  # E: Incompatible types in assignment (expression has type "Sentinel('MISSING')", variable has type "int")
+
+[case sentinel_from_builtins]
+# From GH #650
+TEST = sentinel("TEST")
+
+def func(x: TEST | int) -> None:
+    reveal_type(x)  # N: Revealed type is "Sentinel('TEST') | int"
