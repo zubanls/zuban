@@ -700,7 +700,7 @@ mod tests {
         );
         assert_eq!(
             sys_path_for_dirs(&[], true), // homedir
-            ["/home/myuser/.local/lib/python3.14/site-packages"]
+            ["/home/myuser/.local/lib/python3.15/site-packages"]
         );
     }
 
@@ -745,7 +745,7 @@ mod tests {
             ),
             [
                 "/usr/lib/python3.14",
-                "/home/myuser/.local/lib/python3.14/site-packages",
+                "/home/myuser/.local/lib/python3.15/site-packages",
                 "/usr/lib/python3/dist-packages",
             ]
         );
@@ -847,7 +847,7 @@ mod tests {
                 // because the venv doesn't have a version so we have to guess. And if the version
                 // is not available, it should fall back to whatever version there is around.
                 "/usr/lib/python3.13",
-                "/home/proj/venv/lib/python3.14/site-packages",
+                "/home/proj/venv/lib/python3.15/site-packages",
                 // This is in here because include-system-site-packages is missing
                 "/usr/lib/python3.13/site-packages",
             ]
@@ -906,7 +906,7 @@ mod tests {
             ),
             [
                 "/usr/lib/python3.13",
-                "/home/proj/venv/lib/python3.14/site-packages",
+                "/home/proj/venv/lib/python3.15/site-packages",
             ]
         );
     }
