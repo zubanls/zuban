@@ -9,6 +9,7 @@ use crate::{
     name::{Range, TreeName},
     prelude::*,
     type_::{FunctionKind, PrettyCallableOptions, TypeGatherer, TypeVarVariance},
+    type_helpers::Generics,
 };
 
 impl<'project> Document<'project> {
@@ -418,7 +419,13 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
             if let Some(CallableLike::Callable(callable)) =
                 t.maybe_callable(&InferenceState::new_in_unknown_file(db))
             {
-                let mut out = inner.format_short(db).into_string();
+                let mut out = if let Some(inner_cls) = inner.inner_generic_class_with_db(db)
+                    && matches!(inner_cls.generics, Generics::NotDefinedYet { .. })
+                {
+                    inner_cls.name().to_string()
+                } else {
+                    inner.format_short(db).into_string()
+                };
                 let formatted = format_callable(&callable);
                 out += "(";
                 out += formatted.split_once('(').unwrap().1;
