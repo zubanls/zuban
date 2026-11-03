@@ -163,6 +163,7 @@ impl Intersection {
             linearize_mro(
                 i_s.db,
                 entries,
+                None,
                 || {
                     add_issue.borrow_mut()(IssueKind::IntersectionCannotExistDueToDisjointBases {
                         intersection: fmt_intersection(&intersection),

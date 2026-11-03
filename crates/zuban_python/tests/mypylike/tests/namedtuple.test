@@ -260,3 +260,19 @@ from typing import NamedTuple, Hashable
 class C(NamedTuple):
   some_node: Hashable
   children: tuple['C', ...]
+
+[case type_var_values_with_named_tuple]
+from typing import NamedTuple
+from urllib.parse import ParseResult
+ParseResult("", "", "", "", "", "")
+
+class C[T: (str, bytes)](NamedTuple):
+    scheme: T
+
+class D[U: (str, bytes)](C[U]): ...
+
+class E[U: (str, bytes)](D[U]): ...
+
+C("")
+D("")
+E("")
