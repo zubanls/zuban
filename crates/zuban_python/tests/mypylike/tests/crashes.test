@@ -95,3 +95,20 @@ class D:
 
 class E[T](C[T]):
     pass
+
+[case no_crash_on_generic_enum_]
+# From GH #653
+from enum import Enum
+from typing import overload
+
+class C[T](Enum):  # E: Enum class cannot be generic
+    def a():  # E: Invalid syntax
+    @overload
+    def m(self, value: list) -> list[T]:
+        pass
+
+    @overload
+    def m(self, value: tuple) -> tuple[T]:
+        pass
+
+    def m(self, value): ...

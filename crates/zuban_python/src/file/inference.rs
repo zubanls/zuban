@@ -4374,7 +4374,8 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             && let Some(class) = self.i_s.current_class()
         {
             debug_assert!(
-                matches!(class.generics(), Generics::Self_ { .. } | Generics::None,),
+                matches!(class.generics(), Generics::Self_ { .. } | Generics::None,)
+                    || self.i_s.is_calculating_enum_members(),
                 "{defining_stmt:?} {class:?}",
             )
         }

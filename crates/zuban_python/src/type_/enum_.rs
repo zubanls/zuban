@@ -200,7 +200,7 @@ impl Enum {
     }
 
     pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
-        Class::from_non_generic_link(db, self.class)
+        Class::from_undefined_generics(db, self.class)
     }
 
     pub fn implicit_members(rc: &Arc<Enum>) -> impl Iterator<Item = EnumMember> {
