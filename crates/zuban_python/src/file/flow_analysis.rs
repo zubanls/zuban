@@ -17,7 +17,7 @@ use parsa_python_cst::{
     NodeIndex, Operand, ParamPattern, Pattern, PatternKind, Primary, PrimaryContent, PrimaryOrAtom,
     PrimaryTarget, PrimaryTargetOrAtom, SequencePatternItem, SliceType as CSTSliceType,
     StarLikeExpression, StarLikeExpressionIterator, StarPatternContent, SubjectExprContent, Target,
-    Ternary, TryBlockType, TryStmt, UnpackedNumber, WhileStmt,
+    Ternary, TryBlockType, TryStmt, TypeLike, UnpackedNumber, WhileStmt,
 };
 
 use crate::{
@@ -189,6 +189,21 @@ impl FlowKey {
                 Type::ERROR
             }
         }
+    }
+
+    fn is_name_with_annotation<'db>(&self, db: &'db Database) -> bool {
+        (|| match self {
+            FlowKey::Name(link) => Some({
+                let name = NodeRef::from_link(db, *link).maybe_name()?;
+                match name.expect_type() {
+                    TypeLike::Assignment(assignment) => assignment.maybe_annotation().is_some(),
+                    TypeLike::ParamName(annotation) => annotation.is_some(),
+                    _ => false,
+                }
+            }),
+            _ => None,
+        })()
+        .unwrap_or_default()
     }
 
     fn is_simple_name(&self) -> bool {
@@ -1811,7 +1826,9 @@ impl<'file> Inference<'_, 'file, '_> {
         let widens = false;
         // It seems like explicit Any is treated in a special way, see tests
         // testIsinstanceNarrowAnyExplicit and testIsinstanceNarrowAnyImplicit
-        if let Type::Any(AnyCause::Explicit) = declaration_t {
+        if let Type::Any(AnyCause::Explicit) = declaration_t
+            && key.is_name_with_annotation(self.i_s.db)
+        {
             // Still check for stuff like Final reassignments
             check_for_error();
             // Remove the key

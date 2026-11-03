@@ -2491,3 +2491,41 @@ type NestedDict[T] = dict[str, NestedDict[T] | T]
 def f(data: NestedDict[Any] | None):
     if data is None:
         data = {}
+
+[case widen_to_any_on_reassignments]
+# flags: --mode default
+# From GH #651
+from typing import Any
+from typing_extensions import disjoint_base
+
+@disjoint_base
+class A:
+    pass
+
+@disjoint_base
+class B:
+    pass
+
+def calc() -> Any:
+    return B()
+
+def test(a: bool, b: bool) -> None:
+    if a:
+        result = calc()
+        if not isinstance(result, A):
+            raise ValueError("x")
+    if b:
+        result = calc()
+        if not isinstance(result, B):
+            raise ValueError("x")
+
+class OnSelf:
+    def test(self, a: bool, b: bool) -> None:
+        if a:
+            self.result = calc()
+            if not isinstance(self.result, A):
+                raise ValueError("x")
+        if b:
+            result = calc()
+            if not isinstance(self.result, B):
+                raise ValueError("x")
