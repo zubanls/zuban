@@ -21,3 +21,6 @@ regex.workspace = true
 shellexpand.workspace = true
 tracing.workspace = true
 toml_edit.workspace = true
+
+[dev-dependencies]
+test_utils.workspace = true

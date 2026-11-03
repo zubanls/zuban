@@ -271,6 +271,7 @@ dependencies = [
  "regex",
  "rust-ini",
  "shellexpand",
+ "test_utils",
  "toml_edit",
  "tracing",
  "utils",

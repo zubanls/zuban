@@ -1,7 +1,7 @@
 use std::{io::Read, path::Path, sync::Arc};
 
 use crate::{DiagnosticConfig, Mode, ModeChoice, ProjectOptions, get_zuban_config_and_apply_mode};
-use toml_edit::DocumentMut;
+use toml_edit::{DocumentMut, Item, Value};
 use vfs::{AbsPath, VfsHandler};
 
 const PYPROJECT_TOML_NAME: &str = "pyproject.toml";
@@ -172,26 +172,42 @@ fn find_mypy_config_file_in_dir(
         }
     }
     if let Some(pyproject_toml) = pyproject_toml {
-        if end_result.is_none() {
-            end_result = Some(default_config(
+        let end_result = end_result.get_or_insert_with(|| {
+            default_config(
                 mode,
                 Some(vfs.absolute_path(&dir, PYPROJECT_TOML_NAME)),
                 dir.clone(),
-            ));
-        }
+            )
+        });
         if let Some(config) = pyproject_toml
             .get("tool")
             .and_then(|item| item.get("zuban"))
         {
-            let found = end_result.as_mut().unwrap();
-            found.project_options.apply_pyproject_table(
+            end_result.project_options.apply_pyproject_table(
                 vfs,
                 &dir,
-                found.config_path.as_ref().unwrap(),
-                &mut found.diagnostic_config,
+                end_result.config_path.as_ref().unwrap(),
+                &mut end_result.diagnostic_config,
                 config,
                 true,
             )?
+        }
+        // Try to figure out the Python version from other project.requires-python
+        // Documented at https://packaging.python.org/en/latest/specifications/pyproject-toml/#requires-python
+        if end_result.project_options.settings.python_version.is_none()
+            && let Some(item) = pyproject_toml
+                .get("project")
+                .and_then(|item| item.get("requires-python"))
+            && let Item::Value(Value::String(string)) = item
+        {
+            let s = string.value();
+            if let Some(suffix) = s
+                .strip_prefix("===")
+                .or_else(|| s.strip_prefix("=="))
+                .or_else(|| s.strip_prefix("~="))
+            {
+                end_result.project_options.settings.python_version = suffix.parse().ok()
+            }
         }
     }
     Ok(end_result)
@@ -207,5 +223,117 @@ fn default_config(
         diagnostic_config: DiagnosticConfig::default(),
         config_path,
         most_probable_base: dir,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vfs::LocalFS;
+
+    use crate::PythonVersion;
+
+    use super::*;
+
+    const ZUBAN_WITH_VERSION: &str = "[tool.zuban]\npython_version = 3.13\n";
+
+    fn project_version(version: &str) -> String {
+        format!("[project]\nrequires-python = \"{version}\"\n")
+    }
+
+    fn search_fixture(fixture: impl AsRef<str>) -> FoundConfig {
+        let test_dir = test_utils::write_files_from_fixture(fixture.as_ref(), false);
+
+        let fs = LocalFS::without_watcher();
+        find_config(
+            &fs,
+            fs.unchecked_abs_path(test_dir.path()),
+            None,
+            ModeChoice::Auto,
+            |_| (),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_requires_python_from_pyproject_toml() {
+        let run = |pyproject_toml: &str| {
+            let fixture = format!("[file pyproject.toml]\n{pyproject_toml}");
+            search_fixture(fixture)
+                .project_options
+                .settings
+                .python_version
+        };
+
+        assert_eq!(
+            run(&project_version("==3.32.3")),
+            Some(PythonVersion::new(3, 32))
+        );
+        assert_eq!(
+            run(&project_version("===3.10.1")),
+            Some(PythonVersion::new(3, 10))
+        );
+        assert_eq!(run(&project_version(">=3.11")), None);
+        assert_eq!(run(&project_version(">3.11")), None);
+        assert_eq!(run(&project_version("<3.15")), None);
+        assert_eq!(run(&project_version("<=3.15")), None);
+        assert_eq!(run(&project_version("==3")), None);
+        assert_eq!(run(&project_version("~=3")), None);
+        assert_eq!(run(&project_version("3.12")), None);
+
+        assert_eq!(run(ZUBAN_WITH_VERSION), Some(PythonVersion::new(3, 13)));
+        assert_eq!(
+            run(&format!(
+                "{ZUBAN_WITH_VERSION}\n{}",
+                project_version("==3.12")
+            )),
+            Some(PythonVersion::new(3, 13))
+        );
+        assert_eq!(
+            run(&format!(
+                "{}\n{ZUBAN_WITH_VERSION}",
+                project_version("==3.12")
+            )),
+            Some(PythonVersion::new(3, 13))
+        );
+    }
+
+    #[test]
+    fn test_requires_python_from_pyproject_toml_and_mypy_ini() {
+        let run = |pyproject_toml: &str| {
+            let fixture = format!(
+                "[file pyproject.toml]\n{pyproject_toml}\n\
+                 [file mypy.ini]\n\
+                 [mypy]\n\
+                 python_version = 3.42"
+            );
+            search_fixture(fixture)
+                .project_options
+                .settings
+                .python_version
+        };
+
+        assert_eq!(
+            run(&project_version("==3.32.3")),
+            Some(PythonVersion::new(3, 42))
+        );
+        assert_eq!(
+            run(&format!(
+                "{}\n{ZUBAN_WITH_VERSION}",
+                project_version("==3.12")
+            )),
+            Some(PythonVersion::new(3, 13))
+        );
+
+        assert_eq!(
+            run(&format!(
+                "[tool.mypy]\npython_version = 3.3\n{}",
+                project_version("==3.12")
+            )),
+            Some(PythonVersion::new(3, 3))
+        );
+        assert_eq!(
+            run(&format!("[tool.mypy]\npython_version = 3.3\n",)),
+            Some(PythonVersion::new(3, 3))
+        );
     }
 }
