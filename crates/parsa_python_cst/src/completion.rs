@@ -181,7 +181,10 @@ impl Tree {
                         return (scope, CompletionNode::NecessaryKeyword("import"), rest);
                     }
                 }
-                Nonterminal(import_from_targets) | ErrorNonterminal(import_from_targets) => {
+                Nonterminal(import_from_targets)
+                | ErrorNonterminal(import_from_targets)
+                | Nonterminal(import_from_named_targets)
+                | ErrorNonterminal(import_from_named_targets) => {
                     return (
                         scope,
                         import_from_target_node(parent.parent().unwrap()),
@@ -205,7 +208,9 @@ impl Tree {
                 _ => (),
             }
             if let Some(leaf_parent) = leaf.parent() {
-                if leaf_parent.is_type(ErrorNonterminal(import_from_targets)) {
+                if leaf_parent.is_type(ErrorNonterminal(import_from_targets))
+                    || leaf_parent.is_type(ErrorNonterminal(import_from_named_targets))
+                {
                     return (
                         scope,
                         import_from_target_node(leaf_parent.parent().unwrap()),

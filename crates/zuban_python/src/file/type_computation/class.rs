@@ -505,28 +505,31 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     }
                     continue;
                 }
-                if let Some(Lookup::T(TypeContent::InvalidVariable(
-                    InvalidVariableType::Function { node_ref },
-                ))) = name_resolution.lookup_type_expr_if_only_names(expr)
-                {
-                    if node_ref.is_name_defined_in_module(db, "dataclasses", "dataclass") {
-                        dataclass_options = Some(DataclassOptions::default());
-                    } else if node_ref == db.python_state.typing_final() {
-                        is_final = true;
-                    } else if node_ref == db.python_state.total_ordering_node_ref() {
-                        total_ordering = true;
-                    } else if node_ref == db.python_state.runtime_checkable_node_ref()
-                        || node_ref
-                            == db
-                                .python_state
-                                .typing_extensions_runtime_checkable_node_ref()
-                    {
-                        is_runtime_checkable = true;
-                    } else if node_ref.as_link() == db.python_state.disjoint_base_link {
-                        is_disjoint_base = Some(decorator);
-                    } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
-                        dataclass_options = Some(d.as_dataclass_options());
+                match name_resolution.lookup_type_expr_if_only_names(expr) {
+                    Some(Lookup::T(TypeContent::InvalidVariable(
+                        InvalidVariableType::Function { node_ref },
+                    ))) => {
+                        if node_ref.is_name_defined_in_module(db, "dataclasses", "dataclass") {
+                            dataclass_options = Some(DataclassOptions::default());
+                        } else if node_ref == db.python_state.typing_final() {
+                            is_final = true;
+                        } else if node_ref == db.python_state.total_ordering_node_ref() {
+                            total_ordering = true;
+                        } else if node_ref == db.python_state.runtime_checkable_node_ref()
+                            || node_ref
+                                == db
+                                    .python_state
+                                    .typing_extensions_runtime_checkable_node_ref()
+                        {
+                            is_runtime_checkable = true;
+                        } else if let Some(d) = maybe_dataclass_transform_func(db, node_ref) {
+                            dataclass_options = Some(d.as_dataclass_options());
+                        }
                     }
+                    Some(Lookup::T(TypeContent::SpecialCase(Specific::TypingDisjointBase))) => {
+                        is_disjoint_base = Some(decorator);
+                    }
+                    _ => (),
                 }
             }
             if let Some(dataclass_options) = dataclass_options {
@@ -1179,6 +1182,7 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
         let linearized_mro = linearize_mro(
             db,
             &bases,
+            Some(self.node_ref),
             || {
                 self.add_issue_on_args(
                     i_s,
@@ -2013,10 +2017,11 @@ pub struct LinearizedMro {
 pub fn linearize_mro(
     db: &Database,
     bases: &[Type],
+    class: Option<ClassNodeRef>,
     on_disjoint_bases: impl FnOnce(),
     on_non_linearizable: impl FnOnce(),
 ) -> LinearizedMro {
-    let (mro, linearizable) = linearize_mro_and_return_linearizable(db, bases);
+    let (mro, linearizable) = linearize_mro_and_return_linearizable(db, class, bases);
     let mut disjoint_base = None;
     let mut has_disjoint_base = false;
     for base in bases {
@@ -2050,8 +2055,9 @@ pub fn linearize_mro(
     }
 }
 
-pub fn linearize_mro_and_return_linearizable(
+fn linearize_mro_and_return_linearizable(
     db: &Database,
+    class: Option<ClassNodeRef>,
     bases: &[Type],
 ) -> (Box<[BaseClass]>, bool) {
     let mut mro: Vec<BaseClass> = vec![];
@@ -2072,37 +2078,43 @@ pub fn linearize_mro_and_return_linearizable(
                          allowed_to_use: &mut usize| {
         BaseClass {
             type_: if new_base.needs_remapping {
-                new_base
-                    .t
-                    .replace_type_var_likes(db, &mut |usage| {
-                        Some(match &bases[base_index] {
-                            Type::Tuple(tup) => {
-                                tup.class(db).generics.nth_usage(db, &usage).into_owned()
-                            }
-                            Type::NamedTuple(n) => n
-                                .as_tuple_ref()
-                                .class(db)
-                                .generics
-                                .nth_usage(db, &usage)
-                                .into_owned(),
-                            Type::Class(GenericClass {
-                                generics: ClassGenerics::List(generics),
-                                ..
-                            }) => generics[usage.index()].clone(),
-                            // Very rare and therefore a separate case.
-                            Type::Class(c) => {
-                                c.class(db).generics.nth_usage(db, &usage).into_owned()
-                            }
-                            Type::Dataclass(d) => match &d.class.generics {
-                                ClassGenerics::List(generics) => generics[usage.index()].clone(),
-                                _ => d.class(db).generics.nth_usage(db, &usage).into_owned(),
-                            },
-                            // If we expect class generics and tuples are involved, the tuple was already
-                            // calculated.
-                            _ => unreachable!(),
-                        })
+                let relevant_base = &bases[base_index];
+                let mut replaced = new_base.t.replace_type_var_likes(db, &mut |usage| {
+                    Some(match relevant_base {
+                        Type::Tuple(tup) => {
+                            tup.class(db).generics.nth_usage(db, &usage).into_owned()
+                        }
+                        Type::NamedTuple(n) => n
+                            .as_tuple_ref()
+                            .class(db)
+                            .generics
+                            .nth_usage(db, &usage)
+                            .into_owned(),
+                        Type::Class(GenericClass {
+                            generics: ClassGenerics::List(generics),
+                            ..
+                        }) => generics[usage.index()].clone(),
+                        // Very rare and therefore a separate case.
+                        Type::Class(c) => c.class(db).generics.nth_usage(db, &usage).into_owned(),
+                        Type::Dataclass(d) => match &d.class.generics {
+                            ClassGenerics::List(generics) => generics[usage.index()].clone(),
+                            _ => d.class(db).generics.nth_usage(db, &usage).into_owned(),
+                        },
+                        // If we expect class generics and tuples are involved, the tuple was already
+                        // calculated.
+                        _ => unreachable!(),
                     })
-                    .into_owned()
+                });
+                if let Type::NamedTuple(nt) = replaced.as_ref()
+                    && let Some(cls) = class
+                {
+                    let mut nt = nt.as_ref().clone();
+                    // This is a bit weird, but the __new__ callable can be the __new__ of the
+                    // class we're calculating the MRO for, so use that as a defined_at.
+                    Arc::make_mut(&mut nt.__new__).defined_at = cls.as_link();
+                    replaced = Cow::Owned(Type::NamedTuple(Arc::new(nt)))
+                }
+                replaced.into_owned()
             } else {
                 *allowed_to_use += 1;
                 new_base.t.as_ref().clone()

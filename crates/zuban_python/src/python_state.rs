@@ -1306,6 +1306,10 @@ impl PythonState {
         node_ref_to_global_func_type(db, NodeRef::from_link(db, self.reveal_type_link))
     }
 
+    pub fn disjoint_base(&self, db: &Database) -> Type {
+        node_ref_to_global_func_type(db, NodeRef::from_link(db, self.disjoint_base_link))
+    }
+
     pub fn is_generator(&self, link: PointLink) -> bool {
         link == self.generator_link() || link == self.generator_type_link()
     }
@@ -1372,6 +1376,7 @@ fn typing_changes(
     set_typing_inference(typing, "TypeForm", Specific::TypingTypeForm);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
+    set_typing_inference(typing, "disjoint_base", Specific::TypingDisjointBase);
     set_typing_inference(
         typing,
         "dataclass_transform",
@@ -1442,6 +1447,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeForm", Specific::TypingTypeForm);
     set_typing_inference(t, "sentinel", Specific::BuiltinsSentinel);
     set_typing_inference(t, "Sentinel", Specific::BuiltinsSentinel);
+    set_typing_inference(t, "disjoint_base", Specific::TypingDisjointBase);
 
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);

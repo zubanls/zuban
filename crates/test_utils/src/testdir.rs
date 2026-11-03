@@ -34,7 +34,6 @@ impl TestDir {
             }
             fs::create_dir_all(&path).unwrap();
 
-            #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
             if symlink {
                 let symlink_path = base.join(format!("{pid}_{cnt}_symlink"));
                 create_symlink_dir(path, &symlink_path).unwrap();
@@ -122,18 +121,18 @@ impl TestDir {
 }
 
 fn create_symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(not(windows))]
     return std::os::unix::fs::symlink(original, link);
 
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     return std::os::windows::fs::symlink_dir(original, link);
 }
 
 fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(not(windows))]
     return std::os::unix::fs::symlink(original, link);
 
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     return std::os::windows::fs::symlink_file(original, link);
 }
 

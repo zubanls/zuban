@@ -15,7 +15,7 @@ create_grammar!(
     enum PyNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[
-        Name: "match" | "case" | "_" | "type"
+        Name: "match" | "case" | "_" | "type" | "lazy"
     ]
 
     // STARTING RULES
@@ -33,8 +33,8 @@ create_grammar!(
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
     simple_stmt:
-        | assignment | type_alias | star_expressions | del_stmt | pass_stmt
-        | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
+        | import_name | import_from | assignment | type_alias | star_expressions
+        | del_stmt | pass_stmt | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     async_stmt: "async" (function_def | with_stmt | for_stmt)
 
@@ -62,12 +62,15 @@ create_grammar!(
 
     // Import statements
     // -----------------
-    import_name: "import" dotted_as_names
+    import_name: "lazy"? "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from:
         | "from" ("." | "...")* dotted_import_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
+        | "lazy" "from" ("." | "...")* dotted_import_name "import" import_from_named_targets
+        | "lazy" "from" ("." | "...")+ "import" import_from_named_targets
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+    import_from_named_targets: "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
     import_from_as_name: Name "as" name_def | name_def
     dotted_as_names: ",".dotted_as_name+
     dotted_as_name: dotted_import_name "as" name_def | name_def ["." dotted_import_name]

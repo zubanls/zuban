@@ -1,0 +1,20 @@
+---
+source: crates/parsa_python/tests/test_grammar.rs
+assertion_line: 57
+expression: tree_to_string(& tree)
+---
+file: 0-10
+ stmt: 1-10
+  simple_stmts: 1-10
+   simple_stmt: 1-9
+    assignment: 1-9
+     star_targets: 1-5
+      name_def: 1-5
+       Name: 1-5 "lazy"
+     Keyword: 6-7 "="
+     star_expressions: 8-9
+      expression: 8-9
+       atom: 8-9
+        Number: 8-9 "1"
+   Newline: 9-10 "\n"
+ Endmarker: 10-10 ""
