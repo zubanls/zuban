@@ -15,7 +15,7 @@ create_grammar!(
     enum PyNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[
-        Name: "match" | "case" | "_" | "type"
+        Name: "match" | "case" | "_" | "type" | "lazy"
     ]
 
     // STARTING RULES
@@ -33,8 +33,8 @@ create_grammar!(
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
     simple_stmt:
-        | assignment | type_alias | star_expressions | del_stmt | pass_stmt
-        | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
+        | import_name | import_from | assignment | type_alias | star_expressions
+        | del_stmt | pass_stmt | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     async_stmt: "async" (function_def | with_stmt | for_stmt)
 

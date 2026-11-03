@@ -173,6 +173,9 @@ parametrize_snapshots!(
     lazy_import_fails: dedent("
         lazy from ..foo import *
         ");
+    lazy_soft_keyword: dedent("
+        lazy = 1
+        ");
     calls: dedent("
         foo(bar)
         foo(bar_foo=3)
