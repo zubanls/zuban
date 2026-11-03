@@ -1809,10 +1809,13 @@ impl<'file> Inference<'_, 'file, '_> {
         new_t: &Type,
         check_for_error: impl FnOnce() -> RedefinitionResult,
     ) {
-        let new_t = match declaration_t.could_be_a_literal() {
+        let mut new_t = match declaration_t.could_be_a_literal() {
             CouldBeALiteral::Yes { .. } => Cow::Borrowed(new_t),
             _ => new_t.avoid_implicit_literal_cow(self.i_s.db),
         };
+        if let Some(t) = new_t.replace_any_with_unknown_type_params_with_any() {
+            new_t = Cow::Owned(t)
+        }
         self.narrow_or_widen_target_internal(key, declaration_t, &new_t, check_for_error)
     }
 

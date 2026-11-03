@@ -2530,7 +2530,7 @@ class OnSelf:
                 raise ValueError("x")
 
 [case any_union_with_empty_dict_should_not_cause_error]
-# flags: --mode default --allow-untyped-globals
+# flags: --allow-untyped-globals
 from typing import Any
 def calc() -> Any: ...
 
