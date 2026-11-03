@@ -204,7 +204,12 @@ fn find_mypy_config_file_in_dir(
             if let Some(suffix) = s
                 .strip_prefix("===")
                 .or_else(|| s.strip_prefix("=="))
-                .or_else(|| s.strip_prefix("~="))
+                .or_else(|| {
+                    if s.split(".").count() < 3 {
+                        return None;
+                    }
+                    s.strip_prefix("~=")
+                })
             {
                 end_result.project_options.settings.python_version = suffix.parse().ok()
             }
@@ -272,12 +277,17 @@ mod tests {
             run(&project_version("===3.10.1")),
             Some(PythonVersion::new(3, 10))
         );
+        assert_eq!(
+            run(&project_version("~=3.33.3")),
+            Some(PythonVersion::new(3, 33))
+        );
         assert_eq!(run(&project_version(">=3.11")), None);
         assert_eq!(run(&project_version(">3.11")), None);
         assert_eq!(run(&project_version("<3.15")), None);
         assert_eq!(run(&project_version("<=3.15")), None);
         assert_eq!(run(&project_version("==3")), None);
         assert_eq!(run(&project_version("~=3")), None);
+        assert_eq!(run(&project_version("~=3.2")), None);
         assert_eq!(run(&project_version("3.12")), None);
 
         assert_eq!(run(ZUBAN_WITH_VERSION), Some(PythonVersion::new(3, 13)));
