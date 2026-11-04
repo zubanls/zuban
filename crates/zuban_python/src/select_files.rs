@@ -15,7 +15,11 @@ use crate::{
     utils::{is_file_with_python_ending, join_with_commas},
 };
 
-type ToBeLoaded = (usize, Arc<FileEntry>, PathWithScheme);
+pub(crate) struct ToBeLoaded {
+    order_index: usize,
+    pub file_entry: Arc<FileEntry>,
+}
+
 type OrderedFileIndexes = FastHashMap<FileIndex, usize>;
 
 pub(crate) fn diagnostics_for_relevant_files<'db>(
@@ -86,18 +90,15 @@ impl<'db> FileSelector<'db> {
             selector
                 .to_be_loaded
                 .iter()
-                .map(|l| ArcPtrWrapper(Arc::as_ptr(&l.1)))
+                .map(|l| ArcPtrWrapper(Arc::as_ptr(&l.file_entry)))
                 .collect(),
         );
-        selector
-            .to_be_loaded
-            .par_iter()
-            .for_each(|(order_index, file, _)| {
-                if let Some(file) = db.load_file_from_workspace(file) {
-                    selector.add_file_index(*order_index, file.file_index);
-                    find_imports_and_preload_files(db, file, &loaded_file_entries)
-                }
-            });
+        selector.to_be_loaded.par_iter().for_each(|load| {
+            if let Some(file) = db.load_file_from_workspace(&load.file_entry) {
+                selector.add_file_index(load.order_index, file.file_index);
+                find_imports_and_preload_files(db, file, &loaded_file_entries)
+            }
+        });
         let vfs_handler = &*db.vfs.handler;
         let mut vec: Vec<_> = selector
             .file_indexes_to_order_map
@@ -239,15 +240,17 @@ impl<'db> FileSelector<'db> {
         Ok(())
     }
 
-    fn add_file(&mut self, file: Arc<FileEntry>) {
+    fn add_file(&mut self, file_entry: Arc<FileEntry>) {
         self.added_file = true;
         let order_index = self.order_counter;
         self.order_counter += 1;
-        if let Some(file_index) = file.get_file_index() {
+        if let Some(file_index) = file_entry.get_file_index() {
             self.add_file_index(order_index, file_index)
         } else {
-            let path = file.absolute_path(&*self.db.vfs.handler);
-            self.to_be_loaded.push((order_index, file, path));
+            self.to_be_loaded.push(ToBeLoaded {
+                order_index,
+                file_entry,
+            });
         }
     }
 
