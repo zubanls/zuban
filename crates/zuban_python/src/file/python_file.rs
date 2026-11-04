@@ -102,6 +102,7 @@ pub(crate) enum DunderAllState {
 
 pub(crate) struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
+    pub ignore_directives: IgnoreDirectives,
     pub symbol_table: SymbolTable,
     maybe_dunder_all: OnceLock<Option<DunderAllState>>, // For __all__
     pub points: Points,
@@ -157,6 +158,7 @@ impl Clone for PythonFile {
     fn clone(&self) -> Self {
         Self {
             tree: self.tree.clone(),
+            ignore_directives: self.ignore_directives.clone(),
             symbol_table: self.symbol_table.clone(),
             maybe_dunder_all: self.maybe_dunder_all.clone(),
             points: self.points.clone(),
@@ -302,8 +304,9 @@ impl<'db> PythonFile {
     ) -> Self {
         let is_stub = file_entry.name.ends_with(".pyi");
         let issues = Diagnostics::default();
+        let ignore_directives = IgnoreDirectives::scan(tree.code());
         let mut ignore_type_errors = tree
-            .has_type_ignore_at_start()
+            .has_type_ignore_at_start(&ignore_directives)
             .map(|has_ignore| has_ignore.then_some(IgnoreFileReason::TypeIgnoreAtTopOfFile))
             .unwrap_or_else(|ignore_code| {
                 issues.add(Issue::from_start_stop(
@@ -338,6 +341,7 @@ impl<'db> PythonFile {
         Self::new_internal(
             file_index,
             tree,
+            ignore_directives,
             points,
             issues,
             is_stub,
@@ -350,6 +354,7 @@ impl<'db> PythonFile {
     fn new_internal(
         file_index: FileIndex,
         tree: Tree,
+        ignore_directives: IgnoreDirectives,
         points: Points,
         issues: Diagnostics,
         is_stub: bool,
@@ -367,6 +372,7 @@ impl<'db> PythonFile {
                 settings: &project.settings,
                 flags: flags.as_ref().unwrap_or(&project.flags),
                 tree: &tree,
+                ignore_directives: &ignore_directives,
                 points: &points,
                 complex_points: &complex_points,
                 issues: &issues,
@@ -379,6 +385,7 @@ impl<'db> PythonFile {
         );
         Self {
             tree,
+            ignore_directives,
             file_index,
             symbol_table,
             maybe_dunder_all: OnceLock::default(),
@@ -498,11 +505,13 @@ impl<'db> PythonFile {
             code = Cow::Owned(code.replace('\n', " "));
         }
         let tree = Tree::parse(code.into_owned().into_boxed_str());
+        let ignore_directives = IgnoreDirectives::scan(tree.code());
         let points = Points::new(tree.length());
         let f = db.load_sub_file(self, |file_index| {
             let mut file = PythonFile::new_internal(
                 file_index,
                 tree,
+                ignore_directives,
                 points,
                 Diagnostics::default(),
                 self.is_stub(),
@@ -819,9 +828,11 @@ impl<'db> PythonFile {
             ),
             _ => (self, 0),
         };
-        let maybe_ignored = file
-            .tree
-            .type_ignore_comment_for(issue.start_position + add, issue.end_position + add);
+        let maybe_ignored = file.ignore_directives.type_ignore_comment_for(
+            file.tree.code(),
+            issue.start_position + add,
+            issue.end_position + add,
+        );
         let config = DiagnosticConfig {
             show_column_numbers: true,
             ..Default::default()
