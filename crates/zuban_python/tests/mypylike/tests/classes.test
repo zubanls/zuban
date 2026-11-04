@@ -3018,3 +3018,11 @@ class P(Protocol):
 
 class C[T: P = C]:  # E: TypeVar default must be a subtype of the bound type
     pass
+
+[case dunder_new_callable_self_param_no_recursion]
+# From GH #288
+from typing import Callable
+
+class C:
+    def __new__(a: Callable[[], None]):  # E: "self" parameter missing for a non-static method (or an invalid type for self)
+        pass

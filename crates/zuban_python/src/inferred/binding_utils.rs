@@ -8,6 +8,36 @@ use crate::{
     type_helpers::Generics,
 };
 
+thread_local! {
+    static CHECKING_FIRST_PARAM: RefCell<Vec<PointLink>> = const { RefCell::new(Vec::new()) };
+}
+
+struct FirstParamCheckGuard;
+
+impl FirstParamCheckGuard {
+    /// Returns None if the first param of this callable is already being checked further up in
+    /// the stack. This happens e.g. for `def __new__(a: Callable[[], None])`, because checking
+    /// whether `type[C]` is a `Callable` requires the signature of `C.__new__`.
+    fn new(defined_at: PointLink) -> Option<Self> {
+        CHECKING_FIRST_PARAM.with_borrow_mut(|stack| {
+            if stack.contains(&defined_at) {
+                None
+            } else {
+                stack.push(defined_at);
+                Some(Self)
+            }
+        })
+    }
+}
+
+impl Drop for FirstParamCheckGuard {
+    fn drop(&mut self) {
+        CHECKING_FIRST_PARAM.with_borrow_mut(|stack| {
+            stack.pop();
+        });
+    }
+}
+
 pub(super) fn infer_overloaded_class_method(
     i_s: &InferenceState,
     class: Class,
@@ -99,12 +129,14 @@ pub(super) fn proper_classmethod_callable(
                 let mut matcher = Matcher::new_callable_matcher(&c);
                 let t = t.replace_class_type_vars(i_s.db, func_class, &|| Some(as_type()));
                 // It feels weird to do this here, but this is just annoying currently
-                if !matches!(func_class.generics, Generics::Self_ { .. })
-                    && !t
+                if !matches!(func_class.generics, Generics::Self_ { .. }) {
+                    let _guard = FirstParamCheckGuard::new(original_callable.defined_at)?;
+                    if !t
                         .is_super_type_of(i_s, &mut matcher, &as_type_type())
                         .bool()
-                {
-                    return None;
+                    {
+                        return None;
+                    }
                 }
                 if let Type::Type(t) = t.as_ref()
                     && let Type::TypeVar(usage) = t.as_ref()
