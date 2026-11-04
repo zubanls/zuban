@@ -31,12 +31,9 @@ fn create_sys_path_with_file_access(
 
     let new_unchecked = |p: &str| handler.unchecked_normalized_path(handler.unchecked_abs_path(p));
 
-    let mut version = settings.python_version;
+    let version = settings.python_version;
     let check_global_site_packages = if let Some(env) = &settings.environment {
         let infos = pyvenv_cfg_infos(file_access, env);
-        if version.is_none() {
-            version = infos.version
-        }
         infos.include_system_site_packages
     } else {
         settings.add_global_packages_default
@@ -323,7 +320,6 @@ fn lib_path(
 #[derive(Default)]
 struct PyvenvInfos {
     include_system_site_packages: bool,
-    version: Option<PythonVersion>,
 }
 
 fn pyvenv_cfg_infos(file_access: impl TestableFileAccess, env: &NormalizedPath) -> PyvenvInfos {
@@ -339,9 +335,6 @@ fn pyvenv_cfg_infos(file_access: impl TestableFileAccess, env: &NormalizedPath) 
                             had_include_system_site_packages = true;
                             infos.include_system_site_packages =
                                 value.to_lowercase().trim() == "true";
-                        }
-                        "version" => {
-                            infos.version = value.trim().parse().ok();
                         }
                         _ => (),
                     }
