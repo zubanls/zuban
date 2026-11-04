@@ -133,7 +133,10 @@ fn try_to_find_env_in_dir(
                 Some(vfs_handler.normalize_rc_path(vfs_handler.unchecked_abs_path(venv_path_str)));
 
             if py_version.is_none() {
-                if let Some(version_str) = ini.get_from(None::<String>, "version") {
+                if let Some(version_str) = ini
+                    .get_from(None::<String>, "version")
+                    .or_else(|| ini.get_from(None::<String>, "version_info"))
+                {
                     match PythonVersion::from_str(version_str) {
                         Ok(v) => *py_version = Some(v),
                         Err(err) => {
@@ -151,4 +154,38 @@ fn try_to_find_env_in_dir(
         }
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use vfs::LocalFS;
+
+    use crate::PythonVersion;
+
+    use super::*;
+
+    #[test]
+    fn test_requires_python_from_pyproject_toml() {
+        let run = |version_string: &str| {
+            let fixture = format!("[file venv/pyvenv.cfg]\n{version_string}");
+            let test_dir = test_utils::write_files_from_fixture(fixture.as_ref(), false);
+
+            let fs = LocalFS::without_watcher();
+            let mut settings = Settings::default();
+            settings.try_to_apply_environment_variables(
+                &fs,
+                &fs.unchecked_abs_path(test_dir.path()),
+                |_| Err(std::env::VarError::NotPresent),
+            );
+            settings.python_version
+        };
+
+        assert_eq!(run("version = 3.4.1"), Some(PythonVersion::new(3, 4)));
+        assert_eq!(run("version_info = 3.5.1"), Some(PythonVersion::new(3, 5)));
+        assert_eq!(
+            run("version_info = 3.6.1\nversion=3.7"),
+            Some(PythonVersion::new(3, 7))
+        );
+        assert_eq!(run(""), None);
+    }
 }

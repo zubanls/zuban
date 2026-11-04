@@ -96,7 +96,7 @@ class D:
 class E[T](C[T]):
     pass
 
-[case no_crash_on_generic_enum_]
+[case no_crash_on_generic_enum]
 # From GH #653
 from enum import Enum
 from typing import overload
