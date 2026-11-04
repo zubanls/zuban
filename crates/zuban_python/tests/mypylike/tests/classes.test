@@ -3033,3 +3033,40 @@ class F:
         del self._c  # E: Cannot determine type of "_c"
     def g(self) -> None:
         self._c  # E: Cannot determine type of "_c"
+
+[case property_with_different_setter_name]
+# From GH #659
+from typing import assert_type
+class Device:
+    @property
+    def value(self) -> int:
+        return 1
+
+    @value.setter
+    def set_value(self, value: int) -> None:
+        pass
+
+    @set_value.deleter
+    def delete_value(self, value: int) -> None:
+        pass
+
+    @set_value.getter
+    def getter_value(self) -> int:
+        pass
+
+def f(d: Device):
+    assert_type(d.value, int)
+    d.value = 1  # E: Property "value" defined in "Device" is read-only
+    d.value = ""  # E: Property "value" defined in "Device" is read-only
+
+    assert_type(d.set_value, int)
+    d.set_value = 1
+    d.set_value = ""  # TODO should error
+
+    assert_type(d.delete_value, int)
+    d.delete_value = 1
+    d.delete_value = ""  # TODO should error
+
+    assert_type(d.getter_value, int)
+    d.getter_value = 1
+    d.getter_value = ""  # TODO should error

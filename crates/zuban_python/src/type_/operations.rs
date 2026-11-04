@@ -323,7 +323,7 @@ impl Type {
                 t.clone(),
                 None,
             ),
-            Type::Callable(_) | Type::FunctionOverload(_) => callable(
+            Type::FunctionOverload(_) => callable(
                 self,
                 Instance::new(i_s.db.python_state.function_class(), None).lookup(
                     i_s,
@@ -331,6 +331,7 @@ impl Type {
                     options(),
                 ),
             ),
+            Type::Callable(c) => callable(self, c.lookup(i_s, self, name, options())),
             Type::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
                 let mut lookup = file.lookup(i_s.db, args.add_issue, name);

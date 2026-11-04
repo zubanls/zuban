@@ -5,7 +5,9 @@ use vfs::FileIndex;
 
 use super::{TypeLikeInTypeVar, TypeVarKindInfos};
 use crate::file::FuncNodeRef;
+use crate::inferred::AttributeKind;
 use crate::prelude::*;
+use crate::type_helpers::{Instance, InstanceLookupOptions, LookupDetails};
 use crate::{
     format_data::ParamsStyle,
     params::{
@@ -886,6 +888,66 @@ impl CallableContent {
         let mut c = self.clone();
         c.deprecated_reason = None;
         Arc::new(c)
+    }
+
+    pub(crate) fn lookup<'a>(
+        &self,
+        i_s: &'a InferenceState,
+        callable_type: &Type,
+        name: &str,
+        options: InstanceLookupOptions,
+    ) -> LookupDetails<'a> {
+        let fallback =
+            || Instance::new(i_s.db.python_state.function_class(), None).lookup(i_s, name, options);
+        match &self.kind {
+            FunctionKind::Property {
+                had_first_self_or_class_annotation,
+                ..
+            } => {
+                let result = match name {
+                    "setter" => {
+                        let mut new = self.clone();
+                        new.kind = FunctionKind::Property {
+                            setter_type: Some(Arc::new(PropertySetter {
+                                // TODO theoretically this should be populated by the callable
+                                // that's going to be given
+                                type_: PropertySetterType::OtherType(Type::ERROR),
+                                deprecated_reason: None,
+                            })),
+                            had_first_self_or_class_annotation: *had_first_self_or_class_annotation,
+                        };
+                        Type::Callable(Arc::new(new))
+                    }
+                    // The type does not change at this point.
+                    "deleter" | "getter" => callable_type.clone(),
+                    // This is pretty rare and probably an error
+                    _ => return fallback(),
+                };
+                // Return a new callable for "setter" (et. al) that returns the same property
+                LookupDetails::new(
+                    callable_type.clone(),
+                    LookupResult::UnknownName(Inferred::from_type(Type::Callable(Arc::new(
+                        CallableContent::new_simple(
+                            Some(DbString::ArcStr(name.into())),
+                            None,
+                            // TODO this should be the setter origin of builtins.property not the
+                            // callable with kind property we're working on
+                            self.defined_at,
+                            i_s.db.python_state.empty_type_var_likes.clone(),
+                            CallableParams::Simple(
+                                [CallableParam::new_anonymous(ParamType::PositionalOnly(
+                                    Type::ERROR,
+                                ))]
+                                .into(),
+                            ),
+                            result,
+                        ),
+                    )))),
+                    AttributeKind::DefMethod { is_final: false },
+                )
+            }
+            _ => fallback(),
+        }
     }
 }
 

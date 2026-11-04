@@ -1075,7 +1075,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());
-            callable.kind = kind.clone();
+            if !matches!(callable.kind, FunctionKind::Property { .. }) {
+                // Sometimes properties are already initialized, if e.g. the setter name is
+                // different than the normal name.
+                callable.kind = kind.clone();
+            }
             callable.is_abstract = is_abstract;
             callable.is_final = is_final;
             callable.deprecated_reason = deprecated;
