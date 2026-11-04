@@ -601,8 +601,8 @@ impl<F: VfsFile> Vfs<F> {
 
         let in_mem_paths: Vec<PathWithScheme> = self
             .in_memory_files
-            .iter()
-            .filter_map(|(path, _)| {
+            .keys()
+            .filter_map(|path| {
                 if path.scheme != dir_path.scheme {
                     return None;
                 }
@@ -717,7 +717,7 @@ impl<F: VfsFile> Vfs<F> {
                     return;
                 }
                 let new_entry = self.handler.read_and_watch_entry_for_invalidation(
-                    &*self.workspaces.items.load(),
+                    &self.workspaces.items.load(),
                     path,
                     parent.clone(),
                     replace_name,
@@ -925,8 +925,8 @@ impl<F: VfsFile> Vfs<F> {
 
     pub fn in_memory_file_ids(&self) -> impl Iterator<Item = FileIndex> {
         self.in_memory_files
-            .iter()
-            .filter_map(|(_, in_mem)| match in_mem {
+            .values()
+            .filter_map(|in_mem| match in_mem {
                 InMemoryKind::File(file_index) => Some(*file_index),
                 InMemoryKind::Gitignore(_) => None,
             })

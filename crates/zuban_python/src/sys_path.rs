@@ -42,15 +42,15 @@ fn create_sys_path_with_file_access(
     let lib_path = lib_path(file_access, version);
     if let Some(path) = &lib_path {
         tracing::info!("Decided to use {path} as the Python lib folder");
-        if cfg!(target_os = "linux") {
-            if let Some(suffix) = path.strip_prefix("/usr/lib/") {
-                let lib64 = format!("/usr/lib64/{suffix}");
-                if file_access.exists(&lib64).unwrap_or_default() {
-                    sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&lib64)));
-                }
+        if cfg!(target_os = "linux")
+            && let Some(suffix) = path.strip_prefix("/usr/lib/")
+        {
+            let lib64 = format!("/usr/lib64/{suffix}");
+            if file_access.exists(&lib64).unwrap_or_default() {
+                sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&lib64)));
             }
         }
-        sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(&path)));
+        sys_path.push((WorkspaceKind::PythonStdLib, new_unchecked(path)));
     } else {
         tracing::warn!("Did not find a Python lib folder (on Linux e.g. /usr/lib/python3.12)");
     }
@@ -330,13 +330,9 @@ fn pyvenv_cfg_infos(file_access: impl TestableFileAccess, env: &NormalizedPath) 
             let mut had_include_system_site_packages = false;
             for line in content.lines() {
                 if let Some((key, value)) = line.split_once('=') {
-                    match key.trim() {
-                        "include-system-site-packages" => {
-                            had_include_system_site_packages = true;
-                            infos.include_system_site_packages =
-                                value.to_lowercase().trim() == "true";
-                        }
-                        _ => (),
+                    if key.trim() == "include-system-site-packages" {
+                        had_include_system_site_packages = true;
+                        infos.include_system_site_packages = value.to_lowercase().trim() == "true";
                     }
                 }
             }
@@ -399,12 +395,9 @@ fn add_user_site_packages(
                 tracing::warn!("site-packages path not unicode: {new:?}");
             }
         }
-        if let Some(pkg) = lookup_site_packages_with_version(
-            file_access,
-            &home.join(".local").join("lib"),
-            version,
-        )
-        .to_str()
+        if let Some(pkg) =
+            lookup_site_packages_with_version(file_access, home.join(".local").join("lib"), version)
+                .to_str()
         {
             add(pkg)
         }
@@ -432,22 +425,21 @@ fn add_global_site_packages(
     };
     if let Some(lib) = lib_path {
         let site_packages = Path::new(&lib).join("site-packages");
-        if cfg!(target_os = "linux") {
-            if let Some(suffix) = site_packages.strip_prefix("/usr/lib/").ok()
-                && let Some(suffix) = suffix.to_str()
-            {
-                // Fedora patches site.py and adds /usr/local as an additional prefix:
-                // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
-                let usr64_local = PathBuf::from(format!("/usr/local/lib64/{suffix}"));
-                maybe_add(&usr64_local);
-                let usr_local = PathBuf::from(format!("/usr/local/lib/{suffix}"));
-                maybe_add(&usr_local);
-                let lib64 = PathBuf::from(format!("/usr/lib64/{suffix}"));
-                maybe_add(&lib64);
+        if cfg!(target_os = "linux")
+            && let Some(suffix) = site_packages.strip_prefix("/usr/lib/").ok()
+            && let Some(suffix) = suffix.to_str()
+        {
+            // Fedora patches site.py and adds /usr/local as an additional prefix:
+            // https://src.fedoraproject.org/rpms/python3.13/blob/a93ec22eafc24bef97cc352b2be90bf7d3c136e6/f/00251-change-user-install-location.patch
+            let usr64_local = PathBuf::from(format!("/usr/local/lib64/{suffix}"));
+            maybe_add(&usr64_local);
+            let usr_local = PathBuf::from(format!("/usr/local/lib/{suffix}"));
+            maybe_add(&usr_local);
+            let lib64 = PathBuf::from(format!("/usr/lib64/{suffix}"));
+            maybe_add(&lib64);
 
-                // Ubuntu uses the dist-packages name instead of site-packages
-                maybe_add(&usr_local.parent().unwrap().join("dist-packages"));
-            }
+            // Ubuntu uses the dist-packages name instead of site-packages
+            maybe_add(&usr_local.parent().unwrap().join("dist-packages"));
         }
 
         maybe_add(&site_packages)
@@ -475,8 +467,8 @@ impl Iterator for ReadDir {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            ReadDir::Std(read_dir) => Some(read_dir.next()?.map(|d| DirEntry::Std(d))),
-            ReadDir::Testable(entries) => entries.next().map(|e| Ok(e)),
+            ReadDir::Std(read_dir) => Some(read_dir.next()?.map(DirEntry::Std)),
+            ReadDir::Testable(entries) => entries.next().map(Ok),
         }
     }
 }
@@ -533,7 +525,7 @@ impl TestableFileAccess for FileAccess {
     }
 
     fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String> {
-        std::fs::read_to_string(&path)
+        std::fs::read_to_string(path)
     }
 
     fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
@@ -541,7 +533,7 @@ impl TestableFileAccess for FileAccess {
     }
 
     fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {
-        std::fs::read_dir(path).map(|r| ReadDir::Std(r))
+        std::fs::read_dir(path).map(ReadDir::Std)
     }
 
     fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString> {

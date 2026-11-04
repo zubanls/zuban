@@ -744,9 +744,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => return None,
                     },
                     PointKind::Complex => {
-                        if node_ref.maybe_complex().unwrap().maybe_instance().is_none() {
-                            return None;
-                        }
+                        node_ref.maybe_complex().unwrap().maybe_instance()?;
                     }
                     _ => return None,
                 }
@@ -754,11 +752,9 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
             _ => return None,
         }
-        if let Some(t) = self.as_cow_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
-            Some(Self::from_type(t))
-        } else {
-            None
-        }
+        self.as_cow_type(i_s)
+            .maybe_avoid_implicit_literal(i_s.db)
+            .map(Self::from_type)
     }
 
     #[inline]
@@ -1153,17 +1149,15 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let ResultContext::AssignmentNewDefinition {
                                     assignment_definition,
                                 } = &result_context
-                                {
-                                    if let Some(inf) = assignment_definition
+                                    && let Some(inf) = assignment_definition
                                         .file(i_s.db)
                                         .name_resolution_for_types(i_s)
                                         .execute_type_alias_from_type_alias_type(
                                             args,
                                             assignment_definition.as_node(i_s.db),
                                         )
-                                    {
-                                        return inf;
-                                    }
+                                {
+                                    return inf;
                                 }
                             }
                             Specific::TypingAny => {

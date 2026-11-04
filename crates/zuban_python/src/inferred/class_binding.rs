@@ -321,21 +321,19 @@ impl<'db: 'slf, 'slf> Inferred {
 
         if apply_descriptors.should_apply()
             && let Some(c) = t.inner_generic_class(i_s)
-        {
-            if let Some(inf) = c
+            && let Some(inf) = c
                 .instance()
                 .type_lookup(i_s, &add_issue, "__get__")
                 .into_maybe_inferred()
-            {
-                let class_as_inferred = class.as_inferred(i_s);
-                return Some(Some(inf.execute(
-                    i_s,
-                    &CombinedArgs::new(
-                        &KnownArgsWithCustomAddIssue::new(&Inferred::new_none(), &add_issue),
-                        &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
-                    ),
-                )));
-            }
+        {
+            let class_as_inferred = class.as_inferred(i_s);
+            return Some(Some(inf.execute(
+                i_s,
+                &CombinedArgs::new(
+                    &KnownArgsWithCustomAddIssue::new(&Inferred::new_none(), &add_issue),
+                    &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
+                ),
+            )));
         }
         // TODO this clone should not be necessary, but there appears to be a bug in the compiler.
         if let Some(new) = new.clone() {

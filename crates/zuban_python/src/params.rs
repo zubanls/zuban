@@ -370,7 +370,7 @@ fn matches_simple_params_part2<
                         _ => {
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
                                 if param1.name(i_s.db) == p2.name(i_s.db) {
-                                    if mismatches_defaults(&param1, &p2) {
+                                    if mismatches_defaults(&param1, p2) {
                                         return Match::new_false();
                                     }
                                     match unused_keyword_params.remove(i).specific(i_s.db) {
@@ -783,7 +783,7 @@ fn typed_dict_to_params<'x>(
         .named
         .iter()
         .map(TypedDictMemberParam::Member)
-        .chain(extra_t.map(TypedDictMemberParam::ExtraItems).into_iter())
+        .chain(extra_t.map(TypedDictMemberParam::ExtraItems))
 }
 
 pub fn has_overlapping_params(

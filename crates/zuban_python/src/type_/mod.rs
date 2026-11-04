@@ -841,7 +841,7 @@ impl Type {
                     let mut gathered: Vec<Type> = vec![];
                     for entry in union.entries.iter() {
                         if let Some(type_) = entry.maybe_avoid_implicit_literal(db) {
-                            if !gathered.iter().any(|e| *e == type_) {
+                            if !gathered.contains(&type_) {
                                 gathered.push(type_);
                             }
                         } else if !gathered.contains(entry) {
@@ -1056,12 +1056,12 @@ impl Type {
                     &matches
                 );
             }
-            if let Some(error) = on_error(&error_types, reason) {
-                if add_issue(error) {
-                    error_types.add_mismatch_notes(|kind| {
-                        add_issue(kind);
-                    })
-                }
+            if let Some(error) = on_error(&error_types, reason)
+                && add_issue(error)
+            {
+                error_types.add_mismatch_notes(|kind| {
+                    add_issue(kind);
+                })
             }
         }
         matches

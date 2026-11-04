@@ -1360,7 +1360,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     )),
                 );
             }
-            TypeContent::Final { t: _, .. } => {
+            TypeContent::Final { .. } => {
                 self.add_issue(node_ref, IssueKind::FinalInWrongPlace);
             }
             TypeContent::InvalidVariable(t) => {
@@ -2049,7 +2049,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let TypeVarLike::TypeVar(type_var) = type_var_like else {
                 unreachable!("Should have been checked before")
             };
-            if let Some(slice_content) = iterator.next() {
+            {
+                let slice_content = iterator.next()?;
                 let t = self.compute_slice_type_content(slice_content);
                 // Performance: This could be optimized to not create new objects all the time.
                 self.check_constraints(
@@ -2075,8 +2076,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ));
                     return None;
                 }
-            } else {
-                return None;
             }
         }
         if iterator.next().is_none() {
@@ -4610,7 +4609,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                         && let LiteralKind::String(DbString::StringSlice(s)) = &lit.kind
                     {
                         // TODO probably also support DbString and not just StringSlice
-                        return Some(s.clone());
+                        return Some(*s);
                     }
                     None
                 }

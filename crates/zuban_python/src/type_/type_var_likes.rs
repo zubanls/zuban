@@ -629,7 +629,7 @@ impl TypeVarLikes {
                     recoverable_error!("There should always be a known position");
                 }
                 // Need to overwrite the old definition
-                let mut n: Vec<_> = self.iter().cloned().take(i).collect();
+                let mut n: Vec<_> = self.iter().take(i).cloned().collect();
                 n.push(replaced);
                 new = Some(n);
             } else if let Some(new) = &mut new {

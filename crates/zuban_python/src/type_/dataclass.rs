@@ -153,11 +153,7 @@ impl Dataclass {
             .find(|p| p.name.as_ref().is_some_and(|n| n.as_str(db) == name))
     }
 
-    pub fn has_slot<'dataclass>(
-        db: &Database,
-        dataclass: &'dataclass Arc<Dataclass>,
-        name: &str,
-    ) -> bool {
+    pub fn has_slot(db: &Database, dataclass: &Arc<Dataclass>, name: &str) -> bool {
         Self::lookup(db, dataclass, name).is_some()
             || dataclass_inits(dataclass, db)
                 .non_init_fields
@@ -319,21 +315,18 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Arc<Dataclass>, cls: C
                         .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
                     continue;
                 }
-                Some(Specific::AnnotationOrTypeCommentFinal) => {
+                Some(Specific::AnnotationOrTypeCommentFinal)
                     if !file
                         .points
                         .get(annotation.expression().index())
-                        .calculated()
-                    {
-                        let annotation_ref = NodeRef::new(file, annotation.index());
-                        inference.fill_potentially_unfinished_final_or_class_var(
-                            annotation_ref,
-                            right_side,
-                        );
-                        if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
-                            annotation_ref
-                                .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass);
-                        }
+                        .calculated() =>
+                {
+                    let annotation_ref = NodeRef::new(file, annotation.index());
+                    inference
+                        .fill_potentially_unfinished_final_or_class_var(annotation_ref, right_side);
+                    if right_side.is_some_and(|right_side| !right_side.is_literal_value()) {
+                        annotation_ref
+                            .add_issue(i_s, IssueKind::NeedTypeArgumentForFinalInDataclass);
                     }
                 }
                 _ => (),
@@ -991,7 +984,7 @@ pub(crate) fn dataclass_initialize<'db>(
 
 fn dataclass_inits<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a Inits {
     ensure_calculated_dataclass(self_, db);
-    &self_.inits.get().unwrap()
+    self_.inits.get().unwrap()
 }
 
 pub fn dataclass_init_func<'a>(self_: &'a Arc<Dataclass>, db: &Database) -> &'a CallableContent {
@@ -1104,11 +1097,11 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             .lookup_symbol(i_s, "__hash__")
             .is_some()
     {
-        return LookupDetails::new(
+        LookupDetails::new(
             Type::Dataclass(dataclass.clone()),
             LookupResult::UnknownName(Inferred::new_none()),
             AttributeKind::Attribute,
-        );
+        )
     } else {
         dataclass
             .class(i_s.db)

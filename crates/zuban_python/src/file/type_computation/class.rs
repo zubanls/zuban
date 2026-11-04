@@ -100,7 +100,7 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
 
     #[inline]
     pub fn to_db_lifetime(self, db: &'db Database) -> ClassNodeRef<'db> {
-        ClassNodeRef::from_node_ref((&*self).to_db_lifetime(db))
+        ClassNodeRef::from_node_ref((*self).to_db_lifetime(db))
     }
 
     pub fn name(&self) -> &'file str {
@@ -167,13 +167,12 @@ impl<'db: 'file, 'file> ClassNodeRef<'file> {
                 && (i_s.db.project.should_infer_untyped_params()
                     // For language servers we need the generics to store heuristics
                     || i_s.db.run_cause == RunCause::LanguageServer && !self.file.is_stub())
+                && let Some(func) = self.maybe_init_func()
             {
-                if let Some(func) = self.maybe_init_func() {
-                    // Only generate type vars for classes that are not typed at all and have
-                    // initialization params.
-                    if !func.is_typed() && func.params().iter().nth(1).is_some() {
-                        found = TypeVarLikes::new_untyped_params(func, true)
-                    }
+                // Only generate type vars for classes that are not typed at all and have
+                // initialization params.
+                if !func.is_typed() && func.params().iter().nth(1).is_some() {
+                    found = TypeVarLikes::new_untyped_params(func, true)
                 }
             }
             found
@@ -1164,14 +1163,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                     self.add_issue_on_args(i_s, IssueKind::TypedDictBasesMustBeTypedDicts);
                 }
             }
-            ClassKind::Protocol => {
+            ClassKind::Protocol
                 if bases.iter().any(|t| {
                     t.maybe_class(db).is_none_or(|cls| {
                         !cls.is_protocol(db) && cls.node_ref != db.python_state.object_node_ref()
                     })
-                }) {
-                    self.add_issue_on_args(i_s, IssueKind::BasesOfProtocolMustBeProtocol);
-                }
+                }) =>
+            {
+                self.add_issue_on_args(i_s, IssueKind::BasesOfProtocolMustBeProtocol);
             }
             _ => (),
         }
@@ -1428,26 +1427,25 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 match expr.unpack() {
                     ExpressionContent::Lambda(_) => return None,
                     ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) => {
-                        if let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref() {
-                            if let PrimaryContent::Execution(args) = primary.second()
-                                && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) =
-                                    name_resolution
-                                        .lookup_type_primary_or_atom_if_only_names(primary.first())
-                            {
-                                let node_ref = node_ref.into_node_ref();
-                                if node_ref == non_member_ref {
-                                    return None;
-                                } else if Some(node_ref) == db.python_state.enum_member_node_ref() {
-                                    if let Some(named_expr) = args.maybe_single_positional() {
-                                        return Some(ValidEnumMemberAssignment::SubExpression(
-                                            named_expr.expression(),
-                                        ));
-                                    }
-                                } else if node_ref == db.python_state.classmethod_node_ref()
-                                    || node_ref == db.python_state.staticmethod_node_ref()
-                                {
-                                    return None;
+                        if let Some(non_member_ref) = db.python_state.enum_nonmember_node_ref()
+                            && let PrimaryContent::Execution(args) = primary.second()
+                            && let Some(Lookup::T(TypeContent::Class { node_ref, .. })) =
+                                name_resolution
+                                    .lookup_type_primary_or_atom_if_only_names(primary.first())
+                        {
+                            let node_ref = node_ref.into_node_ref();
+                            if node_ref == non_member_ref {
+                                return None;
+                            } else if Some(node_ref) == db.python_state.enum_member_node_ref() {
+                                if let Some(named_expr) = args.maybe_single_positional() {
+                                    return Some(ValidEnumMemberAssignment::SubExpression(
+                                        named_expr.expression(),
+                                    ));
                                 }
+                            } else if node_ref == db.python_state.classmethod_node_ref()
+                                || node_ref == db.python_state.staticmethod_node_ref()
+                            {
+                                return None;
                             }
                         }
                     }
@@ -1638,18 +1636,14 @@ impl<'db: 'a, 'a> ClassInitializer<'a> {
                 for (i, base) in mro.iter().enumerate() {
                     if mro_index != i
                         && let Some(class) = &base.type_.inner_generic_class_with_db(db)
-                    {
-                        if let Some(node_index) =
+                        && let Some(node_index) =
                             class.class_storage.class_symbol_table.lookup_symbol(name)
-                        {
-                            if !class
-                                .class_storage
-                                .abstract_attributes
-                                .contains(&node_index)
-                            {
-                                return;
-                            }
-                        }
+                        && !class
+                            .class_storage
+                            .abstract_attributes
+                            .contains(&node_index)
+                    {
+                        return;
                     }
                 }
                 result.push(link)
@@ -2218,12 +2212,10 @@ fn linearize_mro_and_return_linearizable(
                 allowed_to_use += 1;
                 // Here we know that we have issues and only add the type if it's not already
                 // there.
-                if mro.iter().any(|b| &b.type_ == type_.t.as_ref()) {
-                    if type_.t.as_ref() != &object {
-                        let new = to_base_class(base_index, i == 0, &type_, &mut allowed_to_use);
-                        mro.push(new);
-                    };
-                }
+                if mro.iter().any(|b| &b.type_ == type_.t.as_ref()) && type_.t.as_ref() != &object {
+                    let new = to_base_class(base_index, i == 0, &type_, &mut allowed_to_use);
+                    mro.push(new);
+                };
                 continue 'outer;
             }
         }

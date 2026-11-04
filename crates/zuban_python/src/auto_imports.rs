@@ -145,8 +145,8 @@ impl<'db> ImportFinder<'db> {
         }
         let entries: Vec<_> = entries
             .borrow()
-            .iter()
-            .filter_map(|(_, dir_entry)| match dir_entry {
+            .values()
+            .filter_map(|dir_entry| match dir_entry {
                 DirectoryEntry::File(_) | DirectoryEntry::Directory(_) => Some(dir_entry.clone()),
                 _ => None,
             })
@@ -262,18 +262,17 @@ impl<'db> ImportFinder<'db> {
                 needs_additional_name: true,
             });
             return true;
-        } else if add_star_imports {
-            if file
+        } else if add_star_imports
+            && file
                 .name_resolution_for_types(&InferenceState::new(self.db, file))
                 .lookup_from_star_import(self.name, StarImportResolutionKind::Global)
                 .is_ok()
-            {
-                self.found.lock().unwrap().push(PotentialImport {
-                    file,
-                    needs_additional_name: true,
-                });
-                return true;
-            }
+        {
+            self.found.lock().unwrap().push(PotentialImport {
+                file,
+                needs_additional_name: true,
+            });
+            return true;
         }
         false
     }
@@ -511,7 +510,7 @@ impl TypeshedSymbols {
             if let Some(cache_dir) = cache_dir
                 && std::fs::create_dir_all(&cache_dir).is_ok()
             {
-                const CACHE_FILE_NAME: &'static str = "typeshed.cache";
+                const CACHE_FILE_NAME: &str = "typeshed.cache";
                 let file = cache_dir.join(CACHE_FILE_NAME);
                 let typeshed_path =
                     db.project

@@ -1004,7 +1004,7 @@ impl Replacer for ReplaceTypeVarLikesHelper<'_, '_> {
                     return Some(None);
                 }
                 let new_entries: TypeGatherer =
-                    maybe_replace_iterable(u.entries.iter(), |u| Some(u.replace_internal(self)?))?;
+                    maybe_replace_iterable(u.entries.iter(), |u| u.replace_internal(self))?;
                 Some(Some(if self.simplify_unions {
                     let i_s = InferenceState::new_in_unknown_file(self.db);
                     Type::simplified_union_from_iterators(&i_s, new_entries.iter())

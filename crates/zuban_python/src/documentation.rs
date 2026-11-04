@@ -84,7 +84,7 @@ impl<'project> Document<'project> {
                     let docs: Vec<_> = overload
                         .iter_functions()
                         .map(|f| f.as_ref())
-                        .chain(implementation().into_iter())
+                        .chain(implementation())
                         .filter_map(|c| {
                             let func = c.maybe_original_func_def(db)?;
                             let doc = func.name().clean_docstring();
@@ -137,7 +137,7 @@ impl<'project> Document<'project> {
                     );
                     *t = keep_entries.into_type();
                 }
-                let heuristic = pretty_type_formatting(i_s, &t, true).into_string();
+                let heuristic = pretty_type_formatting(i_s, t, true).into_string();
                 if s != heuristic {
                     s = format!("{s}\n\nMight be: {heuristic}")
                 }
@@ -170,7 +170,7 @@ impl<'project> Document<'project> {
                             TypeDocs::TypeVarLike(tvl) => {
                                 let mut doc = String::default();
                                 if let Some(TypeVarCallbackReturn::TypeVarLike(usage)) =
-                                    i_s.find_parent_type_var(&tvl)
+                                    i_s.find_parent_type_var(tvl)
                                 {
                                     let in_definition = usage.in_definition();
                                     let definition = NodeRef::from_link(db, in_definition);
@@ -398,8 +398,7 @@ fn pretty_type_formatting(i_s: &InferenceState, t: &Type, from_heuristic: bool) 
                     func.params()
                         .iter()
                         .find(|param| param.name_def().as_code() == name)
-                        .map(|param| param.default().map(|expr| expr.as_code()))
-                        .flatten()
+                        .and_then(|param| param.default().map(|expr| expr.as_code()))
                 }),
                 ..Default::default()
             },

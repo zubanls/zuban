@@ -50,16 +50,11 @@ pub struct ProjectOptions {
     pub overrides: Vec<OverrideConfig>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, clap::ValueEnum)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, clap::ValueEnum, Default)]
 pub enum Mode {
+    #[default]
     Default,
     Mypy,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -971,7 +966,7 @@ pub struct OverrideConfig {
 }
 
 impl OverrideConfig {
-    pub fn apply_to_flags<'slf>(&'slf self, flags: &mut TypeCheckerFlags) -> ConfigResult {
+    pub fn apply_to_flags(&self, flags: &mut TypeCheckerFlags) -> ConfigResult {
         for (key, value) in self.config.iter() {
             if **key == *"strict" && value.to_value().as_bool(false)? {
                 flags.enable_all_strict_flags();

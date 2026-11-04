@@ -41,7 +41,7 @@ impl<'x> WorkspacesBuilder<'x> {
 
     pub fn add(&mut self, root: Arc<NormalizedPath>, kind: WorkspaceKind) -> bool {
         let scheme = file_scheme();
-        if let Some(add) = Self::maybe_add(&mut self.items, self.handler, scheme, root, kind) {
+        if let Some(add) = Self::maybe_add(&self.items, self.handler, scheme, root, kind) {
             self.items.push(add);
             true
         } else {
@@ -60,7 +60,7 @@ impl<'x> WorkspacesBuilder<'x> {
             // The path is already in there
             return None;
         }
-        let workspace = Workspace::new(vfs, &*items, scheme, root, kind);
+        let workspace = Workspace::new(vfs, items, scheme, root, kind);
         Some(workspace)
     }
 
@@ -70,7 +70,7 @@ impl<'x> WorkspacesBuilder<'x> {
         root: Arc<NormalizedPath>,
         kind: WorkspaceKind,
     ) {
-        if let Some(add) = Self::maybe_add(&mut self.items, self.handler, scheme, root, kind) {
+        if let Some(add) = Self::maybe_add(&self.items, self.handler, scheme, root, kind) {
             self.items.insert(0, add);
         }
     }
@@ -86,7 +86,7 @@ impl<'x> WorkspacesBuilder<'x> {
         case_sensitive: bool,
         path: &PathWithScheme,
     ) -> bool {
-        strip_shortest_path_in_workspace(self.handler, &*self.items, case_sensitive, path)
+        strip_shortest_path_in_workspace(self.handler, &self.items, case_sensitive, path)
             .is_some_and(|(workspace, _)| workspace.kind == WorkspaceKind::TypeChecking)
     }
 }
@@ -122,7 +122,7 @@ impl Workspaces {
         // should not matter at all.
         let _lock = self.items_write_lock.lock().unwrap();
         let items = self.items.load();
-        if let Some(add) = WorkspacesBuilder::maybe_add(&**items, vfs, scheme, root, kind) {
+        if let Some(add) = WorkspacesBuilder::maybe_add(&items, vfs, scheme, root, kind) {
             let new_items = items.iter().cloned().chain(std::iter::once(add));
             self.items.store(Arc::new(new_items.collect()));
             true
@@ -137,7 +137,7 @@ impl Workspaces {
         case_sensitive: bool,
         path: &'path PathWithScheme,
     ) -> Option<(Arc<Workspace>, &'path str)> {
-        strip_shortest_path_in_workspace(vfs, &*self.items.load(), case_sensitive, path)
+        strip_shortest_path_in_workspace(vfs, &self.items.load(), case_sensitive, path)
     }
 
     pub fn load(&self) -> LoadedWorkspaces {
@@ -266,7 +266,7 @@ impl Workspaces {
             if workspace.kind == WorkspaceKind::Fallback {
                 tracing::debug!("Try to ensure fallback for {path:?}");
                 let dir_entry = vfs.read_and_watch_entry_for_invalidation(
-                    &*self.items.load(),
+                    &self.items.load(),
                     // We want this to not be case sensitive, this is a fallback and should
                     // be read if possible.
                     &path.path,
@@ -285,7 +285,7 @@ impl Workspaces {
             }
         }
         tracing::error!("Would typically expect a fallback workspace");
-        return None;
+        None
     }
 
     pub(crate) fn unload_file(
@@ -329,9 +329,9 @@ impl Workspaces {
         ) -> Arc<Directory> {
             // TODO not all entries need to be recalculated if it's not yet calculated
             let dir = Arc::new(dir);
-            for (_, entry) in Directory::entries_with_workspaces(vfs, workspaces, &dir)
+            for entry in Directory::entries_with_workspaces(vfs, workspaces, &dir)
                 .borrow_mut()
-                .iter_mut()
+                .values_mut()
             {
                 match entry {
                     DirectoryEntry::File(file) => {
@@ -356,7 +356,7 @@ impl Workspaces {
             .iter()
             .map(|workspace| {
                 let new_workspace = Arc::new(workspace.as_ref().clone());
-                for (_, entry) in new_workspace.entries.borrow_mut().iter_mut() {
+                for entry in new_workspace.entries.borrow_mut().values_mut() {
                     match entry {
                         DirectoryEntry::Directory(dir) => {
                             debug_assert!(matches!(dir.parent, Parent::Workspace(_)));
@@ -419,13 +419,12 @@ fn strip_shortest_path_in_workspace<'path>(
 ) -> Option<(Arc<Workspace>, &'path str)> {
     let mut shortest: Option<(Arc<Workspace>, &'path str)> = None;
     for workspace in workspaces.iter() {
-        if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path) {
-            if shortest
+        if let Some(p) = workspace.strip_path_prefix(vfs, case_sensitive, path)
+            && shortest
                 .as_ref()
                 .is_none_or(|(_, shortest)| shortest.len() > p.len())
-            {
-                shortest = Some((workspace.clone(), p))
-            }
+        {
+            shortest = Some((workspace.clone(), p))
         }
     }
     shortest
@@ -708,7 +707,7 @@ pub(crate) fn add_nested_workspace_if_necessary(
         );
         workspace
             .parent
-            .change(Some(Parent::Directory(Arc::downgrade(&dir))));
+            .change(Some(Parent::Directory(Arc::downgrade(dir))));
         let result = dir
             .entries
             .set(DirEntries::NestedWorkspace(Arc::downgrade(workspace)));

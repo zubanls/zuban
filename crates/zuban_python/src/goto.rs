@@ -594,16 +594,12 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                 }
                 _ => None,
             },
-            GotoNode::ImportFromAsName { import_as_name, .. } => {
-                if let Some(result) = self.try_to_follow(
+            GotoNode::ImportFromAsName { import_as_name, .. } => self
+                .try_to_follow(
                     NodeRef::new(file, import_as_name.name_def().index()),
                     follow_imports,
-                ) {
-                    Some(vec![result])
-                } else {
-                    None
-                }
-            }
+                )
+                .map(|result| vec![result]),
             GotoNode::GlobalName(name_def) | GotoNode::NonlocalName(name_def) => {
                 let ref_ = NodeRef::new(file, name_def.index()).global_or_nonlocal_ref();
                 if let Some(result) = self.try_to_follow(ref_, follow_imports) {

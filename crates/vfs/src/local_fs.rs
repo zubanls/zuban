@@ -104,7 +104,7 @@ impl<T: Fn(InvalidatedInMemoryFile) + Sync + Send> VfsHandler for LocalFS<T> {
                                         n,
                                         DirectoryEntry::Gitignore(GitignoreFile::new(
                                             parent.clone(),
-                                            &dir_entry.path(),
+                                            dir_entry.path(),
                                             &code,
                                         )),
                                     );

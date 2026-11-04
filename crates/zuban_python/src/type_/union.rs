@@ -63,7 +63,7 @@ impl Type {
                     }
                     Type::Never(_) => (), // `X | Never is always X`
                     _ => {
-                        if !vec.iter().any(|t| *t == other) {
+                        if !vec.contains(&other) {
                             vec.push(other)
                         }
                     }
@@ -135,7 +135,7 @@ fn merge_simplified_union_type<'x>(
             if !new_types.iter().any(|entry| {
                 // We cannot use normal unpacking of recursive types, because it that triggers
                 // simplified unions again, due to unpacking of recursive types.
-                entry.is_equal_type_without_unpacking_recursive_types(i_s.db, &additional_t)
+                entry.is_equal_type_without_unpacking_recursive_types(i_s.db, additional_t)
             }) && !matches!(additional_t, Type::Any(AnyCause::UnknownTypeParam))
             {
                 new_types.push(additional_t.clone())
@@ -153,7 +153,7 @@ fn merge_simplified_union_type<'x>(
         // Recursive aliases need special handling, because the normal subtype
         // checking will call this function again if generics are available to
         // cache the type.
-        if is_recursive_with_generics(&additional_t) {
+        if is_recursive_with_generics(additional_t) {
             // Since we don't remove duplicate entries in the proper way we at least do a quick
             // equals and remove simple duplicates.
             if new_types.iter().any(|e| e == additional_t) {
@@ -468,10 +468,7 @@ impl TypeGatherer {
         match self.0.len() {
             0 => Type::NEVER,
             1 => self.0.into_iter().next().unwrap(),
-            _ => Type::Union(UnionType::from_types(
-                self.0.into_iter(),
-                might_have_type_vars,
-            )),
+            _ => Type::Union(UnionType::from_types(self.0, might_have_type_vars)),
         }
     }
 

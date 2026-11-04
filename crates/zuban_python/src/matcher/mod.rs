@@ -201,10 +201,9 @@ impl<'a> Matcher<'a> {
                 }
                 if let Some(self_kind) = self_ta.maybe_calculated()
                     && let Some(other_kind) = other_ta.maybe_calculated()
+                    && !self_kind.is_simple_same_type(i_s, other_kind).bool()
                 {
-                    if !self_kind.is_simple_same_type(i_s, other_kind).bool() {
-                        self_ta.uninferrable = true;
-                    }
+                    self_ta.uninferrable = true;
                 }
             }
         }
@@ -733,33 +732,29 @@ impl<'a> Matcher<'a> {
             if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
                 tvt.in_definition,
                 tvt.temporary_matcher_id,
-            ) {
-                if with_unpack.before.len() < known_positional_count
-                    && no_default_count != known_positional_count
-                {
-                    // There are default params and some of them might not be necessary as a type
-                    // argument. Therefore we gather the defaults as part of the type arguments in this
-                    // special case and save it as well as the tuple information so it can be used
-                    // downstream when matching this specific tuple.
-                    let mut matches = Match::new_true();
-                    let mut positional_params = positional_params.into_iter();
-                    for (match_t, param) in
-                        with_unpack.before.iter().zip(positional_params.by_ref())
-                    {
-                        matches &= match_t.matches(
-                            i_s,
-                            self,
-                            param.specific(i_s.db).expect_positional_type(),
-                            variance,
-                        );
-                    }
-                    let tv_matcher = &mut self.type_var_matchers[matcher_index];
-                    let found =
-                        gather_unpack_args(i_s.db, &tuple.args, &mut positional_params.peekable())?;
-                    matches &= tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                        .merge(i_s, Bound::new_type_args(found, variance));
-                    return Some(matches);
+            ) && with_unpack.before.len() < known_positional_count
+                && no_default_count != known_positional_count
+            {
+                // There are default params and some of them might not be necessary as a type
+                // argument. Therefore we gather the defaults as part of the type arguments in this
+                // special case and save it as well as the tuple information so it can be used
+                // downstream when matching this specific tuple.
+                let mut matches = Match::new_true();
+                let mut positional_params = positional_params.into_iter();
+                for (match_t, param) in with_unpack.before.iter().zip(positional_params.by_ref()) {
+                    matches &= match_t.matches(
+                        i_s,
+                        self,
+                        param.specific(i_s.db).expect_positional_type(),
+                        variance,
+                    );
                 }
+                let tv_matcher = &mut self.type_var_matchers[matcher_index];
+                let found =
+                    gather_unpack_args(i_s.db, &tuple.args, &mut positional_params.peekable())?;
+                matches &= tv_matcher.calculating_type_args[tvt.index.as_usize()]
+                    .merge(i_s, Bound::new_type_args(found, variance));
+                return Some(matches);
             }
             let args = self.replace_type_var_likes(
                 i_s.db,
@@ -986,7 +981,7 @@ impl<'a> Matcher<'a> {
                             // It seems like simply skipping these is fine and it's not necessary
                             // to add an issue here, because I was not able to create a case where
                             // these are needed.
-                            InferredArg::ParamSpec { usage: _, .. } => continue,
+                            InferredArg::ParamSpec { .. } => continue,
                             InferredArg::StarredWithUnpack(_) => continue,
                         };
                         let got_t = inferred.as_cow_type(i_s);
@@ -1241,7 +1236,7 @@ impl<'a> Matcher<'a> {
         if let Some(c) = self.class
             && c.node_ref.as_link() == usage.in_definition()
         {
-            return Some(c.generics().nth_usage(db, &usage).into_owned());
+            return Some(c.generics().nth_usage(db, usage).into_owned());
         }
         if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
             let g = func_class.generics().nth_usage(db, usage).into_owned();
@@ -1595,7 +1590,7 @@ impl<'a> Matcher<'a> {
                         if !c.unresolved_transitive_constraints.is_empty() {
                             debug!(
                                 "Resolve nested transitive cycle: {}",
-                                depending_on.format(&self, i_s.db)
+                                depending_on.format(self, i_s.db)
                             );
                             let _indent = debug_indent();
                             let m = self.resolve_cycle(i_s, cycles, depending_on);
@@ -2084,10 +2079,8 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
                     first_positional_default = None;
                     break;
                 }
-                if next.has_default() {
-                    if first_positional_default.is_none() {
-                        first_positional_default = Some(counter)
-                    }
+                if next.has_default() && first_positional_default.is_none() {
+                    first_positional_default = Some(counter)
                 }
                 let t2 = t2
                     .map(|t2| t2.into_owned())

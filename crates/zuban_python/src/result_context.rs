@@ -270,7 +270,7 @@ fn try_to_match_generics_of_class(
 
     self_class
         .as_type(i_s.db)
-        .is_sub_type_of(i_s, &mut matcher, &t)
+        .is_sub_type_of(i_s, &mut matcher, t)
         .bool()
         .then_some(matcher)
 }

@@ -953,7 +953,7 @@ impl TypeAlias {
         NodeRef::from_link(db, self.name).as_code()
     }
 
-    pub fn name_slice<'db>(&self, db: &'db Database) -> StringSlice {
+    pub fn name_slice(&self, db: &Database) -> StringSlice {
         NodeRef::from_link(db, self.name).string_slice()
     }
 
@@ -1663,7 +1663,7 @@ fn add_workspace_and_check_for_pth_files(
         // standard library.
         let last = workspaces_builder.expect_last();
         let mut pth_files = vec![];
-        for (_, dir_entry) in last.entries.borrow().iter() {
+        for dir_entry in last.entries.borrow().values() {
             if let DirectoryEntry::File(file_entry) = dir_entry
                 && file_entry.name.ends_with(".pth")
                 && !file_entry.name.starts_with('.')

@@ -192,7 +192,7 @@ impl DirectoryEntry {
     fn walk_internal<X>(&self, vfs: &Vfs<X>, callable: &mut impl FnMut(&Entries, &Self) -> bool) {
         if let DirectoryEntry::Directory(dir) = self {
             let entries = Directory::entries(vfs, dir);
-            for (_, entry) in entries.borrow().iter() {
+            for entry in entries.borrow().values() {
                 if callable(entries, entry) {
                     entry.walk_internal(vfs, callable);
                 };
@@ -376,8 +376,8 @@ impl Entries {
         let new_gitignore = || {
             GitignoreFile::new(
                 parent.clone(),
-                &*vfs.join(&*parent.absolute_path(vfs).path, name),
-                &code,
+                &*vfs.join(&parent.absolute_path(vfs).path, name),
+                code,
             )
         };
         let file_entry = if let Some(mut entry) = self.search_mut(name) {
@@ -522,7 +522,7 @@ impl Entries {
         vfs: &Vfs<X>,
         callable: &mut impl FnMut(&Self, &DirectoryEntry) -> bool,
     ) {
-        for (_, entry) in self.borrow().iter() {
+        for entry in self.borrow().values() {
             if callable(self, entry) {
                 entry.walk_internal(vfs, callable)
             }
@@ -533,7 +533,7 @@ impl Entries {
 impl DirEntries {
     pub(crate) fn expect(&self) -> &Entries {
         match self {
-            DirEntries::Entries(entries) => &entries,
+            DirEntries::Entries(entries) => entries,
             DirEntries::NestedWorkspace(weak) => {
                 let strong = weak.upgrade().unwrap();
                 let reference = &strong.entries as *const Entries;
@@ -650,10 +650,10 @@ impl GitignoreFile {
                 let line = if i == 0 {
                     line.trim_start_matches(UTF8_BOM)
                 } else {
-                    &line
+                    line
                 };
 
-                if let Err(err) = builder.add_line(Some(path.to_path_buf()), &line) {
+                if let Err(err) = builder.add_line(Some(path.to_path_buf()), line) {
                     tracing::debug!(
                         "Error when parsing .gitignore {path:?} on line {lineno}: {err}"
                     );

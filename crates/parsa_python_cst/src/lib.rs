@@ -2456,7 +2456,7 @@ impl<'db> ClassDef<'db> {
                 return None;
             }
         }
-        let closing_paren = iterator.skip(1).next().unwrap();
+        let closing_paren = iterator.nth(1).unwrap();
         Some(opening_paren.start()..closing_paren.end())
     }
 
@@ -5381,7 +5381,7 @@ impl<'db> SimpleStmt<'db> {
     pub fn contained_name_defs(&self) -> impl Iterator<Item = NameDef<'db>> {
         self.node
             .search(&[Nonterminal(name_def)], true)
-            .map(|n| NameDef::new(n))
+            .map(NameDef::new)
     }
 
     pub fn unpack(&self) -> SimpleStmtContent<'db> {
@@ -5417,7 +5417,7 @@ impl<'db> NonBlockErrorPart<'db> {
     pub fn contained_name_defs(&self) -> impl Iterator<Item = NameDef<'db>> {
         self.node
             .search(&[Nonterminal(name_def)], true)
-            .map(|n| NameDef::new(n))
+            .map(NameDef::new)
     }
 }
 

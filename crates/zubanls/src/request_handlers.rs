@@ -191,7 +191,7 @@ impl GlobalState<'_> {
         if let Some(last) = &self.last_completion_position {
             let (document, pos) = self.document_with_pos(&last.clone())?;
             let docs = document.complete(pos, false, |_, completion| {
-                if completion.label() != &item.label {
+                if completion.label() != item.label {
                     return None;
                 }
                 let doc = completion.documentation()?;

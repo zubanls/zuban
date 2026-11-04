@@ -1026,7 +1026,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Deprecated(reason) => deprecated = Some(reason),
             }
         }
-        let mut c = base_t.map(|c| c).unwrap_or_else(|| {
+        let mut c = base_t.unwrap_or_else(|| {
             if no_type_check {
                 self.as_no_type_check_callable(i_s.db)
             } else if is_overload {

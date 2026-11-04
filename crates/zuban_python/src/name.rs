@@ -411,13 +411,11 @@ impl<'db> TreeName<'db> {
                     )
                 }
             }
-            Scope::Function(function_def) => {
-                if function_def.name_def().name_index() == cst_name.index() {
-                    parent_scope = parent_scope_to_scope(
-                        file,
-                        FuncNodeRef::new(file, function_def).parent_scope(),
-                    )
-                }
+            Scope::Function(function_def)
+                if function_def.name_def().name_index() == cst_name.index() =>
+            {
+                parent_scope =
+                    parent_scope_to_scope(file, FuncNodeRef::new(file, function_def).parent_scope())
             }
             _ => (),
         }

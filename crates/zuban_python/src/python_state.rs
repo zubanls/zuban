@@ -1291,7 +1291,7 @@ impl PythonState {
         let TupleArgs::ArbitraryLen(obj) = &tup.args else {
             unreachable!();
         };
-        &**obj
+        obj
     }
 
     pub fn isinstance_type(&self, db: &Database) -> Type {

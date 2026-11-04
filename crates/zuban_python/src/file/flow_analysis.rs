@@ -122,10 +122,10 @@ impl FlowAnalysisHelper {
         let old = FLOW_ANALYSIS_INNER.replace(new.clone());
         let result = callable(&new);
         let inner = FLOW_ANALYSIS_INNER.replace(old);
-        return FlowAnalysisResult {
+        FlowAnalysisResult {
             result,
             unfinished_partials: inner.partials_in_module.take(),
-        };
+        }
     }
 }
 
@@ -191,7 +191,7 @@ impl FlowKey {
         }
     }
 
-    fn is_name_with_annotation<'db>(&self, db: &'db Database) -> bool {
+    fn is_name_with_annotation(&self, db: &Database) -> bool {
         (|| match self {
             FlowKey::Name(link) => Some({
                 let name = NodeRef::from_link(db, *link).maybe_name()?;
@@ -2844,7 +2844,7 @@ impl<'file> Inference<'_, 'file, '_> {
 
                 // If the guard narrowed the subject, copy the narrowed types over
                 let (name_def, as_name_def) = case_pattern.maybe_simple_name_assignments();
-                for name_def in name_def.into_iter().chain(as_name_def.into_iter()) {
+                for name_def in name_def.into_iter().chain(as_name_def) {
                     let key = self.key_from_name_def(name_def);
                     if let Some(found) = guard_falsey.lookup_entry(self.i_s.db, &key)
                         && let EntryKind::Type(t) = &found.type_
@@ -4401,7 +4401,7 @@ impl<'file> Inference<'_, 'file, '_> {
             {
                 attr_t.add(inf.as_type(self.i_s));
             } else {
-                attr_t.add(&Type::Any(AnyCause::Todo));
+                attr_t.add(Type::Any(AnyCause::Todo));
                 falsey_parent.add(t.clone());
                 all_have_attr = false;
             }
@@ -5973,10 +5973,8 @@ fn split_and_intersect(
                 {
                     other_side = new
                 }
-            } else if c.link == complex {
-                if other_side.is_never() && !is_non_promotable(complex) {
-                    other_side = i_s.db.python_state.float_type()
-                }
+            } else if c.link == complex && other_side.is_never() && !is_non_promotable(complex) {
+                other_side = i_s.db.python_state.float_type()
             }
         }
     }

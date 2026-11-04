@@ -249,10 +249,10 @@ impl PythonTokenizer<'_> {
                     let quote = node.quote;
                     match quote {
                         QuoteType::Double => return self.end_f_string(i, j, quote),
-                        QuoteType::DoubleTriple => {
-                            if code_from_start(self.code, self.index + i).starts_with("\"\"\"") {
-                                return self.end_f_string(i, j, quote);
-                            }
+                        QuoteType::DoubleTriple
+                            if code_from_start(self.code, self.index + i).starts_with("\"\"\"") =>
+                        {
+                            return self.end_f_string(i, j, quote);
                         }
                         _ => {}
                     }
@@ -262,10 +262,10 @@ impl PythonTokenizer<'_> {
                     let quote = node.quote;
                     match quote {
                         QuoteType::Single => return self.end_f_string(i, j, quote),
-                        QuoteType::SingleTriple => {
-                            if code_from_start(self.code, self.index + i).starts_with("'''") {
-                                return self.end_f_string(i, j, quote);
-                            }
+                        QuoteType::SingleTriple
+                            if code_from_start(self.code, self.index + i).starts_with("'''") =>
+                        {
+                            return self.end_f_string(i, j, quote);
                         }
                         _ => {}
                     }

@@ -228,9 +228,9 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for (_, file_index) in self.sub_files.in_same_file.read().unwrap().iter() {
+        for file_index in self.sub_files.in_same_file.read().unwrap().values() {
             let file = db.loaded_python_file(*file_index);
-            vec.extend(file.diagnostics(db).into_vec().into_iter());
+            vec.extend(file.diagnostics(db).into_vec());
         }
         vec.sort_by_key(|diag| diag.issue.start_position);
         vec.into_boxed_slice()
@@ -834,7 +834,7 @@ impl<'db> PythonFile {
             ),
             Err(issue) => debug!(
                 "New ignored issue: {}",
-                Diagnostic::new(db, self, &issue).as_string(&config, None)
+                Diagnostic::new(db, self, issue).as_string(&config, None)
             ),
         }
         result.is_ok()

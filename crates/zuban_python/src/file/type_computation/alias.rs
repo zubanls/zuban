@@ -110,7 +110,6 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 Some(Specific::AnnotationTypeAlias) => cause = AliasCause::TypingTypeAlias,
                 // Final/ClassVar may not have been calculated like x: Final = 1
                 Some(specific) if !specific.is_guaranteed_complete_annotation_or_type_comment() => {
-                    ()
                 }
                 _ => {
                     if let Type::Any(cause) = self.use_cached_annotation_type(annotation).as_ref() {
@@ -225,7 +224,7 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 debug!("Finished type alias calculation: {}", name_def.as_code());
                 result
             } else {
-                return check_for_alias(CalculatingAliasType::Normal);
+                check_for_alias(CalculatingAliasType::Normal)
             }
         } else {
             if let AssignmentContent::WithAnnotation(target, annotation, right) =

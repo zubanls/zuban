@@ -2379,7 +2379,7 @@ struct MessageFormattingInfos {
 
 impl std::fmt::Debug for Diagnostic<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.as_string(&DiagnosticConfig::default(), None))
+        write!(f, "{}", self.as_string(&DiagnosticConfig::default(), None))
     }
 }
 
@@ -2444,8 +2444,7 @@ impl Diagnostics {
                 let super_ = issue.mypy_error_supercode();
                 if std::iter::once(codes)
                     .chain(codes_of_later_type_ignores)
-                    .map(|codes| codes.split(','))
-                    .flatten()
+                    .flat_map(|codes| codes.split(','))
                     .any(|code| {
                         let code = code.trim_matches(' ');
                         e == Some(code) || super_ == Some(code) || e.is_none()
@@ -2496,7 +2495,7 @@ impl Clone for Diagnostics {
         Self {
             issues: self.issues.clone(),
             diagnostics_are_complete: AtomicBool::new(
-                self.diagnostics_are_complete.load(Ordering::SeqCst).clone(),
+                self.diagnostics_are_complete.load(Ordering::SeqCst),
             ),
         }
     }

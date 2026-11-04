@@ -873,10 +873,10 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 let found = type_params?
                     .iter()
                     .find(|param| param.name_def().as_code() == name)?;
-                return Some(StarImportResult::Link(PointLink::new(
+                Some(StarImportResult::Link(PointLink::new(
                     file.file_index,
                     found.name_def().name_index(),
-                )));
+                )))
             };
 
             let lookup_symbol_table = |file: &PythonFile, symbol_table: &SymbolTable| {

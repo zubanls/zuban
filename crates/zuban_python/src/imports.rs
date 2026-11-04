@@ -399,7 +399,7 @@ pub fn python_import_with_needs_exact_case<'x>(
             None
         };
         if needs_exact_case {
-            for (_, entry) in dir.borrow().iter() {
+            for entry in dir.borrow().values() {
                 match entry {
                     DirectoryEntry::Directory(dir2) => {
                         if match_c(db, dir2.name.as_ref(), name, needs_exact_case)
@@ -410,12 +410,11 @@ pub fn python_import_with_needs_exact_case<'x>(
                     }
                     DirectoryEntry::File(file) => {
                         let is_py_file = match_c(db, &file.name, &name_py, needs_exact_case);
-                        if is_py_file
-                            || check_stubs && match_c(db, &file.name, &name_pyi, needs_exact_case)
+                        if (is_py_file
+                            || check_stubs && match_c(db, &file.name, &name_pyi, needs_exact_case))
+                            && let result @ Some(_) = file_imports(file, is_py_file)
                         {
-                            if let result @ Some(_) = file_imports(file, is_py_file) {
-                                return result;
-                            }
+                            return result;
                         }
                     }
                     DirectoryEntry::MissingEntry { .. } | DirectoryEntry::Gitignore(_) => (),
@@ -439,12 +438,12 @@ pub fn python_import_with_needs_exact_case<'x>(
                 }
             };
             if check_stubs {
-                found_file = lookup_file(&*name_pyi);
+                found_file = lookup_file(&name_pyi);
             }
             let mut is_py_file = false;
             found_file = found_file.or_else(|| {
                 is_py_file = true;
-                lookup_file(&*name_py)
+                lookup_file(&name_py)
             });
             if let Some(f) = found_file
                 && let result @ Some(_) = file_imports(f, is_py_file)
@@ -472,17 +471,17 @@ pub fn python_import_with_needs_exact_case<'x>(
             directories: namespace_directories.into(),
         })));
     }
-    if name == "django-stubs" {
-        if let Some(workspace) = ensure_django_stubs_workspace_and_return_newly_created(db) {
-            return python_import_with_needs_exact_case(
-                db,
-                from_file,
-                std::iter::once((&workspace.entries, false)),
-                name,
-                needs_exact_case,
-                check_stubs,
-            );
-        }
+    if name == "django-stubs"
+        && let Some(workspace) = ensure_django_stubs_workspace_and_return_newly_created(db)
+    {
+        return python_import_with_needs_exact_case(
+            db,
+            from_file,
+            std::iter::once((&workspace.entries, false)),
+            name,
+            needs_exact_case,
+            check_stubs,
+        );
     }
     None
 }
@@ -513,11 +512,11 @@ fn ensure_django_stubs_workspace_and_return_newly_created(db: &Database) -> Opti
                         .expect("The initial path is utf-8"),
                 ),
             );
-        } else if let Some(django_path) = &django_path {
-            if *django_path == workspace.root_path {
-                // It was already added previously
-                return None;
-            }
+        } else if let Some(django_path) = &django_path
+            && *django_path == workspace.root_path
+        {
+            // It was already added previously
+            return None;
         }
     }
     debug_assert!(django_path.is_some());
@@ -541,7 +540,7 @@ fn load_init_file_from_entries(
     from_file: FileIndex,
 ) -> Option<FileIndex> {
     let mut found_py = None;
-    for (_, child) in entries.borrow().iter() {
+    for child in entries.borrow().values() {
         if let DirectoryEntry::File(entry) = child {
             if match_c(db, &entry.name, INIT_PYI, false) {
                 let found_file_index = db.vfs.ensure_file_index(entry);

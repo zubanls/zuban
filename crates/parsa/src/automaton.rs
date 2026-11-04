@@ -455,13 +455,10 @@ impl RuleAutomaton {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
                 if let Some(t) = transition.type_ {
-                    match grouped_transitions.get_mut(&(t)).and_then(|x| {
-                        if transition.is_terminal_nonterminal_or_keyword() {
-                            Some(x)
-                        } else {
-                            None
-                        }
-                    }) {
+                    match grouped_transitions
+                        .get_mut(&(t))
+                        .filter(|_| transition.is_terminal_nonterminal_or_keyword())
+                    {
                         Some(v) => v.push(transition.to),
                         None => {
                             grouped_transitions.insert(t, vec![transition.to]);

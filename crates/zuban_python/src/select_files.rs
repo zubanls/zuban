@@ -169,10 +169,10 @@ impl<'db> FileSelector<'db> {
                                 // fall back (3) to checking the provided files/directories, but
                                 // that will typically lead to import errors.
                                 for workspace in self.db.vfs.workspaces.load().iter() {
-                                    if workspace.is_type_checked() {
-                                        if workspace.root_path_starts_with(&normalized) {
-                                            self.handle_entries(&workspace.entries)
-                                        }
+                                    if workspace.is_type_checked()
+                                        && workspace.root_path_starts_with(&normalized)
+                                    {
+                                        self.handle_entries(&workspace.entries)
                                     }
                                 }
                                 // (2)
@@ -332,7 +332,7 @@ fn ignore_py_if_overwritten_by_pyi(parent_entries: &Entries, file: &FileEntry) -
         return false;
     }
     parent_entries
-        .search(&format!("{}i", &file.name))
+        .search(&format!("{}i", file.name))
         .is_some_and(|e| matches!(*e, DirectoryEntry::File(_)))
 }
 

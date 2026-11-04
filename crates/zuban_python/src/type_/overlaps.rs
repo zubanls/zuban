@@ -52,7 +52,7 @@ impl Type {
             (_, Type::Intersection(intersection2)) => intersection2
                 .iter_entries()
                 .any(|t| self.overlaps(i_s, matcher, t)),
-            (Type::Any(_), _) | (_, Type::Any(_)) => return true,
+            (Type::Any(_), _) | (_, Type::Any(_)) => true,
             (Type::TypeVar(tv), other_t) | (other_t, Type::TypeVar(tv))
                 if let TypeVarKind::Bound(b) = tv.type_var.kind(i_s.db) =>
             {

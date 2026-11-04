@@ -914,13 +914,13 @@ impl<'db: 'a, 'a> Class<'a> {
                         && let Some(new_type) =
                             inf.as_cow_type(i_s)
                                 .maybe_replace_type_var_likes(i_s.db, &mut |tvl| {
-                                    if let TypeVarLikeUsage::TypeVar(tv) = tvl {
-                                        if tv.type_var.is_self_name() {
-                                            debug_assert!(
-                                                tv.in_definition.file == self.node_ref.file_index()
-                                            );
-                                            return Some(Generic::TypeArg(Type::Self_));
-                                        }
+                                    if let TypeVarLikeUsage::TypeVar(tv) = tvl
+                                        && tv.type_var.is_self_name()
+                                    {
+                                        debug_assert!(
+                                            tv.in_definition.file == self.node_ref.file_index()
+                                        );
+                                        return Some(Generic::TypeArg(Type::Self_));
                                     }
                                     None
                                 })
@@ -2322,13 +2322,12 @@ impl<'db: 'a, 'a> Class<'a> {
             .use_cached_class_infos(db)
             .in_django_stubs
             .get_or_init(|| {
-                let result = self.node_ref.file.is_from_django(db) || {
+                self.node_ref.file.is_from_django(db) || {
                     self.bases(db).any(|b| match b {
                         TypeOrClass::Type(_) => false,
                         TypeOrClass::Class(class) => class.has_django_stubs_base_class(db),
                     })
-                };
-                result
+                }
             })
     }
 
@@ -2677,22 +2676,20 @@ fn add_protocol_mismatch(
     full1: &Type,
     full2: &Type,
 ) {
-    match (full1, full2) {
-        (
-            Type::Callable(_) | Type::FunctionOverload(_),
-            Type::Callable(_) | Type::FunctionOverload(_) | Type::Type(_),
-        ) => {
-            notes.push("    Expected:".into());
-            if let Some(c1) = full1.maybe_callable(i_s)
-                && let Some(c2) = full2.maybe_callable(i_s)
-            {
-                format_callable_like(i_s.db, notes, &c1, &c2);
-                notes.push("    Got:".into());
-                format_callable_like(i_s.db, notes, &c2, &c1);
-                return;
-            }
+    if let (
+        Type::Callable(_) | Type::FunctionOverload(_),
+        Type::Callable(_) | Type::FunctionOverload(_) | Type::Type(_),
+    ) = (full1, full2)
+    {
+        notes.push("    Expected:".into());
+        if let Some(c1) = full1.maybe_callable(i_s)
+            && let Some(c2) = full2.maybe_callable(i_s)
+        {
+            format_callable_like(i_s.db, notes, &c1, &c2);
+            notes.push("    Got:".into());
+            format_callable_like(i_s.db, notes, &c2, &c1);
+            return;
         }
-        _ => (),
     }
     let ErrorStrs { got, expected } = format_got_expected(i_s.db, t2, t1);
     notes.push(format!(r#"    {name}: expected "{expected}", got "{got}""#).into())

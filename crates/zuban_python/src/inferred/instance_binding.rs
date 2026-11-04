@@ -287,7 +287,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                             callable,
                                                             &instance,
                                                             &attribute_class,
-                                                            &t,
+                                                            t,
                                                         )
                                                     } else {
                                                         None
@@ -490,7 +490,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 c,
                                 &instance,
                                 &attribute_class,
-                                &f,
+                                f,
                             )
                             .map(Arc::new)
                             .unwrap_or_else(|| {
@@ -637,13 +637,10 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let Some(c) = t.inner_generic_class(i_s) {
-            if let Some(inf) = c
-                .instance()
-                .bind_dunder_get(i_s, |i| add_issue(i), instance)
-            {
-                return Some(Some((inf, AttributeKind::Attribute)));
-            }
+        if let Some(c) = t.inner_generic_class(i_s)
+            && let Some(inf) = c.instance().bind_dunder_get(i_s, add_issue, instance)
+        {
+            return Some(Some((inf, AttributeKind::Attribute)));
         }
         // TODO this clone should not be necessary, but there appears to be a bug in the compiler.
         if let Some(new) = new.clone() {
@@ -685,7 +682,7 @@ fn infer_callable_with_first_param_annotation(
     // because that causes a recursion. It is how Mypy does it in
     // c68bd7ae2cffe8f0377ea9aab54b963b9fac3231
     if !(matches!(first_type, Type::Callable(_)) && func.name() == "__call__")
-        && !match_self_type(i_s, &mut matcher, &instance, &attribute_class, first_type)
+        && !match_self_type(i_s, &mut matcher, &instance, attribute_class, first_type)
     {
         add_issue(IssueKind::InvalidSelfArgument {
             argument_type: instance.format_short(i_s.db),
@@ -777,7 +774,7 @@ pub fn calculate_property_return(
     let c = Callable::new(callable, None); // TODO is this correct?
     let mut matcher = Matcher::new_callable_matcher(&c);
     if callable.kind.had_first_self_or_class_annotation()
-        && !match_self_type(i_s, &mut matcher, instance, func_class, &first_type)
+        && !match_self_type(i_s, &mut matcher, instance, func_class, first_type)
     {
         return None;
     }

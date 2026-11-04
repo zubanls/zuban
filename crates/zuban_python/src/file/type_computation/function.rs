@@ -169,14 +169,16 @@ impl<'db: 'file, 'file> FuncNodeRef<'file> {
             });
         let (mut type_vars, type_guard, star_annotation) =
             self.cache_type_vars(i_s, class, is_staticmethod);
-        if type_vars.is_empty() && i_s.db.project.should_infer_untyped_params() {
-            if !node.is_typed() && !["__init__", "__new__"].contains(&node.name().as_code()) {
-                let mut skip_first = class.is_some();
-                if skip_first && is_staticmethod {
-                    skip_first = false;
-                }
-                type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
+        if type_vars.is_empty()
+            && i_s.db.project.should_infer_untyped_params()
+            && !node.is_typed()
+            && !["__init__", "__new__"].contains(&node.name().as_code())
+        {
+            let mut skip_first = class.is_some();
+            if skip_first && is_staticmethod {
+                skip_first = false;
             }
+            type_vars = TypeVarLikes::new_untyped_params(node, skip_first)
         }
         match type_vars.is_empty() {
             true => type_var_reference

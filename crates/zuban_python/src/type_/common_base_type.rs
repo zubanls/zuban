@@ -235,11 +235,8 @@ fn common_base_class_basic(
                         )));
                     }
                     Variance::Contravariant => {
-                        if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
-                            generics.push(Generic::TypeArg(t));
-                        } else {
-                            return None;
-                        }
+                        let t = inner_t1.common_sub_type(i_s, &inner_t2)?;
+                        generics.push(Generic::TypeArg(t));
                     }
                 }
             }
@@ -523,13 +520,9 @@ fn common_params_by_iterable<'x>(
                     }
                     _ => return None,
                 },
-                ParamTypeDetails::ParamSpecUsage(_) => {
-                    if p1.type_ == p2.type_ {
-                        new_params.push(p1.clone());
-                        continue;
-                    } else {
-                        return None;
-                    }
+                ParamTypeDetails::ParamSpecUsage(_) if p1.type_ == p2.type_ => {
+                    new_params.push(p1.clone());
+                    continue;
                 }
                 _ => return None,
             };
@@ -612,7 +605,7 @@ fn common_base_type_from_iterator<'x>(
             out = Some(t.clone());
         }
     }
-    out.unwrap_or_else(|| Type::NEVER)
+    out.unwrap_or(Type::NEVER)
 }
 
 impl TupleArgs {

@@ -1775,7 +1775,7 @@ impl<'db> NameBinder<'db> {
                     .push(unordered_reference.name);
             }
         }
-        self.unordered_references.truncate(0);
+        self.unordered_references.clear();
     }
 
     fn has_star_imports_in_same_scope(&self) -> bool {

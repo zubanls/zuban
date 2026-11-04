@@ -201,16 +201,14 @@ impl<'a> Instance<'a> {
                     _ => unreachable!(),
                 };
             }
-            Type::Callable(c) => {
-                if !matches!(&c.params, CallableParams::Any(_)) {
-                    if c.is_final {
-                        add_issue(IssueKind::CannotAssignToFinal {
-                            name: name_str.into(),
-                            is_attribute: true,
-                        });
-                    } else if !lookup_details.attr_kind.is_overwritable() {
-                        add_issue(IssueKind::CannotAssignToAMethod);
-                    }
+            Type::Callable(c) if !matches!(&c.params, CallableParams::Any(_)) => {
+                if c.is_final {
+                    add_issue(IssueKind::CannotAssignToFinal {
+                        name: name_str.into(),
+                        is_attribute: true,
+                    });
+                } else if !lookup_details.attr_kind.is_overwritable() {
+                    add_issue(IssueKind::CannotAssignToAMethod);
                 }
             }
             _ => {}
@@ -230,7 +228,7 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueKind) -> bool,
         instance: Type,
     ) -> Option<Inferred> {
-        self.type_lookup(i_s, |kind| add_issue(kind), "__get__")
+        self.type_lookup(i_s, &add_issue, "__get__")
             .into_maybe_inferred()
             .map(|inf| {
                 let c_t = Type::Type(Arc::new(instance.clone()));

@@ -345,25 +345,24 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                     if matches!(
                         param.type_,
                         ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
-                    ) {
-                        if let Some(name) = param.name(self.infos.db) {
-                            if used.keyword_args.contains(name)
-                                || used.positional_args > i
-                                    && matches!(param.type_, ParamType::PositionalOrKeyword(_))
-                            {
-                                continue;
-                            }
-                            let keyword_argument = format!("{name}=");
-                            if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
-                                continue;
-                            }
-                            if let Some(result) = (self.on_result)(
-                                self.replace_range,
-                                &KeywordArgumentCompletion { keyword_argument },
-                            ) {
-                                self.items
-                                    .push((CompletionSortPriority::KeywordArgument, result))
-                            }
+                    ) && let Some(name) = param.name(self.infos.db)
+                    {
+                        if used.keyword_args.contains(name)
+                            || used.positional_args > i
+                                && matches!(param.type_, ParamType::PositionalOrKeyword(_))
+                        {
+                            continue;
+                        }
+                        let keyword_argument = format!("{name}=");
+                        if !self.maybe_add_cow(Cow::Owned(keyword_argument.clone())) {
+                            continue;
+                        }
+                        if let Some(result) = (self.on_result)(
+                            self.replace_range,
+                            &KeywordArgumentCompletion { keyword_argument },
+                        ) {
+                            self.items
+                                .push((CompletionSortPriority::KeywordArgument, result))
                         }
                     }
                 }
@@ -487,7 +486,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
     }
 
     fn directory_entries_completions(&mut self, entries: &Entries) {
-        for (_, entry) in entries.borrow().iter() {
+        for entry in entries.borrow().values() {
             let name: &str = match entry {
                 DirectoryEntry::File(f) => {
                     if let Some(stripped_name) = f
@@ -591,11 +590,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
         let db = self.infos.db;
         match type_or_class {
             TypeOrClass::Type(t) => match t.as_ref() {
-                Type::Super {
-                    class,
-                    mro_index: _,
-                    ..
-                } => {
+                Type::Super { class, .. } => {
                     // TODO this is not fully correct, because some base classes might have been
                     // skipped with the mro_index
                     for base in class.class(db).bases(db) {
@@ -630,13 +625,12 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                 }
                 Type::Callable(_) => {
                     const CALL: &str = "__call__";
-                    if self.maybe_add(CALL) {
-                        if let Some(result) =
+                    if self.maybe_add(CALL)
+                        && let Some(result) =
                             (self.on_result)(self.replace_range, &FixedStringField(CALL.into()))
-                        {
-                            self.items
-                                .push((CompletionSortPriority::Dunder(CALL), result))
-                        }
+                    {
+                        self.items
+                            .push((CompletionSortPriority::Dunder(CALL), result))
                     }
                 }
                 _ => {

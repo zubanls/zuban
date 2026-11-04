@@ -70,7 +70,7 @@ impl EnumMember {
     pub fn format_inner(&self, format_data: &FormatData) -> String {
         format!(
             "{}.{}",
-            &self.enum_.format(format_data),
+            self.enum_.format(format_data),
             self.name(format_data.db)
         )
     }

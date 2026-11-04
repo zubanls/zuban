@@ -363,7 +363,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                     |h| match right_side {
                                         AssignmentRightSide::YieldExpr(_) => None,
                                         AssignmentRightSide::StarExpressions(star_exprs) => {
-                                            Some(h.infer_star_exprs(star_exprs)?.into())
+                                            Some(h.infer_star_exprs(star_exprs)?)
                                         }
                                     },
                                 ) {
@@ -739,11 +739,11 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                                     } else {
                                         Type::ERROR
                                     };
-                                    return ArgsKwargsIterator::Kwargs {
+                                    ArgsKwargsIterator::Kwargs {
                                         inferred_value: Inferred::from_type(value),
                                         node_ref,
                                         position: i + 1,
-                                    };
+                                    }
                                 });
                                 arg_iterator.args_kwargs_iterator = ret;
                             }
@@ -883,7 +883,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             })
                             .map(|p| p.argument),
                         )
-                        .map(|arg| Some(infer(arg)?.into_type(&i_s)))
+                        .map(|arg| Some(infer(arg)?.into_type(i_s)))
                         .collect::<Option<_>>()?,
                 );
                 debug!(
@@ -908,7 +908,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                         };
                         if let Some(name) = inner.keyword_name(i_s.db) {
                             let name = DbString::ArcStr(name.into());
-                            let type_ = infer(arg)?.into_type(&i_s);
+                            let type_ = infer(arg)?.into_type(i_s);
                             Some(TypedDictMember {
                                 name,
                                 type_,
@@ -917,7 +917,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             })
                         } else {
                             let arbitrary = inner.in_args_or_kwargs_and_arbitrary_len();
-                            let type_ = infer(arg)?.into_type(&i_s);
+                            let type_ = infer(arg)?.into_type(i_s);
                             if arbitrary {
                                 extra_items.add(type_);
                             }
@@ -947,7 +947,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                     debug!(
                         "Heuristics: Inferred param {} as: {}",
                         param.name_def().as_code(),
-                        result.format_short(&i_s),
+                        result.format_short(i_s),
                     );
                 } else {
                     debug!(
@@ -1350,7 +1350,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                             false,
                         )
                         .unwrap_or_else(Inferred::new_any_from_error);
-                        generics.push(Generic::TypeArg(found.into_type(&i_s)));
+                        generics.push(Generic::TypeArg(found.into_type(i_s)));
                     }
                 });
                 debug!(
@@ -1598,7 +1598,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
                 })
                 .collect::<Option<_>>()?,
         );
-        return Some(Heuristic::Guess(Inferred::from_type(Type::Tuple(tuple))));
+        Some(Heuristic::Guess(Inferred::from_type(Type::Tuple(tuple))))
     }
 
     fn infer_primary_or_atom(&mut self, p_or_a: PrimaryOrAtom) -> Heuristic {
@@ -1670,7 +1670,7 @@ impl<'db, 'state> HeuristicInference<'db, 'state, '_> {
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 self.infer_operation(bitwise_or.as_operation())
             }
-            ExpressionPart::Comparisons(_) | ExpressionPart::Inversion(_) => return None,
+            ExpressionPart::Comparisons(_) | ExpressionPart::Inversion(_) => None,
             ExpressionPart::Conjunction(conjunction) => both_sides(conjunction.unpack()),
             ExpressionPart::Disjunction(disjunction) => both_sides(disjunction.unpack()),
         }
@@ -1987,17 +1987,14 @@ impl<'db> Iterator for PotentialFileIterator<'db> {
         if self.loaded_type_checked_file_entries.is_none() {
             for entries in self.db.vfs.workspaces.load().entries_to_type_check() {
                 entries.walk_entries(&self.db.vfs, &mut |_, entry| {
-                    match entry {
-                        vfs::DirectoryEntry::File(file_entry) => {
-                            if let Some(file_index) = file_entry.get_file_index()
-                                && self.db.is_file_index_loaded(file_index)
-                            {
-                                loaded_entries.push(file_entry.clone())
-                            } else if closed_entries.len() < OPENED_FILES_LIMIT {
-                                closed_entries.push(file_entry.clone())
-                            }
+                    if let vfs::DirectoryEntry::File(file_entry) = entry {
+                        if let Some(file_index) = file_entry.get_file_index()
+                            && self.db.is_file_index_loaded(file_index)
+                        {
+                            loaded_entries.push(file_entry.clone())
+                        } else if closed_entries.len() < OPENED_FILES_LIMIT {
+                            closed_entries.push(file_entry.clone())
                         }
-                        _ => (),
                     }
                     true
                 })

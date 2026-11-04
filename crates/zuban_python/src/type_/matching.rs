@@ -89,7 +89,7 @@ impl Matching for Type {
                 | Type::TypedDict(_)
                 | Type::NamedTuple(_)
         ) {
-            let m = self.matches_internal(i_s, matcher, &value_type, Variance::Covariant);
+            let m = self.matches_internal(i_s, matcher, value_type, Variance::Covariant);
             if !matches!(
                 m,
                 Match::False {
@@ -272,8 +272,8 @@ impl Type {
                         value_type.format_short(i_s.db)
                     );
                     let _indent = debug_indent();
-                    return self.is_super_type_of(i_s, matcher, value_type)
-                        & self.is_sub_type_of(i_s, matcher, value_type);
+                    self.is_super_type_of(i_s, matcher, value_type)
+                        & self.is_sub_type_of(i_s, matcher, value_type)
                 } else {
                     self.union_is_super_type_of(i_s, matcher, union_type1, value_type)
                 }
@@ -704,15 +704,15 @@ impl Type {
             }
             _ => {
                 if let Type::TypeVar(type_var2) = value_type {
-                    if matcher.is_matching_reverse() {
-                        if let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
+                    if matcher.is_matching_reverse()
+                        && let Some(matched) = matcher.match_or_add_type_var_reverse_if_responsible(
                             i_s,
                             type_var2,
                             self,
                             Variance::Covariant,
-                        ) {
-                            return matched;
-                        }
+                        )
+                    {
+                        return matched;
                     }
                     // It is possible for bounds to be unions and we therefore need to be able to
                     // match int | str against a TypeVar with the same bound.

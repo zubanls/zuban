@@ -913,7 +913,7 @@ pub fn execute_tuple_class<'db>(
         }
         _ => {
             recoverable_error!("Expected tuple.__new__ to return the tuple class");
-            return Inferred::new_any_from_error();
+            Inferred::new_any_from_error()
         }
     }
 }

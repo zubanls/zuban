@@ -1114,7 +1114,7 @@ impl Inference<'_, '_, '_> {
             // same for any class derived from the django-stubs base classes.
             |name| {
                 if name == "Meta" && c.has_django_stubs_base_class(self.i_s.db) {
-                    return false;
+                    false
                 } else {
                     c.lookup_symbol(self.i_s, name)
                         .into_maybe_inferred()
@@ -1902,13 +1902,12 @@ impl Inference<'_, '_, '_> {
                 if let Some(cls) = function.class
                     && let Some((variance, kind)) =
                         t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Covariant)
+                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
                 {
-                    if !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code()) {
-                        NodeRef::new(self.file, annotation.index()).add_issue(
-                            i_s,
-                            IssueKind::TypeVarWrongVarianceInParamType { variance, kind },
-                        );
-                    }
+                    NodeRef::new(self.file, annotation.index()).add_issue(
+                        i_s,
+                        IssueKind::TypeVarWrongVarianceInParamType { variance, kind },
+                    );
                 }
 
                 if param.kind() == ParamKind::StarStar
@@ -2421,10 +2420,10 @@ impl Inference<'_, '_, '_> {
                         return;
                     };
                     if !reverse
-                        .is_simple_sub_type_of(i_s, &reverse_param_type)
+                        .is_simple_sub_type_of(i_s, reverse_param_type)
                         .bool()
                         && !reverse
-                            .is_simple_super_type_of(i_s, &reverse_param_type)
+                            .is_simple_super_type_of(i_s, reverse_param_type)
                             .bool()
                     {
                         return;
@@ -2736,7 +2735,7 @@ fn create_matcher_with_independent_type_vars<T>(
     if let Some(c2) = c2.change_temporary_matcher_index(db, u32::MAX) {
         callback(matcher, c1, &c2)
     } else {
-        callback(matcher, c1, &c2)
+        callback(matcher, c1, c2)
     }
 }
 
@@ -3324,7 +3323,7 @@ fn operator_domain_is_widened(
             };
             if let Some(override_domain) = overload_func.first_positional_type() {
                 !original_domain
-                    .is_simple_super_type_of(i_s, &override_domain)
+                    .is_simple_super_type_of(i_s, override_domain)
                     .bool()
             } else {
                 false

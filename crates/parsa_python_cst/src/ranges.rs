@@ -64,15 +64,14 @@ impl Tree {
                 for simp in first.iter_children().step_by(2) {
                     if simp.is_type(Nonterminal(simple_stmt)) {
                         let maybe_imp = simp.nth_child(0);
-                        if maybe_imp.is_type(Nonterminal(star_expressions)) {
-                            if i == 0
-                                && StarExpressions::new(maybe_imp)
-                                    .maybe_simple_expression()
-                                    .and_then(|expr| expr.maybe_string())
-                                    .is_some()
-                            {
-                                return true;
-                            }
+                        if maybe_imp.is_type(Nonterminal(star_expressions))
+                            && i == 0
+                            && StarExpressions::new(maybe_imp)
+                                .maybe_simple_expression()
+                                .and_then(|expr| expr.maybe_string())
+                                .is_some()
+                        {
+                            return true;
                         }
                         if !maybe_imp.is_type(Nonterminal(import_from))
                             && !maybe_imp.is_type(Nonterminal(import_name))

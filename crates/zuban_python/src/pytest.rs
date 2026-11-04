@@ -145,28 +145,26 @@ pub(crate) fn find_all_possible_pytest_fixtures<'db>(
         return None;
     }
     Some(
-        FixtureModuleIterator::new(db, pytest_folder, file, false)
-            .map(move |for_file| {
-                for_file
-                    .symbol_table
-                    .iter()
-                    .filter_map(move |(_, &node_index)| {
-                        let name = Name::by_index(&for_file.tree, node_index);
-                        let func = name.name_def()?.maybe_name_of_func()?;
-                        if for_file.file_index == file.file_index
-                            && in_func_name_def.as_code() == name.as_code()
-                        {
-                            return None;
-                        }
-                        is_fixture(
-                            db,
-                            for_file,
-                            func.maybe_decorated().map(|dec| dec.decorators()),
-                        )
-                        .then_some((for_file, name))
-                    })
-            })
-            .flatten(),
+        FixtureModuleIterator::new(db, pytest_folder, file, false).flat_map(move |for_file| {
+            for_file
+                .symbol_table
+                .iter()
+                .filter_map(move |(_, &node_index)| {
+                    let name = Name::by_index(&for_file.tree, node_index);
+                    let func = name.name_def()?.maybe_name_of_func()?;
+                    if for_file.file_index == file.file_index
+                        && in_func_name_def.as_code() == name.as_code()
+                    {
+                        return None;
+                    }
+                    is_fixture(
+                        db,
+                        for_file,
+                        func.maybe_decorated().map(|dec| dec.decorators()),
+                    )
+                    .then_some((for_file, name))
+                })
+        }),
     )
 }
 
@@ -304,21 +302,18 @@ fn conftest_pytest_plugins<'db>(
         }
     };
     for item in iterator {
-        match item {
-            StarLikeExpression::NamedExpression(name_expr) => {
-                debug!("Found entry {name_expr:?} as a conftest pytest plugin entry");
-                if let Some(s) = name_expr.expression().maybe_string()
-                    && let Some(s) = s.as_python_string().as_str()
-                    && let Some(file) = import_dotted(db, file, s)
-                {
-                    debug!(
-                        "Found conftest pytest plugin file {:?} for {s:?}",
-                        file.file_path(db)
-                    );
-                    files.push(file)
-                }
+        if let StarLikeExpression::NamedExpression(name_expr) = item {
+            debug!("Found entry {name_expr:?} as a conftest pytest plugin entry");
+            if let Some(s) = name_expr.expression().maybe_string()
+                && let Some(s) = s.as_python_string().as_str()
+                && let Some(file) = import_dotted(db, file, s)
+            {
+                debug!(
+                    "Found conftest pytest plugin file {:?} for {s:?}",
+                    file.file_path(db)
+                );
+                files.push(file)
             }
-            _ => (),
         }
     }
     Some(files)

@@ -332,11 +332,11 @@ impl CallableParams {
 }
 
 // This probably shouldn't be used too much, it's just a helper function
-fn any_for_each_type_like<'x>(
-    params: &'x Arc<[CallableParam]>,
+fn any_for_each_type_like(
+    params: &Arc<[CallableParam]>,
     mut callback: impl FnMut(&Type) -> bool,
 ) -> bool {
-    params.into_iter().any(|param| match &param.type_ {
+    params.iter().any(|param| match &param.type_ {
         ParamType::PositionalOnly(t)
         | ParamType::PositionalOrKeyword(t)
         | ParamType::KeywordOnly(t)

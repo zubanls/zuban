@@ -1662,14 +1662,12 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     return;
                 }
             }
-            if need_additional_narrowing {
-                if false {
-                    // TODO reenable this
-                    self.save_narrowed_initial_name_definition(
-                        PointLink::new(self.file.file_index, current_index),
-                        value.as_type(i_s),
-                    )
-                }
+            if need_additional_narrowing && false {
+                // TODO reenable this
+                self.save_narrowed_initial_name_definition(
+                    PointLink::new(self.file.file_index, current_index),
+                    value.as_type(i_s),
+                )
             }
             if let Some(value_without_final) = new_declaration_value.remove_final(i_s) {
                 save(name_def.index(), &value_without_final);
@@ -4426,28 +4424,27 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 for block in try_stmt.iter_blocks() {
                     match block {
                         TryBlockType::Except(except) => {
-                            if let (Some(except_expr), _) = except.unpack() {
-                                if let ExceptExpressionContent::WithNameDef(expr, name_def) =
+                            if let (Some(except_expr), _) = except.unpack()
+                                && let ExceptExpressionContent::WithNameDef(expr, name_def) =
                                     except_expr.unpack()
-                                {
-                                    let nr = NodeRef::new(self.file, name_def.index());
-                                    if nr.point().calculating() {
-                                        Inferred::new_cycle()
-                                    } else {
-                                        nr.set_point(Point::new_calculating());
-                                        let inf = self.infer_expression(expr);
-                                        Inferred::from_type(instantiate_except(
-                                            self.i_s,
-                                            &inf.as_cow_type(self.i_s),
-                                        ))
-                                    }
-                                    .maybe_save_redirect(
+                            {
+                                let nr = NodeRef::new(self.file, name_def.index());
+                                if nr.point().calculating() {
+                                    Inferred::new_cycle()
+                                } else {
+                                    nr.set_point(Point::new_calculating());
+                                    let inf = self.infer_expression(expr);
+                                    Inferred::from_type(instantiate_except(
                                         self.i_s,
-                                        self.file,
-                                        name_def.index(),
-                                        false,
-                                    );
+                                        &inf.as_cow_type(self.i_s),
+                                    ))
                                 }
+                                .maybe_save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                    false,
+                                );
                             }
                         }
                         TryBlockType::ExceptStar(except_star) => {
