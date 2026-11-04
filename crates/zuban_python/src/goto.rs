@@ -1003,7 +1003,7 @@ fn follow_goto_if_necessary<'db, 'x>(name: Name<'db, '_>, on_name: &mut impl FnM
             GotoGoal::Indifferent,
             |n: Name<'db, '_>| {
                 if let Name::TreeName(new) = n
-                    && let Name::TreeName(old) = n
+                    && let Name::TreeName(old) = name
                     && new.cst_name.index() == old.cst_name.index()
                     && new.file.file_index == old.file.file_index
                 {

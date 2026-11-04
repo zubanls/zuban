@@ -166,3 +166,21 @@ def f():
 __main__.py:4:references -> __main__.py:9:4; __main__.py:11:8
 __main__.py:7:references -> __main__.py:9:4; __main__.py:11:8
 __main__.py:9:references -> __main__.py:9:4; __main__.py:11:8
+
+[case references_follow_imports]
+[file a.py]
+#? references
+from m import C
+#? references
+C
+
+[file m.py]
+from n import C
+[file n.py]
+from o import C
+[file o.py]
+class C: ...
+
+[out]
+a.py:2:references -> a.py:2:14; a.py:4:0; m.py:1:14; n.py:1:14; o.py:1:6
+a.py:4:references -> a.py:2:14; a.py:4:0; m.py:1:14; n.py:1:14; o.py:1:6
