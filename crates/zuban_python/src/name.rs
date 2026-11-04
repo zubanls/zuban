@@ -204,7 +204,7 @@ impl<'db, 'x> Name<'db, 'x> {
         }
     }
 
-    pub(crate) fn to_unique_position(&self) -> (FileIndex, NodeIndex) {
+    pub(crate) fn unique_position(&self) -> (FileIndex, NodeIndex) {
         match self {
             Name::TreeName(n) => (n.file.file_index, n.cst_name.index()),
             Name::ModuleName(n) => (n.file.file_index, 0),

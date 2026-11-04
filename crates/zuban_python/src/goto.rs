@@ -820,9 +820,9 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                 } else {
                     name.goto_stub()
                 };
-                self.definitions.insert(name.to_unique_position());
+                self.definitions.insert(name.unique_position());
                 let mut add_definitions = |name: Name<'db, '_>| {
-                    self.definitions.insert(name.to_unique_position());
+                    self.definitions.insert(name.unique_position());
                     let should_add = include_declarations
                         && (!matches!(goal, ReferencesGoal::OnlyCurrentFile)
                             || include_declarations
@@ -842,7 +842,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                                     cst_name: CSTName::by_index(&n.file.tree, name_index),
                                     ..n
                                 });
-                                self.definitions.insert(new_name.to_unique_position());
+                                self.definitions.insert(new_name.unique_position());
                                 if should_add {
                                     definition_results.push((self.on_result)(new_name));
                                 }
@@ -871,7 +871,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     self.infos.file,
                     on_name,
                 ));
-                self.definitions.insert(n.to_unique_position());
+                self.definitions.insert(n.unique_position());
                 definition_results.push((self.on_result)(n))
             } else {
                 debug!("Did not find the original reference definition for {search_name}");
@@ -923,7 +923,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                     GotoGoal::Indifferent,
                     |n: Name| {
                         follow_goto_if_necessary(n, &mut |n| {
-                            if self.definitions.contains(&n.to_unique_position()) {
+                            if self.definitions.contains(&n.unique_position()) {
                                 add_all_names = true;
                             }
                         })
@@ -936,7 +936,7 @@ impl<'db, C: FnMut(Name<'db, '_>) -> T, T> ReferencesResolver<'db, C, T> {
                         file,
                         name,
                     ));
-                    if !self.definitions.contains(&n.to_unique_position()) {
+                    if !self.definitions.contains(&n.unique_position()) {
                         self.results.push((self.on_result)(n));
                     }
                 }

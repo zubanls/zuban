@@ -1166,7 +1166,7 @@ impl<'a> OtherDefinitionIterator<'a> {
         }
     }
 
-    pub fn is_single_definition(mut self) -> bool {
+    pub fn into_is_single_definition(mut self) -> bool {
         self.next().is_none()
     }
 }

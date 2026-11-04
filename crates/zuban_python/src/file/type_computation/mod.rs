@@ -2843,7 +2843,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let t = self.compute_get_item_on_literal_item(s, i + 1);
                     let type_ = self.as_type(t, s.as_node_ref());
                     match type_ {
-                        Type::Union(u) => EitherIterator::Left(u.entries.to_vec().into_iter()),
+                        Type::Union(u) =>
+                        {
+                            #[allow(clippy::unnecessary_to_owned)]
+                            EitherIterator::Left(u.entries.to_vec().into_iter())
+                        }
                         _ => EitherIterator::Right(std::iter::once(type_)),
                     }
                 }),

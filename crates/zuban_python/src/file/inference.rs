@@ -4205,7 +4205,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                     &self.file.points,
                     node_ref.name_ref_of_name_def().node_index,
                 )
-                .is_single_definition()
+                .into_is_single_definition()
                     && self
                         .file
                         .name_resolution_for_types(&InferenceState::new(self.i_s.db, node_ref.file))
