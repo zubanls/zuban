@@ -64,6 +64,7 @@ struct OrderableFile<'db> {
 
 struct FileSelector<'db> {
     db: &'db Database,
+    already_in_to_be_loaded: FastHashSet<ArcPtrWrapper>,
     to_be_loaded: Vec<ToBeLoaded>,
     file_indexes_to_order_map: RwLock<OrderedFileIndexes>,
     added_file: bool,
@@ -75,6 +76,7 @@ impl<'db> FileSelector<'db> {
     fn new(db: &'db Database) -> Self {
         Self {
             db,
+            already_in_to_be_loaded: Default::default(),
             to_be_loaded: vec![],
             file_indexes_to_order_map: Default::default(),
             added_file: false,
@@ -247,10 +249,15 @@ impl<'db> FileSelector<'db> {
         if let Some(file_index) = file_entry.get_file_index() {
             self.add_file_index(order_index, file_index)
         } else {
-            self.to_be_loaded.push(ToBeLoaded {
-                order_index,
-                file_entry,
-            });
+            let ptr = ArcPtrWrapper(Arc::as_ptr(&file_entry));
+            // We want to avoid duplicates here, because that messes with the parallel import
+            // loading later.
+            if self.already_in_to_be_loaded.insert(ptr) {
+                self.to_be_loaded.push(ToBeLoaded {
+                    order_index,
+                    file_entry,
+                });
+            }
         }
     }
 

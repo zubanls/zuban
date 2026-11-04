@@ -1702,4 +1702,28 @@ mod tests {
         let ds = diagnostics(Cli::parse_from([""]), test_dir.path());
         assert_eq!(ds, [r#"check.py:1: error: "int" not callable  [operator]"#]);
     }
+
+    #[test]
+    fn test_avoid_duplicate_outputs() {
+        logging_config::setup_logging_for_tests();
+        let fixture = r#"
+            [file pyproject.toml]
+            [tool.mypy]
+            files = ["lib/pkg/**/*.py"]
+            mypy_path = ["lib"]
+            [file lib/pkg/__init__.py]
+            [file lib/pkg/m.py]
+            import pkg.config
+            import pkg.store
+            "#;
+        let test_dir = test_utils::write_files_from_fixture(fixture, false);
+        let result = diagnostics(Cli::parse_from([""]), test_dir.path());
+        assert_eq!(
+            result,
+            [
+                "lib/pkg/m.py:1: error: Cannot find implementation or library stub for module named \"pkg.config\"  [import-not-found]",
+                "lib/pkg/m.py:2: error: Cannot find implementation or library stub for module named \"pkg.store\"  [import-not-found]",
+            ]
+        );
+    }
 }
