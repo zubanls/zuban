@@ -15,7 +15,7 @@ use crate::{
     type_helpers::{FirstParamProperties, Function, TypeOrClass},
 };
 
-impl<'db: 'slf, 'slf> Inferred {
+impl Inferred {
     pub(crate) fn bind_class_descriptors(
         self,
         i_s: &InferenceState,

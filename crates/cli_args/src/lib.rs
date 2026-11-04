@@ -326,6 +326,7 @@ pub fn apply_flags(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn apply_flags_detailed(
     vfs_handler: &SimpleLocalFS,
     settings: &mut Settings,

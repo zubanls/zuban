@@ -1051,10 +1051,9 @@ impl<'a> Matcher<'a> {
             if let Some(func_class) = self.maybe_func_class_for_usage(usage) {
                 let generic = func_class.generics().nth_usage(format_data.db, usage);
                 let is_same = match (usage, generic.as_ref()) {
-                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(t2)) => match t2 {
-                        Type::TypeVar(u2) => u1 == u2,
-                        _ => false,
-                    },
+                    (TypeVarLikeUsage::TypeVar(u1), Generic::TypeArg(Type::TypeVar(u2))) => {
+                        u1 == u2
+                    }
                     // TODO there should probably be TypeVarTuple/ParamSpec cases here, but we can
                     // probably just wait until we have a proper test case.
                     _ => false,

@@ -329,11 +329,11 @@ fn pyvenv_cfg_infos(file_access: impl TestableFileAccess, env: &NormalizedPath) 
             let mut infos = PyvenvInfos::default();
             let mut had_include_system_site_packages = false;
             for line in content.lines() {
-                if let Some((key, value)) = line.split_once('=') {
-                    if key.trim() == "include-system-site-packages" {
-                        had_include_system_site_packages = true;
-                        infos.include_system_site_packages = value.to_lowercase().trim() == "true";
-                    }
+                if let Some((key, value)) = line.split_once('=')
+                    && key.trim() == "include-system-site-packages"
+                {
+                    had_include_system_site_packages = true;
+                    infos.include_system_site_packages = value.to_lowercase().trim() == "true";
                 }
             }
             if !had_include_system_site_packages {
@@ -503,7 +503,7 @@ trait TestableFileAccess: Copy {
     fn home_dir(&self) -> Option<PathBuf>;
     fn which(&self, executable_name: &str) -> Result<PathBuf, which::Error>;
     fn read_to_string(&self, path: &dyn AsRef<Path>) -> std::io::Result<String>;
-    fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf>;
+    fn canonicalize(&self, path: &Path) -> std::io::Result<PathBuf>;
     fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir>;
     fn var_os<K: AsRef<std::ffi::OsStr>>(&self, key: K) -> Option<OsString>;
 }
@@ -528,7 +528,7 @@ impl TestableFileAccess for FileAccess {
         std::fs::read_to_string(path)
     }
 
-    fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
+    fn canonicalize(&self, path: &Path) -> std::io::Result<PathBuf> {
         path.canonicalize()
     }
 
@@ -602,8 +602,8 @@ mod tests {
             }
         }
 
-        fn canonicalize(&self, path: &PathBuf) -> std::io::Result<PathBuf> {
-            Ok(path.clone())
+        fn canonicalize(&self, path: &Path) -> std::io::Result<PathBuf> {
+            Ok(path.to_path_buf())
         }
 
         fn read_dir(&self, path: &Path) -> std::io::Result<ReadDir> {

@@ -24,7 +24,7 @@ use crate::{
 };
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn infer_list_or_set<'x>(
+    pub fn infer_list_or_set(
         &self,
         list_or_set_node_ref: ClassNodeRef,
         elements: StarLikeExpressionIterator,

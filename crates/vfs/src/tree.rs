@@ -288,7 +288,6 @@ impl Directory {
 
     pub(crate) fn entries_with_workspace_likes<
         'x,
-        'workspaces,
         C: FnOnce() -> T,
         T: Deref<Target = [Arc<Workspace>]>,
     >(

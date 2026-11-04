@@ -1054,7 +1054,7 @@ impl FlowAnalysis {
                     ClassNodeRef::from_link(db, class_link).infer_variance_of_type_params(db, true);
                 }
                 DelayedDiagnostic::ConstraintVerification(constraint) => {
-                    verify_constraint(db, constraint)
+                    verify_constraint(db, &constraint)
                 }
             }
         }
@@ -5146,7 +5146,7 @@ impl<'file> Inference<'_, 'file, '_> {
     }
 }
 
-fn run_pattern_for_each_type<'x>(
+fn run_pattern_for_each_type(
     i_s: &InferenceState,
     t: &Type,
     callback: impl Fn(&Type) -> (Type, Type),
@@ -6071,7 +6071,7 @@ enum ExceptType {
 }
 
 impl ExceptType {
-    fn from_types<'x, B: Borrow<Type>>(
+    fn from_types<B: Borrow<Type>>(
         db: &Database,
         allow_tuple: bool,
         types: impl Iterator<Item = B>,
@@ -6146,7 +6146,7 @@ pub fn process_unfinished_partials(db: &Database, partials: impl IntoIterator<It
     }
 }
 
-fn verify_constraint(db: &Database, verify: Box<DelayedConstraintVerification>) {
+fn verify_constraint(db: &Database, verify: &DelayedConstraintVerification) {
     let add_issue_at = NodeRef::from_link(db, verify.add_issue_at);
     let cls;
     let i_s = &match verify.current_class {

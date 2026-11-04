@@ -4518,9 +4518,9 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 PrimaryContent::Attribute(_) => self.lookup_type_primary_if_only_names(p),
                 _ => None,
             },
-            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => match a.unpack() {
-                _ => self.lookup_type_primary_or_atom_if_only_names(PrimaryOrAtom::Atom(a)),
-            },
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
+                self.lookup_type_primary_or_atom_if_only_names(PrimaryOrAtom::Atom(a))
+            }
             _ => None,
         }
     }

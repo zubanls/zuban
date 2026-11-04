@@ -2929,7 +2929,7 @@ impl<'db> ArgumentsDetails<'db> {
                 let mut iterator = args.iter();
                 let first = iterator.next().unwrap();
                 if let Argument::Positional(pos) = first {
-                    Some(pos).filter(|_| iterator.next().is_none())
+                    iterator.next().is_none().then_some(pos)
                 } else {
                     None
                 }

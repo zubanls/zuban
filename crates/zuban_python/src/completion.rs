@@ -165,7 +165,7 @@ impl<'db, C: Fn(Range, &dyn Completion) -> Option<T>, T> CompletionResolver<'db,
                 self.add_import_result_completions(result)
             }
             CompletionNode::ImportFromFirstPart { dots, base } => {
-                if *dots <= 0 && base.is_none() {
+                if *dots == 0 && base.is_none() {
                     self.add_global_import_completions()
                 } else {
                     self.add_import_result_completions(self.infos.with_i_s(|i_s| {

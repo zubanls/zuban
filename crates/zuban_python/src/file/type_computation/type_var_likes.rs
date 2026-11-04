@@ -89,11 +89,11 @@ fn maybe_type_var(i_s: &InferenceState, args: &dyn Args) -> Option<TypeVarLike> 
                     constraints.push(TypeLikeInTypeVar::new_lazy(expr_index));
                 }
                 ArgKind::Keyword(KeywordArg {
-                    key,
+                    key: "bound",
                     node_ref,
                     expression,
                     ..
-                }) if key == "bound" => {
+                }) => {
                     if !constraints.is_empty() {
                         node_ref.add_issue(i_s, IssueKind::TypeVarValuesAndUpperBound);
                         return None;

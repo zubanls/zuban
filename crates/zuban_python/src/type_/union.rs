@@ -473,6 +473,7 @@ impl TypeGatherer {
     }
 
     pub(crate) fn into_type_without_simple_duplicates(mut self) -> Type {
+        #[allow(clippy::mutable_key_type)] // This is fine
         let mut seen = FastHashSet::default();
         // Try to remove duplicates
         self.0.retain(|entry| seen.insert(entry.clone()));
