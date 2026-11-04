@@ -650,6 +650,15 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
         add_issue: impl Fn(IssueKind) -> bool,
     ) -> Option<(PointResolution<'file>, Option<ModuleAccessDetail>)> {
         let db = self.i_s.db;
+        let submodule_result = |r: LookupResult| {
+            let to = match r {
+                LookupResult::FileReference(file_index) => {
+                    Some(ModuleAccessDetail::OnFile(file_index))
+                }
+                _ => None,
+            };
+            (PointResolution::Inferred(r.into_inferred()), to)
+        };
         Some(if let Some(name_ref) = self.file.lookup_symbol(name) {
             if let Some(r) = self.file.maybe_submodule_reexport(self.i_s, name_ref, name) {
                 return Some((
@@ -700,18 +709,20 @@ impl<'db, 'file, 'i_s> NameResolution<'db, 'file, 'i_s> {
                 resolved,
                 Some(ModuleAccessDetail::OnName(name_ref.as_link())),
             )
-        } else if let Some(r) = self.file.sub_module_lookup(db, name) {
-            let to = match r {
-                LookupResult::FileReference(file_index) => {
-                    Some(ModuleAccessDetail::OnFile(file_index))
-                }
-                _ => None,
-            };
-            (PointResolution::Inferred(r.into_inferred()), to)
+        } else if let Some(r) = self.file.sub_module_lookup(db, name)
+            && matches!(
+                self.lookup_from_star_import(name, StarImportResolutionKind::Local),
+                Err(StarImportError::ImportNotResolvable)
+            )
+        {
+            // An unresolvable star import must not hide an existing submodule.
+            submodule_result(r)
         } else if let Some((r, points_to)) =
             self.resolve_star_import_name(name, None, &|_, _, _| None)
         {
             (r, points_to.map(ModuleAccessDetail::OnName))
+        } else if let Some(r) = self.file.sub_module_lookup(db, name) {
+            submodule_result(r)
         } else if let Some(r) = self.file.lookup_symbol("__getattr__") {
             (PointResolution::ModuleGetattrName(r), None)
         } else {

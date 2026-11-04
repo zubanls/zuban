@@ -1000,3 +1000,44 @@ lazy from m2 import D
 class C: pass
 [file m2.py]
 class D: pass
+
+[case star_import_preference_over_identically_named_submodule]
+# From GH #481
+from dummy_package import Dummy
+
+reveal_type(Dummy.foo)  # N: Revealed type is "int"
+
+[file dummy_package/__init__.py]
+from .Dummy import *
+
+[file dummy_package/Dummy.py]
+from typing import ClassVar
+
+foo: str = "string"
+
+class Dummy:
+    foo: ClassVar[int] = 1
+
+[case star_import_not_exported_by_all_does_not_hide_submodule]
+from pkg import sub
+
+reveal_type(sub.x)  # N: Revealed type is "int"
+
+[file pkg/__init__.py]
+from .sub import *
+
+[file pkg/sub.py]
+__all__ = ["y"]
+x = 1
+y = ""
+
+[case unresolvable_star_import_does_not_hide_submodule]
+import pkg.sub
+
+reveal_type(pkg.sub.x)  # N: Revealed type is "int"
+
+[file pkg/__init__.py]
+from missing_module import *  # type: ignore
+
+[file pkg/sub.py]
+x = 1
