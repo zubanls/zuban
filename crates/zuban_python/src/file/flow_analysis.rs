@@ -2032,7 +2032,7 @@ impl<'file> Inference<'_, 'file, '_> {
                         // It seems like this is not necessary, because it is added anyway
                         InstanceLookupOptions::new(add_issue)
                             .with_skip_first_of_mro(self.i_s.db, &c)
-                            .with_no_check_dunder_getattr(),
+                            .without_check_dunder_getattr(),
                     )
                     .lookup
                     .into_maybe_inferred()

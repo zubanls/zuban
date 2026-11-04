@@ -3451,6 +3451,7 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                         false
                     })
                     .with_avoid_inferring_return_types()
+                    .without_check_dunder_getattr()
                     .without_object(),
                 );
                 let mut add_multi_inheritance_issue = || {
@@ -3474,7 +3475,8 @@ pub fn check_multiple_inheritance<'x, BASES: Iterator<Item = &'x Type>>(
                             had_lookup_issue.set(true);
                             false
                         })
-                        .with_avoid_inferring_return_types(),
+                        .with_avoid_inferring_return_types()
+                        .without_check_dunder_getattr(),
                     );
                     if had_lookup_issue.get() {
                         add_multi_inheritance_issue();

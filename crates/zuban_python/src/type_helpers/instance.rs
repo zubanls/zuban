@@ -86,7 +86,7 @@ impl<'a> Instance<'a> {
             lookup_details = self.lookup(
                 i_s,
                 name_str,
-                InstanceLookupOptions::new(&add_issue).with_no_check_dunder_getattr(),
+                InstanceLookupOptions::new(&add_issue).without_check_dunder_getattr(),
             );
         }
         let Some(mut inf) = lookup_details.lookup.maybe_inferred() else {
@@ -1165,7 +1165,7 @@ impl<'x> InstanceLookupOptions<'x> {
         self
     }
 
-    pub fn with_no_check_dunder_getattr(mut self) -> Self {
+    pub fn without_check_dunder_getattr(mut self) -> Self {
         self.check_dunder_getattr = false;
         self
     }

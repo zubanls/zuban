@@ -3018,3 +3018,18 @@ class P(Protocol):
 
 class C[T: P = C]:  # E: TypeVar default must be a subtype of the bound type
     pass
+
+[case dunder_getattr_shouldnt_cause_problems_in_multi_inheritance]
+from frame import F, P
+class E(F, P): ...
+
+[file frame.py]
+class P:
+    def __getattr__(self, name: str) -> int: ...
+
+class F:
+    def u(self) -> None:
+        self.x = 1
+        del self._c  # E: Cannot determine type of "_c"
+    def g(self) -> None:
+        self._c  # E: Cannot determine type of "_c"

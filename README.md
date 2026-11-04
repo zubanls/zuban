@@ -42,6 +42,14 @@ bash scripts/install-locally.sh
 
 Note that your build will not properly work if submodules are not cloned.
 
+## Multithreading
+
+Zuban runs multi-threaded by default. To limit the number of threads run it with:
+
+```
+RAYON_NUM_THREADS=1 zuban check
+```
+
 ## License
 
 This project is dual licensed:
