@@ -1407,3 +1407,16 @@ assert_type(c.f("12"), str) # E: Argument 1 to "__call__" of "bound_api_method" 
 
 assert_type(Class.f(c, 12), str)
 assert_type(Class.f(c, 12), str)
+
+[case dataclass_changing_item_in_subclass]
+# From GH #434
+from dataclasses import dataclass
+
+@dataclass
+class Base:
+    modifier: str
+
+@dataclass
+class Child(Base):
+    def f(self) -> None:
+        self.modifier = "r" + self.modifier

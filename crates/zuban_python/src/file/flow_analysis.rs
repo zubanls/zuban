@@ -2007,15 +2007,15 @@ impl<'file> Inference<'_, 'file, '_> {
             }
         }
         let p = name_def_node_ref.point();
-        if p.calculating() {
-            debug!(
-                "The symbol {} is already calculating",
-                name_def_node_ref.as_code()
-            );
-            return Err(func_def);
-        }
         if !p.calculated() {
             if !recheck_if_on_actual_self() {
+                if p.calculating() {
+                    debug!(
+                        "The symbol {} is already calculating",
+                        name_def_node_ref.as_code()
+                    );
+                    return Err(func_def);
+                }
                 return Ok(None);
             }
             // The class should have self generics within the functions
