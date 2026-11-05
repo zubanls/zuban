@@ -3070,3 +3070,15 @@ def f(d: Device):
     assert_type(d.getter_value, int)
     d.getter_value = 1
     d.getter_value = ""  # TODO should error
+
+[case classmethod_decorator_after_other_decorator]
+from collections.abc import Callable
+from typing import Self
+
+def classmethod_decorator(f: Callable) -> None: ...
+
+class A:
+    @classmethod_decorator
+    @classmethod
+    def f(cls) -> type[Self]:  # E: "None" not callable
+        return cls

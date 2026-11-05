@@ -783,8 +783,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     Function::new(*original_func, self.class).kind(i_s)
                 } else {
-                    FunctionKind::Function {
-                        had_first_self_or_class_annotation,
+                    if let Some(decorated) = self.as_node().maybe_decorated() {
+                        kind_of_decorators(
+                            i_s,
+                            self.node_ref.file,
+                            decorated,
+                            had_first_self_or_class_annotation,
+                        )
+                    } else {
+                        FunctionKind::Function {
+                            had_first_self_or_class_annotation,
+                        }
                     }
                 }
             }
