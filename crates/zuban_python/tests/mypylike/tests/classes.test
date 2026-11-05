@@ -3032,7 +3032,7 @@ class F:
         self.x = 1
         del self._c  # E: Cannot determine type of "_c"
     def g(self) -> None:
-        self._c  # E: Cannot determine type of "_c"
+        self._c  # E: Cannot resolve name "self._c" (possible cyclic definition)
 
 [case property_with_different_setter_name]
 # From GH #659
