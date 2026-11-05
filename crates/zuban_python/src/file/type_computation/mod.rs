@@ -328,6 +328,10 @@ struct TypeComputation<'db, 'file, 'i_s, 'c> {
     name_resolution: NameResolution<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
+    // The outermost callable whose parameters we are currently in. Type vars that are first
+    // found in there are bound by that callable, e.g. `Callable[[Callable[[int], T]], str]` is
+    // `def [T] (Callable[[int], T]) -> str`.
+    outermost_callable_in_params: Option<PointLink>,
     type_var_manager: TypeVarManager<PointLink>,
     type_var_callback: TypeVarCallback<'db, 'c>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
@@ -359,6 +363,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             name_resolution: file.name_resolution_for_types(i_s),
             for_definition,
             current_callable: None,
+            outermost_callable_in_params: None,
             type_var_manager: TypeVarManager::default(),
             type_var_callback,
             errors_already_calculated: false,
@@ -436,6 +441,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 name_resolution: f.name_resolution_for_types(self.i_s),
                 type_var_manager: old_manager,
                 current_callable: self.current_callable,
+                outermost_callable_in_params: self.outermost_callable_in_params,
                 for_definition: self.for_definition,
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
@@ -2612,7 +2618,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let db = self.i_s.db;
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
+            let old_in_params = self.outermost_callable_in_params;
+            self.outermost_callable_in_params = old_in_params.or(Some(defined_at));
             let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
+            self.outermost_callable_in_params = old_in_params;
             let mut guard = None;
             let return_type = if let Some(s) = iterator.next() {
                 match self.compute_slice_type_content(s).remove_annotated() {
@@ -3213,7 +3222,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } => {
                         let index = self.type_var_manager.add(
                             type_var_like.clone(),
-                            self.current_callable.filter(|_| allow_late_bound_callables),
+                            self.outermost_callable_in_params
+                                .or(self.current_callable)
+                                .filter(|_| allow_late_bound_callables),
                             Some(name.index()),
                         );
                         match type_var_like {

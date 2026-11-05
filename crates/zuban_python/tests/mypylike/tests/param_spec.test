@@ -444,3 +444,28 @@ Sequence = ParamSpec('Sequence')
 
 def f() -> Sequence:  # E: Invalid type comment or annotation
     pass
+
+[case param_spec_only_in_input_position]
+# From GH #372
+from collections.abc import Callable
+from typing import Generic, ParamSpec, TypeVar, overload, Any
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+class Task(Generic[_P, _R]):
+    pass
+
+@overload
+def broken(fun: Callable[_P, _R]) -> str: ...
+@overload
+def broken(
+    *, ignore_result: bool = ...,
+) -> Callable[[Callable[_P, _R]], str]: ...
+def broken(*args, **kwargs) -> Any:
+    return str(3)
+
+@broken(ignore_result=True)
+def task_b(x: int) -> int:
+    return 0
+reveal_type(task_b)  # N: Revealed type is "str"
