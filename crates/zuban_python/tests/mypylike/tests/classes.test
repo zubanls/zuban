@@ -3083,3 +3083,18 @@ class A:
     @classmethod
     def f(cls) -> type[Self]:  # E: "None" not callable
         return cls
+
+[case deprecated_property_with_setter]
+# flags: --enable-error-code=deprecated
+from warnings import deprecated
+
+class C:
+    @property
+    @deprecated("dep1")
+    def p(self) -> str: ...
+    @p.setter
+    @deprecated("dep2")
+    def p(self, value: str) -> None: ...
+
+C().p  # E: function __main__.C.p is deprecated: dep1
+C().p = ""  # E: function __main__.C.p is deprecated: dep1  # E: function __main__.C.p is deprecated: dep2

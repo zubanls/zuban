@@ -33,13 +33,12 @@ use crate::{
     pytest::maybe_infer_pytest_param,
     result_context::{CouldBeALiteral, ResultContextOrigin},
     type_::{
-        ErrorStrs, ErrorTypes, IterCause, IterInfos, IteratorContent, LookupKind, OnTypeError,
-        ParamType, StarParamType, StarStarParamType, Tuple, TupleLenInfos, TupleUnpack, UnionType,
-        dataclass_converter_fields_lookup, format_got_expected,
+        ErrorStrs, ErrorTypes, FunctionKind, IterCause, IterInfos, IteratorContent, LookupKind,
+        OnTypeError, ParamType, StarParamType, StarStarParamType, Tuple, TupleLenInfos,
+        TupleUnpack, UnionType, dataclass_converter_fields_lookup, format_got_expected,
     },
-    type_helpers::Generics,
     type_helpers::{
-        ClassLookupOptions, FirstParamKind, Function, GeneratorType, Instance,
+        ClassLookupOptions, FirstParamKind, Function, GeneratorType, Generics, Instance,
         InstanceLookupOptions, LookupDetails, TypeOrClass, cache_class_name, is_private,
     },
 };
@@ -3717,6 +3716,15 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                         i_s.db,
                         Some(NodeRef::new(self.file, n.index())),
                         |issue| {
+                            if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) =
+                                result.maybe_complex_point(i_s.db)
+                                && matches!(c.kind, FunctionKind::Property { .. })
+                            {
+                                // Properties could be accessed by @some_property.setter
+                                // Otherwise they will not be accessed like this so we don't have
+                                // to add an error.
+                                return false;
+                            }
                             should_save = true;
                             self.add_issue(n.index(), issue)
                         },
