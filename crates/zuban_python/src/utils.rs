@@ -1,13 +1,13 @@
 use std::{
     borrow::{Borrow, Cow},
     cell::Cell,
-    collections::HashMap,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
 };
 
 use parsa_python_cst::{Name, NodeIndex};
+use utils::FastHashMap;
 
 thread_local!(pub(crate) static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 
@@ -117,7 +117,7 @@ pub(crate) struct SymbolTable {
     // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
     // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,
     // which acts as one.
-    symbols: HashMap<HashableRawStr, NodeIndex>,
+    symbols: FastHashMap<HashableRawStr, NodeIndex>,
 }
 
 impl SymbolTable {
