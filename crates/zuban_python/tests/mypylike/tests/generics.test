@@ -2172,6 +2172,20 @@ class ShouldBeCovariant7[T]:
 d1: ShouldBeCovariant7[object] = ShouldBeCovariant7[int]()
 d2: ShouldBeCovariant7[int] = ShouldBeCovariant7[object]()  # E: Incompatible types in assignment (expression has type "ShouldBeCovariant7[object]", variable has type "ShouldBeCovariant7[int]")
 
+[case function_analysis_order_should_be_deterministic_for_type_params]
+# flags: --mode default
+class C[T]:
+    def __init__(self, x) -> None:
+        self.x = x
+        self.y = X(self.path)  # E: Name "X" is not defined  # E: Cannot resolve name "self.path" (possible cyclic definition)
+
+    @property
+    def path(self):
+        return self.x.path()
+
+    def load(self) -> T | None: ...
+    def save(self, x: T) -> None: ...
+
 [case generic_context_with_multi_lists]
 # From GH #407
 x: dict[str, int] = {"a": 1}
