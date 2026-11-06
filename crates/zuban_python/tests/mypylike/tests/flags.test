@@ -4,6 +4,26 @@ def reveal_type(a: str) -> None: ...
 def foo():
     reveal_type(1)
 
+[case disallow_any_explicit_in_signature_reported_on_def_line]
+# flags: --disallow-any-explicit
+from typing import Any
+
+def foo(  # E: Explicit "Any" is not allowed
+    input: str,
+) -> Any:
+    pass
+
+def bar(  # E: Explicit "Any" is not allowed
+    x: Any,
+    y: list[Any] | int,
+) -> int:
+    return 1
+
+def baz(  # type: ignore[explicit-any]
+    x: Any,
+) -> Any:
+    pass
+
 [case union_alias_disallowed_any_expr_simple]
 # flags: --disallow-any-explicit
 from typing import Any, TypeAlias, Tuple

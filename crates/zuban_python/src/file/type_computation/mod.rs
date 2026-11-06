@@ -1533,10 +1533,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if self.errors_already_calculated {
                     if self.flags().disallow_any_explicit {
                         if matches!(first, TypeContent::SpecialCase(Specific::TypingAny)) {
-                            node_ref_a.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
+                            self.add_disallowed_any_explicit(node_ref_a);
                         }
                         if matches!(second, TypeContent::SpecialCase(Specific::TypingAny)) {
-                            node_ref_b.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
+                            self.add_disallowed_any_explicit(node_ref_b);
                         }
                     }
                     if let Some(first) = self.as_type_or_error(first, node_ref_a)
@@ -3178,7 +3178,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if self.flags().disallow_any_explicit
                     && self.origin != TypeComputationOrigin::AssertType =>
             {
-                self.add_issue_for_index(name.index(), IssueKind::DisallowedAnyExplicit);
+                self.add_disallowed_any_explicit(NodeRef::new(self.file, name.index()));
                 c
             }
             Lookup::T(c) => c,
@@ -3336,6 +3336,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn add_issue(&self, node_ref: NodeRef, issue_kind: IssueKind) -> bool {
         !self.errors_already_calculated && node_ref.add_issue(self.i_s, issue_kind)
+    }
+
+    fn add_disallowed_any_explicit(&self, node_ref: NodeRef) {
+        if self.errors_already_calculated {
+            return;
+        }
+        // Like Mypy, report Any in function signatures on the line of the function definition
+        if matches!(
+            self.origin,
+            TypeComputationOrigin::ParamTypeCommentOrAnnotation { .. }
+        ) && let Some(func) =
+            NodeRef::from_link(self.i_s.db, self.for_definition).maybe_function()
+        {
+            FuncNodeRef::new(self.file, func)
+                .add_issue_for_declaration(self.i_s, IssueKind::DisallowedAnyExplicit);
+        } else {
+            node_ref.add_issue(self.i_s, IssueKind::DisallowedAnyExplicit);
+        }
     }
 
     fn add_issue_for_index(&self, index: NodeIndex, issue_kind: IssueKind) -> bool {

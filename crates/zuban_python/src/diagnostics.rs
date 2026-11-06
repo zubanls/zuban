@@ -2468,6 +2468,15 @@ impl Diagnostics {
     pub fn add_with_result(&self, issue: Issue) -> Result<(), Issue> {
         if self.diagnostics_are_complete.load(Ordering::Relaxed) {
             Err(issue)
+        } else if matches!(issue.kind, IssueKind::DisallowedAnyExplicit)
+            // Mypy reports Any in function signatures once on the definition line.
+            && unsafe { self.iter() }.any(|i| {
+                matches!(i.kind, IssueKind::DisallowedAnyExplicit)
+                    && i.start_position == issue.start_position
+                    && i.end_position == issue.end_position
+            })
+        {
+            Err(issue)
         } else {
             self.issues.push(Box::pin(issue));
             Ok(())
