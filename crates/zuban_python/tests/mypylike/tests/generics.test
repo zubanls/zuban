@@ -2230,3 +2230,18 @@ class Wrapper(Generic[T]):
 
 assert_type(Wrapper(Source[int](1)), Wrapper[int])
 assert_type(Wrapper(Source(1)), Wrapper[int])
+
+[case explicit_specialization_with_init_self_annotation]
+from typing import Generic, TypeVar, assert_type
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+V1 = TypeVar("V1")
+V2 = TypeVar("V2")
+
+class Swapped(Generic[T1, T2]):
+    def __init__(self: "Swapped[V2, V1]", value1: V1, value2: V2) -> None: ...
+
+assert_type(Swapped[str, int](0, ""), Swapped[str, int])
+assert_type(Swapped(1, ""), Swapped[str, int])
+Swapped[str, int]("", 0)  # E: Argument 1 to "Swapped" has incompatible type "str"; expected "int"  # E: Argument 2 to "Swapped" has incompatible type "int"; expected "str"
