@@ -628,9 +628,15 @@ fn calc_type_vars_with_callback<'db: 'a, 'a>(
             {
                 // When an __init__ has a self annotation, it's a bit special, because it influences
                 // the generics.
-                let m = Class::with_self_generics(i_s.db, return_class.node_ref)
-                    .as_type(i_s.db)
-                    .is_sub_type_of(i_s, matcher, &t);
+                // If the class is already explicitly specialized (e.g. `C[int](...)`), the
+                // self annotation has to be matched against those generics.
+                let self_type = match return_class.generics {
+                    Generics::NotDefinedYet { .. } => {
+                        Class::with_self_generics(i_s.db, return_class.node_ref).as_type(i_s.db)
+                    }
+                    _ => return_class.as_type(i_s.db),
+                };
+                let m = self_type.is_sub_type_of(i_s, matcher, &t);
                 for entry in &mut matcher
                     .type_var_matchers
                     .first_mut()
