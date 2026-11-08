@@ -41,8 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install -U pip
-          # TODO upstream the zuban branch: pip install git+https://github.com/hauntsaninja/mypy_primer.git
-          pip install git+https://github.com/zubanls/mypy_primer.git@zuban
+          pip install git+https://github.com/hauntsaninja/mypy_primer.git
       - name: Run mypy_primer
         shell: bash
         run: |
