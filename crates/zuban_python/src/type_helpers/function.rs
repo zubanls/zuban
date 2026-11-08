@@ -190,8 +190,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if p.calculating() {
             return Inferred::new_any_from_error();
         }
+        let node = self.as_node();
+        if self.has_trivial_body(i_s) {
+            // Trivial bodies should typically not be inferred, because they tend to be stubs,
+            // overwritten or just used in ways a type checker cannot understand.
+            return Inferred::new_any(AnyCause::Unannotated);
+        }
         reference.set_point(Point::new_calculating());
-        let body_node_ref = NodeRef::new(self.file, self.as_node().body().index());
+        let body_node_ref = NodeRef::new(self.file, node.body().index());
         let body_node_ref_point = body_node_ref.point();
         if body_node_ref_point.calculating() {
             // This would also recurse, because we are already calculating the function's results

@@ -532,3 +532,25 @@ if bool():
     p = q
 else:
     q = p  # E: Incompatible types in assignment (expression has type "def p(*, x: str, y: int) -> None", variable has type "def q(*, y: int = ..., x: str) -> None")
+
+[case stub_function_without_return_annotation_should_be_any]
+# flags: --mode default
+from typing import Any, assert_type
+import m
+
+def f(x: int): ...
+
+class C:
+    def f(self, x: int): ...
+
+assert_type(m.f(1), Any)
+assert_type(f(1), Any)
+
+assert_type(m.C().f(1), Any)
+assert_type(C().f(1), Any)
+
+[file m.pyi]
+def f(x: int): ...  # This return type should not be inferred
+
+class C:
+    def f(self, x: int): ...
