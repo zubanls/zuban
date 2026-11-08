@@ -368,13 +368,13 @@ class D(C):
                                         # N:          def f(s: Any, *x: Any) -> Any \
                                         # N:      Subclass: \
                                         # N:          @staticmethod \
-                                        # N:          def f(s: Any, grad_output: Any, *, foo: Any) -> None
+                                        # N:          def f(s: Any, grad_output: Any, *, foo: Any) -> Any
 
     def g(self, grad_output, *, foo): ...  # E: Signature of "g" incompatible with supertype "C" \
                                            # N:      Superclass: \
                                            # N:          def g(self, *x: Any) -> Any \
                                            # N:      Subclass: \
-                                           # N:          def g(self, grad_output: Any, *, foo: Any) -> None
+                                           # N:          def g(self, grad_output: Any, *, foo: Any) -> Any
 
 [case untyped_override_check_untyped_defs_mypy_compatible]
 # flags: --check-untyped-defs --mode mypy
