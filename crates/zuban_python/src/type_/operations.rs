@@ -414,6 +414,7 @@ impl Type {
                         InstanceLookupOptions::new(args.add_issue)
                             .with_kind(LookupKind::OnlyType)
                             .with_super_count(*mro_index)
+                            .with_disallow_lazy_bound_method()
                             .with_as_self_instance(&|| (**bound_to).clone()),
                     )
                 };

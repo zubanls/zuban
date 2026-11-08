@@ -808,3 +808,31 @@ class Thing(Model):
 
 assert_type(Thing.objects, Manager[Thing])
 assert_type(Thing.default_manager, Manager[Thing])
+
+[case callable_with_self_in_callable_param]
+# From GH #665 (simplified)
+from typing import Callable, Self, final
+from dataclasses import dataclass
+
+class Handler:
+    def __init__(self, server: "Server") -> None: ...
+
+class Server:
+    def __init__(self, cls: Callable[[Self], Handler]) -> None: ...
+
+class Sub(Server):
+    def __init__(self) -> None:
+        super().__init__(Handler)
+
+Server(Handler)
+
+@dataclass
+class Handler2:
+    def __init__(self, server: "Server2") -> None: ...
+
+class Server2:
+    def __init__(self, cls: Callable[[Self], Handler2]) -> None: ...
+
+class Sub2(Server2):
+    def __init__(self) -> None:
+        super().__init__(Handler2)
