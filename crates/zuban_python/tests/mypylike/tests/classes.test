@@ -3098,3 +3098,20 @@ class C:
 
 C().p  # E: function __main__.C.p is deprecated: dep1
 C().p = ""  # E: function __main__.C.p is deprecated: dep1  # E: function __main__.C.p is deprecated: dep2
+
+[case class_dunder_init_generics]
+# From GH #611
+from typing import Generic, TypeVar, assert_type, reveal_type
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+V1 = TypeVar("V1")
+V2 = TypeVar("V2")
+
+class Swapped(Generic[T1, T2]):
+    def __init__(self: "Swapped[V2, V1]", value1: V1, value2: V2) -> None: ...
+
+assert_type(Swapped[str, int]("", 0), Swapped[str, int])  # E: Argument 1 to "Swapped" has incompatible type "str"; expected "int" \
+                                                          # E: Argument 2 to "Swapped" has incompatible type "int"; expected "str"
+assert_type(Swapped[str, int](0, ""), Swapped[str, int])
+assert_type(Swapped(0, ""), Swapped[str, int])
