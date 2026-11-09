@@ -6,7 +6,7 @@
 use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use parsa_python_cst::{
-    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, Expression, GotoNode,
+    Atom, DefiningStmt, DottedAsNameContent, DottedImportName, Expression, GotoNode, Kwarg,
     Name as CSTName, NameDefParent, NameImportParent, NameParent, NodeIndex, Primary,
     PrimaryContent, PrimaryTarget, PrimaryTargetOrAtom, Scope, TypeLike,
 };
@@ -505,6 +505,19 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
         let node = self.infos.node.clone();
         let mut lookup_on_name = |name: CSTName| {
             let p = file.points.get(name.index());
+            match name.parent() {
+                NameParent::DottedImportName(dotted) => {
+                    // TODO shouldn't this be pre-calculated?
+                    let file_index = self.infos.infer_name(name).maybe_file(db).or_else(|| {
+                        self.infos
+                            .heuristic_infer_import_dotted(dotted)?
+                            .maybe_file(db)
+                    })?;
+                    return Some(vec![self.goto_on_file(file_index)]);
+                }
+                NameParent::Kwarg(kwarg) => return self.goto_kwarg_name(kwarg),
+                _ => (),
+            }
             if p.calculated() {
                 match p.kind() {
                     PointKind::Redirect => {
@@ -565,15 +578,6 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
                     _ => (),
                 }
             }
-            if let NameParent::DottedImportName(dotted) = name.parent() {
-                // TODO shouldn't this be pre-calculated?
-                let file_index = self.infos.infer_name(name).maybe_file(db).or_else(|| {
-                    self.infos
-                        .heuristic_infer_import_dotted(dotted)?
-                        .maybe_file(db)
-                })?;
-                return Some(vec![self.goto_on_file(file_index)]);
-            }
             None
         };
         match node {
@@ -620,6 +624,44 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             | GotoNode::Atom(_)
             | GotoNode::None => None,
         }
+    }
+
+    fn goto_kwarg_name(&mut self, kwarg: Kwarg) -> Option<Vec<T>> {
+        let search_name = kwarg.name().as_code();
+        let base = match kwarg.arguments_parent().parent() {
+            parsa_python_cst::ArgumentsParent::Primary(p) => {
+                self.infos.infer_primary_or_atom_with_heuristics(p.first())
+            }
+            parsa_python_cst::ArgumentsParent::PrimaryTarget(p) => {
+                self.infos.infer_primary_target_or_atom(p.first())
+            }
+            parsa_python_cst::ArgumentsParent::Class(_) => return None,
+        };
+        let check_callable = |slf: &mut Self, c: &CallableContent| {
+            let node_ref = c.maybe_original_func_node_ref(slf.infos.db)?;
+            node_ref.as_node().params().iter().find_map(|p| {
+                let name_def = p.name_def();
+                (name_def.as_code() == search_name).then(|| {
+                    vec![slf.calculate_return(Name::TreeName(TreeName::new(
+                        slf.infos.db,
+                        slf.infos.file,
+                        slf.infos.scope,
+                        name_def.name(),
+                    )))]
+                })
+            })
+        };
+        with_i_s_non_self(
+            self.infos.db,
+            self.infos.file,
+            self.infos.scope,
+            |i_s| match base.as_cow_type(i_s).maybe_callable(i_s)? {
+                CallableLike::Callable(c) => check_callable(self, &c),
+                CallableLike::Overload(o) => {
+                    o.iter_functions().find_map(|c| check_callable(self, &c))
+                }
+            },
+        )
     }
 
     fn goto_primary_attr(

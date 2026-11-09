@@ -4192,6 +4192,24 @@ impl<'db> Arguments<'db> {
     pub fn search_names(&self) -> NameIterator<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
+
+    pub fn parent(&self) -> ArgumentsParent<'db> {
+        let node = self.node.parent().unwrap();
+        if node.is_type(Nonterminal(primary)) {
+            ArgumentsParent::Primary(Primary::new(node))
+        } else if node.is_type(Nonterminal(t_primary)) {
+            ArgumentsParent::PrimaryTarget(PrimaryTarget::new(node))
+        } else {
+            debug_assert_eq!(node.type_(), Nonterminal(class_def));
+            ArgumentsParent::Class(ClassDef::new(node))
+        }
+    }
+}
+
+pub enum ArgumentsParent<'db> {
+    Primary(Primary<'db>),
+    PrimaryTarget(PrimaryTarget<'db>),
+    Class(ClassDef<'db>),
 }
 
 pub struct NameIterator<'db>(SearchIterator<'db>);
@@ -4249,6 +4267,10 @@ impl Argument<'_> {
 }
 
 impl<'db> Kwarg<'db> {
+    pub fn name(&self) -> Name<'db> {
+        Name::new(self.node.nth_child(0))
+    }
+
     pub fn unpack(&self) -> (Name<'db>, Expression<'db>) {
         // kwarg: Name "=" expression
         let mut kwarg_iterator = self.node.iter_children();
@@ -4256,6 +4278,12 @@ impl<'db> Kwarg<'db> {
         kwarg_iterator.next();
         let arg = kwarg_iterator.next().unwrap();
         (Name::new(name), Expression::new(arg))
+    }
+
+    pub fn arguments_parent(&self) -> Arguments<'db> {
+        let kwarg_ = self.node.parent().unwrap();
+        debug_assert_eq!(kwarg_.type_(), Nonterminal(kwargs));
+        Arguments::new(kwarg_.parent().unwrap())
     }
 }
 

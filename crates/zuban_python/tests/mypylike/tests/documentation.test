@@ -1414,7 +1414,7 @@ from subprocess import run
 run(['echo'], capture_output=True)
 
 [out]
-__main__.py:4:documentation -> "```python\n(class) bool\n```"
+__main__.py:4:documentation -> "```python\n(param) capture_output: bool\n```"
 
 [case documentation_for_left_hand_side]
 # flags: --only-language-server
@@ -1744,3 +1744,67 @@ __main__.py:5:documentation -> "```python\n(variable) var: int\n```"
 __main__.py:5:documentation -> No docs found
 __main__.py:8:documentation -> No docs found
 __main__.py:11:documentation -> No docs found
+
+[case keyword_param_documentation]
+# From GH #564
+#? --codepoint-column 9 documentation
+def f(param: int) -> int:
+    return param
+
+#? --codepoint-column 3 documentation
+f(param=3)
+#? --codepoint-column 3 goto
+f(param="")  # type: ignore
+#? --codepoint-column 5 rename new_param
+f(param=3)
+
+[out]
+__main__.py:3:documentation -> "```python\n(param) param: int\n```"
+__main__.py:7:documentation -> "```python\n(param) param: int\n```"
+__main__.py:9:goto -> __main__.py:3:6:__main__.param
+__main__.py:11:rename: param -> new_param
+__main__.py:11:rename: file:///mypylike/__main__.py:
+__main__.py:11:rename:  - 3:6 -> 3:11
+__main__.py:11:rename:  - 4:11 -> 4:16
+__main__.py:11:rename:  - 7:2 -> 7:7
+__main__.py:11:rename:  - 9:2 -> 9:7
+__main__.py:11:rename:  - 11:2 -> 11:7
+
+[case keyword_param_docs_for_overload]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+
+@overload
+def f(x: str, y: int = 1) -> str: ...
+def f(x, y=1) -> str | int: ...
+
+#? --codepoint-column 3 documentation
+f(x=3)
+#? --codepoint-column 3 documentation
+f(x="")
+#? --codepoint-column 3 goto
+f(x=3)
+#? --codepoint-column 3 goto
+f(x="")
+
+#? --codepoint-column 3 documentation
+f(y=3, x="")
+#? --codepoint-column 8 documentation
+f(y=3, x="")
+
+#? --codepoint-column 3 goto
+f(y=3, x="")
+#? --codepoint-column 8 goto
+f(y=3, x="")
+
+[out]
+__main__.py:11:documentation -> "```python\n(param) x: int\n```"
+__main__.py:13:documentation -> "```python\n(param) x: str\n```"
+__main__.py:15:goto -> __main__.py:4:6:__main__.x
+__main__.py:17:goto -> __main__.py:4:6:__main__.x
+__main__.py:20:documentation -> "```python\n(param) y: int\n```"
+__main__.py:22:documentation -> "```python\n(param) x: str\n```"
+__main__.py:25:goto -> __main__.py:7:14:__main__.y
+__main__.py:27:goto -> __main__.py:4:6:__main__.x
