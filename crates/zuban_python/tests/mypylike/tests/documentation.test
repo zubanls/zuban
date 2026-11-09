@@ -1769,6 +1769,17 @@ __main__.py:11:rename:  - 4:11 -> 4:16
 __main__.py:11:rename:  - 7:2 -> 7:7
 __main__.py:11:rename:  - 9:2 -> 9:7
 __main__.py:11:rename:  - 11:2 -> 11:7
+[out.windows]
+__main__.py:3:documentation -> "```python\n(param) param: int\n```"
+__main__.py:7:documentation -> "```python\n(param) param: int\n```"
+__main__.py:9:goto -> __main__.py:3:6:__main__.param
+__main__.py:11:rename: param -> new_param
+__main__.py:11:rename: file:///C:/mypylike/__main__.py:
+__main__.py:11:rename:  - 3:6 -> 3:11
+__main__.py:11:rename:  - 4:11 -> 4:16
+__main__.py:11:rename:  - 7:2 -> 7:7
+__main__.py:11:rename:  - 9:2 -> 9:7
+__main__.py:11:rename:  - 11:2 -> 11:7
 
 [case keyword_param_docs_for_overload]
 from typing import overload
