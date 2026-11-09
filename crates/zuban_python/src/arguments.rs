@@ -1,7 +1,7 @@
 use std::{mem, sync::Arc};
 
 use parsa_python_cst::{
-    ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression,
+    ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression, Kwarg,
     NamedExpression, NodeIndex, Primary, PrimaryContent,
 };
 
@@ -9,6 +9,7 @@ use crate::{
     database::PointsBackup,
     getitem::SliceType,
     inference_state::Mode,
+    node_ref::KnownNodeRef,
     prelude::*,
     type_::{IterCause, IteratorContent, UnpackedArgument, WithUnpack},
 };
@@ -379,7 +380,7 @@ impl PositionalArg<'_, '_> {
 pub(crate) struct KeywordArg<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
     pub key: &'a str,
-    pub node_ref: NodeRef<'a>,
+    pub node_ref: KnownNodeRef<'a, Kwarg<'a>>,
     pub expression: Expression<'a>,
 }
 
@@ -464,13 +465,13 @@ impl<'db, 'a> ArgKind<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         key: &'a str,
-        node_index: NodeIndex,
+        node: Kwarg<'a>,
         expression: Expression<'a>,
     ) -> BaseArgReturn<'db, 'a> {
         BaseArgReturn::Arg(ArgKind::Keyword(KeywordArg {
             i_s,
             key,
-            node_ref: NodeRef { file, node_index },
+            node_ref: KnownNodeRef::new(file, node),
             expression,
         }))
     }
@@ -552,10 +553,10 @@ impl<'db, 'a> Arg<'db, 'a> {
     fn as_node_ref(&self) -> Result<NodeRef<'_>, CustomAddIssue<'_>> {
         match &self.kind {
             ArgKind::Positional(PositionalArg { node_ref, .. })
-            | ArgKind::Keyword(KeywordArg { node_ref, .. })
             | ArgKind::ParamSpec { node_ref, .. }
             | ArgKind::StarredWithUnpack { node_ref, .. }
             | ArgKind::Inferred { node_ref, .. } => Ok(*node_ref),
+            ArgKind::Keyword(KeywordArg { node_ref, .. }) => Ok(**node_ref),
             ArgKind::Comprehension {
                 file,
                 comprehension,
@@ -880,7 +881,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     *i_s,
                                     file,
                                     name.as_code(),
-                                    kwarg.index(),
+                                    kwarg,
                                     expression,
                                 ));
                             }
@@ -985,7 +986,7 @@ impl<'db: 'a, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 *i_s,
                                 file,
                                 name.as_code(),
-                                kwarg.index(),
+                                kwarg,
                                 expression,
                             ));
                         }

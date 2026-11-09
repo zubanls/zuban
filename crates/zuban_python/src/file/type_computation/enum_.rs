@@ -40,12 +40,12 @@ impl<'db, 'file> NameResolution<'db, 'file, '_> {
                 ArgKind::Keyword(kw) => match kw.key {
                     "value" => {
                         name_infos = Some((
-                            kw.node_ref,
+                            *kw.node_ref,
                             kw.infer(&mut ResultContext::Unknown),
                             kw.expression.in_simple_assignment(),
                         ))
                     }
-                    "names" => fields_infos = Some((kw.node_ref, kw.expression)),
+                    "names" => fields_infos = Some((*kw.node_ref, kw.expression)),
                     "module" | "qualname" | "type" | "start" | "boundary" => (), // TODO type check these
                     _ => {
                         kw.add_issue(
