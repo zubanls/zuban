@@ -15,6 +15,7 @@ use crate::{
     match_::MismatchReason,
     new_class,
     prelude::*,
+    result_context::ResultContextOrigin,
     type_::{
         ErrorStrs, ErrorTypes, GotType, InferredTypeGatherer, IterCause, IteratorContent,
         TupleUnpack, TypedDictGenerics, UniqueInUnpackedUnionError, WithUnpack,
@@ -24,9 +25,10 @@ use crate::{
 };
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn infer_list_or_set(
+    pub(super) fn infer_list_or_set(
         &self,
         list_or_set_node_ref: ClassNodeRef,
+        kind: ContainerKind,
         elements: StarLikeExpressionIterator,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -40,7 +42,9 @@ impl<'db> Inference<'db, '_, '_> {
                 elements @ StarLikeExpressionIterator::Elements(_) => {
                     self.create_list_or_set_generics(elements)
                 }
-                StarLikeExpressionIterator::Empty => Type::Any(AnyCause::UnknownTypeParam),
+                StarLikeExpressionIterator::Empty => {
+                    Type::Any(result_context.any_cause(self.i_s, kind))
+                }
             };
             Inferred::from_type(new_class!(list_or_set_node_ref.as_link(), result,))
         })
@@ -474,11 +478,21 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
-    pub fn dict_literal_without_context(&self, dict: Dict) -> Inferred {
+    pub fn dict_literal_without_context(
+        &self,
+        dict: Dict,
+        result_context: &ResultContext,
+    ) -> Inferred {
         let dict_elements = dict.iter_elements();
         let i_s = self.i_s;
         if matches!(dict_elements, DictElementIterator::Empty) {
-            return Inferred::from_type(i_s.db.python_state.dict_of_never.clone());
+            return Inferred::from_type(
+                if result_context.needs_any_with_unknown_type_params(i_s, ContainerKind::Dict) {
+                    i_s.db.python_state.dict_of_never.clone()
+                } else {
+                    i_s.db.python_state.dict_of_any.clone()
+                },
+            );
         }
         let mut key_t = Type::NEVER;
         let mut value_t = Type::NEVER;
@@ -518,10 +532,10 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         if key_t.is_never() {
-            key_t = Type::Any(AnyCause::UnknownTypeParam);
+            key_t = Type::Any(result_context.any_cause(i_s, ContainerKind::Dict));
         }
         if value_t.is_never() {
-            value_t = Type::Any(AnyCause::UnknownTypeParam);
+            value_t = Type::Any(result_context.any_cause(i_s, ContainerKind::Dict));
         }
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
@@ -951,4 +965,50 @@ pub(super) fn for_each_reachable_if_stmt_block_and_return_reachability_always_kn
         }
     }
     reachability_always_known
+}
+
+impl ResultContext<'_, '_> {
+    fn any_cause(&self, i_s: &InferenceState, kind: ContainerKind) -> AnyCause {
+        if self.needs_any_with_unknown_type_params(i_s, kind) {
+            AnyCause::UnknownTypeParam
+        } else {
+            AnyCause::Internal
+        }
+    }
+
+    fn needs_any_with_unknown_type_params(
+        &self,
+        i_s: &InferenceState,
+        kind: ContainerKind,
+    ) -> bool {
+        match self {
+            ResultContext::Known {
+                type_,
+                origin:
+                    ResultContextOrigin::OtherSideOfTernary | ResultContextOrigin::DisjunctionRightSide,
+            } => {
+                // If the context is a gradual type that might match the container we don't want to
+                // return AnyCause::UnknownTypeParam, because the context might be well defined and
+                // there should never be errors like "Need type annotation".
+                !(type_.has_any_but_not_with_unknown_type_params(i_s.db)
+                    && type_
+                        .is_simple_super_type_of(
+                            i_s,
+                            match kind {
+                                ContainerKind::List => &i_s.db.python_state.list_of_any,
+                                ContainerKind::Set => &i_s.db.python_state.set_of_any,
+                                ContainerKind::Dict => &i_s.db.python_state.dict_of_any,
+                            },
+                        )
+                        .bool())
+            }
+            _ => true,
+        }
+    }
+}
+
+pub(super) enum ContainerKind {
+    List,
+    Set,
+    Dict,
 }

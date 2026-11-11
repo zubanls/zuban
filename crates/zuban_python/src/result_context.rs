@@ -29,6 +29,7 @@ pub(crate) enum ResultContextOrigin {
     AssignmentAnnotation,
     NormalAssignment,
     OtherSideOfTernary,
+    DisjunctionRightSide,
     Other,
 }
 

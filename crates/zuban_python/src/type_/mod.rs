@@ -795,6 +795,12 @@ impl Type {
         })
     }
 
+    pub fn has_any_but_not_with_unknown_type_params(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new(), &|cause| {
+            cause != AnyCause::UnknownTypeParam
+        })
+    }
+
     pub fn has_any_but_not_from_coroutine(&self, db: &Database) -> bool {
         self.has_any_internal(db, &mut Vec::new(), &|cause| {
             cause != AnyCause::AsyncCoroutine

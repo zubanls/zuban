@@ -14,7 +14,7 @@ use crate::{
     arguments::{InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs, SimpleArgs},
     database::RunCause,
     file::{
-        OtherDefinitionIterator, StarImportResolutionKind,
+        ContainerKind, OtherDefinitionIterator, StarImportResolutionKind,
         flow_analysis::RedefinitionResult,
         name_resolution::{PointResolution, StarImportResult},
         type_computation::TypeCommentState,
@@ -3771,6 +3771,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return self
                     .infer_list_or_set(
                         self.i_s.db.python_state.list_node_ref(),
+                        ContainerKind::List,
                         list.unpack(),
                         result_context,
                     )
@@ -3781,7 +3782,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
                     return result.save_redirect(i_s, self.file, atom.index());
                 } else {
-                    return self.dict_literal_without_context(dict);
+                    return self.dict_literal_without_context(dict, result_context);
                 }
             }
             DictComprehension(comp) => return self.infer_dict_comprehension(comp, result_context),
@@ -3789,6 +3790,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 return self
                     .infer_list_or_set(
                         self.i_s.db.python_state.set_node_ref(),
+                        ContainerKind::Set,
                         set.unpack(),
                         result_context,
                     )
