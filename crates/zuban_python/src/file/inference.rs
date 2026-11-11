@@ -2178,7 +2178,7 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
     ) {
         match target {
             Target::Tuple(targets) => FLOW_ANALYSIS.with(|fa| {
-                let mut first_iter = true;
+                let mut assignment_counter = 0;
                 for union_part in value
                     .as_cow_type(self.i_s)
                     .iter_with_unpacked_unions_and_maybe_include_never(self.i_s.db, true)
@@ -2205,36 +2205,20 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                             value_node_ref.add_issue(self.i_s, issue)
                         }),
                     );
-                    match value_iterator {
-                        IteratorContent::Union(iterators) => {
-                            for it in iterators {
-                                self.assign_tuple_target(
-                                    targets.clone(),
-                                    it,
-                                    value_node_ref,
-                                    assign_kind,
-                                );
-                                if first_iter {
-                                    first_iter = false;
-                                    fa.start_accumulating_types();
-                                }
-                            }
-                        }
-                        _ => {
-                            self.assign_tuple_target(
-                                targets.clone(),
-                                value_iterator,
-                                value_node_ref,
-                                assign_kind,
-                            );
-                            if first_iter {
-                                first_iter = false;
+                    self.assign_tuple_target(
+                        targets.clone(),
+                        value_iterator,
+                        value_node_ref,
+                        assign_kind,
+                        &mut || {
+                            assignment_counter += 1;
+                            if assignment_counter == 2 {
                                 fa.start_accumulating_types();
                             }
-                        }
-                    }
+                        },
+                    );
                 }
-                if !first_iter {
+                if assignment_counter > 1 {
                     fa.stop_accumulating_types()
                 }
             }),
@@ -2271,7 +2255,22 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
         mut value_iterator: IteratorContent,
         value_node_ref: NodeRef,
         assign_kind: AssignKind,
+        on_iterator: &mut impl FnMut(),
     ) {
+        if let IteratorContent::Union(iterators) = value_iterator {
+            for it in iterators {
+                self.assign_tuple_target(
+                    targets.clone(),
+                    it,
+                    value_node_ref,
+                    assign_kind,
+                    on_iterator,
+                );
+            }
+            return;
+        }
+        on_iterator();
+
         let (star_count, expected_lens) = targets_len_infos(targets.clone());
         let mut had_issue = false;
         // 1. Check length mismatch to maybe abort

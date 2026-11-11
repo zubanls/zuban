@@ -112,3 +112,7 @@ class C[T](Enum):  # E: Enum class cannot be generic
         pass
 
     def m(self, value): ...
+
+[case no_crash_on_list_disjunctions]
+# From GH #669
+a, b = [] or [] or [] or [] or []  # E: Need type annotation for "a"  # E: Need type annotation for "b"
