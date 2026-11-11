@@ -3002,7 +3002,10 @@ impl<'file> Inference<'_, 'file, '_> {
                 fa.with_frame(left_frames.falsey, || {
                     right_infos = Some(self.find_guards_in_expression_parts_with_context(
                         right,
-                        &mut ResultContext::new_known(&left_t),
+                        &mut ResultContext::Known {
+                            type_: &left_t,
+                            origin: ResultContextOrigin::DisjunctionRightSide,
+                        },
                     ));
                 })
             });

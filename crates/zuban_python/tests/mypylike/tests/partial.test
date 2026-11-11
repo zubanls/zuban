@@ -472,3 +472,43 @@ def g() -> None:
     z: x  # E: Variable "__main__.x" is not valid as a type \
           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     x = defaultdict(int)  # E: Need type annotation for "x"
+
+[case unknown_containers_union_with_any_for_mypy]
+# flags: --mode mypy
+def f(x, y: list, bl: bool) -> None:
+    a = x or {}
+    b = {} or x  # E: Need type annotation for "b"
+    c = x if bl else {}
+    d = {} if bl else x
+
+    e = y or [{}]
+    f = y or []
+    g = y if bl else []
+    h = [] if bl else y
+
+    i = y or []
+    j = [] or y  # E: Need type annotation for "j" (hint: "j: List[<type>] = ...")
+
+    k = list or {}  # E: Need type annotation for "k"
+    l = bl or {}  # E: Need type annotation for "l"
+    print(a, b, c, d, e, f, g, h, i, j, k, l)
+
+[case unknown_containers_union_with_any_for_default]
+# flags: --mode default
+def f(x, y: list, bl: bool) -> None:
+    a = x or {}
+    b = {} or x  # E: Need type annotation for "b"
+    c = x if bl else {}
+    d = {} if bl else x
+
+    e = y or [{}]
+    f = y or []
+    g = y if bl else []
+    h = [] if bl else y
+
+    i = y or []
+    j = [] or y
+
+    k = list or {}  # E: Need type annotation for "k"
+    l = bl or {}  # E: Need type annotation for "l"
+    print(a, b, c, d, e, f, g, h, i, j, k, l)
