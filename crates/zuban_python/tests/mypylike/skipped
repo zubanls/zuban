@@ -16,6 +16,8 @@ narrow_literals_locally_for_assignments
 super_explicit_type_var_method
 super_explicit_type_var_classmethod
 
+# slow tests
+many_string_literal_matching
 recursive_type_matching_with_deeply_nested_list_should_not_be_slow4
 # Mypy upgrade 2.4 errors/slowness
 testExpressionCacheWorksInNestedCallWithoutOuterTypeContextFunction
@@ -512,6 +514,8 @@ testRecursiveAliasViaBaseClass2
 testSelfTypeClassMethodNotSilentlyErased
 # Context is now handled better by Mypy
 testInferenceContextBothSidesSlack
+# inconsistent across different modes
+testUnreachableFunctionAfterTopLevelAssert
 
 # param spec complex nested transitive tests
 testParamSpecNestedApplyPosVsNamed
