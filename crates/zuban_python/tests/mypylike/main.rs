@@ -12,6 +12,7 @@ use std::{
 };
 
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
+use similar::TextDiff;
 
 use config::{
     DiagnosticConfig, Mode, ModeChoice, ModeChoiceArg, ProjectOptions, PythonVersion, Settings,
@@ -584,6 +585,19 @@ impl TestCase<'_, '_> {
                 }
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
+                let diff = if wanted_cleaned_up.len() > 3 && actual_lines.len() > 3 {
+                    let wanted_for_diff: Vec<_> =
+                        wanted_cleaned_up.iter().map(String::as_str).collect();
+                    let actual_for_diff: Vec<_> = actual_lines.iter().map(String::as_str).collect();
+                    let diff = TextDiff::from_slices(&wanted_for_diff, &actual_for_diff);
+                    "\n\nDiff:\n".to_string()
+                        + &diff
+                            .unified_diff()
+                            .context_radius(0) // Standard git context lines (default is 3)
+                            .to_string()
+                } else {
+                    "".into()
+                };
                 result = Err(anyhow::anyhow!(
                     "\nMismatch:\n\
                      Wanted lines: {wanted_cleaned_up:?}\n\n\
@@ -592,7 +606,7 @@ impl TestCase<'_, '_> {
                      {wanted}\n\
                      Actual:\n\
                      {actual}\n\
-                     in {} ({}): Step {}/{}",
+                     in {} ({}): Step {}/{}{diff}",
                     &self.name,
                     self.file_name,
                     i + 1,
