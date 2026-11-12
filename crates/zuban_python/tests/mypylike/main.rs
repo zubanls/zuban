@@ -175,6 +175,10 @@ struct PerTestFlags {
     package: Option<String>,
     #[arg(long)]
     debug_serialize: bool,
+    #[arg(long)]
+    native_parser: bool,
+    #[arg(long)]
+    no_native_parser: bool,
 
     // Not public
     #[arg(long)]
