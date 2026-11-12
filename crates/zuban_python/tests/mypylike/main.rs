@@ -401,7 +401,8 @@ impl TestCase<'_, '_> {
             &steps,
         );
 
-        let is_parse_test = self.file_name.starts_with("parse");
+        let is_parse_test =
+            self.file_name.starts_with("parse") || self.file_name.starts_with("native-parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
 
         let mut result = Ok(true);
