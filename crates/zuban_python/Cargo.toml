@@ -37,6 +37,7 @@ cli_args.workspace = true
 test_utils.workspace = true
 logging_config.workspace = true
 shlex = "*"
+similar = "*"
 
 [features]
 zuban_debug = []

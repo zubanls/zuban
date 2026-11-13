@@ -1066,7 +1066,7 @@ v4: TypeForm[set[str]] = "set[str]"  # OK
 Ts = TypeVarTuple("Ts")
 var = 1
 
-bad1: TypeForm = tuple()  # E: Invalid type comment or annotation
+bad1: TypeForm = tuple()  # E: Invalid type comment or annotation  # N: Cannot use a function call in a type annotation
 bad2: TypeForm = (1, 2)  # E: Syntax error in type annotation \
                          # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 bad3: TypeForm = 1  # E: Invalid type: try using Literal[1] instead?
@@ -1088,9 +1088,9 @@ assert_type(x1, TypeForm[str | None])
 x2 = TypeForm("list[int]")
 assert_type(x2, TypeForm[list[int]])
 
-x3 = TypeForm("type(1)")  # E: Invalid type comment or annotation
+x3 = TypeForm("type(1)")  # E: Invalid type comment or annotation  # N: Cannot use a function call in a type annotation
 x4 = type(1)  # OK
-x5 = TypeForm(type(1))  # E: Invalid type comment or annotation
+x5 = TypeForm(type(1))  # E: Invalid type comment or annotation  # N: Cannot use a function call in a type annotation
 
 [case type_form_subtyping_conformance_tests]
 # Copied conformance tests (typeforms_typeform.py)

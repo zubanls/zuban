@@ -1695,7 +1695,7 @@ impl<'db> Diagnostic<'db> {
             ),
             MultipleTypeVarTupleDisallowedInTypeParams { in_type_alias_type } => {
                 if *in_type_alias_type {
-                    "Can only use one TypeVarTuple in type_params argument to TypeAliasType".to_string()
+                    "Can only use one TypeVarTuple in a type alias definition".to_string()
                 } else {
                     "Can only use one TypeVarTuple in type params".to_string()
                 }
@@ -1707,7 +1707,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot use {specified} with infer_variance"
             ),
             TypeVarDefaultsAmbiguousAfterTypeVarTuple =>
-                "TypeVar defaults are ambiguous after a TypeVarTuple".to_string(),
+                "A type variable with default cannot follow TypeVarTuple".to_string(),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
             CannotUseIsinstanceWithParametrizedGenerics =>
@@ -1917,7 +1917,7 @@ impl<'db> Diagnostic<'db> {
                 }
                 "Tuple index out of range".to_string()
             }
-            TupleSliceStepCannotBeZero => "slice step cannot be zero".to_string(),
+            TupleSliceStepCannotBeZero => "Slice step cannot be zero".to_string(),
             AmbigousSliceOfVariadicTuple => "Ambiguous slice of a variadic tuple".to_string(),
             NamedTupleExpectsStringLiteralAsFirstArg{name} =>
                 format!("\"{name}()\" expects a string literal as the first argument"),
