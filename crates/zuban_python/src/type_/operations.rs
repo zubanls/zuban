@@ -1526,6 +1526,12 @@ pub(crate) fn execute_type_of_type<'db>(
             let init_t = i.iter_entries().next().unwrap();
             execute_type_of_type(i_s, args, result_context, on_type_error, init_t)
         }
+        Type::None => {
+            if args.iter(i_s.mode).next().is_some() {
+                args.add_issue(i_s, IssueKind::TooManyArguments("".into()));
+            }
+            Inferred::new_none()
+        }
         _ => {
             recoverable_error!(
                 "We did not handle a type execution for \"{}\", that should be handled",

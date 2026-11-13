@@ -26,7 +26,6 @@ testDivergingProtocol
 # Mypy upgrade 2.4 needs sorting
 testGeneratorNoSpuriousError
 testTypeVarValuesSubtypeOfAll
-testTypeUsingTypeCNoneType
 # Return type
 testNewReturnType2
 testNewReturnType3

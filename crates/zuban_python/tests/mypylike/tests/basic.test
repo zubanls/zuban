@@ -2018,3 +2018,8 @@ def takes_rev_of_literals(x: Reversible[Literal["a", "b", "c"]]) -> None:
 
 takes_rev_of_literals(["a", "b", "c"])
 takes_rev_of_literals(("a", "b", "c"))
+
+[case none_type_execution]
+def x(t: type[None]):
+    t(1)  # E: Too many arguments
+    t()
