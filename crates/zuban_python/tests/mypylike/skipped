@@ -23,31 +23,11 @@ recursive_type_matching_with_deeply_nested_list_should_not_be_slow4
 testExpressionCacheWorksInNestedCallWithoutOuterTypeContextFunction
 testExpressionCacheWorksInNestedCallWithoutOuterTypeContextMethod
 testDivergingProtocol
-# Mypy upgrade 2.4 needs sorting
-testGeneratorNoSpuriousError
-testTypeVarValuesSubtypeOfAll
-# Return type
-testNewReturnType2
-testNewReturnType3
-testNewReturnType13
-testNewReturnType15
-testNewReturnType16
-testNewReturnType18
-testNewReturnTypeCallableSubtyping
 # Missing error
 testListMultiplyInContext
 # Newly different join/union behavior?
 testOptionalUnionInferencePrecise
 testUnwrapUnionNewSyntaxPrecise
-# Different errors
-testAnnotationTurnsSpecialFormIntoVariable
-testLiteralDisallowFloatsAndComplex
-# Different message "Duplicate keyword argument "a""
-testGivingSameKeywordArgumentTwice
-# Different resolutions to weird recursions
-testAliasToNestedClassInsideClassDependingOnAlias
-# formatting
-testNewTypeTupleTypeUnpack
 # star unpacks, new syntax 3.15
 testStarUnpackInComprehensionBasicsNative
 testStarUnpackInComprehensionBasicsOld
@@ -435,6 +415,7 @@ testOverloadSubtypingRespectPosArgNames
 testOverloadWithPositionalOnlySelf
 testMultipleAssignmentWithOverloadReinferredAsNonTuple
 testTypeVarTupleOverloadNoCrash
+testGeneratorNoSpuriousError
 
 # https://github.com/python/typing/discussions/2238
 testVariadicSubclassSame
@@ -522,6 +503,8 @@ testBinaryOpInferenceContext
 testRecursiveAliasWithRecursiveInstanceInference
 # Recursive type matching with Any
 testRecursiveAliasNestedWithAny
+# Different resolutions to weird recursions
+testAliasToNestedClassInsideClassDependingOnAlias
 # type var backtracking
 testUnionInference
 # type var with unions and fallback in case solving is not possible
@@ -570,6 +553,14 @@ testOverride__new__AndCallObject
 # __new__ return types with Never
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
+# __new__ return type Any, correct?
+testNewReturnType2
+testNewReturnType3
+testNewReturnType13
+testNewReturnType15
+testNewReturnType16
+testNewReturnType18
+testNewReturnTypeCallableSubtyping
 
 # TypeGuard/TypeIs narrowing with Any
 testTypeGuardNestedRestrictionAny
@@ -829,6 +820,9 @@ testListAssignmentUnequalAmountToUnpack
 # Builtin overrides (Exception = Exception)
 testConditionalExceptionAliasOverride
 
+# Annotations + functional Enum/NamedTuple/TypedDict/NewType
+testAnnotationTurnsSpecialFormIntoVariable
+
 # TypedDict --extra-checks
 testTypedDictUnpackStrictMode
 testTypedDictStrictUpdate
@@ -1029,6 +1023,7 @@ testTypeVarValuesNarrowing
 testConstrainedGenericSuper
 testTypingSelfOnSuperTypeVarValues
 testMatchValueConstrainedTypeVar
+testTypeVarValuesSubtypeOfAll
 # type var values syntax
 testPEP695ValueRestriction
 testPEP695ValueRestrictionForwardReference
@@ -1353,6 +1348,8 @@ testFastParserDuplicateNames
 testInferLambdaTypeUsingContext
 # Generator in lambda
 testNoCrashOnLambdaGenerator
+# Different errors in annotations
+testLiteralDisallowFloatsAndComplex
 
 # tuple type is not initializable (though it probably should)
 testTypeUsingTypeCErrorUnsupportedType
@@ -1649,7 +1646,6 @@ testPEP695TypeAliasRecursiveInvalid
 # 3.12 Nested class Type Vars in bounds disallowed, in old-style classes this is possible
 testPEP695CannotUseTypeVarFromOuterClass
 
-
 # ------------------- start of low-prio/won't do tests -----------------------
 
 # "Name "C" is used before definition"
@@ -1855,6 +1851,7 @@ testDictWithStarExpr
 testNewSyntaxSyntaxError
 testModifyTwoFilesOneWithBlockingError1
 testModifyTwoFilesOneWithBlockingError2
+testGivingSameKeywordArgumentTwice
 
 # Needs lib-stub/blocker.pyi
 testImportBringsAnotherFileWithBlockingError1
