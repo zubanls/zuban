@@ -2198,8 +2198,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     generics.insert(
                         insertion_index,
-                        if let Some(default) = tvt.default(db).filter(|_| args.empty_not_explicit) {
-                            resolve_default(generics, Generic::TypeArgs(default.clone()))
+                        if args.empty_not_explicit
+                            && let Some(default) = tvt.default(db)
+                        {
+                            resolve_default(
+                                generics,
+                                Generic::TypeArgs(TypeArgs::new(TupleArgs::FixedLen([].into()))),
+                            )
                         } else {
                             Generic::TypeArgs(TypeArgs::new(args.args))
                         },
