@@ -50,7 +50,7 @@ from typing import Generic, TypeVarTuple
 Ts1 = TypeVarTuple("Ts1", int, str)  # E: Too many positional arguments for "TypeVarTuple"
 Ts2 = TypeVarTuple("Ts2", bound=int)  # E: Unexpected keyword argument "bound" for "TypeVarTuple"
 
-class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one type var tuple in a class def
+class Array3(Generic[*Ts1, *Ts2]):  # E: Can only use one TypeVarTuple in a class definition
     ...
 
 [case typevartuple_match_length]

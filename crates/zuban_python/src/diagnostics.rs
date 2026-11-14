@@ -1622,7 +1622,7 @@ impl<'db> Diagnostic<'db> {
             ParamSpecNestedSpecificationsNotAllowed =>
                 "Nested parameter specifications are not allowed".to_string(),
             MultipleTypeVarTuplesInClassDef =>
-                "Can only use one type var tuple in a class def".to_string(),
+                "Can only use one TypeVarTuple in a class definition".to_string(),
             BoundTypeVarInAlias{name} =>
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
             NestedConcatenate =>
