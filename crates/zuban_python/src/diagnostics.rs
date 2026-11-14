@@ -51,6 +51,7 @@ pub(crate) enum IssueKind {
     ArgumentTypeIssue(Box<str>),
     TooFewArguments(Box<str>),
     TooManyArguments(Box<str>),
+    TooManyPositionalArguments(Box<str>),
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
@@ -553,7 +554,10 @@ impl IssueKind {
             | UnionAttributeErrorOfUpperBound(..)
             | NotIterableMissingIterInUnion { .. } => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject { .. } => "arg-type",
-            ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
+            ArgumentIssue { .. }
+            | TooManyArguments { .. }
+            | TooManyPositionalArguments { .. }
+            | TooFewArguments { .. } => "call-arg",
             InvalidType { .. } => "valid-type",
             IncompatibleReturn { .. }
             | IncompatibleImplicitReturn { .. }
@@ -666,6 +670,7 @@ impl IssueKind {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-item",
             CannotAssignToAMethod => "assignment",
             ModuleNotFound { .. } => "import",
+            TooManyPositionalArguments { .. } => "misc",
             OverloadUnmatchable { .. } | DecoratorOnTopOfPropertyNotSupported => "misc",
             TypedDictAccessKeyMustBeStringLiteral { .. }
             | TypedDictKeysMustBeStringLiteral
@@ -1017,6 +1022,7 @@ impl<'db> Diagnostic<'db> {
                 message.clone().into()
             }
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
+            TooManyPositionalArguments(rest) => format!("Too many positional arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IncompatibleDefaultArgument {argument_name, got, expected} => {
                 if got.as_ref() == "None" {

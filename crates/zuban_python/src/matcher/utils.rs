@@ -1184,13 +1184,15 @@ pub(crate) fn match_arguments_against_params<
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
-        let s = "Too many positional arguments";
         if should_generate_errors {
-            let mut s = s.to_owned();
-            s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            add_issue(IssueKind::ArgumentIssue(s.into()));
+            add_issue(IssueKind::TooManyPositionalArguments(
+                diagnostic_string(" for ").unwrap_or_else(|| "".into()),
+            ));
         } else {
-            debug!("{s}");
+            debug!(
+                "Too many positional arguments {:?}",
+                diagnostic_string(" for ",)
+            );
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
