@@ -324,15 +324,8 @@ testNewAnalyzerTypedDictInStub_newsemanal
 testTypedDictMappingMethods
 # Dataclass
 testDataclassesOrderingKwOnlyWithPEP661Sentinel
-testDataclassCallableAttrRegular
-testDataclassCallableAttrDefault
-testDataclassCallableAttrFrozen
-testDataclassesFloatSerializationIncremental
-testDataclassesCallableFrozenOverride
 testDataclassesCallableFrozenSelf
 testDunderReplaceAllowsCovariantDataclassField
-testDataclassAllowsFinalField
-testNoCrashOnNestedSpecialFormsWithAnnotations
 # TypedDict
 testTypedDictInlineBaseClassRedefined
 testNamedTupleAndTypedDictParamSpecInteraction
@@ -881,12 +874,17 @@ testDataclassInitVarCannotBeSet
 testDataclassesInitVarsWithProperty
 testDataclassesDefaultValueInitVarWithProperty
 testDataclassInitVarRedefinitionNoCrash
+testDataclassAllowsFinalField
 # dataclass weird replace case
 testReplaceIsDataclass
 # dataclass_transform __set__ descriptor needs to be type checked
 testDataclassTransformUnsupportedDescriptors
 # dataclass __replace__
 testDunderReplacePresent
+# dataclass contains other type definitions
+testNoCrashOnNestedSpecialFormsWithAnnotations
+# dataclass weird cases
+testDataclassesCallableFrozenOverride
 
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
