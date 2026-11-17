@@ -49,7 +49,10 @@ impl Tree {
             if maybe_paren.as_code() != "(" || maybe_paren.end() > position {
                 continue;
             }
-            let base = ExpressionPart::new(first);
+            // Targets like `for a.b(` have a t_primary as the base, which is not an expression
+            let Some(base) = ExpressionPart::maybe_new(first) else {
+                continue;
+            };
             let Some(maybe_args) = iterator.next() else {
                 return Some((
                     scope,
