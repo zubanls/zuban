@@ -181,3 +181,12 @@ A(  # E: Missing positional argument "key" in call to "A"
 [out]
 __main__.py:14:call signatures:
 - "(key: str) -> A", valid with params: true, on nth param: Some(0)
+
+[case signature_in_for_target]
+# From GH #676
+def main() -> None:
+    collection: dict[str, list] = {'de': [], 'en': []}
+
+    #? --codepoint-column 25 signatures
+    for collection.items()  # E: Invalid syntax
+[out]
