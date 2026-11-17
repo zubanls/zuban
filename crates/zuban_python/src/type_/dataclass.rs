@@ -1221,6 +1221,10 @@ pub(crate) fn lookup_on_dataclass<'a>(
         {
             t = new
         }
+        if let Some(new) = t.maybe_replace_self(i_s.db, &|| Some(Type::Dataclass(self_.clone()))) {
+            t = new
+        }
+
         return LookupDetails::new(
             Type::Dataclass(self_.clone()),
             LookupResult::UnknownName(Inferred::from_type(t)),
