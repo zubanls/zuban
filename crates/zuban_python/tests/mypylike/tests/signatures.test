@@ -190,3 +190,4 @@ def main() -> None:
     #? --codepoint-column 25 signatures
     for collection.items()  # E: Invalid syntax
 [out]
+__main__.py:6:call signatures: None

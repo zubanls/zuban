@@ -1545,7 +1545,7 @@ impl<'db> ExpressionPart<'db> {
         Self::maybe_new(node).unwrap()
     }
 
-    fn maybe_new(node: PyNode<'db>) -> Option<Self> {
+    pub(crate) fn maybe_new(node: PyNode<'db>) -> Option<Self> {
         // Sorted by how often they probably appear
         Some(if node.is_type(Nonterminal(atom)) {
             Self::Atom(Atom::new(node))
