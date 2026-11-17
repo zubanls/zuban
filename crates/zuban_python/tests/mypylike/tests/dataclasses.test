@@ -1420,3 +1420,13 @@ class Base:
 class Child(Base):
     def f(self) -> None:
         self.modifier = "r" + self.modifier
+
+[case duplicate_dataclass]
+# From GH #672
+from dataclasses import dataclass
+
+@dataclass
+class DC:
+    x: int = 0
+
+class B(DC, DC): ...  # E: Duplicate base class "DC"

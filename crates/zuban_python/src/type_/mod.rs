@@ -1173,6 +1173,9 @@ impl Type {
             (Type::Class(c1), Type::Class(c2)) => {
                 (c1.link == c2.link).then(|| Box::from(c1.class(db).name()))
             }
+            (Type::Dataclass(c1), Type::Dataclass(c2)) => {
+                (c1.class.link == c2.class.link).then(|| Box::from(c1.class(db).name()))
+            }
             (Type::Type(_), Type::Type(_)) => Some(Box::from("type")),
             (Type::Tuple(_), Type::Tuple(_)) => Some(Box::from("tuple")),
             (Type::Callable(_), Type::Callable(_)) => Some(Box::from("callable")),
