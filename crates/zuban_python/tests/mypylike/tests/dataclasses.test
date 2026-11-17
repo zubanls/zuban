@@ -1430,3 +1430,17 @@ class DC:
     x: int = 0
 
 class B(DC, DC): ...  # E: Duplicate base class "DC"
+
+
+[case dataclass_callable_with_self]
+# Copied and adapted from testDataclassesCallableFrozenSelf
+from dataclasses import dataclass
+from typing import Self, Callable, assert_type
+
+@dataclass(frozen=True)
+class A:
+    a: list[Self]
+
+    def f(self, other: A) -> None:
+        assert_type(self.a, list[Self])
+        assert_type(other.a, list[A])

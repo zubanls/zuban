@@ -324,7 +324,6 @@ testNewAnalyzerTypedDictInStub_newsemanal
 testTypedDictMappingMethods
 # Dataclass
 testDataclassesOrderingKwOnlyWithPEP661Sentinel
-testDataclassesCallableFrozenSelf
 testDunderReplaceAllowsCovariantDataclassField
 # TypedDict
 testTypedDictInlineBaseClassRedefined
