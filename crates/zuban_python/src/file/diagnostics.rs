@@ -1902,7 +1902,8 @@ impl Inference<'_, '_, '_> {
                 if let Some(cls) = function.class
                     && let Some((variance, kind)) =
                         t.maybe_type_var_like_invalid_variance(cls.as_link(), Variance::Covariant)
-                    && !["__init__", "__new__", "__post_init__"].contains(&name_def.as_code())
+                    && !["__init__", "__new__", "__post_init__", "__replace__"]
+                        .contains(&name_def.as_code())
                 {
                     NodeRef::new(self.file, annotation.index()).add_issue(
                         i_s,

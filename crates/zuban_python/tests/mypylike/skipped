@@ -322,9 +322,6 @@ testRevealSimpleTypes_no_verbose_reveal
 testTypedDictUnionGetFull
 testNewAnalyzerTypedDictInStub_newsemanal
 testTypedDictMappingMethods
-# Dataclass
-testDataclassesOrderingKwOnlyWithPEP661Sentinel
-testDunderReplaceAllowsCovariantDataclassField
 # TypedDict
 testTypedDictInlineBaseClassRedefined
 testNamedTupleAndTypedDictParamSpecInteraction
@@ -884,6 +881,7 @@ testDunderReplacePresent
 testNoCrashOnNestedSpecialFormsWithAnnotations
 # dataclass weird cases
 testDataclassesCallableFrozenOverride
+testDataclassesOrderingKwOnlyWithPEP661Sentinel
 
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
