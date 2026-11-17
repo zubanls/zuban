@@ -2602,18 +2602,28 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation(), result_context),
             ExpressionPart::Term(term) => {
                 let op = term.as_operation();
-                // Mypy special cases the case [...] * n where n is an int (see check_list_multiply
-                // in mypy)
+                // Mypy special cases the case [...] * n (see check_list_multiply in mypy): The
+                // left side is inferred with the type context first.
                 if op.infos.operand == "*"
                     && let ExpressionPart::Atom(atom) = op.left
                     && matches!(atom.unpack(), AtomContent::List(_))
-                    && self
-                        .infer_expression_part(op.right)
+                {
+                    let left = self.infer_atom(atom, result_context);
+                    let right = self.infer_expression_part(op.right);
+                    if right
                         .as_cow_type(self.i_s)
                         .is_simple_sub_type_of(self.i_s, &self.i_s.db.python_state.int_type())
                         .bool()
-                {
-                    return self.infer_atom(atom, result_context);
+                    {
+                        return left;
+                    }
+                    return self.infer_detailed_operation(
+                        op.index,
+                        op.infos,
+                        left,
+                        &right,
+                        result_context,
+                    );
                 }
                 self.infer_operation(op, result_context)
             }
