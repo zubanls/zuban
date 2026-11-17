@@ -2607,13 +2607,10 @@ impl<'db, 'file> Inference<'db, 'file, '_> {
                 if op.infos.operand == "*"
                     && let ExpressionPart::Atom(atom) = op.left
                     && matches!(atom.unpack(), AtomContent::List(_))
-                    && self
-                        .infer_expression_part(op.right)
-                        .as_cow_type(self.i_s)
-                        .is_simple_sub_type_of(self.i_s, &self.i_s.db.python_state.int_type())
-                        .bool()
                 {
-                    return self.infer_atom(atom, result_context);
+                    // We just infer the left side with the context in this case. It is later
+                    // reused in infer_operation and normally doesn't use the context.
+                    self.infer_atom(atom, result_context);
                 }
                 self.infer_operation(op, result_context)
             }
