@@ -51,7 +51,9 @@ pub fn calculate_steps<'code>(file_name: Option<&str>, code: &'code str) -> Step
         if type_ == "file" || type_ == "fixture" {
             step.files.insert(rest, in_between);
         } else if type_ == "out" {
-            if !((file_name.contains("semanal-") || file_name.starts_with("parse"))
+            if !((file_name.contains("semanal-")
+                || file_name.starts_with("parse")
+                || file_name.starts_with("native-parse"))
                 && (in_between.starts_with("MypyFile:1") || in_between.starts_with("TypeInfoMap(")))
             {
                 // Semanal files print the AST in success cases. We only care about the

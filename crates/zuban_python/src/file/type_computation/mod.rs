@@ -178,7 +178,11 @@ impl InvalidVariableType<'_> {
                 message: Box::from("Invalid type comment or annotation"),
                 additional_note: Some("Suggestion: use Foo[...] instead of Foo(...)"),
             },
-            Self::Execution { .. } | Self::Other => IssueKind::new_invalid_type(match origin {
+            Self::Execution { .. } => IssueKind::InvalidType {
+                message: "Invalid type comment or annotation".into(),
+                additional_note: Some("Cannot use a function call in a type annotation"),
+            },
+            Self::Other => IssueKind::new_invalid_type(match origin {
                 TypeComputationOrigin::BaseClass => "Type expected within [...]",
                 _ => "Invalid type comment or annotation",
             }),

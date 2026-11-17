@@ -12,6 +12,7 @@ use std::{
 };
 
 use clap::{Command, CommandFactory as _, FromArgMatches as _, Parser};
+use similar::TextDiff;
 
 use config::{
     DiagnosticConfig, Mode, ModeChoice, ModeChoiceArg, ProjectOptions, PythonVersion, Settings,
@@ -174,6 +175,10 @@ struct PerTestFlags {
     package: Option<String>,
     #[arg(long)]
     debug_serialize: bool,
+    #[arg(long)]
+    native_parser: bool,
+    #[arg(long)]
+    no_native_parser: bool,
 
     // Not public
     #[arg(long)]
@@ -401,7 +406,8 @@ impl TestCase<'_, '_> {
             &steps,
         );
 
-        let is_parse_test = self.file_name.starts_with("parse");
+        let is_parse_test =
+            self.file_name.starts_with("parse") || self.file_name.starts_with("native-parse");
         let is_semanal_test = self.file_name.starts_with("semanal-");
 
         let mut result = Ok(true);
@@ -583,6 +589,19 @@ impl TestCase<'_, '_> {
                 }
 
                 let wanted = wanted.iter().fold(String::new(), |a, b| a + b + "\n");
+                let diff = if wanted_cleaned_up.len() > 3 && actual_lines.len() > 3 {
+                    let wanted_for_diff: Vec<_> =
+                        wanted_cleaned_up.iter().map(String::as_str).collect();
+                    let actual_for_diff: Vec<_> = actual_lines.iter().map(String::as_str).collect();
+                    let diff = TextDiff::from_slices(&wanted_for_diff, &actual_for_diff);
+                    "\n\nDiff:\n".to_string()
+                        + &diff
+                            .unified_diff()
+                            .context_radius(0) // Standard git context lines (default is 3)
+                            .to_string()
+                } else {
+                    "".into()
+                };
                 result = Err(anyhow::anyhow!(
                     "\nMismatch:\n\
                      Wanted lines: {wanted_cleaned_up:?}\n\n\
@@ -591,7 +610,7 @@ impl TestCase<'_, '_> {
                      {wanted}\n\
                      Actual:\n\
                      {actual}\n\
-                     in {} ({}): Step {}/{}",
+                     in {} ({}): Step {}/{}{diff}",
                     &self.name,
                     self.file_name,
                     i + 1,

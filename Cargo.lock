@@ -2505,6 +2505,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shlex",
+ "similar",
  "smallvec",
  "test_utils",
  "tracing",
