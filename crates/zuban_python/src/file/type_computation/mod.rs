@@ -2149,7 +2149,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         break;
                     }
                 }
-                TypeVarLike::TypeVarTuple(tvt) => {
+                TypeVarLike::TypeVarTuple(_) => {
                     let insertion_index = generics.len();
                     // First check the rest of the TypeVar-likes in reverse order, because at this
                     // point we do not know how many type arguments we have to fetch.
@@ -2196,19 +2196,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self,
                         type_var_likes.len() == 1 && slice_type.iter().count() == 1,
                     );
-                    generics.insert(
-                        insertion_index,
-                        if args.empty_not_explicit
-                            && let Some(default) = tvt.default(db)
-                        {
-                            resolve_default(
-                                generics,
-                                Generic::TypeArgs(TypeArgs::new(TupleArgs::FixedLen([].into()))),
-                            )
-                        } else {
-                            Generic::TypeArgs(TypeArgs::new(args.args))
-                        },
-                    );
+                    generics.insert(insertion_index, Generic::TypeArgs(TypeArgs::new(args.args)));
                     break;
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
@@ -4974,7 +4962,6 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     ) -> TupleArgsDetails {
         let mut gatherer = MaybeUnpackGatherer::default();
 
-        let empty_not_explicit = Cell::new(true);
         let add_unpack = |type_computation: &mut TypeComputation,
                           from,
                           u,
@@ -4997,13 +4984,11 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             if maybe_err.is_err() {
                 type_computation.add_issue(from, IssueKind::MoreThanOneUnpackTypeIsNotAllowed);
             }
-            empty_not_explicit.set(false);
         };
         if let Some((from, current_unpack)) = self.current_unpack.take() {
             add_unpack(type_computation, from, current_unpack, &mut gatherer)
         }
         for s in self.slices.by_ref() {
-            empty_not_explicit.set(false);
             if let Some(already_analyzed) = self.reverse_already_analyzed
                 && already_analyzed == s.as_node_ref()
             {
@@ -5036,7 +5021,6 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             )
         }
         TupleArgsDetails {
-            empty_not_explicit: empty_not_explicit.get(),
             args: gatherer.into_tuple_args(),
         }
     }
@@ -5192,7 +5176,6 @@ pub enum TypeVarTupleDefaultOrigin<'x> {
 
 struct TupleArgsDetails {
     args: TupleArgs,
-    empty_not_explicit: bool, // Explicit would be something like Unpack[Tuple[()]]
 }
 
 pub(super) enum TypeCommentState<'db> {
