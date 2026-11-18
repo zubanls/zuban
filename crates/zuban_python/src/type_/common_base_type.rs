@@ -353,7 +353,7 @@ impl TypedDict {
                     let common =
                         m1.type_
                             .common_base_type_internal(i_s, &m2.type_, checked_recursions);
-                    let mut read_only = m1.read_only | m2.read_only;
+                    let mut read_only = m1.read_only | m2.read_only || m1.required != m2.required;
                     if !common.is_equal_type(i_s.db, &m1.type_) {
                         read_only = true;
                     }
