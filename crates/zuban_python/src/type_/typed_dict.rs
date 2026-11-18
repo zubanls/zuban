@@ -305,19 +305,37 @@ impl TypedDict {
         Some(format!("{module}.{}", name.as_str(db)))
     }
 
-    pub fn union(&self, i_s: &InferenceState, other: &Self) -> Type {
+    pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Type {
         let m1 = self.members(i_s.db);
         let m2 = other.members(i_s.db);
         let mut members: Vec<_> = m1.named.clone().into();
         'outer: for m2 in m2.named.iter() {
-            for m1 in members.iter() {
-                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
-                    if m1.required != m2.required
-                        || m1.read_only != m2.read_only
-                        || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
-                    {
+            let m2_name = m2.name.as_str(i_s.db);
+            for m1 in members.iter_mut() {
+                if m1.name.as_str(i_s.db) == m2_name {
+                    let matches = match (m1.read_only, m2.read_only) {
+                        (false, false) => {
+                            m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
+                                && m1.required == m2.required
+                        }
+                        (true, true) => {
+                            let Some(t) = m1.type_.common_sub_type(i_s, &m2.type_) else {
+                                return Type::NEVER;
+                            };
+                            m1.type_ = t;
+                            true
+                        }
+                        (true, false) => {
+                            m1.type_ = m2.type_.clone();
+                            m1.type_.is_simple_super_type_of(i_s, &m2.type_).bool()
+                        }
+                        (false, true) => m2.type_.is_simple_super_type_of(i_s, &m1.type_).bool(),
+                    };
+                    if !matches {
                         return Type::NEVER;
                     }
+                    m1.required |= m2.required;
+                    m1.read_only &= m2.read_only;
                     continue 'outer;
                 }
             }
