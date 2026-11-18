@@ -30,7 +30,7 @@ impl Type {
             (Type::Tuple(tup1), Type::Tuple(tup2)) => Some(Type::Tuple(Tuple::new(
                 tup1.args.common_sub_type(i_s, &tup2.args)?,
             ))),
-            (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, td2)),
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.common_sub_type(i_s, td2)),
             (Type::Callable(c1), _) => common_sub_type_for_callable_against_type(i_s, c1, other),
             (_, Type::Callable(c2)) => common_sub_type_for_callable_against_type(i_s, c2, self),
             (Type::Any(_), _) => Some(other.clone()),
