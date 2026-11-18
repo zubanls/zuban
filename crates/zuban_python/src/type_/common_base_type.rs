@@ -7,6 +7,7 @@ use super::{
     TypeGuardInfo,
 };
 use crate::prelude::*;
+use crate::type_::{ExtraItemsType, TypedDictGenerics, TypedDictMembers};
 use crate::{
     matcher::CheckedTypeRecursion,
     type_::{ParamSpecArg, TupleUnpack, WithUnpack},
@@ -293,7 +294,7 @@ fn common_base_type_for_non_class(
         }
         Type::TypedDict(td1) => {
             if let Type::TypedDict(td2) = &type2 {
-                return Some(Type::TypedDict(td1.intersection(i_s, td2)));
+                return Some(Type::TypedDict(td1.common_base_type(i_s, td2)));
             }
         }
         Type::Type(t1) => match type2 {
@@ -330,6 +331,47 @@ fn common_base_type_for_non_class(
         }
     }
     None
+}
+
+impl TypedDict {
+    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Arc<TypedDict> {
+        let mut new_members = vec![];
+        let ms1 = self.members(i_s.db);
+        let ms2 = other.members(i_s.db);
+        for m1 in ms1.named.iter() {
+            for m2 in ms2.named.iter() {
+                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db)
+                    && m1.required == m2.required
+                    && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
+                {
+                    let mut new = m1.clone();
+                    new.read_only |= m2.read_only;
+                    new_members.push(new);
+                }
+            }
+        }
+        Self::new(
+            None,
+            TypedDictMembers {
+                named: new_members.into_boxed_slice(),
+                extra_items: ms1
+                    .extra_items
+                    .as_ref()
+                    .zip(ms2.extra_items.as_ref())
+                    .and_then(|(e1, e2)| {
+                        if !e1.t.is_simple_same_type(i_s, &e2.t).bool() {
+                            return None;
+                        }
+                        Some(ExtraItemsType {
+                            t: e1.t.clone(),
+                            read_only: e1.read_only || e2.read_only,
+                        })
+                    }),
+            },
+            self.defined_at,
+            TypedDictGenerics::None,
+        )
+    }
 }
 
 impl CallableParams {

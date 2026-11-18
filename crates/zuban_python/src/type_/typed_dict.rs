@@ -353,45 +353,6 @@ impl TypedDict {
         ))
     }
 
-    pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Arc<TypedDict> {
-        let mut new_members = vec![];
-        let ms1 = self.members(i_s.db);
-        let ms2 = other.members(i_s.db);
-        for m1 in ms1.named.iter() {
-            for m2 in ms2.named.iter() {
-                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db)
-                    && m1.required == m2.required
-                    && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
-                {
-                    let mut new = m1.clone();
-                    new.read_only |= m2.read_only;
-                    new_members.push(new);
-                }
-            }
-        }
-        Self::new(
-            None,
-            TypedDictMembers {
-                named: new_members.into_boxed_slice(),
-                extra_items: ms1
-                    .extra_items
-                    .as_ref()
-                    .zip(ms2.extra_items.as_ref())
-                    .and_then(|(e1, e2)| {
-                        if !e1.t.is_simple_same_type(i_s, &e2.t).bool() {
-                            return None;
-                        }
-                        Some(ExtraItemsType {
-                            t: e1.t.clone(),
-                            read_only: e1.read_only || e2.read_only,
-                        })
-                    }),
-            },
-            self.defined_at,
-            TypedDictGenerics::None,
-        )
-    }
-
     pub fn name_or_fallback(&self, format_data: &FormatData) -> String {
         if let Some(name) = self.name {
             let name = name.as_str(format_data.db);
