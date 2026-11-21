@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, cell::Cell, sync::Arc};
 
 use super::Callable;
 use crate::{
@@ -12,6 +12,8 @@ use crate::{
     },
     type_helpers::Generics,
 };
+
+const MAX_OVERLOAD_COUNT_FOR_RESET: usize = 2;
 
 #[derive(Debug)]
 pub(crate) struct OverloadedFunction<'a> {
@@ -52,6 +54,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
+        let counter = nested_counter();
+
         let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
             if search_init {
                 calc_callable_dunder_init_type_vars(
@@ -107,6 +111,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut multi_any_match: Option<(Callable, Box<_>)> = None;
         let mut had_error_in_func = None;
         let points_backup = args.points_backup();
+        let mut did_not_reset_due_to_performance = false;
         for (i, callable) in self.overload.iter_functions().enumerate() {
             debug!("Checking overload item #{i}");
             let _indent = debug_indent();
@@ -181,6 +186,15 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     debug!("Overload #{i} mismatch, is not similar.");
                 }
             }
+            // Not doing this is a bad thing, but otherwise nested overloads can explode
+            // exponentially.
+            if counter.avoid_context_resets() {
+                did_not_reset_due_to_performance = true;
+            } else {
+                args.reset_points_from_backup(&points_backup);
+            }
+        }
+        if did_not_reset_due_to_performance {
             args.reset_points_from_backup(&points_backup);
         }
         if let Some((callable, _)) = multi_any_match {
@@ -622,4 +636,51 @@ fn are_any_arguments_ambiguous_in_overload(
         }
     }
     false
+}
+
+#[derive(Default, Copy, Clone)]
+struct NestedOverloadDetails {
+    count: usize,
+    avoid_context_resets: bool,
+}
+
+thread_local!(static NESTED_OVERLOAD_COUNTER: Cell<NestedOverloadDetails> = const { Cell::new(NestedOverloadDetails {
+    count: 0,
+    avoid_context_resets: false,
+}) });
+
+struct NestedOverloadCounter();
+
+impl NestedOverloadCounter {
+    fn avoid_context_resets(&self) -> bool {
+        NESTED_OVERLOAD_COUNTER.with(|i| i.get().avoid_context_resets)
+    }
+}
+
+#[inline(always)]
+#[must_use]
+fn nested_counter() -> NestedOverloadCounter {
+    NESTED_OVERLOAD_COUNTER.with(|details_cell| {
+        let mut details = details_cell.get();
+        if details.count >= MAX_OVERLOAD_COUNT_FOR_RESET {
+            details.avoid_context_resets = true;
+        }
+        details.count += 1;
+        details_cell.set(details);
+    });
+    NestedOverloadCounter()
+}
+
+impl Drop for NestedOverloadCounter {
+    #[inline(always)]
+    fn drop(&mut self) {
+        NESTED_OVERLOAD_COUNTER.with(|details_cell| {
+            let mut details = details_cell.get();
+            details.count -= 1;
+            if details.count == 0 {
+                details.avoid_context_resets = false;
+            }
+            details_cell.set(details);
+        })
+    }
 }

@@ -116,3 +116,40 @@ class C[T](Enum):  # E: Enum class cannot be generic
 [case no_crash_on_list_disjunctions]
 # From GH #669
 a, b = [] or [] or [] or [] or []  # E: Need type annotation for "a"  # E: Need type annotation for "b"
+
+[case numpy_slowness]
+# From GH #415
+from typing import overload, Any
+
+class _DTypeMeta(some_missing_type): ...  # type: ignore
+
+class dtype(metaclass=_DTypeMeta):
+    @overload
+    def __new__(align: bool, copy: bool): ...
+    @overload
+    def __new__(dtype: Any, align: bool): ...
+    @overload
+    def __new__(dtype: Any, align: bool): ...  # type: ignore
+    @overload
+    def __new__(cls, dtype: type[int]): ...
+    @overload
+    def __new__(cls, align: bool): ...
+    @overload
+    def __new__(cls, copy: bool): ...
+    @overload
+    def __new__(dtype, align: bool): ...  # type: ignore
+    @overload
+    def __new__(cls, copy: bool) -> dtype[str]: ...  # type: ignore
+    def __new__(cls, *args, **kwargs): ...
+
+dtype([  # type: ignore
+    (dtype((  # type: ignore
+        dtype((  # type: ignore
+            dtype((  # type: ignore
+                dtype((  # type: ignore
+                    dtype({'names': ['a', 'b'], 'offsets': [0, 4], 'itemsize': 8})  # type: ignore
+                )),
+            )),
+        )),
+    )))
+])
