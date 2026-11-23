@@ -1,4 +1,10 @@
-use std::{borrow::Cow, cell::Cell, sync::Arc};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    sync::Arc,
+};
+
+use utils::FastHashMap;
 
 use super::Callable;
 use crate::{
@@ -12,8 +18,6 @@ use crate::{
     },
     type_helpers::Generics,
 };
-
-const MAX_OVERLOAD_COUNT_FOR_RESET: usize = 2;
 
 #[derive(Debug)]
 pub(crate) struct OverloadedFunction<'a> {
@@ -55,7 +59,39 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
         let counter = nested_counter();
+        // Since the overloads infer arguments multiple times (e.g. [1] might be inferred as
+        // list[int] or list[object], depending on the overload. In multiple nested overloads this
+        // can blow up exponentially.
+        if let Some(result) =
+            counter.maybe_reuse_previous_solution(self.overload, args, &self.class)
+        {
+            return result;
+        }
+        let solution = self.find_matching_function_part2(
+            i_s,
+            args,
+            skip_first_argument,
+            class,
+            search_init,
+            replace_self,
+            on_type_error,
+            as_union_math_type,
+        );
+        counter.register_solution(self.overload, args, &solution);
+        solution
+    }
 
+    pub(crate) fn find_matching_function_part2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        skip_first_argument: bool,
+        class: Option<&Class>,
+        search_init: bool, // TODO this feels weird, maybe use a callback?
+        replace_self: Option<ReplaceSelf>,
+        on_type_error: OnTypeError,
+        as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
+    ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
             if search_init {
                 calc_callable_dunder_init_type_vars(
@@ -111,7 +147,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut multi_any_match: Option<(Callable, Box<_>)> = None;
         let mut had_error_in_func = None;
         let points_backup = args.points_backup();
-        let mut did_not_reset_due_to_performance = false;
         for (i, callable) in self.overload.iter_functions().enumerate() {
             debug!("Checking overload item #{i}");
             let _indent = debug_indent();
@@ -188,13 +223,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
             // Not doing this is a bad thing, but otherwise nested overloads can explode
             // exponentially.
-            if counter.avoid_context_resets() {
-                did_not_reset_due_to_performance = true;
-            } else {
-                args.reset_points_from_backup(&points_backup);
-            }
-        }
-        if did_not_reset_due_to_performance {
             args.reset_points_from_backup(&points_backup);
         }
         if let Some((callable, _)) = multi_any_match {
@@ -638,49 +666,111 @@ fn are_any_arguments_ambiguous_in_overload(
     false
 }
 
-#[derive(Default, Copy, Clone)]
-struct NestedOverloadDetails {
-    count: usize,
-    avoid_context_resets: bool,
+#[derive(PartialEq, Eq, Hash)]
+struct CachedOverloadSolutionKey {
+    overload: FunctionOverload,
+    arguments_node: PointLink,
 }
 
-thread_local!(static NESTED_OVERLOAD_COUNTER: Cell<NestedOverloadDetails> = const { Cell::new(NestedOverloadDetails {
-    count: 0,
-    avoid_context_resets: false,
-}) });
+enum CachedOverloadSolution {
+    Single(PointLink),
+    Union(Type),
+    NotFound,
+}
+
+#[derive(Default)]
+struct NestedOverloadDetails {
+    count: Cell<usize>,
+    previous_solution_cache:
+        RefCell<FastHashMap<CachedOverloadSolutionKey, CachedOverloadSolution>>,
+}
+
+thread_local!(static NESTED_OVERLOAD_COUNTER: NestedOverloadDetails = const { NestedOverloadDetails {
+    count: Cell::new(0),
+    previous_solution_cache: RefCell::new(FastHashMap::with_hasher(std::hash::BuildHasherDefault::new())),
+} });
 
 struct NestedOverloadCounter();
 
 impl NestedOverloadCounter {
-    fn avoid_context_resets(&self) -> bool {
-        NESTED_OVERLOAD_COUNTER.with(|i| i.get().avoid_context_resets)
+    fn maybe_reuse_previous_solution<'a>(
+        &self,
+        overload: &'a FunctionOverload,
+        args: &dyn Args,
+        class: &Option<Class<'a>>,
+    ) -> Option<OverloadResult<'a>> {
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            let key = Self::to_key(details, overload, args)?;
+            Some(match details.previous_solution_cache.borrow().get(&key)? {
+                CachedOverloadSolution::Single(link) => {
+                    let found = overload
+                        .iter_functions()
+                        .find(|o| o.defined_at == *link)
+                        .unwrap();
+                    OverloadResult::Single(Callable::new(found, *class))
+                }
+                CachedOverloadSolution::Union(t) => OverloadResult::Union(t.clone()),
+                CachedOverloadSolution::NotFound => OverloadResult::NotFound,
+            })
+        })
+    }
+
+    fn to_key(
+        details: &NestedOverloadDetails,
+        overload: &FunctionOverload,
+        args: &dyn Args,
+    ) -> Option<CachedOverloadSolutionKey> {
+        if details.count.get() <= 1 {
+            return None;
+        }
+        Some(CachedOverloadSolutionKey {
+            overload: overload.clone(),
+            arguments_node: args.as_node_ref_internal()?.as_link(),
+        })
+    }
+
+    fn register_solution(
+        &self,
+        overload: &FunctionOverload,
+        args: &dyn Args,
+        solution: &OverloadResult,
+    ) {
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            if let Some(key) = Self::to_key(details, overload, args) {
+                let result = match solution {
+                    OverloadResult::Single(callable) => {
+                        CachedOverloadSolution::Single(callable.content.defined_at)
+                    }
+                    OverloadResult::Union(u) => CachedOverloadSolution::Union(u.clone()),
+                    OverloadResult::NotFound => CachedOverloadSolution::NotFound,
+                };
+                let replaced = details
+                    .previous_solution_cache
+                    .borrow_mut()
+                    .insert(key, result);
+                debug_assert!(replaced.is_none());
+            }
+        })
     }
 }
 
 #[inline(always)]
 #[must_use]
 fn nested_counter() -> NestedOverloadCounter {
-    NESTED_OVERLOAD_COUNTER.with(|details_cell| {
-        let mut details = details_cell.get();
-        if details.count >= MAX_OVERLOAD_COUNT_FOR_RESET {
-            details.avoid_context_resets = true;
-        }
-        details.count += 1;
-        details_cell.set(details);
-    });
-    NestedOverloadCounter()
+    NESTED_OVERLOAD_COUNTER.with(|details| {
+        details.count.update(|c| c + 1);
+        NestedOverloadCounter()
+    })
 }
 
 impl Drop for NestedOverloadCounter {
     #[inline(always)]
     fn drop(&mut self) {
-        NESTED_OVERLOAD_COUNTER.with(|details_cell| {
-            let mut details = details_cell.get();
-            details.count -= 1;
-            if details.count == 0 {
-                details.avoid_context_resets = false;
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            details.count.update(|c| c - 1);
+            if details.count.get() == 0 {
+                details.previous_solution_cache.borrow_mut().clear()
             }
-            details_cell.set(details);
         })
     }
 }
