@@ -58,6 +58,35 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
+        let match_signature =
+            |i_s: &InferenceState<'db, '_>,
+             callable: Callable<'a>,
+             args_iter: &mut dyn Iterator<Item = Arg<'db, '_>>| {
+                if search_init {
+                    calc_callable_dunder_init_type_vars(
+                        i_s,
+                        class.unwrap(),
+                        callable,
+                        // Variance rules in traits suck and hit us again
+                        args_iter.map(|arg| arg),
+                        |issue| args.add_issue(i_s, issue),
+                        true,
+                        &mut ResultContext::Unknown,
+                        None,
+                    )
+                } else {
+                    calc_callable_type_vars(
+                        i_s,
+                        callable,
+                        args_iter.map(|arg| arg),
+                        |issue| args.add_issue(i_s, issue),
+                        skip_first_argument,
+                        &mut ResultContext::Unknown,
+                        replace_self,
+                        None,
+                    )
+                }
+            };
         let counter = nested_counter();
         // Since the overloads infer arguments multiple times (e.g. [1] might be inferred as
         // list[int] or list[object], depending on the overload. In multiple nested overloads this
@@ -75,6 +104,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             search_init,
             replace_self,
             on_type_error,
+            &match_signature,
             as_union_math_type,
         );
         counter.register_solution(self.overload, args, &solution);
@@ -90,33 +120,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         replace_self: Option<ReplaceSelf>,
         on_type_error: OnTypeError,
+        match_signature: &impl Fn(
+            &InferenceState<'db, '_>,
+            Callable<'a>,
+            &mut dyn Iterator<Item = Arg<'db, '_>>,
+        ) -> CalculatedTypeArgs,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
-        let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
-            if search_init {
-                calc_callable_dunder_init_type_vars(
-                    i_s,
-                    class.unwrap(),
-                    callable,
-                    args.iter(i_s.mode),
-                    |issue| args.add_issue(i_s, issue),
-                    true,
-                    &mut ResultContext::Unknown,
-                    None,
-                )
-            } else {
-                calc_callable_type_vars(
-                    i_s,
-                    callable,
-                    args.iter(i_s.mode),
-                    |issue| args.add_issue(i_s, issue),
-                    skip_first_argument,
-                    &mut ResultContext::Unknown,
-                    replace_self,
-                    None,
-                )
-            }
-        };
         let add_issue_if_deprecated = |callable: &Callable| {
             if i_s.db.project.flags.disallow_deprecated
                 && let Some(deprecated) = &callable.content.deprecated_reason
@@ -151,8 +161,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             debug!("Checking overload item #{i}");
             let _indent = debug_indent();
             let callable = Callable::new(callable, self.class);
-            let (calculated_type_args, had_error) =
-                i_s.avoid_errors_within(|i_s| match_signature(i_s, callable));
+            let (calculated_type_args, had_error) = i_s.avoid_errors_within(|i_s| {
+                match_signature(i_s, callable, &mut args.iter(i_s.mode))
+            });
             if had_error && had_error_in_func.is_none() {
                 had_error_in_func = Some(callable);
             }
@@ -258,6 +269,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     &mut non_union_args,
                     &|issue| args.add_issue(i_s, issue),
                     search_init,
+                    match_signature,
                     class,
                     replace_self,
                     as_union_math_type,
@@ -319,7 +331,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, callable);
+            match_signature(i_s, callable, &mut args.iter(i_s.mode));
         }
         OverloadResult::NotFound
     }
@@ -332,6 +344,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         non_union_args: &mut Vec<Arg<'db, 'x>>,
         add_issue: &impl Fn(IssueKind) -> bool,
         search_init: bool,
+        match_signature: &impl Fn(
+            &InferenceState<'db, '_>,
+            Callable<'a>,
+            &mut dyn Iterator<Item = Arg<'db, '_>>,
+        ) -> CalculatedTypeArgs,
         class: Option<&Class>,
         replace_self: Option<ReplaceSelf>,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
@@ -353,6 +370,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     non_union_args,
                     add_issue,
                     search_init,
+                    match_signature,
                     class,
                     replace_self,
                     as_union_math_type,
@@ -394,6 +412,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         non_union_args,
                         add_issue,
                         search_init,
+                        match_signature,
                         class,
                         replace_self,
                         as_union_math_type,
@@ -440,6 +459,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     non_union_args,
                     add_issue,
                     search_init,
+                    match_signature,
                     class,
                     replace_self,
                     as_union_math_type,
@@ -450,29 +470,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let mut first_similar = None;
             for (i, callable) in self.overload.iter_functions().enumerate() {
                 let callable = Callable::new(callable, self.class);
-                let calculated_type_args = if search_init {
-                    calc_callable_dunder_init_type_vars(
-                        i_s,
-                        class.unwrap(),
-                        callable,
-                        non_union_args.clone().into_iter(),
-                        add_issue,
-                        true,
-                        &mut ResultContext::Unknown,
-                        None,
-                    )
-                } else {
-                    calc_callable_type_vars(
-                        i_s,
-                        callable,
-                        non_union_args.clone().into_iter(),
-                        add_issue,
-                        skip_first_argument,
-                        &mut ResultContext::Unknown,
-                        replace_self,
-                        None,
-                    )
-                };
+                let calculated_type_args =
+                    match_signature(i_s, callable, &mut non_union_args.clone().into_iter());
                 match calculated_type_args.matches {
                     SignatureMatch::TrueWithAny { .. } | SignatureMatch::True { .. } => {
                         return UnionMathResult::Match {
