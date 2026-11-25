@@ -96,7 +96,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         // list[int] or list[object], depending on the overload. In multiple nested overloads this
         // can blow up exponentially.
         let result = counter
-            .maybe_reuse_previous_solution(i_s.db, self.overload, args, &self.class)
+            .maybe_reuse_previous_solution(i_s, self.overload, args, &self.class)
             .unwrap_or_else(|| {
                 let solution = self.find_matching_function_part2(
                     i_s,
@@ -104,7 +104,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     &match_signature,
                     as_union_math_type,
                 );
-                counter.register_solution(i_s.db, self.overload, args, &self.class, &solution);
+                counter.register_solution(i_s, self.overload, args, &self.class, &solution);
                 solution
             });
         match &result {
@@ -658,7 +658,7 @@ struct CachedOverloadSolutionKey {
 #[derive(Debug)]
 enum CachedOverloadSolution {
     Single(PointLink),
-    Union(Type),
+    // Union(Type),
     MultiAnyMatch,
     NotFound {
         had_error_in_callable: Option<PointLink>,
@@ -683,13 +683,13 @@ struct NestedOverloadCounter();
 impl NestedOverloadCounter {
     fn maybe_reuse_previous_solution<'a>(
         &self,
-        db: &Database,
+        i_s: &InferenceState,
         overload: &'a FunctionOverload,
         args: &dyn Args,
         class: &Option<Class<'a>>,
     ) -> Option<OverloadResult<'a>> {
         NESTED_OVERLOAD_COUNTER.with(|details| {
-            let key = Self::to_key(db, details, overload, args, class)?;
+            let key = Self::to_key(i_s, details, overload, args, class)?;
             let link_to_callable = |link| {
                 let found = overload
                     .iter_functions()
@@ -701,7 +701,7 @@ impl NestedOverloadCounter {
                 CachedOverloadSolution::Single(link) => {
                     OverloadResult::Single(link_to_callable(*link))
                 }
-                CachedOverloadSolution::Union(t) => OverloadResult::Union(t.clone()),
+                // CachedOverloadSolution::Union(t) => OverloadResult::Union(t.clone()),
                 CachedOverloadSolution::MultiAnyMatch => OverloadResult::MultiAnyMatch,
                 CachedOverloadSolution::NotFound {
                     had_error_in_callable,
@@ -714,7 +714,7 @@ impl NestedOverloadCounter {
     }
 
     fn to_key(
-        db: &Database,
+        i_s: &InferenceState,
         details: &NestedOverloadDetails,
         overload: &FunctionOverload,
         args: &dyn Args,
@@ -726,25 +726,29 @@ impl NestedOverloadCounter {
         Some(CachedOverloadSolutionKey {
             overload: overload.clone(),
             arguments_node: args.as_node_ref_internal()?.as_link(),
-            class: class.map(|c| c.as_type(db)),
+            class: class.map(|c| c.as_type(i_s.db)),
         })
     }
 
     fn register_solution(
         &self,
-        db: &Database,
+        i_s: &InferenceState,
         overload: &FunctionOverload,
         args: &dyn Args,
         class: &Option<Class>,
         solution: &OverloadResult,
     ) {
         NESTED_OVERLOAD_COUNTER.with(|details| {
-            if let Some(key) = Self::to_key(db, details, overload, args, class) {
+            if let Some(key) = Self::to_key(i_s, details, overload, args, class) {
                 let result = match solution {
                     OverloadResult::Single(callable) => {
                         CachedOverloadSolution::Single(callable.content.defined_at)
                     }
-                    OverloadResult::Union(u) => CachedOverloadSolution::Union(u.clone()),
+                    OverloadResult::Union(_) => {
+                        // TODO this should in theory also be used to avoid recursions and decide
+                        // overloads, but at the moment we don't have a way to "re-add" the issues.
+                        return;
+                    }
                     OverloadResult::MultiAnyMatch => CachedOverloadSolution::MultiAnyMatch,
                     OverloadResult::NotFound {
                         had_error_in_callable,

@@ -1541,7 +1541,7 @@ class C:
         pass
 
 [case nested_overloads_with_classes]
-from typing import overload, Generic, TypeVar, Union
+from typing import overload, Generic, TypeVar
 T = TypeVar("T")
 
 class A(Generic[T]):
@@ -1559,6 +1559,24 @@ def g(c: str) -> str: ...
 def g(c: bytes) -> bytes: ...
 def g(c): ...
 
-def t(u: Union[A[int], A[str]], v: Union[A[str], A[int]]):
+def t(u: A[int] | A[str], v: A[str] | A[int]):
     reveal_type(g(g(u + 1)))  # N: Revealed type is "int | bytes"
     reveal_type(g(g(v + 1)))  # N: Revealed type is "bytes | int"
+
+[case nested_overloads_with_unions]
+from typing import overload, assert_type
+
+@overload
+def g(c: int) -> int: ...
+@overload
+def g(c: str) -> str: ...
+@overload
+def g(c: bytes) -> bytes: ...
+def g(c): ...
+
+def fetch(x: str) -> bytes | str: ...
+
+assert_type(g(fetch(1)), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
+assert_type(g(g(fetch(1))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
+assert_type(g(g(g(fetch(1)))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
+assert_type(g(g(g(g(fetch(1))))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
