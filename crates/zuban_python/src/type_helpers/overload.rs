@@ -96,7 +96,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         // list[int] or list[object], depending on the overload. In multiple nested overloads this
         // can blow up exponentially.
         let result = counter
-            .maybe_reuse_previous_solution(self.overload, args, &self.class)
+            .maybe_reuse_previous_solution(i_s.db, self.overload, args, &self.class)
             .unwrap_or_else(|| {
                 let solution = self.find_matching_function_part2(
                     i_s,
@@ -104,7 +104,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     &match_signature,
                     as_union_math_type,
                 );
-                counter.register_solution(self.overload, args, &solution);
+                counter.register_solution(i_s.db, self.overload, args, &self.class, &solution);
                 solution
             });
         match &result {
@@ -652,8 +652,10 @@ fn are_any_arguments_ambiguous_in_overload(
 struct CachedOverloadSolutionKey {
     overload: FunctionOverload,
     arguments_node: PointLink,
+    class: Option<Type>,
 }
 
+#[derive(Debug)]
 enum CachedOverloadSolution {
     Single(PointLink),
     Union(Type),
@@ -681,12 +683,13 @@ struct NestedOverloadCounter();
 impl NestedOverloadCounter {
     fn maybe_reuse_previous_solution<'a>(
         &self,
+        db: &Database,
         overload: &'a FunctionOverload,
         args: &dyn Args,
         class: &Option<Class<'a>>,
     ) -> Option<OverloadResult<'a>> {
         NESTED_OVERLOAD_COUNTER.with(|details| {
-            let key = Self::to_key(details, overload, args)?;
+            let key = Self::to_key(db, details, overload, args, class)?;
             let link_to_callable = |link| {
                 let found = overload
                     .iter_functions()
@@ -711,9 +714,11 @@ impl NestedOverloadCounter {
     }
 
     fn to_key(
+        db: &Database,
         details: &NestedOverloadDetails,
         overload: &FunctionOverload,
         args: &dyn Args,
+        class: &Option<Class>,
     ) -> Option<CachedOverloadSolutionKey> {
         if details.count.get() <= 1 {
             return None;
@@ -721,17 +726,20 @@ impl NestedOverloadCounter {
         Some(CachedOverloadSolutionKey {
             overload: overload.clone(),
             arguments_node: args.as_node_ref_internal()?.as_link(),
+            class: class.map(|c| c.as_type(db)),
         })
     }
 
     fn register_solution(
         &self,
+        db: &Database,
         overload: &FunctionOverload,
         args: &dyn Args,
+        class: &Option<Class>,
         solution: &OverloadResult,
     ) {
         NESTED_OVERLOAD_COUNTER.with(|details| {
-            if let Some(key) = Self::to_key(details, overload, args) {
+            if let Some(key) = Self::to_key(db, details, overload, args, class) {
                 let result = match solution {
                     OverloadResult::Single(callable) => {
                         CachedOverloadSolution::Single(callable.content.defined_at)
