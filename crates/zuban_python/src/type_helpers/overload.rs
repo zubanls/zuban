@@ -720,7 +720,10 @@ impl NestedOverloadCounter {
         args: &dyn Args,
         class: &Option<Class>,
     ) -> Option<CachedOverloadSolutionKey> {
-        if details.count.get() <= 1 {
+        // TODO the condition that this should only be done for simple args should not be there,
+        // but if we enable it, it will cache things like + overloads that iterate over both sides
+        // unions.
+        if details.count.get() <= 1 || args.maybe_simple_args().is_none() {
             return None;
         }
         Some(CachedOverloadSolutionKey {

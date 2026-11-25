@@ -1580,3 +1580,24 @@ assert_type(g(fetch(1)), str | bytes)  # E: Argument 1 to "fetch" has incompatib
 assert_type(g(g(fetch(1))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
 assert_type(g(g(g(fetch(1)))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
 assert_type(g(g(g(g(fetch(1))))), str | bytes)  # E: Argument 1 to "fetch" has incompatible type "int"; expected "str"
+
+[case no_error_on_nested_overloads_with_add]
+from typing import overload, Union
+
+@overload
+def g(c: int) -> int: ...
+@overload
+def g(c: str) -> str: ...
+def g(c): ...
+
+class A:
+    @overload
+    def __add__(self, o: int) -> int: ...
+    @overload
+    def __add__(self, o: str) -> str: ...
+    def __add__(self, o): ...
+
+def t(a: A, w: int | str):
+    a + w
+    g(a + w)
+    g(g(a + w))
