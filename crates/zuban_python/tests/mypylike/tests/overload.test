@@ -651,10 +651,6 @@ def g(
 
 [out]
 __main__:42: error: Not all union combinations were tried because there are too many unions
-__main__:42: error: No overload variant of "func" matches argument types "a=Literal['a', 'b', 'c', 'd', 'e', 'f'] | None", "b=Literal['a', 'b', 'c', 'd', 'e', 'f']", "c=Literal[0, 1, 2, 3, 4, 5]", "d=Literal[0, 1, 2, 3, 4, 5]", "e=int | str | bytes | None | list[Any] | set[Any]", "f=int | str | bytes | None | list[Any] | set[Any]", "g=int | str | bytes | None | list[Any] | set[Any]", "h=int | str | bytes | None | list[Any] | set[Any]"
-__main__:42: note: Possible overload variants:
-__main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: Literal[1], d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None
-__main__:42: note:     def func(a: Literal['a', 'b', 'c', 'd', 'e', 'f'] | None, b: Literal['a', 'b', 'c', 'd', 'e', 'f'], *, c: int, d: Literal[0, 1, 2, 3, 4, 5], e: int | str | bytes | None | list[Any] | set[Any], f: int | str | bytes | None | list[Any] | set[Any], g: int | str | bytes | None | list[Any] | set[Any], h: Literal[1]) -> None
 
 [case overload_with_empty_unpack]
 from typing import overload, Unpack, TypedDict

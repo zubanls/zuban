@@ -32,6 +32,7 @@ pub(crate) enum OverloadResult<'a> {
     NotFound {
         had_error_in_callable: Option<Callable<'a>>,
     },
+    TooManyUnions,
 }
 
 #[derive(Debug)]
@@ -132,8 +133,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     );
                 }
             }
-            OverloadResult::Union(_) => (),
-            OverloadResult::MultiAnyMatch => (),
+            OverloadResult::Union(_) | OverloadResult::MultiAnyMatch => (),
+            OverloadResult::TooManyUnions => {
+                args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+            }
             OverloadResult::NotFound {
                 had_error_in_callable,
             } => {
@@ -312,9 +315,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ))
                     }
                     UnionMathResult::NoMatch => (),
-                    UnionMathResult::TooManyUnions => {
-                        args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
-                    }
+                    UnionMathResult::TooManyUnions => return OverloadResult::TooManyUnions,
                 }
             }
         }
@@ -591,7 +592,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 result
             }
             OverloadResult::Union(t) => Inferred::from_type(t),
-            OverloadResult::NotFound { .. } | OverloadResult::MultiAnyMatch => {
+            OverloadResult::NotFound { .. }
+            | OverloadResult::MultiAnyMatch
+            | OverloadResult::TooManyUnions => {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
                         return c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
@@ -658,6 +661,7 @@ enum CachedOverloadSolution {
     NotFound {
         had_error_in_callable: Option<PointLink>,
     },
+    TooManyUnions,
 }
 
 #[derive(Default)]
@@ -701,6 +705,7 @@ impl NestedOverloadCounter {
                 } => OverloadResult::NotFound {
                     had_error_in_callable: had_error_in_callable.map(link_to_callable),
                 },
+                CachedOverloadSolution::TooManyUnions => OverloadResult::TooManyUnions,
             })
         })
     }
@@ -738,6 +743,7 @@ impl NestedOverloadCounter {
                     } => CachedOverloadSolution::NotFound {
                         had_error_in_callable: had_error_in_callable.map(|e| e.content.defined_at),
                     },
+                    OverloadResult::TooManyUnions => CachedOverloadSolution::TooManyUnions,
                 };
                 let replaced = details
                     .previous_solution_cache
