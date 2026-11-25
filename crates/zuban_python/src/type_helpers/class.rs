@@ -267,7 +267,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     )
                 }
                 OverloadResult::Union(t) => ClassExecutionResult::Inferred(Inferred::from_type(t)),
-                OverloadResult::NotFound => {
+                OverloadResult::NotFound { .. } | OverloadResult::MultiAnyMatch => {
                     ClassExecutionResult::Inferred(Inferred::new_any_from_error())
                 }
             },
