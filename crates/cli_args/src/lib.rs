@@ -75,7 +75,7 @@ pub struct MypyCli {
     package_todo_unimplemented: Vec<String>,
     */
     // Config file
-    /// Configuration file, must have a [mypy] section (defaults to mypy.ini, .mypy.ini, pyproject.toml, setup.cfg, ~/.config/mypy/config, ~/.mypy.ini)
+    /// Configuration file (defaults to pyproject.toml, mypy.ini, .mypy.ini, setup.cfg)
     #[arg(long)]
     pub config_file: Option<PathBuf>,
 
