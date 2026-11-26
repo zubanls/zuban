@@ -4586,7 +4586,9 @@ impl<'file> Inference<'_, 'file, '_> {
                     }
                     // Return the default, because the overload was already typechecked and
                     // doesn't need to be typechecked anymore
-                    OverloadResult::NotFound => Some(Default::default()),
+                    OverloadResult::NotFound { .. }
+                    | OverloadResult::MultiAnyMatch
+                    | OverloadResult::TooManyUnions => Some(Default::default()),
                 }
             }
         }

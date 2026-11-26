@@ -1,4 +1,10 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    sync::Arc,
+};
+
+use utils::FastHashMap;
 
 use super::Callable;
 use crate::{
@@ -22,7 +28,11 @@ pub(crate) struct OverloadedFunction<'a> {
 pub(crate) enum OverloadResult<'a> {
     Single(Callable<'a>),
     Union(Type),
-    NotFound,
+    MultiAnyMatch,
+    NotFound {
+        had_error_in_callable: Option<Callable<'a>>,
+    },
+    TooManyUnions,
 }
 
 #[derive(Debug)]
@@ -52,69 +62,140 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         on_type_error: OnTypeError,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
     ) -> OverloadResult<'a> {
-        let match_signature = |i_s: &InferenceState<'db, '_>, callable: Callable| {
-            if search_init {
-                calc_callable_dunder_init_type_vars(
+        let match_signature =
+            |i_s: &InferenceState<'db, '_>,
+             callable: Callable<'a>,
+             args_iter: &mut dyn Iterator<Item = Arg<'db, '_>>| {
+                if search_init {
+                    calc_callable_dunder_init_type_vars(
+                        i_s,
+                        class.unwrap(),
+                        callable,
+                        // Variance rules in traits suck and hit us again
+                        args_iter.map(|arg| arg),
+                        |issue| args.add_issue(i_s, issue),
+                        true,
+                        &mut ResultContext::Unknown,
+                        None,
+                    )
+                } else {
+                    calc_callable_type_vars(
+                        i_s,
+                        callable,
+                        args_iter.map(|arg| arg),
+                        |issue| args.add_issue(i_s, issue),
+                        skip_first_argument,
+                        &mut ResultContext::Unknown,
+                        replace_self,
+                        None,
+                    )
+                }
+            };
+        let counter = nested_counter();
+        // Since the overloads infer arguments multiple times (e.g. [1] might be inferred as
+        // list[int] or list[object], depending on the overload. In multiple nested overloads this
+        // can blow up exponentially.
+        let result = counter
+            .maybe_reuse_previous_solution(i_s, self.overload, args, &self.class)
+            .unwrap_or_else(|| {
+                let solution = self.find_matching_function_part2(
                     i_s,
-                    class.unwrap(),
-                    callable,
-                    args.iter(i_s.mode),
-                    |issue| args.add_issue(i_s, issue),
-                    true,
-                    &mut ResultContext::Unknown,
-                    None,
-                )
-            } else {
-                calc_callable_type_vars(
-                    i_s,
-                    callable,
-                    args.iter(i_s.mode),
-                    |issue| args.add_issue(i_s, issue),
-                    skip_first_argument,
-                    &mut ResultContext::Unknown,
-                    replace_self,
-                    None,
-                )
-            }
-        };
-        let add_issue_if_deprecated = |callable: &Callable| {
-            if i_s.db.project.flags.disallow_deprecated
-                && let Some(deprecated) = &callable.content.deprecated_reason
-            {
-                let fmt = callable.content.format_pretty_detailed(
-                    &FormatData::new_reveal_type(i_s.db),
-                    PrettyCallableOptions {
-                        avoid_classmethod_param: true,
-                        ..Default::default()
-                    },
+                    args,
+                    &match_signature,
+                    as_union_math_type,
                 );
-                args.add_issue(
-                    i_s,
-                    IssueKind::Deprecated {
-                        identifier: format!(
-                            "overload def {} of function {}",
-                            &fmt[fmt.find('(').unwrap()..],
-                            callable.content.qualified_name(i_s.db)
-                        )
-                        .into(),
-                        reason: deprecated.clone(),
-                    },
-                );
+                counter.register_solution(i_s, self.overload, args, &self.class, &solution);
+                solution
+            });
+        match &result {
+            OverloadResult::Single(callable) => {
+                if i_s.db.project.flags.disallow_deprecated
+                    && let Some(deprecated) = &callable.content.deprecated_reason
+                {
+                    let fmt = callable.content.format_pretty_detailed(
+                        &FormatData::new_reveal_type(i_s.db),
+                        PrettyCallableOptions {
+                            avoid_classmethod_param: true,
+                            ..Default::default()
+                        },
+                    );
+                    args.add_issue(
+                        i_s,
+                        IssueKind::Deprecated {
+                            identifier: format!(
+                                "overload def {} of function {}",
+                                &fmt[fmt.find('(').unwrap()..],
+                                callable.content.qualified_name(i_s.db)
+                            )
+                            .into(),
+                            reason: deprecated.clone(),
+                        },
+                    );
+                }
             }
-        };
+            OverloadResult::Union(_) | OverloadResult::MultiAnyMatch => (),
+            OverloadResult::TooManyUnions => {
+                args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
+            }
+            OverloadResult::NotFound {
+                had_error_in_callable,
+            } => {
+                if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
+                    on_overload_mismatch()
+                } else {
+                    debug!(
+                        "Overload fallback: Infer arguments and add errors since no match was found"
+                    );
+                    let _indent = debug_indent();
+                    let c =
+                        Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
+                    let t = IssueKind::OverloadMismatch {
+                        name: (on_type_error.generate_diagnostic_string)(&c, i_s.db)
+                            .expect(
+                                "The diagnostic string should always be set for overloads, \
+                             because the name is always defined",
+                            )
+                            .into(),
+                        args: args.iter(i_s.mode).into_argument_types(i_s),
+                        variants: self.variants(i_s, class.filter(|_| search_init)),
+                    };
+                    args.add_issue(i_s, t);
+                }
+                if let Some(callable) = had_error_in_callable {
+                    // Need to run the whole thing again to generate errors, because the function is not
+                    // going to be checked.
+                    match_signature(i_s, *callable, &mut args.iter(i_s.mode));
+                }
+            }
+        }
+        result
+    }
+
+    pub(crate) fn find_matching_function_part2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        match_signature: &impl Fn(
+            &InferenceState<'db, '_>,
+            Callable<'a>,
+            &mut dyn Iterator<Item = Arg<'db, '_>>,
+        ) -> CalculatedTypeArgs,
+        as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
+    ) -> OverloadResult<'a> {
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(Callable, Box<_>)> = None;
-        let mut had_error_in_func = None;
+        let mut had_error_in_callable = None;
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
             debug!("Checking overload item #{i}");
             let _indent = debug_indent();
             let callable = Callable::new(callable, self.class);
-            let (calculated_type_args, had_error) =
-                i_s.avoid_errors_within(|i_s| match_signature(i_s, callable));
-            if had_error && had_error_in_func.is_none() {
-                had_error_in_func = Some(callable);
+            let (calculated_type_args, had_error) = i_s.avoid_errors_within(|i_s| {
+                match_signature(i_s, callable, &mut args.iter(i_s.mode))
+            });
+            if had_error && had_error_in_callable.is_none() {
+                had_error_in_callable = Some(callable);
             }
             match calculated_type_args.matches {
                 SignatureMatch::True {
@@ -125,7 +206,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         debug!(
                             "Decided overload #{i} as not found, because of Any and non-any match"
                         );
-                        return OverloadResult::NotFound;
+                        return OverloadResult::MultiAnyMatch;
                     } else if !arbitrary_length_handled {
                         debug!("Overload #{i} matches, but arbitrary length not handled");
                         if first_arbitrary_length_not_handled.is_none() {
@@ -139,7 +220,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_points_from_backup(&points_backup);
-                        add_issue_if_deprecated(&callable);
                         return OverloadResult::Single(callable);
                     }
                 }
@@ -161,7 +241,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         {
                             debug!("Decided overload #{i} as not found, because of 2+ Any matches");
                             args.reset_points_from_backup(&points_backup);
-                            return OverloadResult::NotFound;
+                            return OverloadResult::MultiAnyMatch;
                         }
                         debug!("Overload #{i} is a follow-up any match, and therefore not used");
                     } else {
@@ -181,6 +261,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     debug!("Overload #{i} mismatch, is not similar.");
                 }
             }
+            // Not doing this is a bad thing, but otherwise nested overloads can explode
+            // exponentially.
             args.reset_points_from_backup(&points_backup);
         }
         if let Some((callable, _)) = multi_any_match {
@@ -212,12 +294,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 match self.check_union_math(
                     i_s,
                     args.iter(i_s.mode),
-                    skip_first_argument,
                     &mut non_union_args,
-                    &|issue| args.add_issue(i_s, issue),
-                    search_init,
-                    class,
-                    replace_self,
+                    match_signature,
                     as_union_math_type,
                     0,
                 ) {
@@ -237,9 +315,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ))
                     }
                     UnionMathResult::NoMatch => (),
-                    UnionMathResult::TooManyUnions => {
-                        args.add_issue(i_s, IssueKind::OverloadTooManyUnions);
-                    }
+                    UnionMathResult::TooManyUnions => return OverloadResult::TooManyUnions,
                 }
             }
         }
@@ -255,43 +331,22 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             );
             return OverloadResult::Single(callable);
         }
-        if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
-            on_overload_mismatch()
-        } else {
-            debug!("Overload fallback: Infer arguments and add errors since no match was found");
-            let _indent = debug_indent();
-            let c = Callable::new(self.overload.iter_functions().next().unwrap(), self.class);
-            let t = IssueKind::OverloadMismatch {
-                name: (on_type_error.generate_diagnostic_string)(&c, i_s.db)
-                    .expect(
-                        "The diagnostic string should always be set for overloads, \
-                             because the name is always defined",
-                    )
-                    .into(),
-                args: args.iter(i_s.mode).into_argument_types(i_s),
-                variants: self.variants(i_s, class.filter(|_| search_init)),
-            };
-            args.add_issue(i_s, t);
-        }
         debug!("Decided overload as not found");
-        if let Some(callable) = had_error_in_func {
-            // Need to run the whole thing again to generate errors, because the function is not
-            // going to be checked.
-            match_signature(i_s, callable);
+        OverloadResult::NotFound {
+            had_error_in_callable,
         }
-        OverloadResult::NotFound
     }
 
     fn check_union_math<'x>(
         &self,
         i_s: &InferenceState<'db, '_>,
         mut args: ArgIterator<'db, 'x>,
-        skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
-        add_issue: &impl Fn(IssueKind) -> bool,
-        search_init: bool,
-        class: Option<&Class>,
-        replace_self: Option<ReplaceSelf>,
+        match_signature: &impl Fn(
+            &InferenceState<'db, '_>,
+            Callable<'a>,
+            &mut dyn Iterator<Item = Arg<'db, '_>>,
+        ) -> CalculatedTypeArgs,
         as_union_math_type: &impl Fn(&Callable, CalculatedTypeArgs) -> Type,
         recursion_depth: usize,
     ) -> UnionMathResult {
@@ -307,12 +362,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 return self.check_union_math(
                     i_s,
                     args,
-                    skip_first_argument,
                     non_union_args,
-                    add_issue,
-                    search_init,
-                    class,
-                    replace_self,
+                    match_signature,
                     as_union_math_type,
                     recursion_depth,
                 );
@@ -348,12 +399,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     let r = self.check_union_math(
                         i_s,
                         args.clone(),
-                        skip_first_argument,
                         non_union_args,
-                        add_issue,
-                        search_init,
-                        class,
-                        replace_self,
+                        match_signature,
                         as_union_math_type,
                         recursion_depth + 1,
                     );
@@ -394,12 +441,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 self.check_union_math(
                     i_s,
                     args,
-                    skip_first_argument,
                     non_union_args,
-                    add_issue,
-                    search_init,
-                    class,
-                    replace_self,
+                    match_signature,
                     as_union_math_type,
                     recursion_depth,
                 )
@@ -408,29 +451,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let mut first_similar = None;
             for (i, callable) in self.overload.iter_functions().enumerate() {
                 let callable = Callable::new(callable, self.class);
-                let calculated_type_args = if search_init {
-                    calc_callable_dunder_init_type_vars(
-                        i_s,
-                        class.unwrap(),
-                        callable,
-                        non_union_args.clone().into_iter(),
-                        add_issue,
-                        true,
-                        &mut ResultContext::Unknown,
-                        None,
-                    )
-                } else {
-                    calc_callable_type_vars(
-                        i_s,
-                        callable,
-                        non_union_args.clone().into_iter(),
-                        add_issue,
-                        skip_first_argument,
-                        &mut ResultContext::Unknown,
-                        replace_self,
-                        None,
-                    )
-                };
+                let calculated_type_args =
+                    match_signature(i_s, callable, &mut non_union_args.clone().into_iter());
                 match calculated_type_args.matches {
                     SignatureMatch::TrueWithAny { .. } | SignatureMatch::True { .. } => {
                         return UnionMathResult::Match {
@@ -570,7 +592,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 result
             }
             OverloadResult::Union(t) => Inferred::from_type(t),
-            OverloadResult::NotFound => {
+            OverloadResult::NotFound { .. }
+            | OverloadResult::MultiAnyMatch
+            | OverloadResult::TooManyUnions => {
                 let to_type = |c: &'a CallableContent| -> Cow<'a, Type> {
                     if let Some(cls) = self.class {
                         return c.return_type.replace_type_var_likes(i_s.db, &mut |usage| {
@@ -622,4 +646,147 @@ fn are_any_arguments_ambiguous_in_overload(
         }
     }
     false
+}
+
+#[derive(PartialEq, Eq, Hash)]
+struct CachedOverloadSolutionKey {
+    overload: FunctionOverload,
+    arguments_node: PointLink,
+    class: Option<Type>,
+}
+
+#[derive(Debug)]
+enum CachedOverloadSolution {
+    Single(PointLink),
+    // Union(Type),
+    MultiAnyMatch,
+    NotFound {
+        had_error_in_callable: Option<PointLink>,
+    },
+    TooManyUnions,
+}
+
+#[derive(Default)]
+struct NestedOverloadDetails {
+    count: Cell<usize>,
+    previous_solution_cache:
+        RefCell<FastHashMap<CachedOverloadSolutionKey, CachedOverloadSolution>>,
+}
+
+thread_local!(static NESTED_OVERLOAD_COUNTER: NestedOverloadDetails = const { NestedOverloadDetails {
+    count: Cell::new(0),
+    previous_solution_cache: RefCell::new(FastHashMap::with_hasher(std::hash::BuildHasherDefault::new())),
+} });
+
+struct NestedOverloadCounter();
+
+impl NestedOverloadCounter {
+    fn maybe_reuse_previous_solution<'a>(
+        &self,
+        i_s: &InferenceState,
+        overload: &'a FunctionOverload,
+        args: &dyn Args,
+        class: &Option<Class<'a>>,
+    ) -> Option<OverloadResult<'a>> {
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            let key = Self::to_key(i_s, details, overload, args, class)?;
+            let link_to_callable = |link| {
+                let found = overload
+                    .iter_functions()
+                    .find(|o| o.defined_at == link)
+                    .unwrap();
+                Callable::new(found, *class)
+            };
+            Some(match details.previous_solution_cache.borrow().get(&key)? {
+                CachedOverloadSolution::Single(link) => {
+                    OverloadResult::Single(link_to_callable(*link))
+                }
+                // CachedOverloadSolution::Union(t) => OverloadResult::Union(t.clone()),
+                CachedOverloadSolution::MultiAnyMatch => OverloadResult::MultiAnyMatch,
+                CachedOverloadSolution::NotFound {
+                    had_error_in_callable,
+                } => OverloadResult::NotFound {
+                    had_error_in_callable: had_error_in_callable.map(link_to_callable),
+                },
+                CachedOverloadSolution::TooManyUnions => OverloadResult::TooManyUnions,
+            })
+        })
+    }
+
+    fn to_key(
+        i_s: &InferenceState,
+        details: &NestedOverloadDetails,
+        overload: &FunctionOverload,
+        args: &dyn Args,
+        class: &Option<Class>,
+    ) -> Option<CachedOverloadSolutionKey> {
+        // TODO the condition that this should only be done for simple args should not be there,
+        // but if we enable it, it will cache things like + overloads that iterate over both sides
+        // unions.
+        if details.count.get() <= 1 || args.maybe_simple_args().is_none() {
+            return None;
+        }
+        Some(CachedOverloadSolutionKey {
+            overload: overload.clone(),
+            arguments_node: args.as_node_ref_internal()?.as_link(),
+            class: class.map(|c| c.as_type(i_s.db)),
+        })
+    }
+
+    fn register_solution(
+        &self,
+        i_s: &InferenceState,
+        overload: &FunctionOverload,
+        args: &dyn Args,
+        class: &Option<Class>,
+        solution: &OverloadResult,
+    ) {
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            if let Some(key) = Self::to_key(i_s, details, overload, args, class) {
+                let result = match solution {
+                    OverloadResult::Single(callable) => {
+                        CachedOverloadSolution::Single(callable.content.defined_at)
+                    }
+                    OverloadResult::Union(_) => {
+                        // TODO this should in theory also be used to avoid recursions and decide
+                        // overloads, but at the moment we don't have a way to "re-add" the issues.
+                        return;
+                    }
+                    OverloadResult::MultiAnyMatch => CachedOverloadSolution::MultiAnyMatch,
+                    OverloadResult::NotFound {
+                        had_error_in_callable,
+                    } => CachedOverloadSolution::NotFound {
+                        had_error_in_callable: had_error_in_callable.map(|e| e.content.defined_at),
+                    },
+                    OverloadResult::TooManyUnions => CachedOverloadSolution::TooManyUnions,
+                };
+                let replaced = details
+                    .previous_solution_cache
+                    .borrow_mut()
+                    .insert(key, result);
+                debug_assert!(replaced.is_none());
+            }
+        })
+    }
+}
+
+#[inline(always)]
+#[must_use]
+fn nested_counter() -> NestedOverloadCounter {
+    NESTED_OVERLOAD_COUNTER.with(|details| {
+        details.count.update(|c| c + 1);
+        NestedOverloadCounter()
+    })
+}
+
+impl Drop for NestedOverloadCounter {
+    #[inline(always)]
+    fn drop(&mut self) {
+        NESTED_OVERLOAD_COUNTER.with(|details| {
+            details.count.update(|c| c - 1);
+            if details.count.get() == 0 {
+                details.previous_solution_cache.borrow_mut().clear()
+            }
+        })
+    }
 }
