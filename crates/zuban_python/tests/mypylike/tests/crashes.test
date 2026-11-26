@@ -153,3 +153,8 @@ dtype([  # type: ignore
         )),
     )))
 ])
+
+[case avoid_recursion_for_raise_and_reuse_of_name]
+class C:
+    def f(self, x):
+        raise NotImplementedError(self.f)
