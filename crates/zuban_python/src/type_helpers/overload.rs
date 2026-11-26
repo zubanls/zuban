@@ -741,6 +741,7 @@ impl NestedOverloadCounter {
         class: &Option<Class>,
         solution: &OverloadResult,
     ) {
+        return;
         NESTED_OVERLOAD_COUNTER.with(|details| {
             if let Some(key) = Self::to_key(i_s, details, overload, args, class) {
                 let result = match solution {
