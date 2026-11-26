@@ -911,7 +911,9 @@ impl CallableContent {
                             setter_type: Some(Arc::new(PropertySetter {
                                 // TODO theoretically this should be populated by the callable
                                 // that's going to be given
-                                type_: PropertySetterType::OtherType(Type::ERROR),
+                                type_: PropertySetterType::OtherType(
+                                    i_s.db.python_state.object_type(),
+                                ),
                                 deprecated_reason: None,
                             })),
                             had_first_self_or_class_annotation: *had_first_self_or_class_annotation,
@@ -936,7 +938,7 @@ impl CallableContent {
                             i_s.db.python_state.empty_type_var_likes.clone(),
                             CallableParams::Simple(
                                 [CallableParam::new_anonymous(ParamType::PositionalOnly(
-                                    Type::ERROR,
+                                    i_s.db.python_state.object_type(),
                                 ))]
                                 .into(),
                             ),
