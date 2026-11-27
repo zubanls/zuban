@@ -17,6 +17,7 @@ mod namespace;
 mod new_type;
 mod operations;
 mod overlaps;
+mod protocol;
 mod recursive_type;
 mod replace;
 mod search;
