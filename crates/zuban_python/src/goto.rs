@@ -642,12 +642,13 @@ impl<'db, C: for<'a> FnMut(Name<'db, 'a>) -> T, T> GotoResolver<'db, C> {
             node_ref.as_node().params().iter().find_map(|p| {
                 let name_def = p.name_def();
                 (name_def.as_code() == search_name).then(|| {
-                    vec![slf.calculate_return(Name::TreeName(TreeName::new(
-                        slf.infos.db,
-                        slf.infos.file,
-                        slf.infos.scope,
-                        name_def.name(),
-                    )))]
+                    vec![
+                        slf.calculate_return(Name::TreeName(TreeName::with_unknown_parent_scope(
+                            slf.infos.db,
+                            node_ref.file,
+                            name_def.name(),
+                        ))),
+                    ]
                 })
             })
         };
