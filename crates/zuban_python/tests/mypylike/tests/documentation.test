@@ -1761,7 +1761,7 @@ f(param=3)
 [out]
 __main__.py:3:documentation -> "```python\n(param) param: int\n```"
 __main__.py:7:documentation -> "```python\n(param) param: int\n```"
-__main__.py:9:goto -> __main__.py:3:6:__main__.param
+__main__.py:9:goto -> __main__.py:3:6:__main__.param@3
 __main__.py:11:rename: param -> new_param
 __main__.py:11:rename: file:///mypylike/__main__.py:
 __main__.py:11:rename:  - 3:6 -> 3:11
@@ -1772,7 +1772,7 @@ __main__.py:11:rename:  - 11:2 -> 11:7
 [out.windows]
 __main__.py:3:documentation -> "```python\n(param) param: int\n```"
 __main__.py:7:documentation -> "```python\n(param) param: int\n```"
-__main__.py:9:goto -> __main__.py:3:6:__main__.param
+__main__.py:9:goto -> __main__.py:3:6:__main__.param@3
 __main__.py:11:rename: param -> new_param
 __main__.py:11:rename: file:///C:/mypylike/__main__.py:
 __main__.py:11:rename:  - 3:6 -> 3:11
@@ -1813,9 +1813,9 @@ f(y=3, x="")
 [out]
 __main__.py:11:documentation -> "```python\n(param) x: int\n```"
 __main__.py:13:documentation -> "```python\n(param) x: str\n```"
-__main__.py:15:goto -> __main__.py:4:6:__main__.x
-__main__.py:17:goto -> __main__.py:4:6:__main__.x
+__main__.py:15:goto -> __main__.py:4:6:__main__.x@4
+__main__.py:17:goto -> __main__.py:4:6:__main__.x@4
 __main__.py:20:documentation -> "```python\n(param) y: int\n```"
 __main__.py:22:documentation -> "```python\n(param) x: str\n```"
-__main__.py:25:goto -> __main__.py:7:14:__main__.y
-__main__.py:27:goto -> __main__.py:4:6:__main__.x
+__main__.py:25:goto -> __main__.py:7:14:__main__.y@7
+__main__.py:27:goto -> __main__.py:4:6:__main__.x@4

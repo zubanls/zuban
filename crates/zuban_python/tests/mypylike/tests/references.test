@@ -184,3 +184,22 @@ class C: ...
 [out]
 a.py:2:references -> a.py:2:14; a.py:4:0; m.py:1:14; n.py:1:14; o.py:1:6
 a.py:4:references -> a.py:2:14; a.py:4:0; m.py:1:14; n.py:1:14; o.py:1:6
+
+[case keyword_param_references_no_crash]
+# From GH #688
+from m import C
+
+p = C()
+#? --codepoint-column 15 references
+p.add_argument(default="")
+
+[file m.py]
+# some comment to make the file longer - and some more and some more
+# and some more and some more and some more and some more
+
+class C:
+    def __init__(self): ...
+    def add_argument(self, default: str = ""): ...
+
+[out]
+__main__.py:6:references -> __main__.py:6:15; m.py:6:27
